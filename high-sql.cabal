@@ -39,6 +39,7 @@ library
     library
   other-modules:
     HighSQL.Prelude
+    HighSQL.CompositionT
   exposed-modules:
     HighSQL
     HighSQL.Backend
