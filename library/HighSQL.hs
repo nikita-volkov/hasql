@@ -24,7 +24,10 @@ session b s =
 
 -- |
 -- A transaction with a level @l@ and a result @r@.
-data T l r
+data T l s r
+
+transaction :: MonadIO m => (forall s. T l s r) -> S m r
+transaction = $notImplemented
 
 
 -- ** Privileges
@@ -32,16 +35,17 @@ data T l r
 
 class SelectPrivilege l
 
-select :: SelectPrivilege l => Select r -> T l r
+select :: SelectPrivilege l => Select r -> ResultsStream s (T l s) r
 select = 
   $notImplemented
 
 
 class UpdatePrivilege l
 
-update :: UpdatePrivilege l => Update -> T l ()
+update :: UpdatePrivilege l => Update -> T l s ()
 update =
   $notImplemented
+
 
 -- class AlterPrivilege p where
 --   alter :: Alter -> T p ()
@@ -72,3 +76,16 @@ newtype Select r =
 newtype Update =
   Update (Backend.Connection -> IO ())
 
+
+-- * Results Stream
+-------------------------
+
+-- |
+-- A stream of results, 
+-- which fetches only those that you reach.
+-- 
+-- Uses the same trick as 'ST' to become impossible to run outside of
+-- its transaction.
+-- Hence you can only access it while remaining in transaction,
+-- and when the transaction finishes it safely gets automatically released.
+data ResultsStream s (m :: * -> *) r
