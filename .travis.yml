@@ -1,0 +1,10 @@
+language: haskell
+
+ghc:
+  - 7.6
+  - 7.8
+
+install:
+  - cabal install happy # a "haskell-src-exts" implicit dependency workaround
+  - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
+
