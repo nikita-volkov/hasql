@@ -42,6 +42,7 @@ library
     HighSQL.CompositionT
     HighSQL.QQ
     HighSQL.QQ.Parser
+    HighSQL.API
   exposed-modules:
     HighSQL
     HighSQL.Backend
@@ -58,7 +59,12 @@ library
     bytestring == 0.10.*,
     text == 0.11.*,
     hashable == 1.2.*,
+    -- control:
+    list-t >= 0.2.1 && < 0.3,
+    monad-control == 0.3.*,
+    transformers-base == 0.4.*,
     -- errors:
+    errors >= 1.4.7 && < 1.5,
     loch-th == 0.2.*,
     placeholders == 0.1.*,
     -- general:

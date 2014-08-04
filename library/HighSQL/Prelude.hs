@@ -9,7 +9,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports
+import BasePrelude as Exports hiding (left, right, tryJust, bool)
 
 -- mtl-prelude
 -------------------------
@@ -31,6 +31,10 @@ import Data.HashSet as Exports (HashSet)
 -- hashable
 -------------------------
 import Data.Hashable as Exports (Hashable)
+
+-- errors
+-------------------------
+import Control.Error as Exports
 
 -- placeholders
 -------------------------

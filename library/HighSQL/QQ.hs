@@ -4,7 +4,7 @@ import HighSQL.Prelude
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import qualified HighSQL.QQ.Parser as Parser
-import qualified HighSQL.Transaction as Transaction
+import qualified HighSQL.API as API
 import qualified Database.HDBC as HDBC
 
 
@@ -26,20 +26,20 @@ parseExp s =
   where
     conName =
       \case
-        Parser.Select -> 'Transaction.select
-        Parser.Update -> 'Transaction.update
-        Parser.Create -> 'Transaction.create
+        Parser.Select -> 'API.select
+        Parser.Update -> 'API.update
+        Parser.Create -> 'API.create
 
 -- |
 -- An expression of an arbitrary arg-length function, 
--- which produces a "Transaction.Statement".
+-- which produces a "API.Statement".
 statementF :: String -> Int -> Exp
 statementF s n =
   LamE pats exp
   where
     vars = map (mkName . ('_' :) . show) [1 .. n]
     pats = map VarP vars
-    exp  = AppE (AppE (ConE 'Transaction.Statement) (LitE (StringL s))) (ListE exps)
+    exp  = AppE (AppE (ConE 'API.Statement) (LitE (StringL s))) (ListE exps)
       where
         exps = map (AppE (VarE 'HDBC.toSql) . VarE) vars
 
