@@ -40,12 +40,25 @@ library
   other-modules:
     HighSQL.Prelude
     HighSQL.CompositionT
+    HighSQL.Statement.Model
+    HighSQL.Statement.QQ
+    HighSQL.Statement.QQ.Parser
   exposed-modules:
     HighSQL
     HighSQL.Backend
   build-depends:
+    -- template-haskell:
+    template-haskell == 2.8.*,
+    -- parsing:
+    attoparsec == 0.11.*,
     -- database:
+    HDBC == 2.4.*,
     ex-pool == 0.2.*,
+    -- data:
+    unordered-containers == 0.2.*,
+    bytestring == 0.10.*,
+    text == 0.11.*,
+    hashable == 1.2.*,
     -- errors:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
