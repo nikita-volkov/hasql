@@ -6,5 +6,3 @@ import HighSQL.Prelude
 
 
 data Backend
-
-data Connection

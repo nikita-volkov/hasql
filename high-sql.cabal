@@ -40,9 +40,8 @@ library
   other-modules:
     HighSQL.Prelude
     HighSQL.CompositionT
-    HighSQL.Statement.Model
-    HighSQL.Statement.QQ
-    HighSQL.Statement.QQ.Parser
+    HighSQL.QQ
+    HighSQL.QQ.Parser
   exposed-modules:
     HighSQL
     HighSQL.Backend

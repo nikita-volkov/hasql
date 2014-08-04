@@ -1,4 +1,4 @@
-module HighSQL.Statement.QQ.Parser where
+module HighSQL.QQ.Parser where
 
 import HighSQL.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)
