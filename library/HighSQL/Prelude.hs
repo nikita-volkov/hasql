@@ -31,18 +31,13 @@ import Data.Text as Exports (Text)
 -------------------------
 import Data.ByteString as Exports (ByteString)
 
--- time
--------------------------
-import Data.Time as Exports
-
--- unordered-containers
--------------------------
-import Data.HashMap.Strict as Exports (HashMap)
-import Data.HashSet as Exports (HashSet)
-
 -- hashable
 -------------------------
 import Data.Hashable as Exports (Hashable)
+
+-- time
+-------------------------
+import Data.Time as Exports
 
 -- placeholders
 -------------------------
