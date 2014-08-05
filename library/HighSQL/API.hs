@@ -2,7 +2,6 @@ module HighSQL.API where
 
 import HighSQL.Prelude hiding (read, Read, write, Write)
 import qualified Data.Pool as Pool
-import qualified Database.HDBC as HDBC
 import qualified HighSQL.CompositionT as CompositionT
 import qualified HighSQL.Backend as Backend
 import qualified ListT
@@ -119,8 +118,8 @@ create =
 -------------------------
 
 data Statement =
-  Statement !ByteString ![HDBC.SqlValue]
-  deriving (Show, Eq)
+  Statement !ByteString ![Backend.Value]
+  deriving (Show)
 
 
 -- * Results Stream

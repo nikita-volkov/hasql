@@ -5,7 +5,7 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 import qualified HighSQL.QQ.Parser as Parser
 import qualified HighSQL.API as API
-import qualified Database.HDBC as HDBC
+import qualified HighSQL.Backend as Backend
 
 
 qq :: QuasiQuoter
@@ -41,7 +41,7 @@ statementF s n =
     pats = map VarP vars
     exp  = AppE (AppE (ConE 'API.Statement) (LitE (StringL s))) (ListE exps)
       where
-        exps = map (AppE (VarE 'HDBC.toSql) . VarE) vars
+        exps = map (AppE (VarE 'Backend.toValue) . VarE) vars
 
 fmapLamE :: (Exp -> Exp) -> Exp -> Exp
 fmapLamE f =
