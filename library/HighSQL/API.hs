@@ -1,6 +1,6 @@
 module HighSQL.API where
 
-import HighSQL.Prelude hiding (read, Read, write, Write)
+import HighSQL.Prelude hiding (read, Read, write, Write, Error)
 import qualified Data.Pool as Pool
 import qualified HighSQL.CompositionT as CompositionT
 import qualified HighSQL.Backend as Backend
@@ -22,18 +22,15 @@ data Settings =
     -- The smallest acceptable value is 1.
     striping1 :: Word32,
     -- |
-    -- Maximum number of connections to keep open per stripe. 
+    -- The maximum number of connections to keep open per a pool stripe. 
     -- The smallest acceptable value is 1.
     -- Requests for connections will block if this limit is reached 
     -- on a single stripe, 
     -- even if other stripes have idle connections available.
     striping2 :: Word32,
     -- |
-    -- The amount of time for which an unused resource is kept open. 
+    -- The amount of time for which an unused connection is kept open. 
     -- The smallest acceptable value is 0.5 seconds.
-    -- The elapsed time before destroying a resource 
-    -- may be a little longer than requested, 
-    -- as the reaper thread wakes at 1-second intervals.
     connectionTimeout :: NominalDiffTime
   }
 
@@ -52,71 +49,108 @@ withSession b s =
       Pool.purgePool pool
 
 
--- ** Error
+-- * Error
 -------------------------
 
-data SessionError =
-  TransactionError TransactionError
+-- |
+-- The only exception type that this API can raise.
+data Error =
+  -- |
+  -- Cannot connect to a server 
+  -- or the connection got interrupted.
+  ConnectionError Text |
+  -- |
+  -- A free-form backend-specific exception.
+  BackendError SomeException
   deriving (Show, Typeable)
+
+instance Exception Error
 
 
 -- * Transaction
 -------------------------
 
 -- |
--- A transaction with a level @l@ and a result @r@.
+-- A transaction with a level @l@,
+-- running on an anonymous state-thread @s@ 
+-- and gaining a result @r@.
 newtype T l s r =
-  T (CompositionT.T (ReaderT Backend.Connection (EitherT TransactionError IO)) r)
+  T (CompositionT.T (ReaderT Backend.Connection IO) r)
   deriving (Functor, Applicative, Monad)
 
-transaction :: Session -> (forall s. T l s r) -> IO r
-transaction (Session p) t = 
-  do
-    e <- 
-      Pool.withResource p $ runEitherT . \c -> 
-        case composed of
-          False -> 
-            runReaderT r c
-          True ->
-            do
-              $notImplemented
-    either throwIO return e
-  where
-    (composed, r) = case t of T t -> CompositionT.run t
+-- |
+-- Execute a transaction in a write mode (if 'True') using a session.
+-- 
+-- * Automatically determines, 
+-- whether it's actually a transaction or just a single action
+-- and executes accordingly.
+-- 
+-- * Automatically retries the transaction in case of a
+-- 'Backend.TransactionError' exception.
+-- 
+-- * Rethrows all the other exceptions after wrapping them in 'Error'.
+transaction :: Bool -> Session -> (forall s. T l s r) -> IO r
+transaction w (Session p) (T t) = 
+  do 
+    e <-
+      try $ Pool.withResource p $ 
+        \c -> 
+          case CompositionT.run t of
+            (False, r) -> 
+              runReaderT r c
+            (True, r) ->
+              retry
+              where
+                retry = 
+                  do
+                    Backend.beginTransaction c w
+                    e <- try $ runReaderT r c
+                    case e of
+                      Left (Backend.TransactionError) ->
+                        do
+                          Backend.finishTransaction c False
+                          retry
+                      Left e ->
+                        do
+                          Backend.finishTransaction c False
+                          throwIO e
+                      Right r -> 
+                        do
+                          Backend.finishTransaction c True
+                          return r
+    case e of
+      Left (Backend.ConnectionError t) ->
+        throwIO (ConnectionError t)
+      Left (Backend.BackendError e) ->
+        throwIO (BackendError e)
+      Left (Backend.TransactionError) ->
+        $bug "Unexpected TransactionError"
+      Right r ->
+        return r
 
 
--- ** Error
--------------------------
-
-data TransactionError =
-  TE
-  deriving (Show, Typeable)
-
-instance Exception TransactionError
-
-
--- * Levels
+-- ** Levels
 -------------------------
 
 data Read
 
 read :: MonadIO m => Session -> (forall s. T Read s r) -> IO r
-read = transaction
+read = transaction False
 
 
 data Write
 
 write :: MonadIO m => Session -> (forall s. T Write s r) -> IO r
-write = transaction
+write = transaction True
 
 
 data Admin
 
 admin :: MonadIO m => Session -> (forall s. T Admin s r) -> IO r
-admin = transaction
+admin = transaction True
 
 
--- * Privileges
+-- ** Privileges
 -------------------------
 
 -- |

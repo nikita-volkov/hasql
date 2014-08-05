@@ -64,7 +64,6 @@ library
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     -- errors:
-    errors >= 1.4.7 && < 1.5,
     loch-th == 0.2.*,
     placeholders == 0.1.*,
     -- general:

@@ -48,7 +48,11 @@ data Error =
   -- A transaction failed and should be retried.
   TransactionError |
   -- |
-  -- A wrapper for a free-form backend-specific exception.
+  -- Cannot connect to a server 
+  -- or the connection got interrupted.
+  ConnectionError Text |
+  -- |
+  -- A free-form backend-specific exception.
   BackendError SomeException
   deriving (Show, Typeable)
 

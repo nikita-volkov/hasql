@@ -40,10 +40,6 @@ import Data.HashSet as Exports (HashSet)
 -------------------------
 import Data.Hashable as Exports (Hashable)
 
--- errors
--------------------------
-import Control.Error as Exports
-
 -- placeholders
 -------------------------
 import Development.Placeholders as Exports
