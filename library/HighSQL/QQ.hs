@@ -27,9 +27,14 @@ parseExp s =
   where
     conName =
       \case
-        Parser.Select -> 'API.select
-        Parser.Update -> 'API.update
-        Parser.Create -> 'API.create
+        Parser.Select   -> 'API.select
+        Parser.Update   -> 'API.update
+        Parser.Insert   -> 'API.insert
+        Parser.Delete   -> 'API.update
+        Parser.Create   -> 'API.create
+        Parser.Alter    -> 'API.create
+        Parser.Drop     -> 'API.create
+        Parser.Truncate -> 'API.create
 
 -- |
 -- An expression of an arbitrary arg-length function, 

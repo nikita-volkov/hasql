@@ -160,51 +160,69 @@ admin = transaction True
 
 -- |
 -- \"SELECT\"
-class SelectPrivilege l
+class SelectPrivilege l where
+  -- | 
+  -- Produce a results stream from a statement.
+  select :: 
+    forall s r. 
+    (Conversion.Row r, Typeable r) => Statement -> ResultsStream s (T l s) r
+  select (Statement bs vl) = 
+    do
+      (w, s) <- 
+        lift $ T $ lift $ do
+          Backend.Connection {..} <- ask
+          liftIO $ do
+            ps <- prepare bs
+            executeStreaming ps vl Nothing
+      l <- ResultsStream $ hoist (T . liftIO) $ replicateM w s
+      maybe (throwParsingError l (typeOf (undefined :: r))) return $ Conversion.fromRow l
+    where
+      throwParsingError vl t =
+        ResultsStream $ lift $ T $ liftIO $ throwIO $ ResultParsingError vl t
 
 instance SelectPrivilege Read
 instance SelectPrivilege Write
 instance SelectPrivilege Admin
 
-select :: 
-  forall l s r. 
-  (SelectPrivilege l, Conversion.Row r, Typeable r) => 
-  Statement -> ResultsStream s (T l s) r
-select (Statement bs vl) = 
-  do
-    (w, s) <- 
-      lift $ T $ lift $ do
-        Backend.Connection {..} <- ask
-        liftIO $ do
-          ps <- prepare bs
-          executeAndStream ps vl Nothing
-    l <- ResultsStream $ hoist (T . liftIO) $ replicateM w s
-    maybe (throwParsingError l (typeOf (undefined :: r))) return $ Conversion.fromRow l
-  where
-    throwParsingError vl t =
-      ResultsStream $ lift $ T $ liftIO $ throwIO $ ResultParsingError vl t
 
 -- |
 -- \"UPDATE\", \"INSERT\", \"DELETE\"
-class UpdatePrivilege l
+class UpdatePrivilege l where
+  -- |
+  -- Execute and count the amount of affected rows.
+  update :: Statement -> T l s Integer
+  update (Statement bs vl) =
+    T $ do
+      Backend.Connection {..} <- lift $ ask
+      liftIO $ do
+        ps <- prepare bs
+        executeCountingEffects ps vl
+  -- |
+  -- Execute and return the possibly auto-incremented number.
+  insert :: Statement -> T l s (Maybe Integer)
+  insert (Statement bs vl) =
+    T $ do
+      Backend.Connection {..} <- lift $ ask
+      liftIO $ do
+        ps <- prepare bs
+        executeIncrementing ps vl
 
 instance UpdatePrivilege Write
 instance UpdatePrivilege Admin
 
-update :: UpdatePrivilege l => Statement -> T l s (Maybe Integer)
-update =
-  $notImplemented
-
 
 -- |
 -- \"CREATE\", \"ALTER\", \"DROP\", \"TRUNCATE\"
-class CreatePrivilege l
+class CreatePrivilege l where
+  create :: Statement -> T l s ()
+  create (Statement bs vl) =
+    T $ do
+      Backend.Connection {..} <- lift $ ask
+      liftIO $ do
+        ps <- prepare bs
+        execute ps vl
 
 instance CreatePrivilege Admin
-
-create :: CreatePrivilege l => Statement -> T l s ()
-create =
-  $notImplemented
 
 
 -- * Statement

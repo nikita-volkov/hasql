@@ -38,12 +38,20 @@ data Connection =
     prepare :: ByteString -> IO s,
     -- |
     -- Execute a statement with values for placeholders.
-    execute :: s -> [Value] -> IO Int,
+    execute :: s -> [Value] -> IO (),
+    -- |
+    -- Execute a statement with values for placeholders,
+    -- returning the amount of affected rows.
+    executeCountingEffects :: s -> [Value] -> IO Integer,
+    -- |
+    -- Execute a statement with values for placeholders,
+    -- returning the possibly generated auto-incremented value.
+    executeIncrementing :: s -> [Value] -> IO (Maybe Integer),
     -- |
     -- Execute a statement with values and an expected results stream size.
     -- The expected stream size can be used by the backend to determine 
     -- an optimal fetching method.
-    executeAndStream :: s -> [Value] -> Maybe Int -> IO ResultSet,
+    executeStreaming :: s -> [Value] -> Maybe Integer -> IO ResultSet,
     -- |
     -- Close the connection.
     disconnect :: IO ()

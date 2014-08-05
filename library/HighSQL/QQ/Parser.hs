@@ -3,17 +3,16 @@ module HighSQL.QQ.Parser where
 import HighSQL.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)
 import qualified Data.Text as Text
+import qualified Language.Haskell.TH as TH
 
 
 -- |
 -- The kind of a statement and the amount of placeholders.
 type Result =
-  (Kind, Int)
+  (Statement, Int)
 
-data Kind =
-  Select |
-  Update |
-  Create
+data Statement =
+  Select | Update | Insert | Delete | Create | Alter | Drop | Truncate
   deriving (Show, Read, Eq, Ord, Enum)
 
 parse :: Text -> Either String Result
@@ -28,16 +27,9 @@ parse =
         assocToParser (word, kind) =
           asciiCI word *> pure kind
         assocs =
-          do
-            (kind, words) <- groups
-            word <- words
-            return (word, kind)
-        groups =
-          [
-            (Select, ["select"]),
-            (Update, ["update", "insert", "delete"]),
-            (Create, ["create", "alter", "drop", "truncate"])
-          ]
+          [("select", Select), ("update", Update), ("insert", Insert),
+           ("delete", Delete), ("create", Create), ("alter", Alter),
+           ("drop", Drop), ("truncate", Truncate)]
     countPlaceholders =
       count <|> pure 0
       where
