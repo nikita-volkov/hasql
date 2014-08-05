@@ -17,10 +17,12 @@ class Value a where
 
 -- Generate standard instances using Template Haskell:
 let
-  inst :: Name -> Name -> Dec
-  inst t c = 
+  inst :: Name -> Dec
+  inst t = 
     InstanceD [] (AppT (ConT ''Value) (ConT t)) [d1, d2]
     where
+      c =
+        mkName $ "Backend.Value_" ++ nameBase t
       d1 =
         FunD 'toValue [Clause [] (NormalB (ConE c)) []]
       d2 = 
@@ -35,26 +37,10 @@ let
           c2 = 
             Clause [WildP] (NormalB (ConE 'Nothing)) []
   in 
-    mapM (return . uncurry inst) 
-      [
-        (''NominalDiffTime, 'Backend.Value_NominalDiffTime),
-        (''UTCTime, 'Backend.Value_UTCTime),
-        (''ZonedTime, 'Backend.Value_ZonedTime),
-        (''TimeOfDay, 'Backend.Value_TimeOfDay),
-        (''LocalTime, 'Backend.Value_LocalTime),
-        (''Day, 'Backend.Value_Day),
-        (''Rational, 'Backend.Value_Rational),
-        (''Double, 'Backend.Value_Double),
-        (''Bool, 'Backend.Value_Bool),
-        (''Char, 'Backend.Value_Char),
-        (''Integer, 'Backend.Value_Integer),
-        (''Int64, 'Backend.Value_Int64),
-        (''Int32, 'Backend.Value_Int32),
-        (''Word64, 'Backend.Value_Word64),
-        (''Word32, 'Backend.Value_Word32),
-        (''ByteString, 'Backend.Value_ByteString),
-        (''Text, 'Backend.Value_Text)
-      ]
+    mapM (return . inst) 
+      [''NominalDiffTime, ''UTCTime, ''ZonedTime, ''TimeOfDay, ''LocalTime, 
+       ''Day, ''Rational, ''Double, ''Bool, ''Char, ''Integer, ''Int64, ''Int32, 
+       ''Word64, ''Word32, ''ByteString, ''Text]
 
 instance Value String where
   toValue = Backend.Value_Text . Text.pack
