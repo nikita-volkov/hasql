@@ -9,8 +9,57 @@ import qualified HighSQL.Backend as Backend
 import qualified HighSQL.Conversion as Conversion
 
 
-qq :: QuasiQuoter
-qq = 
+-- |
+-- Produces a lambda-expression, 
+-- which takes as many parameters as there are placeholders in the statement
+-- and, depending on the statement kind, results in one of the following types:
+-- 
+-- [@SELECT@]
+-- 
+-- A stream of results, with 'API.T' as the inner monad:
+-- 
+-- @'API.ResultsStream' s ('API.T' l s) r@
+-- 
+-- [@INSERT@]
+-- 
+-- A transaction,
+-- which returns the possibly auto-incremented value
+-- (of the @id@ column typically):
+-- 
+-- @'API.T' l s (Maybe Integer)@
+-- 
+-- [@UPDATE, DELETE@]
+-- 
+-- A transaction, 
+-- which returns the amount of affected rows:
+-- 
+-- @'API.T' l s Integer@
+-- 
+-- [@CREATE, ALTER, DROP, TRUNCATE@]
+-- 
+-- A unit transaction:
+-- 
+-- @'API.T' l s ()@
+-- 
+-- Example:
+-- 
+-- >write session $ do
+-- >  artistIDMaybe <- ListT.head $ [q| SELECT id FROM artists WHERE name = ? |] "Metallica" 
+-- >  userIDMaybe   <- ListT.head $ [q| SELECT id FROM users   WHERE name = ? |] "Nikita Volkov"
+-- >  forM_ ((,) <$> artistIDMaybe <*> userIDMaybe) $ \(artistID, userID) ->
+-- >    [q| INSERT INTO artists_fans (artist_id, user_id) VALUES (?, ?) |] artistID userID
+-- 
+-- Of course, the same thing can be implemented a bit smarter:
+-- 
+-- >write session $ sequence_ $ ListT.head $ do
+-- >  artistID <- [q| SELECT id FROM artists WHERE name = ? |] "Metallica" 
+-- >  userID   <- [q| SELECT id FROM users   WHERE name = ? |] "Nikita Volkov"
+-- >  return $ [q| INSERT INTO artists_fans (artist_id, user_id) VALUES (?, ?) |] artistID userID
+-- 
+-- In both examples above we execute a 'write' transaction,
+-- in which we query two tables and insert a row into a third one.
+q :: QuasiQuoter
+q = 
   QuasiQuoter
     parseExp
     (const $ fail "Pattern context is not supported")

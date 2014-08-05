@@ -7,6 +7,10 @@ import qualified Data.Text as Text
 import qualified Language.Haskell.TH as TH
 
 
+-- |
+-- A database interface.
+-- 
+-- Implementations are provided by driver libraries.
 data Backend =
   Backend {
     connect :: IO Connection
@@ -28,10 +32,10 @@ data Connection =
     finishTransaction :: Bool -> IO (),
     -- |
     -- If the backend supports statement preparation,
-    -- this function sompiles a bytestring statement 
+    -- this function compiles a bytestring statement 
     -- with placeholders if it's not compiled already,
-    -- and otherwise returns the cached statement. 
-    -- IOW, implements memoization.
+    -- and otherwise returns the cached already compiled statement. 
+    -- IOW, it implements memoization.
     -- 
     -- If the backend does not support this,
     -- then this function should simply be implemented as a 'return'.
@@ -80,9 +84,6 @@ instance Exception Error
 type ResultSet =
   (Int, ListT IO Value)
 
-
--- * Value
--------------------------
 
 data Value =
   Value_Text !Text |

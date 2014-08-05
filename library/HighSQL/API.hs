@@ -8,14 +8,16 @@ import qualified HighSQL.Conversion as Conversion
 import qualified ListT
 
 
--- * Session
+-- * Pool
 -------------------------
 
-data Session = 
-  Session !(Pool.Pool Backend.Connection)
+-- |
+-- A pool of connections to the database.
+newtype Pool = 
+  Pool (Pool.Pool Backend.Connection)
 
 -- |
--- Session settings.
+-- Pool initization settings.
 data Settings =
   Settings {
     -- | 
@@ -35,8 +37,12 @@ data Settings =
     connectionTimeout :: NominalDiffTime
   }
 
-withSession :: Backend.Backend -> Settings -> (Session -> IO a) -> IO a
-withSession b s =
+-- |
+-- Initialize a pool given a backend and settings 
+-- and run an IO computation with it, 
+-- while automating the resource management.
+withPool :: Backend.Backend -> Settings -> (Pool -> IO a) -> IO a
+withPool b s =
   bracket acquire release
   where
     acquire = 
@@ -45,8 +51,8 @@ withSession b s =
           Pool.createPool 
             (Backend.connect b) (Backend.disconnect) (striping1 s)
             (connectionTimeout s) (striping2 s)
-        return (Session pool)
-    release (Session pool) =
+        return (Pool pool)
+    release (Pool pool) =
       Pool.purgePool pool
 
 
@@ -84,7 +90,7 @@ newtype T l s r =
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Execute a transaction in a write mode (if 'True') using a session.
+-- Execute a transaction in a write mode (if 'True') using a connections pool.
 -- 
 -- * Automatically determines, 
 -- whether it's actually a transaction or just a single action
@@ -94,8 +100,8 @@ newtype T l s r =
 -- 'Backend.TransactionError' exception.
 -- 
 -- * Rethrows all the other exceptions after wrapping them in 'Error'.
-transaction :: Bool -> Session -> (forall s. T l s r) -> IO r
-transaction w (Session p) (T t) = 
+transaction :: Bool -> Pool -> (forall s. T l s r) -> IO r
+transaction w (Pool p) (T t) = 
   do 
     e <-
       try $ Pool.withResource p $ 
@@ -139,19 +145,37 @@ transaction w (Session p) (T t) =
 
 data Read
 
-read :: MonadIO m => Session -> (forall s. T Read s r) -> IO r
+-- |
+-- Execute a transaction on a connections pool.
+-- 
+-- Requires minimal locking from the database,
+-- however you can only execute the \"SELECT\" statements in it. 
+-- The API ensures of that on the type-level.
+read :: Pool -> (forall s. T Read s r) -> IO r
 read = transaction False
 
 
 data Write
 
-write :: MonadIO m => Session -> (forall s. T Write s r) -> IO r
+-- |
+-- Execute a transaction on a connections pool.
+-- 
+-- Allows to execute the \"SELECT\", \"UPDATE\", \"INSERT\" 
+-- and \"DELETE\" statements.
+-- However, compared to 'read', this transaction requires the database to choose 
+-- a more resource-demanding locking strategy.
+write :: Pool -> (forall s. T Write s r) -> IO r
 write = transaction True
 
 
 data Admin
 
-admin :: MonadIO m => Session -> (forall s. T Admin s r) -> IO r
+-- |
+-- Execute a transaction on a connections pool.
+-- 
+-- Same as 'write', but allows you to perform any kind of statements,
+-- including \"CREATE\", \"DROP\" and \"ALTER\".
+admin :: Pool -> (forall s. T Admin s r) -> IO r
 admin = transaction True
 
 
@@ -240,14 +264,14 @@ data Statement =
 -- A stream of results, 
 -- which fetches only those that you reach.
 -- 
--- Uses the same trick as 'ST' to become impossible to be run outside of
--- its transaction.
--- Hence you can only access it while remaining in a transaction,
--- and when the transaction finishes it safely gets automatically released.
--- 
 -- It is implemented as a wrapper around 'ListT.ListT',
 -- hence all the utility functions of the list transformer API 
 -- are applicable to this type.
+-- 
+-- It uses the same trick as 'ST' to become impossible to be run outside of
+-- its transaction.
+-- Hence you can only access it while remaining in a transaction,
+-- and when the transaction finishes it safely gets automatically released.
 newtype ResultsStream s m r =
   ResultsStream (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
