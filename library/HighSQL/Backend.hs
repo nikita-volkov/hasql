@@ -27,16 +27,23 @@ data Connection =
     -- otherwise it rolls back.
     finishTransaction :: Bool -> IO (),
     -- |
-    -- Compile a statement with placeholders.
+    -- If the backend supports statement preparation,
+    -- this function sompiles a bytestring statement 
+    -- with placeholders if it's not compiled already,
+    -- and otherwise returns the cached statement. 
+    -- IOW, implements memoization.
+    -- 
+    -- If the backend does not support this,
+    -- then this function should simply be implemented as a 'return'.
     prepare :: ByteString -> IO s,
     -- |
-    -- Execute a statement with values for placeholders
+    -- Execute a statement with values for placeholders.
     execute :: s -> [Value] -> IO Int,
     -- |
     -- Execute a statement with values and an expected results stream size.
     -- The expected stream size can be used by the backend to determine 
     -- an optimal fetching method.
-    executeAndStream :: s -> [Value] -> Int -> IO ResultSet,
+    executeAndStream :: s -> [Value] -> Maybe Int -> IO ResultSet,
     -- |
     -- Close the connection.
     disconnect :: IO ()

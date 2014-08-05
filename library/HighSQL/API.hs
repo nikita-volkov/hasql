@@ -60,6 +60,10 @@ data Error =
   -- or the connection got interrupted.
   ConnectionError Text |
   -- |
+  -- Attempt to parse a statement execution result into an incompatible type.
+  -- Indicates either a mismatching schema or an incorrect query.
+  ResultParsingError [Backend.Value] TypeRep |
+  -- |
   -- A free-form backend-specific exception.
   BackendError SomeException
   deriving (Show, Typeable)
@@ -154,22 +158,37 @@ admin = transaction True
 -------------------------
 
 -- |
--- "SELECT"
+-- \"SELECT\"
 class SelectPrivilege l
 
 instance SelectPrivilege Read
 instance SelectPrivilege Write
+instance SelectPrivilege Admin
 
-select :: SelectPrivilege l => Statement -> ResultsStream s (T l s) r
-select = 
-  $notImplemented
-
+select :: 
+  forall l s r. 
+  (SelectPrivilege l, Row r, Typeable r) => 
+  Statement -> ResultsStream s (T l s) r
+select (Statement bs vl) = 
+  do
+    (w, s) <- 
+      lift $ T $ lift $ do
+        Backend.Connection {..} <- ask
+        liftIO $ do
+          ps <- prepare bs
+          executeAndStream ps vl Nothing
+    l <- ResultsStream $ hoist (T . liftIO) $ replicateM w s
+    maybe (throwParsingError l (typeOf (undefined :: r))) return $ parse l
+  where
+    throwParsingError vl t =
+      ResultsStream $ lift $ T $ liftIO $ throwIO $ ResultParsingError vl t
 
 -- |
--- "UPDATE", "INSERT", "DELETE"
+-- \"UPDATE\", \"INSERT\", \"DELETE\"
 class UpdatePrivilege l
 
 instance UpdatePrivilege Write
+instance UpdatePrivilege Admin
 
 update :: UpdatePrivilege l => Statement -> T l s (Maybe Integer)
 update =
@@ -177,7 +196,7 @@ update =
 
 
 -- |
--- "CREATE", "ALTER", "DROP", "TRUNCATE"
+-- \"CREATE\", \"ALTER\", \"DROP\", \"TRUNCATE\"
 class CreatePrivilege l
 
 instance CreatePrivilege Admin
@@ -204,7 +223,7 @@ data Statement =
 -- 
 -- Uses the same trick as 'ST' to become impossible to be run outside of
 -- its transaction.
--- Hence you can only access it while remaining in transaction,
+-- Hence you can only access it while remaining in a transaction,
 -- and when the transaction finishes it safely gets automatically released.
 -- 
 -- It is implemented as a wrapper around 'ListT.ListT',
@@ -214,3 +233,12 @@ newtype ResultsStream s m r =
   ResultsStream (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
             Monoid, ListT.ListMonad, ListT.ListTrans)
+
+
+-- * Row Parsing
+-------------------------
+
+class Row r where
+  parse :: [Backend.Value] -> Maybe r
+
+

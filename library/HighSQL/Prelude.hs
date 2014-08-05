@@ -15,6 +15,10 @@ import BasePrelude as Exports hiding (left, right, tryJust, bool)
 -------------------------
 import MTLPrelude as Exports hiding (shift)
 
+-- mmorph
+-------------------------
+import Control.Monad.Morph as Exports
+
 -- list-t
 -------------------------
 import ListT as Exports (ListT)

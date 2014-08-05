@@ -61,6 +61,7 @@ library
     hashable == 1.2.*,
     -- control:
     list-t >= 0.2.1 && < 0.3,
+    mmorph == 1.0.*,
     monad-control == 0.3.*,
     transformers-base == 0.4.*,
     -- errors:
