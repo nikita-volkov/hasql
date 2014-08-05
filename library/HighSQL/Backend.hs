@@ -94,7 +94,8 @@ data Value =
   Value_ZonedTime !ZonedTime |
   Value_UTCTime !UTCTime |
   Value_NominalDiffTime !NominalDiffTime |
-  Value_Null
+  -- | Yes, this encodes @NULL@s.
+  Value_Maybe !(Maybe Value)
   deriving (Show, Data, Typeable, Generic)
 
 
@@ -156,3 +157,7 @@ instance ValueConversion Word where
 instance ValueConversion Int where
   toValue = Value_Int64 . fromIntegral
   fromValue = \case Value_Int64 a -> Just (fromIntegral a); _ -> Nothing
+
+instance ValueConversion a => ValueConversion (Maybe a) where
+  toValue = Value_Maybe . fmap toValue
+  fromValue = \case Value_Maybe a -> traverse fromValue a; _ -> Nothing
