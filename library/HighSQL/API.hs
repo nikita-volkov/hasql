@@ -4,7 +4,7 @@ import HighSQL.Prelude hiding (read, Read, write, Write, Error)
 import qualified Data.Pool as Pool
 import qualified HighSQL.CompositionT as CompositionT
 import qualified HighSQL.Backend as Backend
-import qualified HighSQL.Row as Row
+import qualified HighSQL.Conversion as Conversion
 import qualified ListT
 
 
@@ -168,7 +168,7 @@ instance SelectPrivilege Admin
 
 select :: 
   forall l s r. 
-  (SelectPrivilege l, Row.Row r, Typeable r) => 
+  (SelectPrivilege l, Conversion.Row r, Typeable r) => 
   Statement -> ResultsStream s (T l s) r
 select (Statement bs vl) = 
   do
@@ -179,7 +179,7 @@ select (Statement bs vl) =
           ps <- prepare bs
           executeAndStream ps vl Nothing
     l <- ResultsStream $ hoist (T . liftIO) $ replicateM w s
-    maybe (throwParsingError l (typeOf (undefined :: r))) return $ Row.fromRow l
+    maybe (throwParsingError l (typeOf (undefined :: r))) return $ Conversion.fromRow l
   where
     throwParsingError vl t =
       ResultsStream $ lift $ T $ liftIO $ throwIO $ ResultParsingError vl t

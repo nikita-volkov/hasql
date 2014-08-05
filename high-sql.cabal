@@ -43,7 +43,7 @@ library
     HighSQL.QQ
     HighSQL.QQ.Parser
     HighSQL.API
-    HighSQL.Row
+    HighSQL.Conversion
   exposed-modules:
     HighSQL
     HighSQL.Backend
