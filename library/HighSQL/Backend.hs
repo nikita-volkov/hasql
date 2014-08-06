@@ -86,23 +86,23 @@ type ResultSet =
 
 
 data Value =
-  Value_Text !Text |
-  Value_ByteString !ByteString |
-  Value_Word32 !Word32 |
-  Value_Word64 !Word64 |
-  Value_Int32 !Int32 |
-  Value_Int64 !Int64 |
-  Value_Integer !Integer |
-  Value_Char !Char |
-  Value_Bool !Bool |
-  Value_Double !Double |
-  Value_Rational !Rational |
-  Value_Day !Day |
-  Value_LocalTime !LocalTime |
-  Value_TimeOfDay !TimeOfDay |
-  Value_ZonedTime !ZonedTime |
-  Value_UTCTime !UTCTime |
-  Value_NominalDiffTime !NominalDiffTime |
+  Text !Text |
+  ByteString !ByteString |
+  Word32 !Word32 |
+  Word64 !Word64 |
+  Int32 !Int32 |
+  Int64 !Int64 |
+  Integer !Integer |
+  Char !Char |
+  Bool !Bool |
+  Double !Double |
+  Rational !Rational |
+  Day !Day |
+  LocalTime !LocalTime |
+  TimeOfDay !TimeOfDay |
+  ZonedTime !ZonedTime |
+  UTCTime !UTCTime |
+  NominalDiffTime !NominalDiffTime |
   -- | Yes, this encodes @NULL@s.
-  Value_Maybe !(Maybe Value)
+  Maybe !(Maybe Value)
   deriving (Show, Data, Typeable, Generic)

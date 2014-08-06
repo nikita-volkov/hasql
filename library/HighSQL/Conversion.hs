@@ -22,7 +22,7 @@ let
     InstanceD [] (AppT (ConT ''Value) (ConT t)) [d1, d2]
     where
       c =
-        mkName $ "Backend.Value_" ++ nameBase t
+        mkName $ "Backend." ++ nameBase t
       d1 =
         FunD 'toValue [Clause [] (NormalB (ConE c)) []]
       d2 = 
@@ -43,20 +43,20 @@ let
        ''Word64, ''Word32, ''ByteString, ''Text]
 
 instance Value String where
-  toValue = Backend.Value_Text . Text.pack
-  fromValue = \case Backend.Value_Text a -> Just (Text.unpack a); _ -> Nothing
+  toValue = Backend.Text . Text.pack
+  fromValue = \case Backend.Text a -> Just (Text.unpack a); _ -> Nothing
 
 instance Value Word where
-  toValue = Backend.Value_Word64 . fromIntegral
-  fromValue = \case Backend.Value_Word64 a -> Just (fromIntegral a); _ -> Nothing
+  toValue = Backend.Word64 . fromIntegral
+  fromValue = \case Backend.Word64 a -> Just (fromIntegral a); _ -> Nothing
 
 instance Value Int where
-  toValue = Backend.Value_Int64 . fromIntegral
-  fromValue = \case Backend.Value_Int64 a -> Just (fromIntegral a); _ -> Nothing
+  toValue = Backend.Int64 . fromIntegral
+  fromValue = \case Backend.Int64 a -> Just (fromIntegral a); _ -> Nothing
 
 instance Value a => Value (Maybe a) where
-  toValue = Backend.Value_Maybe . fmap toValue
-  fromValue = \case Backend.Value_Maybe a -> traverse fromValue a; _ -> Nothing
+  toValue = Backend.Maybe . fmap toValue
+  fromValue = \case Backend.Maybe a -> traverse fromValue a; _ -> Nothing
 
 
 -- * Row
