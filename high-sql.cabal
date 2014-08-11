@@ -49,16 +49,16 @@ library
     HighSQL.Backend
   build-depends:
     -- template-haskell:
-    template-haskell == 2.8.*,
+    template-haskell >= 2.8 && < 2.10,
     -- parsing:
-    attoparsec == 0.11.*,
+    attoparsec == 0.12.*,
     -- database:
     ex-pool == 0.2.*,
     -- data:
     Decimal == 0.4.*,
     time == 1.4.*,
     bytestring == 0.10.*,
-    text == 0.11.*,
+    text == 1.1.*,
     hashable == 1.2.*,
     -- control:
     list-t >= 0.2.1 && < 0.3,
