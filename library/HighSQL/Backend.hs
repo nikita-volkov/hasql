@@ -5,6 +5,7 @@ module HighSQL.Backend where
 import HighSQL.Prelude hiding (Error)
 import qualified Data.Text as Text
 import qualified Language.Haskell.TH as TH
+import qualified Data.Decimal as Decimal
 
 
 -- |

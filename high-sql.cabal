@@ -55,6 +55,7 @@ library
     -- database:
     ex-pool == 0.2.*,
     -- data:
+    Decimal == 0.4.*,
     time == 1.4.*,
     bytestring == 0.10.*,
     text == 0.11.*,

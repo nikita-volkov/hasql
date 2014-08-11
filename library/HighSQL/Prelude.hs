@@ -23,6 +23,10 @@ import Control.Monad.Morph as Exports
 -------------------------
 import ListT as Exports (ListT)
 
+-- hashable
+-------------------------
+import Data.Hashable as Exports (Hashable)
+
 -- text
 -------------------------
 import Data.Text as Exports (Text)
@@ -31,9 +35,9 @@ import Data.Text as Exports (Text)
 -------------------------
 import Data.ByteString as Exports (ByteString)
 
--- hashable
+-- decimal
 -------------------------
-import Data.Hashable as Exports (Hashable)
+import Data.Decimal as Exports (Decimal, DecimalRaw)
 
 -- time
 -------------------------
