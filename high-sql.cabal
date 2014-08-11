@@ -39,13 +39,8 @@ library
     library
   other-modules:
     HighSQL.Prelude
-    HighSQL.CompositionT
-    HighSQL.QQ
     HighSQL.QQ.Parser
-    HighSQL.API
-    HighSQL.Conversion
   exposed-modules:
-    HighSQL
     HighSQL.Backend
   build-depends:
     -- template-haskell:
