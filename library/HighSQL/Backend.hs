@@ -6,18 +6,16 @@ import HighSQL.Prelude
 import qualified Language.Haskell.TH as TH
 
 
-data Failure b =
+data TransactionError =
   -- |
-  -- A transaction failed and should be retried.
-  TransactionFailure |
+  -- The transaction failed and should be retried.
+  TransactionConflict |
   -- |
-  -- Cannot connect to a server 
-  -- or the connection got interrupted.
-  ConnectionFailure Text
+  -- The connection got interrupted.
+  Disconnected Text
+  deriving (Show, Typeable)
 
-
-type M b = 
-  ExceptT (Failure b) IO
+instance Exception TransactionError
 
 
 -- |
@@ -29,53 +27,44 @@ type ResultsStream =
 class Backend b where
   -- |
   -- An argument prepared for a statement.
-  type StatementArgument b
+  data StatementArgument b
   -- |
   -- A raw value returned from the database.
   data Result b
-  type Connection b
+  data Connection b
   -- |
   -- Open a connection using the backend's settings.
-  connect :: b -> M b (Connection b)
+  connect :: b -> IO (Connection b)
   -- |
   -- Close the connection.
-  disconnect :: Connection b -> M b ()
-  -- |
-  -- If the backend supports statement preparation,
-  -- this function compiles a bytestring statement 
-  -- with placeholders if it's not compiled already,
-  -- and otherwise returns the cached already compiled statement. 
-  -- IOW, it implements memoization.
-  -- 
-  -- If the backend does not support this,
-  -- then this function should simply be implemented as a 'return'.
-  prepare :: ByteString -> Connection b -> M b s
+  disconnect :: Connection b -> IO ()
   -- |
   -- Execute a statement with values for placeholders.
-  execute :: ByteString -> [StatementArgument b] -> Connection b -> M b ()
+  execute :: ByteString -> [StatementArgument b] -> Connection b -> IO ()
   -- |
   -- Execute a statement with values for placeholders 
   -- and an expected results stream size.
   -- The expected stream size can be used by the backend to determine 
   -- an optimal fetching method.
-  executeStreaming :: ByteString -> [StatementArgument b] -> Maybe Integer -> Connection b -> ListT (M b) r
+  executeStreaming :: ByteString -> [StatementArgument b] -> Maybe Integer -> Connection b -> IO (Int, ListT IO (Result b))
   -- |
   -- Execute a statement with values for placeholders,
   -- returning the amount of affected rows.
-  executeCountingEffects :: s -> [StatementArgument b] -> Connection b -> M b Integer
+  executeCountingEffects :: ByteString -> [StatementArgument b] -> Connection b -> IO Integer
   -- |
-  -- Start a transaction in a write mode if the flag is true.
-  beginTransaction :: Bool -> Connection b -> M b ()
+  -- Start a transaction in an atomic mode if the first flag is true
+  -- and in a write mode if the second one is true.
+  beginTransaction :: Bool -> Bool -> Connection b -> IO ()
   -- |
   -- Finish the transaction, 
-  -- while releasing all the resources acquired with 'executeAndStream'.
+  -- while releasing all the resources acquired with 'executeStreaming'.
   --  
   -- The boolean defines whether to commit the updates,
   -- otherwise it rolls back.
-  finishTransaction :: Bool -> Connection b -> M b ()
+  finishTransaction :: Bool -> Connection b -> IO ()
 
 
-class Backend b => Value v b where
+class Backend b => Mapping b v where
   renderValue :: v -> StatementArgument b
   parseResult :: Result b -> Maybe v
 

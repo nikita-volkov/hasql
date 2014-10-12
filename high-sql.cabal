@@ -41,6 +41,7 @@ library
     HighSQL.Prelude
     HighSQL.QQ.Parser
     HighSQL.Row
+    HighSQL.API
   exposed-modules:
     HighSQL.Backend
   build-depends:
@@ -53,7 +54,7 @@ library
     -- data:
     time >= 1.4 && < 1.6,
     bytestring == 0.10.*,
-    text == 1.1.*,
+    text >= 1.1 && < 1.3,
     hashable == 1.2.*,
     -- control:
     list-t >= 0.2.1 && < 0.3,
@@ -64,6 +65,7 @@ library
     placeholders == 0.1.*,
     -- general:
     safe >= 0.3.8 && < 0.4,
+    mmorph == 1.0.*,
     mtl-prelude == 0.1.*,
     base-prelude >= 0.1.3 && < 0.2,
     base >= 4.5 && < 4.8

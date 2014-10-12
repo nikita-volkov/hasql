@@ -7,13 +7,13 @@ import qualified Data.Text as Text
 import qualified HighSQL.Backend as Backend
 
 
-class Row r b where
+class Row b r where
   parseResults :: [Backend.Result b] -> Maybe r
 
-instance Row () b where
+instance Row b () where
   parseResults = \case [] -> Just (); _ -> Nothing
 
-instance Backend.Value v b => Row v b where
+instance Backend.Mapping b v => Row b v where
   parseResults = join . fmap (Backend.parseResult :: Backend.Result b -> Maybe v) . headMay
 
 -- Generate tuple instaces using Template Haskell:
@@ -29,9 +29,9 @@ let
       backendType =
         VarT (mkName "b")
       constraints =
-        map (\t -> ClassP ''Backend.Value [t, backendType]) varTypes
+        map (\t -> ClassP ''Backend.Mapping [backendType, t]) varTypes
       head =
-        AppT (AppT (ConT ''Row) (foldl AppT (TupleT arity) varTypes)) backendType
+        AppT (AppT (ConT ''Row) backendType) (foldl AppT (TupleT arity) varTypes)
       fromRowDec =
         FunD 'parseResults [c1, c2]
         where
