@@ -3,7 +3,7 @@ name:
 version:
   0.1.0
 synopsis:
-  A general high level and high quality API for relational databases
+  A minimalistic general high level API for relational databases
 description:
 category:
   Database
