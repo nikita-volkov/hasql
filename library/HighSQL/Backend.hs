@@ -3,9 +3,7 @@
 module HighSQL.Backend where
 
 import HighSQL.Prelude
-import qualified Data.Text as Text
 import qualified Language.Haskell.TH as TH
-import qualified Data.Decimal as Decimal
 
 
 data Failure b =
@@ -78,7 +76,7 @@ class Backend b where
 
 
 class Backend b => Value v b where
-  renderArgument :: v -> StatementArgument b
+  renderValue :: v -> StatementArgument b
   parseResult :: Result b -> Maybe v
 
 

@@ -15,13 +15,9 @@ import BasePrelude as Exports hiding (left, right, tryJust, bool, isRight, isLef
 -------------------------
 import MTLPrelude as Exports hiding (shift)
 
--- mmorph
+-- safe
 -------------------------
-import Control.Monad.Morph as Exports
-
--- errors
--------------------------
-import Control.Error as Exports
+import Safe as Exports
 
 -- list-t
 -------------------------
@@ -38,10 +34,6 @@ import Data.Text as Exports (Text)
 -- bytestring
 -------------------------
 import Data.ByteString as Exports (ByteString)
-
--- decimal
--------------------------
-import Data.Decimal as Exports (Decimal, DecimalRaw)
 
 -- time
 -------------------------
