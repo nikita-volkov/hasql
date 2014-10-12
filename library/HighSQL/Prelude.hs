@@ -9,7 +9,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports hiding (left, right, tryJust, bool)
+import BasePrelude as Exports hiding (left, right, tryJust, bool, isRight, isLeft)
 
 -- mtl-prelude
 -------------------------
@@ -18,6 +18,10 @@ import MTLPrelude as Exports hiding (shift)
 -- mmorph
 -------------------------
 import Control.Monad.Morph as Exports
+
+-- errors
+-------------------------
+import Control.Error as Exports
 
 -- list-t
 -------------------------

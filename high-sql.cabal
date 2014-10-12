@@ -56,6 +56,7 @@ library
     text == 1.1.*,
     hashable == 1.2.*,
     -- control:
+    errors == 1.4.*,
     list-t >= 0.2.1 && < 0.3,
     mmorph == 1.0.*,
     monad-control == 0.3.*,
