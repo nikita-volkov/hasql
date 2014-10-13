@@ -6,22 +6,45 @@ import HighSQL.Prelude
 import qualified Language.Haskell.TH as TH
 
 
-data TransactionError =
-  -- |
-  -- The transaction failed and should be retried.
-  TransactionConflict |
+data BackendError =
+  -- -- |
+  -- -- The transaction failed and should be retried.
+  -- TransactionConflict |
   -- |
   -- The connection got interrupted.
-  Disconnected Text
+  ConnectionLost Text
   deriving (Show, Typeable)
 
-instance Exception TransactionError
+instance Exception BackendError
+
+
+-- |
+-- For reference see
+-- <https://en.wikipedia.org/wiki/Isolation_(database_systems)#Isolation_levels the Wikipedia info>.
+data IsolationLevel =
+  Serializable |
+  RepeatableReads |
+  ReadCommitted |
+  ReadUncommitted
+
+
+-- |
+-- An isolation level and a boolean, 
+-- defining, whether the transaction will perform the "write" operations.
+type TransactionMode =
+  (IsolationLevel, Bool)
 
 
 -- |
 -- A width of a row and a stream of serialized values.
-type ResultsStream =
-  (Int, ListT IO ByteString)
+type ResultsStream b =
+  (Int, ListT IO (Result b))
+
+
+-- |
+-- A template statement with values for placeholders.
+type Statement b =
+  (ByteString, [StatementArgument b])
 
 
 class Backend b where
@@ -39,33 +62,37 @@ class Backend b where
   -- Close the connection.
   disconnect :: Connection b -> IO ()
   -- |
-  -- Execute a statement with values for placeholders.
-  execute :: ByteString -> [StatementArgument b] -> Connection b -> IO ()
+  -- Execute a statement.
+  execute :: Statement b -> Connection b -> IO ()
   -- |
-  -- Execute a statement with values for placeholders 
-  -- and an expected results stream size.
-  -- The expected stream size can be used by the backend to determine 
-  -- an optimal fetching method.
-  executeStreaming :: ByteString -> [StatementArgument b] -> Maybe Integer -> Connection b -> IO (Int, ListT IO (Result b))
+  -- Execute a statement
+  -- and stream the results.
+  executeAndStream :: Statement b -> Connection b -> IO (ResultsStream b)
   -- |
-  -- Execute a statement with values for placeholders,
+  -- Execute a statement
+  -- and stream the results using a cursor.
+  -- This function will only be used from inside of transactions.
+  executeAndStreamWithCursor :: Statement b -> Connection b -> IO (ResultsStream b)
+  -- |
+  -- Execute a statement,
   -- returning the amount of affected rows.
-  executeCountingEffects :: ByteString -> [StatementArgument b] -> Connection b -> IO Integer
-  -- |
-  -- Start a transaction in an atomic mode if the first flag is true
-  -- and in a write mode if the second one is true.
-  beginTransaction :: Bool -> Bool -> Connection b -> IO ()
-  -- |
-  -- Finish the transaction, 
-  -- while releasing all the resources acquired with 'executeStreaming'.
-  --  
-  -- The boolean defines whether to commit the updates,
-  -- otherwise it rolls back.
-  finishTransaction :: Bool -> Connection b -> IO ()
+  executeAndCountEffects :: Statement b -> Connection b -> IO Integer
+  -- -- |
+  -- -- Start a transaction in the specified mode.
+  -- beginTransaction :: TransactionMode -> Connection b -> IO ()
+  -- -- |
+  -- -- Finish the transaction, 
+  -- -- while releasing all the resources acquired with 'executeAndStream'.
+  -- --  
+  -- -- The boolean defines whether to commit the updates,
+  -- -- otherwise it rolls back.
+  -- finishTransaction :: Bool -> Connection b -> IO ()
+  inTransaction :: TransactionMode -> IO r -> Connection b -> IO r
 
 
 class Backend b => Mapping b v where
   renderValue :: v -> StatementArgument b
   parseResult :: Result b -> Maybe v
+
 
 
