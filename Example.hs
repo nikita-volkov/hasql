@@ -36,5 +36,20 @@ main =
                 artistID
                 userID
 
+main =
+  do
+    H.withPool $ \pool -> do
+      H.txIO pool (H.NoACID) $ do
+        H.noResultTx $
+          [H.q| INSERT INTO users (name, birth_date, gender) VALUES (?, ?, ?) |]
+            "Nikita Volkov"
+            "1358-10-12"
+            (H.Enum Male)
+
+      H.txIO pool (H.Write H.Serialized) $ do
+        artistID <-
+          H.streamWithCursorTx $
+            [H.q| SELECT id FROM artists WHERE name = ? |] 
+              ("Metallica")
 
 

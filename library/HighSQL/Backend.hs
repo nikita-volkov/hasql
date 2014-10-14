@@ -2,11 +2,11 @@
 -- An open API for implementation of specific backend drivers.
 module HighSQL.Backend where
 
-import HighSQL.Prelude
+import HighSQL.Prelude hiding (Error)
 import qualified Language.Haskell.TH as TH
 
 
-data BackendError =
+data Error =
   -- -- |
   -- -- The transaction failed and should be retried.
   -- TransactionConflict |
@@ -15,7 +15,7 @@ data BackendError =
   ConnectionLost Text
   deriving (Show, Typeable)
 
-instance Exception BackendError
+instance Exception Error
 
 
 -- |

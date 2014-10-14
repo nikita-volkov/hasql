@@ -41,6 +41,7 @@ library
     HighSQL.Prelude
     HighSQL.QQ.Parser
     HighSQL.RowParser
+    HighSQL.Transaction
     HighSQL.API
   exposed-modules:
     HighSQL.Backend
