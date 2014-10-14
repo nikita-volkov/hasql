@@ -14,22 +14,23 @@ newtype Transaction b l s r =
   Transaction (ReaderT (Backend.Connection b) IO r)
   deriving (Functor, Applicative, Monad)
 
-  
-class Level l where
-  run :: Backend b => Backend.Connection b -> l -> (forall s. Transaction b l s r) -> IO r
+runWithoutLocking :: 
+  Backend b => 
+  Backend.Connection b -> (forall s. Transaction b WithoutLocking s r) -> IO r
+runWithoutLocking c (Transaction r) =
+  handle backendHandler $ runReaderT r c
 
-instance Level NoLocking where
-  run c NoLocking (Transaction r) =
-    handle backendHandler $ runReaderT r c
+runRead ::
+  Backend b => 
+  Backend.IsolationLevel -> Backend.Connection b -> (forall s. Transaction b Read s r) -> IO r
+runRead isolation c (Transaction r) =
+  handle backendHandler $ Backend.inTransaction (isolation, False) (runReaderT r c) c
 
-instance Level Read where
-  run c (Read isolation) (Transaction r) =
-    handle backendHandler $ Backend.inTransaction (isolation, False) (runReaderT r c) c
-
-instance Level Write where
-  run c (Write isolation) (Transaction r) =
-    handle backendHandler $ Backend.inTransaction (isolation, True) (runReaderT r c) c
-
+runWrite ::
+  Backend b => 
+  Backend.IsolationLevel -> Backend.Connection b -> (forall s. Transaction b Write s r) -> IO r
+runWrite isolation c (Transaction r) =
+  handle backendHandler $ Backend.inTransaction (isolation, True) (runReaderT r c) c
 
 backendHandler :: Backend.Error -> IO a
 backendHandler =
@@ -45,14 +46,12 @@ backendHandler =
 -- and hence providing no ACID guarantees.
 -- Essentially this means that there will be no 
 -- traditional transaction established on the backend.
-data NoLocking = 
-  NoLocking
+data WithoutLocking
 
 -- |
 -- A level requiring minimal locking from the database,
 -- however it only allows to execute the \"SELECT\" statements. 
-data Read =
-  Read (Backend.IsolationLevel)
+data Read
 
 -- |
 -- A level, which allows to perform any kind of statements,
@@ -62,8 +61,7 @@ data Read =
 -- However, compared to 'Read', 
 -- it requires the database to choose 
 -- a more resource-demanding locking strategy.
-data Write =
-  Write (Backend.IsolationLevel)
+data Write
 
 
 -- * Privileges
@@ -77,7 +75,7 @@ instance CursorsPrivilege Write
 class ModificationPrivilege l
 
 instance ModificationPrivilege Write
-instance ModificationPrivilege NoLocking
+instance ModificationPrivilege WithoutLocking
 
 
 -- * Results Stream
