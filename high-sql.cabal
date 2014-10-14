@@ -42,7 +42,7 @@ library
     HighSQL.QQ.Parser
     HighSQL.RowParser
     HighSQL.Transaction
-    HighSQL.API
+    HighSQL.Pool
   exposed-modules:
     HighSQL.Backend
   build-depends:
