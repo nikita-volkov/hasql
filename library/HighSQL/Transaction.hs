@@ -1,41 +1,45 @@
 module HighSQL.Transaction where
 
 import HighSQL.Prelude hiding (Read, Write, Error)
+import HighSQL.Backend (Backend)
+import HighSQL.RowParser (RowParser)
 import qualified HighSQL.Backend as Backend
 import qualified HighSQL.RowParser as RowParser
 import qualified ListT
 
 
 -- |
--- A transaction with a level @l@,
+-- A transaction specialized for backend @b@, with a level @l@,
 -- running on an anonymous state-thread @s@ 
--- and gaining a result @r@.
+-- and producing a result @r@.
 newtype Transaction b l s r =
   Transaction (ReaderT (Backend.Connection b) IO r)
   deriving (Functor, Applicative, Monad)
 
 runWithoutLocking :: 
   Backend b => 
-  Backend.Connection b -> (forall s. Transaction b WithoutLocking s r) -> IO r
-runWithoutLocking c (Transaction r) =
+  (forall s. Transaction b WithoutLocking s r) -> Backend.Connection b -> IO r
+runWithoutLocking (Transaction r) c =
   handle backendHandler $ runReaderT r c
 
 runRead ::
   Backend b => 
-  Backend.IsolationLevel -> Backend.Connection b -> (forall s. Transaction b Read s r) -> IO r
-runRead isolation c (Transaction r) =
+  Backend.IsolationLevel -> (forall s. Transaction b Read s r) -> Backend.Connection b -> IO r
+runRead isolation (Transaction r) c =
   handle backendHandler $ Backend.inTransaction (isolation, False) (runReaderT r c) c
 
 runWrite ::
   Backend b => 
-  Backend.IsolationLevel -> Backend.Connection b -> (forall s. Transaction b Write s r) -> IO r
-runWrite isolation c (Transaction r) =
+  Backend.IsolationLevel -> (forall s. Transaction b Write s r) -> Backend.Connection b -> IO r
+runWrite isolation (Transaction r) c =
   handle backendHandler $ Backend.inTransaction (isolation, True) (runReaderT r c) c
 
 backendHandler :: Backend.Error -> IO a
 backendHandler =
   \case
+    Backend.CantConnect t -> throwIO $ CantConnect t
     Backend.ConnectionLost t -> throwIO $ ConnectionLost t
+    Backend.ResultParsingError a b  -> throwIO $ ResultParsingError a b
 
 
 -- * Locking Levels
@@ -81,11 +85,8 @@ instance ModificationPrivilege WithoutLocking
 -- * Results Stream
 -------------------------
 
-type ResultsStream b l s r =
-  TransactionListT s (Transaction b l s) r
-
 -- |
--- A select of results, 
+-- A stream of results, 
 -- which fetches only those that you reach.
 -- 
 -- It is implemented as a wrapper around 'ListT.ListT',
@@ -94,9 +95,12 @@ type ResultsStream b l s r =
 -- 
 -- It uses the same trick as 'ST' to become impossible to be 
 -- executed outside of its transaction.
--- Hence you can only access it while remaining in a transaction,
+-- Therefore you can only access it while remaining in a transaction,
 -- and, when the transaction finishes,
 -- all the acquired resources get automatically released.
+type ResultsStream b l s r =
+  TransactionListT s (Transaction b l s) r
+
 newtype TransactionListT s m r =
   TransactionListT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
@@ -115,13 +119,19 @@ instance ListT.ListTrans (TransactionListT s) where
 -- The only exception type that this API can raise.
 data Error =
   -- |
-  -- Cannot connect to a server 
-  -- or the connection got interrupted.
+  -- Cannot connect to a server.
+  CantConnect Text |
+  -- |
+  -- The connection got interrupted.
   ConnectionLost Text |
   -- |
   -- Attempt to parse a statement execution result into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
-  ResultParsingError ByteString TypeRep
+  -- 
+  -- The first parameter is maybe a pair of an original statement
+  -- and a target type rep.
+  -- The second parameter is maybe a text message.
+  ResultParsingError (Maybe (ByteString, TypeRep)) (Maybe Text)
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -129,12 +139,6 @@ instance Exception Error
 
 -- * Transactions
 -------------------------
-
-type Backend =
-  Backend.Backend
-
-type RowParser =
-  RowParser.RowParser
 
 -- |
 -- Execute a modification statement producing no result.
@@ -152,12 +156,18 @@ modifyAndGenerate ::
 modifyAndGenerate s =
   select s >>= ListT.head
 
+-- |
+-- Execute a statement and count the amount of affected rows.
+-- Useful for resolving how many rows were updated or deleted.
 modifyAndCount ::
   Backend b => Backend.Mapping b Integer => ModificationPrivilege l =>
   Backend.Statement b -> Transaction b l s Integer
 modifyAndCount s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
+-- |
+-- Execute a \"select\" statement,
+-- and produce a results stream.
 select :: 
   forall b l s r.
   Backend b => RowParser b r => Typeable r =>
@@ -170,8 +180,13 @@ select s =
       maybe (lift $ throwIO parsingError) return $ RowParser.parse row
   where
     parsingError =
-      ResultParsingError (fst s) (typeOf (undefined :: r))
+      ResultParsingError (Just ((fst s), (typeOf (undefined :: r)))) Nothing
 
+-- |
+-- Execute a \"select\" statement,
+-- and produce a results stream, 
+-- which utilizes a database cursor.
+-- This function allows you to fetch virtually limitless results in a constant memory.
 selectWithCursor :: 
   forall b l s r.
   Backend b => RowParser b r => Typeable r => CursorsPrivilege l =>
@@ -184,4 +199,4 @@ selectWithCursor s =
       maybe (lift $ throwIO parsingError) return $ RowParser.parse row
   where
     parsingError =
-      ResultParsingError (fst s) (typeOf (undefined :: r))
+      ResultParsingError (Just ((fst s), (typeOf (undefined :: r)))) Nothing

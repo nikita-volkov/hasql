@@ -40,11 +40,13 @@ library
   other-modules:
     HighSQL.Prelude
     HighSQL.QQ.Parser
+    HighSQL.QQ
     HighSQL.RowParser
     HighSQL.Transaction
     HighSQL.Pool
   exposed-modules:
     HighSQL.Backend
+    HighSQL
   build-depends:
     -- template-haskell:
     template-haskell >= 2.8 && < 2.10,

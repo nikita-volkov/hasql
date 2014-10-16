@@ -7,12 +7,20 @@ import qualified Language.Haskell.TH as TH
 
 
 data Error =
-  -- -- |
-  -- -- The transaction failed and should be retried.
-  -- TransactionConflict |
+  -- |
+  -- Cannot connect to a server.
+  CantConnect Text |
   -- |
   -- The connection got interrupted.
-  ConnectionLost Text
+  ConnectionLost Text |
+  -- |
+  -- Attempt to parse a statement execution result into an incompatible type.
+  -- Indicates either a mismatching schema or an incorrect query.
+  -- 
+  -- The first parameter is maybe a pair of an original statement
+  -- and a target type rep.
+  -- The second parameter is maybe a text message.
+  ResultParsingError (Maybe (ByteString, TypeRep)) (Maybe Text)
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -77,16 +85,9 @@ class Backend b where
   -- Execute a statement,
   -- returning the amount of affected rows.
   executeAndCountEffects :: Statement b -> Connection b -> IO Integer
-  -- -- |
-  -- -- Start a transaction in the specified mode.
-  -- beginTransaction :: TransactionMode -> Connection b -> IO ()
-  -- -- |
-  -- -- Finish the transaction, 
-  -- -- while releasing all the resources acquired with 'executeAndStream'.
-  -- --  
-  -- -- The boolean defines whether to commit the updates,
-  -- -- otherwise it rolls back.
-  -- finishTransaction :: Bool -> Connection b -> IO ()
+  -- |
+  -- Execute an IO action in a transaction context.
+  -- The action will be automatically retried in case of transaction conflicts.
   inTransaction :: TransactionMode -> IO r -> Connection b -> IO r
 
 

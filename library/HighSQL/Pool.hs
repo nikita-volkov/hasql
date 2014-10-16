@@ -48,3 +48,6 @@ withPool b s =
             (Backend.connect b) (Backend.disconnect) 
             (striping1 s) (connectionTimeout s) (striping2 s)
         return pool
+
+withConnection :: (Backend.Connection b -> IO r) -> Pool b -> IO r
+withConnection = flip Pool.withResource

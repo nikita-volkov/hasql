@@ -3,7 +3,6 @@ module HighSQL.QQ.Parser where
 import HighSQL.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)
 import qualified Data.Text as Text
-import qualified Language.Haskell.TH as TH
 
 
 -- |
@@ -48,7 +47,7 @@ stringLit =
       fmap mconcat $ many $ 
         string "\\\\" <|> 
         string (fromString ['\\', quote]) <|> 
-        (Text.singleton <$> notChar '"')
+        (Text.singleton <$> notChar quote)
     char quote
     return text
 
