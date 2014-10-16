@@ -9,7 +9,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports hiding (left, right, tryJust, bool, isRight, isLeft)
+import BasePrelude as Exports
 
 -- mtl-prelude
 -------------------------

@@ -13,14 +13,10 @@ data Error =
   -- |
   -- The connection got interrupted.
   ConnectionLost Text |
-  -- |
-  -- Attempt to parse a statement execution result into an incompatible type.
-  -- Indicates either a mismatching schema or an incorrect query.
-  -- 
-  -- The first parameter is maybe a pair of an original statement
-  -- and a target type rep.
-  -- The second parameter is maybe a text message.
-  ResultParsingError (Maybe (ByteString, TypeRep)) (Maybe Text)
+  UnexpectedResultStructure Text |
+  -- | 
+  -- Type, input and parser error.
+  UnparsableResult TypeRep ByteString Text
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -93,7 +89,7 @@ class Backend b where
 
 class Backend b => Mapping b v where
   renderValue :: v -> StatementArgument b
-  parseResult :: Result b -> Maybe v
+  parseResult :: Result b -> Either Text v
 
 
 

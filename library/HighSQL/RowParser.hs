@@ -8,19 +8,21 @@ import qualified HighSQL.Backend as Backend
 
 
 class RowParser b r where
-  parse :: [Backend.Result b] -> Maybe r
+  parse :: [Backend.Result b] -> Either Text r
 
 instance RowParser b () where
-  parse = \case [] -> Just (); _ -> Nothing
+  parse = \case [] -> Right (); _ -> Left $ "Row is not empty"
 
 instance Backend.Mapping b v => RowParser b v where
-  parse = join . fmap (Backend.parseResult :: Backend.Result b -> Maybe v) . headMay
+  parse l = do
+    h <- maybe (Left $ "Empty row") Right $ headMay l
+    Backend.parseResult h
 
 -- Generate tuple instaces using Template Haskell:
 let
   inst :: Int -> Dec
   inst arity =
-    InstanceD constraints head [fromRowDec]
+    InstanceD constraints head [parseDec]
     where
       varNames =
         [1 .. arity] >>= \i -> return (mkName ('_' : show i))
@@ -32,7 +34,7 @@ let
         map (\t -> ClassP ''Backend.Mapping [backendType, t]) varTypes
       head =
         AppT (AppT (ConT ''RowParser) backendType) (foldl AppT (TupleT arity) varTypes)
-      fromRowDec =
+      parseDec =
         FunD 'parse [c1, c2]
         where
           c1 = 
@@ -53,6 +55,8 @@ let
                       e : [] -> e
                       _ -> $bug "Unexpected queue size"
           c2 =
-            Clause [WildP] (NormalB (ConE 'Nothing)) []
+            Clause [WildP] (NormalB (AppE (ConE 'Left) (LitE (StringL m)))) []
+            where
+              m = "Not enough items in the row"
   in 
     mapM (return . inst) [2 .. 24]

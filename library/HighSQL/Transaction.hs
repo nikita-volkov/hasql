@@ -39,7 +39,7 @@ backendHandler =
   \case
     Backend.CantConnect t -> throwIO $ CantConnect t
     Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-    Backend.ResultParsingError a b  -> throwIO $ ResultParsingError a b
+    Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
 
 
 -- * Locking Levels
@@ -125,13 +125,13 @@ data Error =
   -- The connection got interrupted.
   ConnectionLost Text |
   -- |
+  -- Unexpected result structure.
+  -- Indicates usage of inappropriate statement executor.
+  UnexpectedResultStructure Text |
+  -- |
   -- Attempt to parse a statement execution result into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
-  -- 
-  -- The first parameter is maybe a pair of an original statement
-  -- and a target type rep.
-  -- The second parameter is maybe a text message.
-  ResultParsingError (Maybe (ByteString, TypeRep)) (Maybe Text)
+  ResultParsingError TypeRep Text
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -169,18 +169,11 @@ modifyAndCount s =
 -- Execute a \"select\" statement,
 -- and produce a results stream.
 select :: 
-  forall b l s r.
   Backend b => RowParser b r => Typeable r =>
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
 select s =
   Transaction $ ReaderT $ \c -> do
-    (w, s) <- Backend.executeAndStream s c
-    return $ TransactionListT $ hoist (Transaction . lift) $ do
-      row <- replicateM w s
-      maybe (lift $ throwIO parsingError) return $ RowParser.parse row
-  where
-    parsingError =
-      ResultParsingError (Just ((fst s), (typeOf (undefined :: r)))) Nothing
+    fmap hoistBackendStream $ Backend.executeAndStream s c
 
 -- |
 -- Execute a \"select\" statement,
@@ -188,15 +181,20 @@ select s =
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
 selectWithCursor :: 
-  forall b l s r.
   Backend b => RowParser b r => Typeable r => CursorsPrivilege l =>
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
 selectWithCursor s =
   Transaction $ ReaderT $ \c -> do
-    (w, s) <- Backend.executeAndStreamWithCursor s c
-    return $ TransactionListT $ hoist (Transaction . lift) $ do
-      row <- replicateM w s
-      maybe (lift $ throwIO parsingError) return $ RowParser.parse row
+    fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
+
+hoistBackendStream :: 
+  forall b l s r. 
+  RowParser b r => Typeable r =>
+  Backend.ResultsStream b -> ResultsStream b l s r
+hoistBackendStream (w, s) =
+  TransactionListT $ hoist (Transaction . lift) $ do
+    row <- replicateM w s
+    either (lift . throwIO . parsingError) return $ RowParser.parse row
   where
-    parsingError =
-      ResultParsingError (Just ((fst s), (typeOf (undefined :: r)))) Nothing
+    parsingError t =
+      ResultParsingError (typeOf (undefined :: r)) t
