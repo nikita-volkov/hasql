@@ -131,7 +131,7 @@ data Error =
   -- |
   -- Attempt to parse a statement execution result into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
-  ResultParsingError TypeRep Text
+  ResultParsingError Text
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -154,7 +154,7 @@ modifyAndGenerate ::
   Backend b => Backend.Mapping b Integer => ModificationPrivilege l =>
   Backend.Statement b -> Transaction b l s (Maybe Integer)
 modifyAndGenerate s =
-  select s >>= ListT.head
+  select s >>= ListT.head >>= return . fmap runIdentity
 
 -- |
 -- Execute a statement and count the amount of affected rows.
@@ -169,7 +169,7 @@ modifyAndCount s =
 -- Execute a \"select\" statement,
 -- and produce a results stream.
 select :: 
-  Backend b => RowParser b r => Typeable r =>
+  Backend b => RowParser b r => 
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
 select s =
   Transaction $ ReaderT $ \c -> do
@@ -181,7 +181,7 @@ select s =
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
 selectWithCursor :: 
-  Backend b => RowParser b r => Typeable r => CursorsPrivilege l =>
+  Backend b => RowParser b r => CursorsPrivilege l =>
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
 selectWithCursor s =
   Transaction $ ReaderT $ \c -> do
@@ -189,7 +189,7 @@ selectWithCursor s =
 
 hoistBackendStream :: 
   forall b l s r. 
-  RowParser b r => Typeable r =>
+  RowParser b r => 
   Backend.ResultsStream b -> ResultsStream b l s r
 hoistBackendStream (w, s) =
   TransactionListT $ hoist (Transaction . lift) $ do
@@ -197,4 +197,4 @@ hoistBackendStream (w, s) =
     either (lift . throwIO . parsingError) return $ RowParser.parse row
   where
     parsingError t =
-      ResultParsingError (typeOf (undefined :: r)) t
+      ResultParsingError t

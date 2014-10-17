@@ -1,4 +1,3 @@
-{-# LANGUAGE UndecidableInstances #-}
 module HighSQL.RowParser where
 
 import HighSQL.Prelude
@@ -13,10 +12,10 @@ class RowParser b r where
 instance RowParser b () where
   parse = \case [] -> Right (); _ -> Left $ "Row is not empty"
 
-instance Backend.Mapping b v => RowParser b v where
+instance Backend.Mapping b v => RowParser b (Identity v) where
   parse l = do
     h <- maybe (Left $ "Empty row") Right $ headMay l
-    Backend.parseResult h
+    Identity <$> Backend.parseResult h
 
 -- Generate tuple instaces using Template Haskell:
 let
