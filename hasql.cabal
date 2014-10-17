@@ -1,5 +1,5 @@
 name:
-  high-sql
+  hasql
 version:
   0.1.0
 synopsis:
@@ -8,9 +8,9 @@ description:
 category:
   Database
 homepage:
-  https://github.com/nikita-volkov/high-sql 
+  https://github.com/nikita-volkov/hasql 
 bug-reports:
-  https://github.com/nikita-volkov/high-sql/issues 
+  https://github.com/nikita-volkov/hasql/issues 
 author:
   Nikita Volkov <nikita.y.volkov@mail.ru>
 maintainer:
@@ -31,22 +31,22 @@ source-repository head
   type:
     git
   location:
-    git://github.com/nikita-volkov/high-sql.git
+    git://github.com/nikita-volkov/hasql.git
 
 
 library
   hs-source-dirs:
     library
   other-modules:
-    HighSQL.Prelude
-    HighSQL.QQ.Parser
-    HighSQL.QQ
-    HighSQL.RowParser
-    HighSQL.Transaction
-    HighSQL.Pool
+    Hasql.Prelude
+    Hasql.QQ.Parser
+    Hasql.QQ
+    Hasql.RowParser
+    Hasql.Transaction
+    Hasql.Pool
   exposed-modules:
-    HighSQL.Backend
-    HighSQL
+    Hasql.Backend
+    Hasql
   build-depends:
     -- template-haskell:
     template-haskell >= 2.8 && < 2.10,

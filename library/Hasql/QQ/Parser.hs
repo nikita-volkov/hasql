@@ -1,6 +1,6 @@
-module HighSQL.QQ.Parser where
+module Hasql.QQ.Parser where
 
-import HighSQL.Prelude hiding (takeWhile)
+import Hasql.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)
 import qualified Data.Text as Text
 

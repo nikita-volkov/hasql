@@ -1,9 +1,9 @@
-module HighSQL.Pool where
+module Hasql.Pool where
 
-import HighSQL.Prelude hiding (read, Read, write, Write, Error)
+import Hasql.Prelude hiding (read, Read, write, Write, Error)
 import qualified Data.Pool as Pool
-import qualified HighSQL.Backend as Backend
-import qualified HighSQL.RowParser as RowParser
+import qualified Hasql.Backend as Backend
+import qualified Hasql.RowParser as RowParser
 import qualified ListT
 
 

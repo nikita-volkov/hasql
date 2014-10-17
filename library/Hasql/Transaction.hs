@@ -1,10 +1,10 @@
-module HighSQL.Transaction where
+module Hasql.Transaction where
 
-import HighSQL.Prelude hiding (Read, Write, Error)
-import HighSQL.Backend (Backend)
-import HighSQL.RowParser (RowParser)
-import qualified HighSQL.Backend as Backend
-import qualified HighSQL.RowParser as RowParser
+import Hasql.Prelude hiding (Read, Write, Error)
+import Hasql.Backend (Backend)
+import Hasql.RowParser (RowParser)
+import qualified Hasql.Backend as Backend
+import qualified Hasql.RowParser as RowParser
 import qualified ListT
 
 

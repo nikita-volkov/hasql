@@ -1,8 +1,8 @@
 -- |
 -- An open API for implementation of specific backend drivers.
-module HighSQL.Backend where
+module Hasql.Backend where
 
-import HighSQL.Prelude hiding (Error)
+import Hasql.Prelude hiding (Error)
 import qualified Language.Haskell.TH as TH
 
 

@@ -1,9 +1,9 @@
-module HighSQL.RowParser where
+module Hasql.RowParser where
 
-import HighSQL.Prelude
+import Hasql.Prelude
 import Language.Haskell.TH
 import qualified Data.Text as Text
-import qualified HighSQL.Backend as Backend
+import qualified Hasql.Backend as Backend
 
 
 class RowParser b r where

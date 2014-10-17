@@ -1,10 +1,10 @@
-module HighSQL.QQ where
+module Hasql.QQ where
 
-import HighSQL.Prelude
+import Hasql.Prelude
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
-import qualified HighSQL.QQ.Parser as Parser
-import qualified HighSQL.Backend as Backend
+import qualified Hasql.QQ.Parser as Parser
+import qualified Hasql.Backend as Backend
 
 
 -- |

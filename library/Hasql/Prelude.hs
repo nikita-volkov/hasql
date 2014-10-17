@@ -1,4 +1,4 @@
-module HighSQL.Prelude
+module Hasql.Prelude
 ( 
   module Exports,
   bug,
@@ -54,6 +54,6 @@ import qualified Debug.Trace.LocationTH
 
 bug = [e| $(Debug.Trace.LocationTH.failure) . (msg <>) |]
   where
-    msg = "A \"high-sql\" package bug: " :: String
+    msg = "A \"hasql\" package bug: " :: String
 
 bottom = [e| $bug "Bottom evaluated" |]

@@ -1,4 +1,4 @@
-module HighSQL
+module Hasql
 (
   -- * Pool
   Pool.Pool,
@@ -43,12 +43,12 @@ module HighSQL
 )
 where
 
-import HighSQL.Prelude
-import qualified HighSQL.Backend as Backend
-import qualified HighSQL.Transaction as Transaction
-import qualified HighSQL.Pool as Pool
-import qualified HighSQL.RowParser as RowParser
-import qualified HighSQL.QQ as QQ
+import Hasql.Prelude
+import qualified Hasql.Backend as Backend
+import qualified Hasql.Transaction as Transaction
+import qualified Hasql.Pool as Pool
+import qualified Hasql.RowParser as RowParser
+import qualified Hasql.QQ as QQ
 
 
 runWithoutLocking :: 
