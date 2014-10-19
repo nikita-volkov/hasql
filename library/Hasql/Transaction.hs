@@ -157,49 +157,43 @@ instance Exception Error
 -------------------------
 
 -- |
--- Execute a modification statement producing no result.
-modify :: 
+-- Execute a statement, which produces no result.
+execute :: 
   Backend b => ModificationPrivilege l =>
   Backend.Statement b -> Transaction b l s ()
-modify s =
+execute s =
   Transaction $ ReaderT $ Backend.execute s
-
--- |
--- Execute a statement, which generates an auto-increment value.
-modifyAndGenerate :: 
-  Backend b => Backend.Mapping b Integer => ModificationPrivilege l =>
-  Backend.Statement b -> Transaction b l s (Maybe Integer)
-modifyAndGenerate s =
-  select s >>= ListT.head >>= return . fmap runIdentity
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-modifyAndCount ::
+executeAndCount ::
   Backend b => Backend.Mapping b Integer => ModificationPrivilege l =>
   Backend.Statement b -> Transaction b l s Integer
-modifyAndCount s =
+executeAndCount s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
 -- |
--- Execute a \"select\" statement,
--- and produce a results stream.
-select :: 
+-- Execute a statement,
+-- which produces a results stream: 
+-- a @SELECT@ or an @INSERT@, 
+-- which produces a generated value (e.g., an auto-incremented id).
+executeAndFetch :: 
   Backend b => RowParser b r => 
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
-select s =
+executeAndFetch s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
 
 -- |
--- Execute a \"select\" statement,
+-- Execute a @SELECT@ statement
 -- and produce a results stream, 
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
-selectWithCursor :: 
+executeAndFetchWithCursor :: 
   Backend b => RowParser b r => CursorsPrivilege l =>
   Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
-selectWithCursor s =
+executeAndFetchWithCursor s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
 

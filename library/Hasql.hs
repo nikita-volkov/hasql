@@ -10,15 +10,14 @@ module Hasql
   -- |
   -- Functions for execution of transactions.
   -- They determine the transactional locking strategy of the database.
-  runWithoutLocking,
-  runRead,
-  runWrite,
+  withoutLocking,
+  read,
+  write,
   -- ** Transactions
-  Transaction.modify,
-  Transaction.modifyAndGenerate,
-  Transaction.modifyAndCount,
-  Transaction.select,
-  Transaction.selectWithCursor,
+  Transaction.execute,
+  Transaction.executeAndCount,
+  Transaction.executeAndFetch,
+  Transaction.executeAndFetchWithCursor,
   -- ** Statement Quasi-Quoter
   QQ.q,
   -- ** Error
@@ -43,7 +42,7 @@ module Hasql
 )
 where
 
-import Hasql.Prelude
+import Hasql.Prelude hiding (read)
 import qualified Hasql.Backend as Backend
 import qualified Hasql.Transaction as Transaction
 import qualified Hasql.Pool as Pool
@@ -51,20 +50,20 @@ import qualified Hasql.RowParser as RowParser
 import qualified Hasql.QQ as QQ
 
 
-runWithoutLocking :: 
+withoutLocking :: 
   Backend.Backend b => 
   (forall s. Transaction.Transaction b Transaction.WithoutLocking s r) -> Pool.Pool b -> IO r
-runWithoutLocking t =
+withoutLocking t =
   Pool.withConnection (Transaction.runWithoutLocking t)
 
-runRead ::
+read ::
   Backend.Backend b => 
   Backend.IsolationLevel -> (forall s. Transaction.Transaction b Transaction.Read s r) -> Pool.Pool b -> IO r
-runRead i t =
+read i t =
   Pool.withConnection (Transaction.runRead i t)
 
-runWrite ::
+write ::
   Backend.Backend b => 
   Backend.IsolationLevel -> (forall s. Transaction.Transaction b Transaction.Write s r) -> Pool.Pool b -> IO r
-runWrite i t =
+write i t =
   Pool.withConnection (Transaction.runWrite i t)
