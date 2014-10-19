@@ -16,7 +16,11 @@ data Error =
   UnexpectedResultStructure Text |
   -- | 
   -- Type, input and parser error.
-  UnparsableResult TypeRep ByteString Text
+  UnparsableResult TypeRep ByteString Text |
+  -- |
+  -- A transaction concurrency conflict, 
+  -- whic indicates that it should be retried.
+  TransactionConflict
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -82,9 +86,15 @@ class Backend b where
   -- returning the amount of affected rows.
   executeAndCountEffects :: Statement b -> Connection b -> IO Integer
   -- |
-  -- Execute an IO action in a transaction context.
-  -- The action will be automatically retried in case of transaction conflicts.
-  inTransaction :: TransactionMode -> IO r -> Connection b -> IO r
+  -- Start a transaction in the specified mode.
+  beginTransaction :: TransactionMode -> Connection b -> IO ()
+  -- |
+  -- Finish the transaction, 
+  -- while releasing all the resources acquired with 'executeAndStreamWithCursor'.
+  --  
+  -- The boolean defines whether to commit the updates,
+  -- otherwise it rolls back.
+  finishTransaction :: Bool -> Connection b -> IO ()
 
 
 class Backend b => Mapping b v where

@@ -26,13 +26,28 @@ runRead ::
   Backend b => 
   Backend.IsolationLevel -> (forall s. Transaction b Read s r) -> Backend.Connection b -> IO r
 runRead isolation (Transaction r) c =
-  handle backendHandler $ Backend.inTransaction (isolation, False) (runReaderT r c) c
+  handle backendHandler $ inTransaction (isolation, False) (runReaderT r c) c
 
 runWrite ::
   Backend b => 
   Backend.IsolationLevel -> (forall s. Transaction b Write s r) -> Backend.Connection b -> IO r
 runWrite isolation (Transaction r) c =
-  handle backendHandler $ Backend.inTransaction (isolation, True) (runReaderT r c) c
+  handle backendHandler $ inTransaction (isolation, True) (runReaderT r c) c
+
+inTransaction ::
+  Backend b => 
+  Backend.TransactionMode -> IO r -> Backend.Connection b -> IO r
+inTransaction mode io c =
+  do
+    Backend.beginTransaction mode c
+    try io >>= \case
+      Left Backend.TransactionConflict -> do
+        Backend.finishTransaction False c
+        inTransaction mode io c
+      Left e -> throwIO e
+      Right r -> do
+        Backend.finishTransaction True c
+        return r
 
 backendHandler :: Backend.Error -> IO a
 backendHandler =
@@ -40,6 +55,7 @@ backendHandler =
     Backend.CantConnect t -> throwIO $ CantConnect t
     Backend.ConnectionLost t -> throwIO $ ConnectionLost t
     Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
+    Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
 
 -- * Locking Levels
