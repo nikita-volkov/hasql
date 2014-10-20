@@ -275,5 +275,8 @@ data Statement =
 newtype ResultsStream s m r =
   ResultsStream (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
-            Monoid, ListT.ListMonad, ListT.ListTrans)
+            Monoid, ListT.ListMonad)
+
+instance ListT.ListTrans (ResultsStream s) where
+  uncons = unsafeCoerce (ListT.uncons :: ListT.ListT m r -> m (Maybe (r, ListT.ListT m r)))
 

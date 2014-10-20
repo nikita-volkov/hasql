@@ -35,10 +35,6 @@ import Data.Text as Exports (Text)
 -------------------------
 import Data.ByteString as Exports (ByteString)
 
--- decimal
--------------------------
-import Data.Decimal as Exports (Decimal, DecimalRaw)
-
 -- time
 -------------------------
 import Data.Time as Exports
