@@ -10,10 +10,12 @@ module Hasql
   -- |
   -- Functions for execution of transactions.
   -- They determine the transactional locking strategy of the database.
+  TransactionRunner,
   withoutLocking,
   read,
   write,
   -- ** Transactions
+  Transaction.StatementRunner,
   Transaction.execute,
   Transaction.executeAndCount,
   Transaction.executeAndFetch,
@@ -30,7 +32,7 @@ module Hasql
   Transaction.Write,
   -- ** Privileges
   Transaction.CursorsPrivilege,
-  Transaction.ModificationPrivilege,
+  Transaction.WritingPrivilege,
   -- ** Results Stream
   Transaction.ResultsStream,
   Transaction.TransactionListT,
@@ -50,20 +52,22 @@ import qualified Hasql.RowParser as RowParser
 import qualified Hasql.QQ as QQ
 
 
-withoutLocking :: 
-  Backend.Backend b => 
-  (forall s. Transaction.Transaction b Transaction.WithoutLocking s r) -> Pool.Pool b -> IO r
+type TransactionRunner l =
+  forall b r. Backend.Backend b =>
+  (forall s. Transaction.Transaction b l s r) -> Pool.Pool b -> IO r
+
+withoutLocking :: TransactionRunner Transaction.WithoutLocking
 withoutLocking t =
   Pool.withConnection (Transaction.runWithoutLocking t)
 
-read ::
-  Backend.Backend b => 
-  Backend.IsolationLevel -> (forall s. Transaction.Transaction b Transaction.Read s r) -> Pool.Pool b -> IO r
+read :: Backend.IsolationLevel -> TransactionRunner Transaction.Read
 read i t =
   Pool.withConnection (Transaction.runRead i t)
 
-write ::
-  Backend.Backend b => 
-  Backend.IsolationLevel -> (forall s. Transaction.Transaction b Transaction.Write s r) -> Pool.Pool b -> IO r
+write :: Backend.IsolationLevel -> TransactionRunner Transaction.Write
 write i t =
   Pool.withConnection (Transaction.runWrite i t)
+
+
+
+

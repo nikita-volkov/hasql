@@ -92,10 +92,10 @@ class CursorsPrivilege l
 instance CursorsPrivilege Read
 instance CursorsPrivilege Write
 
-class ModificationPrivilege l
+class WritingPrivilege l
 
-instance ModificationPrivilege Write
-instance ModificationPrivilege WithoutLocking
+instance WritingPrivilege Write
+instance WritingPrivilege WithoutLocking
 
 
 -- * Results Stream
@@ -156,20 +156,22 @@ instance Exception Error
 -- * Transactions
 -------------------------
 
+type StatementRunner b l s r =
+  Backend b =>
+  Backend.Statement b -> Transaction b l s r
+
 -- |
 -- Execute a statement, which produces no result.
-execute :: 
-  Backend b => ModificationPrivilege l =>
-  Backend.Statement b -> Transaction b l s ()
+execute :: WritingPrivilege l => StatementRunner b l s ()
 execute s =
   Transaction $ ReaderT $ Backend.execute s
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-executeAndCount ::
-  Backend b => Backend.Mapping b Integer => ModificationPrivilege l =>
-  Backend.Statement b -> Transaction b l s Integer
+executeAndCount :: 
+  (Backend.Mapping b Integer, WritingPrivilege l) =>
+  StatementRunner b l s Integer
 executeAndCount s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
@@ -179,8 +181,8 @@ executeAndCount s =
 -- a @SELECT@ or an @INSERT@, 
 -- which produces a generated value (e.g., an auto-incremented id).
 executeAndFetch :: 
-  Backend b => RowParser b r => 
-  Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
+  RowParser b r => 
+  StatementRunner b l s (ResultsStream b l s r)
 executeAndFetch s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
@@ -191,8 +193,8 @@ executeAndFetch s =
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
 executeAndFetchWithCursor :: 
-  Backend b => RowParser b r => CursorsPrivilege l =>
-  Backend.Statement b -> Transaction b l s (ResultsStream b l s r)
+  (RowParser b r, CursorsPrivilege l) =>
+  StatementRunner b l s (ResultsStream b l s r)
 executeAndFetchWithCursor s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
