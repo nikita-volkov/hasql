@@ -199,6 +199,10 @@ cursorStreamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
 
+    
+-- * Helpers
+-------------------------
+
 hoistBackendStream :: 
   RowParser b r => 
   Backend.ResultsStream b -> ResultsStream b l s r
