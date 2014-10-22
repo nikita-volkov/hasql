@@ -45,9 +45,9 @@ library
     Hasql.Transaction
     Hasql.Pool
   exposed-modules:
-    Hasql.Backend
     Hasql
   build-depends:
+    hasql-backend == 0.1.*,
     -- template-haskell:
     template-haskell >= 2.8 && < 2.10,
     -- parsing:
