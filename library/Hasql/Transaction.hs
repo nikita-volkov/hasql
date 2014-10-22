@@ -156,13 +156,13 @@ instance Exception Error
 -- * Transactions
 -------------------------
 
-type StatementRunner b l s r =
+type StatementTx b l s r =
   Backend b =>
   Backend.Statement b -> Transaction b l s r
 
 -- |
 -- Execute a statement, which produces no result.
-unitTx :: WritingPrivilege l => StatementRunner b l s ()
+unitTx :: WritingPrivilege l => StatementTx b l s ()
 unitTx s =
   Transaction $ ReaderT $ Backend.execute s
 
@@ -171,7 +171,7 @@ unitTx s =
 -- Useful for resolving how many rows were updated or deleted.
 countTx :: 
   (Backend.Mapping b Integer, WritingPrivilege l) =>
-  StatementRunner b l s Integer
+  StatementTx b l s Integer
 countTx s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
@@ -182,7 +182,7 @@ countTx s =
 -- which produces a generated value (e.g., an auto-incremented id).
 streamTx :: 
   RowParser b r => 
-  StatementRunner b l s (ResultsStream b l s r)
+  StatementTx b l s (ResultsStream b l s r)
 streamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
@@ -194,7 +194,7 @@ streamTx s =
 -- This function allows you to fetch virtually limitless results in a constant memory.
 cursorStreamTx :: 
   (RowParser b r, CursorsPrivilege l) =>
-  StatementRunner b l s (ResultsStream b l s r)
+  StatementTx b l s (ResultsStream b l s r)
 cursorStreamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
