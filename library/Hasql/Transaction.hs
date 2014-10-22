@@ -9,41 +9,35 @@ import qualified ListT
 
 
 -- |
--- A transaction specialized for backend @b@, with a level @l@,
+-- A transaction specialized for backend @b@, 
 -- running on an anonymous state-thread @s@ 
 -- and producing a result @r@.
-newtype Transaction b l s r =
+newtype Transaction b s r =
   Transaction (ReaderT (Backend.Connection b) IO r)
   deriving (Functor, Applicative, Monad)
 
-runWithoutLocking :: 
-  Backend b => 
-  (forall s. Transaction b WithoutLocking s r) -> Backend.Connection b -> IO r
-runWithoutLocking (Transaction r) c =
-  handle backendHandler $ runReaderT r c
+type Mode =
+  Maybe (Backend.IsolationLevel, Bool)
 
-runRead ::
+txIO ::
   Backend b => 
-  Backend.IsolationLevel -> (forall s. Transaction b Read s r) -> Backend.Connection b -> IO r
-runRead isolation (Transaction r) c =
-  handle backendHandler $ inTransaction (isolation, False) (runReaderT r c) c
-
-runWrite ::
-  Backend b => 
-  Backend.IsolationLevel -> (forall s. Transaction b Write s r) -> Backend.Connection b -> IO r
-runWrite isolation (Transaction r) c =
-  handle backendHandler $ inTransaction (isolation, True) (runReaderT r c) c
+  Mode -> Backend.Connection b -> (forall s. Transaction b s r) -> IO r
+txIO mode connection (Transaction reader) =
+  handle backendHandler $ 
+    maybe (const id) (inTransaction) mode
+      connection 
+      (runReaderT reader connection)
 
 inTransaction ::
   Backend b => 
-  Backend.TransactionMode -> IO r -> Backend.Connection b -> IO r
-inTransaction mode io c =
+  Backend.TransactionMode -> Backend.Connection b -> IO r -> IO r
+inTransaction mode c io =
   do
     Backend.beginTransaction mode c
     try io >>= \case
       Left Backend.TransactionConflict -> do
         Backend.finishTransaction False c
-        inTransaction mode io c
+        inTransaction mode c io
       Left e -> throwIO e
       Right r -> do
         Backend.finishTransaction True c
@@ -56,46 +50,6 @@ backendHandler =
     Backend.ConnectionLost t -> throwIO $ ConnectionLost t
     Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
     Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
-
-
--- * Locking Levels
--------------------------
-
--- |
--- A level requiring no locking by the transaction
--- and hence providing no ACID guarantees.
--- Essentially this means that there will be no 
--- traditional transaction established on the backend.
-data WithoutLocking
-
--- |
--- A level requiring minimal locking from the database,
--- however it only allows to execute the \"SELECT\" statements. 
-data Read
-
--- |
--- A level, which allows to perform any kind of statements,
--- including \"SELECT\", \"UPDATE\", \"INSERT\", \"DELETE\",
--- \"CREATE\", \"DROP\" and \"ALTER\".
--- 
--- However, compared to 'Read', 
--- it requires the database to choose 
--- a more resource-demanding locking strategy.
-data Write
-
-
--- * Privileges
--------------------------
-
-class CursorsPrivilege l
-
-instance CursorsPrivilege Read
-instance CursorsPrivilege Write
-
-class WritingPrivilege l
-
-instance WritingPrivilege Write
-instance WritingPrivilege WithoutLocking
 
 
 -- * Results Stream
@@ -114,8 +68,8 @@ instance WritingPrivilege WithoutLocking
 -- Therefore you can only access it while remaining in a transaction,
 -- and, when the transaction finishes,
 -- all the acquired resources get automatically released.
-type ResultsStream b l s r =
-  TransactionListT s (Transaction b l s) r
+type ResultsStream b s r =
+  TransactionListT s (Transaction b s) r
 
 newtype TransactionListT s m r =
   TransactionListT (ListT.ListT m r)
@@ -156,22 +110,20 @@ instance Exception Error
 -- * Transactions
 -------------------------
 
-type StatementTx b l s r =
+type StatementTx b s r =
   Backend b =>
-  Backend.Statement b -> Transaction b l s r
+  Backend.Statement b -> Transaction b s r
 
 -- |
 -- Execute a statement, which produces no result.
-unitTx :: WritingPrivilege l => StatementTx b l s ()
+unitTx :: StatementTx b s ()
 unitTx s =
   Transaction $ ReaderT $ Backend.execute s
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-countTx :: 
-  (Backend.Mapping b Integer, WritingPrivilege l) =>
-  StatementTx b l s Integer
+countTx :: (Backend.Mapping b Integer) => StatementTx b s Integer
 countTx s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
@@ -180,9 +132,7 @@ countTx s =
 -- which produces a results stream: 
 -- a @SELECT@ or an @INSERT@, 
 -- which produces a generated value (e.g., an auto-incremented id).
-streamTx :: 
-  RowParser b r => 
-  StatementTx b l s (ResultsStream b l s r)
+streamTx :: RowParser b r => StatementTx b s (ResultsStream b s r)
 streamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
@@ -192,9 +142,7 @@ streamTx s =
 -- and produce a results stream, 
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
-cursorStreamTx :: 
-  (RowParser b r, CursorsPrivilege l) =>
-  StatementTx b l s (ResultsStream b l s r)
+cursorStreamTx :: (RowParser b r) => StatementTx b s (ResultsStream b s r)
 cursorStreamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
@@ -203,9 +151,7 @@ cursorStreamTx s =
 -- * Helpers
 -------------------------
 
-hoistBackendStream :: 
-  RowParser b r => 
-  Backend.ResultsStream b -> ResultsStream b l s r
+hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> ResultsStream b s r
 hoistBackendStream (w, s) =
   TransactionListT $ hoist (Transaction . lift) $ do
     row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
