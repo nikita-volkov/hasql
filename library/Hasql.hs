@@ -16,10 +16,10 @@ module Hasql
   write,
   -- ** Transactions
   Transaction.StatementRunner,
-  Transaction.execute,
-  Transaction.executeAndCount,
-  Transaction.executeAndFetch,
-  Transaction.executeAndFetchWithCursor,
+  Transaction.unitTx,
+  Transaction.countTx,
+  Transaction.streamTx,
+  Transaction.cursorStreamTx,
   -- ** Statement Quasi-Quoter
   QQ.q,
   -- ** Error

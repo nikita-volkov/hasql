@@ -162,17 +162,17 @@ type StatementRunner b l s r =
 
 -- |
 -- Execute a statement, which produces no result.
-execute :: WritingPrivilege l => StatementRunner b l s ()
-execute s =
+unitTx :: WritingPrivilege l => StatementRunner b l s ()
+unitTx s =
   Transaction $ ReaderT $ Backend.execute s
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-executeAndCount :: 
+countTx :: 
   (Backend.Mapping b Integer, WritingPrivilege l) =>
   StatementRunner b l s Integer
-executeAndCount s =
+countTx s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
 -- |
@@ -180,10 +180,10 @@ executeAndCount s =
 -- which produces a results stream: 
 -- a @SELECT@ or an @INSERT@, 
 -- which produces a generated value (e.g., an auto-incremented id).
-executeAndFetch :: 
+streamTx :: 
   RowParser b r => 
   StatementRunner b l s (ResultsStream b l s r)
-executeAndFetch s =
+streamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
 
@@ -192,10 +192,10 @@ executeAndFetch s =
 -- and produce a results stream, 
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
-executeAndFetchWithCursor :: 
+cursorStreamTx :: 
   (RowParser b r, CursorsPrivilege l) =>
   StatementRunner b l s (ResultsStream b l s r)
-executeAndFetchWithCursor s =
+cursorStreamTx s =
   Transaction $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
 
