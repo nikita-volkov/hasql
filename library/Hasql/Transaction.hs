@@ -200,7 +200,6 @@ executeAndFetchWithCursor s =
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
 
 hoistBackendStream :: 
-  forall b l s r. 
   RowParser b r => 
   Backend.ResultsStream b -> ResultsStream b l s r
 hoistBackendStream (w, s) =
