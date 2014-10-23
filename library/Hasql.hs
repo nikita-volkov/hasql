@@ -71,7 +71,7 @@ session backend (SessionSettings size timeout) reader =
       \case
         Backend.CantConnect t -> throwIO $ CantConnect t
         Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-        Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
+        Backend.UnparsableResult t -> throwIO $ UnexpectedResultStructure t
         Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
 
@@ -123,9 +123,9 @@ data Error =
   -- Indicates usage of inappropriate statement executor.
   UnexpectedResultStructure Text |
   -- |
-  -- Attempt to parse a statement execution result into an incompatible type.
+  -- Attempt to parse a row into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
-  ResultParsingError Text
+  UnparsableRow Text
   deriving (Show, Typeable)
 
 instance Exception Error
@@ -256,4 +256,4 @@ stream cursor s =
     hoistBackendStream (w, s) =
       TxListT $ hoist (Tx . lift) $ do
         row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
-        either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row
+        either (lift . throwIO . UnparsableRow) return $ RowParser.parseRow row
