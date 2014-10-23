@@ -123,7 +123,7 @@ unitTx s =
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-countTx :: (Backend.Mapping b Integer) => StatementTx b s Integer
+countTx :: (Backend.Mapping b Word64) => StatementTx b s Word64
 countTx s =
   Transaction $ ReaderT $ Backend.executeAndCountEffects s
 
