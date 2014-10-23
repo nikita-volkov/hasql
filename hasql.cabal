@@ -65,6 +65,8 @@ library
     loch-th == 0.2.*,
     placeholders == 0.1.*,
     -- general:
+    monad-control == 0.3.*,
+    transformers-base == 0.4.*,
     safe >= 0.3.8 && < 0.4,
     mmorph == 1.0.*,
     mtl-prelude == 2.*,

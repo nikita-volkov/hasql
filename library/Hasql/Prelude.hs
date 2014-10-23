@@ -19,6 +19,14 @@ import MTLPrelude as Exports hiding (shift)
 -------------------------
 import Control.Monad.Morph as Exports
 
+-- monad-control
+-------------------------
+import Control.Monad.Trans.Control as Exports
+
+-- transformers-base
+-------------------------
+import Control.Monad.Base as Exports
+
 -- safe
 -------------------------
 import Safe as Exports
