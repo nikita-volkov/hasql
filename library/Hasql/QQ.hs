@@ -14,8 +14,8 @@ import qualified Hasql.Backend as Backend
 -- 
 -- E.g.:
 -- 
--- >selectFive :: Statement
--- >selectFive = [|SELECT (? + ?)|] 2 3
+-- >selectFive :: Statement b
+-- >selectFive = [q|SELECT (? + ?)|] 2 3
 -- 
 q :: QuasiQuoter
 q = 
