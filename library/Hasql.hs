@@ -4,6 +4,10 @@ module Hasql
   Session,
   sessionInner,
 
+  -- ** Session Settings
+  SessionSettings,
+  sessionSettings,
+
   -- * Error
   Error(..),
 
@@ -50,11 +54,11 @@ type Session b =
   ReaderT (Pool b)
 
 -- |
--- Given backend settings, pool settings, and a session monad transformer 
+-- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
 sessionInner :: 
   Backend.Backend b => MonadBaseControl IO m =>
-  b -> PoolSettings -> Session b m r -> m r
+  b -> SessionSettings -> Session b m r -> m r
 sessionInner backend settings reader =
   join $ liftM restoreM $ liftBaseWith $ \runInIO ->
     mask $ \unmask -> do
@@ -63,31 +67,18 @@ sessionInner backend settings reader =
       releasePool p
       return r
 
--- |
--- Execute a transaction in a session.
-txSession :: 
-  Backend.Backend b => MonadBase IO m =>
-  Mode -> (forall s. Tx b s r) -> Session b m r
-txSession m t =
-  ReaderT $ \p -> liftBase $ usePool (\c -> runTx c m t) p
 
-
--- * Connections Pool
+-- ** Session Settings
 -------------------------
 
 -- |
--- A connections pool.
-newtype Pool b =
-  Pool (Pool.Pool (Backend.Connection b))
-
--- |
--- Settings of a connections pool.
-data PoolSettings =
-  PoolSettings !Word32 !NominalDiffTime
+-- Settings of a session.
+data SessionSettings =
+  SessionSettings !Word32 !NominalDiffTime
 
 -- | 
--- A smart constructor for pool settings.
-poolSettings :: 
+-- A smart constructor for session settings.
+sessionSettings :: 
   Word32
   -- ^
   -- The maximum number of connections to keep open. 
@@ -99,18 +90,27 @@ poolSettings ::
   -- The amount of time for which an unused connection is kept open. 
   -- The smallest acceptable value is 0.5 seconds.
   -> 
-  Maybe PoolSettings
+  Maybe SessionSettings
   -- ^
-  -- Maybe pool settings, if they are correct.
-poolSettings size timeout =
+  -- Maybe session settings, if they are correct.
+sessionSettings size timeout =
   if size > 0 && timeout >= 0.5
-    then Just $ PoolSettings size timeout
+    then Just $ SessionSettings size timeout
     else Nothing
+
+
+-- * Connections Pool
+-------------------------
+
+-- |
+-- A connections pool.
+newtype Pool b =
+  Pool (Pool.Pool (Backend.Connection b))
 
 -- |
 -- Initialize a pool given a backend and settings.
-acquirePool :: Backend.Backend b => b -> PoolSettings -> IO (Pool b)
-acquirePool b (PoolSettings size timeout) =
+acquirePool :: Backend.Backend b => b -> SessionSettings -> IO (Pool b)
+acquirePool b (SessionSettings size timeout) =
   fmap Pool $
     Pool.createPool (Backend.connect b) (Backend.disconnect) 1 timeout size
 
@@ -149,34 +149,42 @@ newtype Tx b s r =
 type Mode =
   Maybe (Backend.IsolationLevel, Bool)
 
-runTx ::
-  Backend b => 
-  Backend.Connection b -> Mode -> (forall s. Tx b s r) -> IO r
-runTx connection mode (Tx reader) =
-  handle backendHandler $ 
-    maybe (const id) inTransaction mode connection (runReaderT reader connection)
+-- |
+-- Execute a transaction in a session.
+txSession :: 
+  Backend.Backend b => MonadBase IO m =>
+  Mode -> (forall s. Tx b s r) -> Session b m r
+txSession m t =
+  ReaderT $ \p -> liftBase $ usePool (\c -> runTx c m t) p
   where
-    inTransaction ::
+    runTx ::
       Backend b => 
-      Backend.TransactionMode -> Backend.Connection b -> IO r -> IO r
-    inTransaction mode c io =
-      do
-        Backend.beginTransaction mode c
-        try io >>= \case
-          Left Backend.TransactionConflict -> do
-            Backend.finishTransaction False c
-            inTransaction mode c io
-          Left e -> throwIO e
-          Right r -> do
-            Backend.finishTransaction True c
-            return r
-    backendHandler :: Backend.Error -> IO a
-    backendHandler =
-      \case
-        Backend.CantConnect t -> throwIO $ CantConnect t
-        Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-        Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
-        Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
+      Backend.Connection b -> Mode -> (forall s. Tx b s r) -> IO r
+    runTx connection mode (Tx reader) =
+      handle backendHandler $ 
+        maybe (const id) inTransaction mode connection (runReaderT reader connection)
+      where
+        inTransaction ::
+          Backend b => 
+          Backend.TransactionMode -> Backend.Connection b -> IO r -> IO r
+        inTransaction mode c io =
+          do
+            Backend.beginTransaction mode c
+            try io >>= \case
+              Left Backend.TransactionConflict -> do
+                Backend.finishTransaction False c
+                inTransaction mode c io
+              Left e -> throwIO e
+              Right r -> do
+                Backend.finishTransaction True c
+                return r
+        backendHandler :: Backend.Error -> IO a
+        backendHandler =
+          \case
+            Backend.CantConnect t -> throwIO $ CantConnect t
+            Backend.ConnectionLost t -> throwIO $ ConnectionLost t
+            Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
+            Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
 
 -- * Results Stream
