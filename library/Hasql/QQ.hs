@@ -29,15 +29,13 @@ q =
 parseExp :: String -> Q Exp
 parseExp s =
   do
-    (k, n) <- 
-      either (fail . (showString "Parsing failure: ")) return (Parser.parse (fromString s))
+    n <- either (fail . showString "Parsing failure: ") return (Parser.parse (fromString s))
     return $ statementF s n
-  where
 
 -- |
 -- An expression of a function with an arbitrary arity, 
 -- which produces a "Backend.Statement".
-statementF :: String -> Int -> Exp
+statementF :: String -> Word -> Exp
 statementF s n =
   LamE pats exp
   where
