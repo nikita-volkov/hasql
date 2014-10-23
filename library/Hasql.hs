@@ -2,7 +2,7 @@ module Hasql
 (
   -- * Session
   Session,
-  sessionInner,
+  session,
 
   -- ** Session Settings
   SessionSettings,
@@ -15,16 +15,16 @@ module Hasql
   Tx,
   Mode,
   Backend.IsolationLevel(..),
-  txSession,
+  tx,
 
   -- * Statement Quasi-Quoter
   QQ.q,
 
   -- * Statement Execution
-  unitTx,
-  countTx,
-  singleTx,
-  streamTx,
+  unit,
+  count,
+  single,
+  stream,
 
   -- * Results Stream
   TxListT,
@@ -56,10 +56,10 @@ type Session b =
 -- |
 -- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
-sessionInner :: 
+session :: 
   Backend.Backend b => MonadBaseControl IO m =>
   b -> SessionSettings -> Session b m r -> m r
-sessionInner backend settings reader =
+session backend settings reader =
   join $ liftM restoreM $ liftBaseWith $ \runInIO ->
     mask $ \unmask -> do
       p <- acquirePool backend settings
@@ -151,10 +151,10 @@ type Mode =
 
 -- |
 -- Execute a transaction in a session.
-txSession :: 
+tx :: 
   Backend.Backend b => MonadBase IO m =>
   Mode -> (forall s. Tx b s r) -> Session b m r
-txSession m t =
+tx m t =
   ReaderT $ \p -> liftBase $ usePool (\c -> runTx c m t) p
   where
     runTx ::
@@ -243,15 +243,15 @@ instance Exception Error
 
 -- |
 -- Execute a statement, which produces no result.
-unitTx :: Backend b => Backend.Statement b -> Tx b s ()
-unitTx s =
+unit :: Backend b => Backend.Statement b -> Tx b s ()
+unit s =
   Tx $ ReaderT $ Backend.execute s
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-countTx :: Backend b => Backend.Mapping b Word64 => Backend.Statement b -> Tx b s Word64
-countTx s =
+count :: Backend b => Backend.Mapping b Word64 => Backend.Statement b -> Tx b s Word64
+count s =
   Tx $ ReaderT $ Backend.executeAndCountEffects s
 
 -- |
@@ -259,9 +259,9 @@ countTx s =
 -- which produces a single result row: 
 -- a @SELECT@ 
 -- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
-singleTx :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
-singleTx s =
-  ListT.head $ streamTx False s
+single :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
+single s =
+  ListT.head $ stream False s
 
 -- |
 -- Execute a @SELECT@ statement,
@@ -272,8 +272,8 @@ singleTx s =
 -- Cursor allows you to fetch virtually limitless results in a constant memory
 -- at a cost of a small overhead.
 -- Note that in most databases cursors require establishing a database transaction.
-streamTx :: Backend b => RowParser b r => Bool -> Backend.Statement b -> TxListT s (Tx b s) r
-streamTx cursor s =
+stream :: Backend b => RowParser b r => Bool -> Backend.Statement b -> TxListT s (Tx b s) r
+stream cursor s =
   do
     r <- lift $ Tx $ ReaderT $ \c -> executor s c
     hoistBackendStream r
