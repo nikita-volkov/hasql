@@ -17,17 +17,14 @@ module Hasql
   Backend.IsolationLevel(..),
   txSession,
 
-  -- * Statement
-  Backend.Statement,
-
-  -- ** Statement Execution
+  -- * Statement Execution
   StatementTx,
   unitTx,
   countTx,
   streamTx,
   cursorStreamTx,
 
-  -- ** Statement Quasi-Quoter
+  -- * Statement Quasi-Quoter
   QQ.q,
 
   -- ** Error
