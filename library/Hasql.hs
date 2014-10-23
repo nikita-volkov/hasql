@@ -10,7 +10,8 @@ module Hasql
   -- * Transaction
   Tx,
   Mode,
-
+  Backend.IsolationLevel(..),
+  
   -- ** Execution
   -- | For your convenience there are two models of execution:
   -- 
