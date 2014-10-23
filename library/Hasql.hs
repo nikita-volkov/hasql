@@ -51,7 +51,7 @@ import qualified Data.Pool as Pool
 -- A monad transformer,
 -- which executes transactions.
 type Session b =
-  ReaderT (Pool b)
+  ReaderT (Pool.Pool (Backend.Connection b))
 
 -- |
 -- Given backend settings, session settings, and a session monad transformer,
@@ -59,12 +59,12 @@ type Session b =
 session :: 
   Backend.Backend b => MonadBaseControl IO m =>
   b -> SessionSettings -> Session b m r -> m r
-session backend settings reader =
+session backend (SessionSettings size timeout) reader =
   join $ liftM restoreM $ liftBaseWith $ \runInIO ->
     mask $ \unmask -> do
-      p <- acquirePool backend settings
-      r <- ($ releasePool p) $ onException $ unmask $ runInIO $ runReaderT reader p
-      releasePool p
+      p <- Pool.createPool (Backend.connect backend) Backend.disconnect 1 timeout size
+      r <- ($ Pool.purgePool p) $ onException $ unmask $ runInIO $ runReaderT reader p
+      Pool.purgePool p
       return r
 
 
@@ -124,32 +124,6 @@ data Error =
 instance Exception Error
 
 
--- * Connections Pool
--------------------------
-
--- |
--- A connections pool.
-newtype Pool b =
-  Pool (Pool.Pool (Backend.Connection b))
-
--- |
--- Initialize a pool given a backend and settings.
-acquirePool :: Backend.Backend b => b -> SessionSettings -> IO (Pool b)
-acquirePool b (SessionSettings size timeout) =
-  fmap Pool $
-    Pool.createPool (Backend.connect b) (Backend.disconnect) 1 timeout size
-
--- |
--- Release all resources of the pool.
-releasePool :: Pool b -> IO ()
-releasePool (Pool p) = 
-  Pool.purgePool p
-
-usePool :: (Backend.Connection b -> IO a) -> Pool b -> IO a
-usePool f (Pool p) =
-  Pool.withResource p f
-
-
 -- * Transaction
 -------------------------
 
@@ -180,7 +154,7 @@ tx ::
   Backend.Backend b => MonadBase IO m =>
   Mode -> (forall s. Tx b s r) -> Session b m r
 tx m t =
-  ReaderT $ \p -> liftBase $ usePool (\c -> runTx c m t) p
+  ReaderT $ \p -> liftBase $ Pool.withResource p $ \c -> runTx c m t
   where
     runTx ::
       Backend b => 
