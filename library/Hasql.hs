@@ -8,7 +8,7 @@ module Hasql
   releasePool,
 
   -- * Transaction
-  Transaction,
+  Tx,
   Mode,
 
   -- ** Execution
@@ -42,7 +42,7 @@ module Hasql
 
   -- ** Results Stream
   ResultsStream,
-  TransactionListT,
+  TxListT,
 
   -- ** Row parser
   RowParser.RowParser(..),
@@ -119,8 +119,8 @@ usePool f (Pool p) =
 -- A transaction specialized for backend @b@, 
 -- running on an anonymous state-thread @s@ 
 -- and producing a result @r@.
-newtype Transaction b s r =
-  Transaction (ReaderT (Backend.Connection b) IO r)
+newtype Tx b s r =
+  Tx (ReaderT (Backend.Connection b) IO r)
   deriving (Functor, Applicative, Monad)
 
 -- |
@@ -140,14 +140,14 @@ type Mode =
 -- Execute a transaction on a pool of connections.
 txIO :: 
   Backend.Backend b =>
-  Pool b -> Mode -> (forall s. Transaction b s r) -> IO r
+  Pool b -> Mode -> (forall s. Tx b s r) -> IO r
 txIO p m t =
   usePool (\c -> txIO m c t) p
   where
     txIO ::
       Backend b => 
-      Mode -> Backend.Connection b -> (forall s. Transaction b s r) -> IO r
-    txIO mode connection (Transaction reader) =
+      Mode -> Backend.Connection b -> (forall s. Tx b s r) -> IO r
+    txIO mode connection (Tx reader) =
       handle backendHandler $ 
         maybe (const id) inTransaction mode connection (runReaderT reader connection)
     inTransaction ::
@@ -192,7 +192,7 @@ sessionInner pool reader =
 -- Execute a transaction in a session.
 txSession :: 
   Backend.Backend b => MonadIO m =>
-  Mode -> (forall s. Transaction b s r) -> Session b m r
+  Mode -> (forall s. Tx b s r) -> Session b m r
 txSession m t =
   ReaderT $ \p -> liftIO $ txIO p m t
 
@@ -214,14 +214,14 @@ txSession m t =
 -- and, when the transaction finishes,
 -- all the acquired resources get automatically released.
 type ResultsStream b s r =
-  TransactionListT s (Transaction b s) r
+  TxListT s (Tx b s) r
 
-newtype TransactionListT s m r =
-  TransactionListT (ListT.ListT m r)
+newtype TxListT s m r =
+  TxListT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
             Monoid, ListT.ListMonad)
 
-instance ListT.ListTrans (TransactionListT s) where
+instance ListT.ListTrans (TxListT s) where
   uncons = 
     unsafeCoerce 
       (ListT.uncons :: ListT.ListT m r -> m (Maybe (r, ListT.ListT m r)))
@@ -259,20 +259,20 @@ instance Exception Error
 -- A function executing a statement in a transaction.
 type StatementTx b s r =
   Backend b =>
-  Backend.Statement b -> Transaction b s r
+  Backend.Statement b -> Tx b s r
 
 -- |
 -- Execute a statement, which produces no result.
 unitTx :: StatementTx b s ()
 unitTx s =
-  Transaction $ ReaderT $ Backend.execute s
+  Tx $ ReaderT $ Backend.execute s
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
 countTx :: (Backend.Mapping b Word64) => StatementTx b s Word64
 countTx s =
-  Transaction $ ReaderT $ Backend.executeAndCountEffects s
+  Tx $ ReaderT $ Backend.executeAndCountEffects s
 
 -- |
 -- Execute a statement,
@@ -281,7 +281,7 @@ countTx s =
 -- which produces a generated value (e.g., an auto-incremented id).
 streamTx :: RowParser b r => StatementTx b s (ResultsStream b s r)
 streamTx s =
-  Transaction $ ReaderT $ \c -> do
+  Tx $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
 
 -- |
@@ -291,7 +291,7 @@ streamTx s =
 -- This function allows you to fetch virtually limitless results in a constant memory.
 cursorStreamTx :: (RowParser b r) => StatementTx b s (ResultsStream b s r)
 cursorStreamTx s =
-  Transaction $ ReaderT $ \c -> do
+  Tx $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
 
     
@@ -300,6 +300,6 @@ cursorStreamTx s =
 
 hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> ResultsStream b s r
 hoistBackendStream (w, s) =
-  TransactionListT $ hoist (Transaction . lift) $ do
+  TxListT $ hoist (Tx . lift) $ do
     row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
     either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row
