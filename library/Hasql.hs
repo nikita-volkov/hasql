@@ -8,7 +8,7 @@ module Hasql
   SessionSettings,
   sessionSettings,
 
-  -- * Error
+  -- ** Error
   Error(..),
 
   -- * Transaction
@@ -97,6 +97,31 @@ sessionSettings size timeout =
   if size > 0 && timeout >= 0.5
     then Just $ SessionSettings size timeout
     else Nothing
+
+
+-- ** Error
+-------------------------
+
+-- |
+-- The only exception type that this API can raise.
+data Error =
+  -- |
+  -- Cannot connect to a server.
+  CantConnect Text |
+  -- |
+  -- The connection got interrupted.
+  ConnectionLost Text |
+  -- |
+  -- Unexpected result structure.
+  -- Indicates usage of inappropriate statement executor.
+  UnexpectedResultStructure Text |
+  -- |
+  -- Attempt to parse a statement execution result into an incompatible type.
+  -- Indicates either a mismatching schema or an incorrect query.
+  ResultParsingError Text
+  deriving (Show, Typeable)
+
+instance Exception Error
 
 
 -- * Connections Pool
@@ -211,31 +236,6 @@ instance ListT.ListTrans (TxListT s) where
   uncons = 
     unsafeCoerce 
       (ListT.uncons :: ListT.ListT m r -> m (Maybe (r, ListT.ListT m r)))
-
-
--- * Error
--------------------------
-
--- |
--- The only exception type that this API can raise.
-data Error =
-  -- |
-  -- Cannot connect to a server.
-  CantConnect Text |
-  -- |
-  -- The connection got interrupted.
-  ConnectionLost Text |
-  -- |
-  -- Unexpected result structure.
-  -- Indicates usage of inappropriate statement executor.
-  UnexpectedResultStructure Text |
-  -- |
-  -- Attempt to parse a statement execution result into an incompatible type.
-  -- Indicates either a mismatching schema or an incorrect query.
-  ResultParsingError Text
-  deriving (Show, Typeable)
-
-instance Exception Error
 
 
 -- * Statements execution
