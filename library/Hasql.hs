@@ -31,8 +31,8 @@ module Hasql
   Error(..),
 
   -- ** Results Stream
-  ResultsStream,
-  TxListT,
+  TxStream,
+  TxStreamT,
 
   -- ** Row parser
   RowParser.RowParser(..),
@@ -188,8 +188,8 @@ txSession m t =
 -- |
 -- A stream of results, 
 -- which fetches only those that you reach.
-type ResultsStream b s r =
-  TxListT s (Tx b s) r
+type TxStream b s r =
+  TxStreamT s (Tx b s) r
 
 -- |
 -- A wrapper around 'ListT.ListT', 
@@ -200,12 +200,12 @@ type ResultsStream b s r =
 -- 
 -- All the functions of the \"list-t\" library are applicable to this type,
 -- amongst which are 'ListT.fold', 'ListT.traverse_', 'ListT.toList'.
-newtype TxListT s m r =
-  TxListT (ListT.ListT m r)
+newtype TxStreamT s m r =
+  TxStreamT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
             Monoid, ListT.ListMonad)
 
-instance ListT.ListTrans (TxListT s) where
+instance ListT.ListTrans (TxStreamT s) where
   uncons = 
     unsafeCoerce 
       (ListT.uncons :: ListT.ListT m r -> m (Maybe (r, ListT.ListT m r)))
@@ -263,7 +263,7 @@ countTx s =
 -- which produces a results stream: 
 -- a @SELECT@ or an @INSERT@, 
 -- which produces a generated value (e.g., an auto-incremented id).
-streamTx :: RowParser b r => StatementTx b s (ResultsStream b s r)
+streamTx :: RowParser b r => StatementTx b s (TxStream b s r)
 streamTx s =
   Tx $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStream s c
@@ -273,7 +273,7 @@ streamTx s =
 -- and produce a results stream, 
 -- which utilizes a database cursor.
 -- This function allows you to fetch virtually limitless results in a constant memory.
-cursorStreamTx :: (RowParser b r) => StatementTx b s (ResultsStream b s r)
+cursorStreamTx :: (RowParser b r) => StatementTx b s (TxStream b s r)
 cursorStreamTx s =
   Tx $ ReaderT $ \c -> do
     fmap hoistBackendStream $ Backend.executeAndStreamWithCursor s c
@@ -282,8 +282,8 @@ cursorStreamTx s =
 -- * Helpers
 -------------------------
 
-hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> ResultsStream b s r
+hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> TxStream b s r
 hoistBackendStream (w, s) =
-  TxListT $ hoist (Tx . lift) $ do
+  TxStreamT $ hoist (Tx . lift) $ do
     row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
     either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row
