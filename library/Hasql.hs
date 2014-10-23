@@ -95,12 +95,9 @@ withPool b s =
   bracket acquire Pool.purgePool
   where
     acquire = 
-      do
-        pool <-
-          Pool.createPool 
-            (Backend.connect b) (Backend.disconnect) 
-            (striping1 s) (connectionTimeout s) (striping2 s)
-        return pool
+      Pool.createPool 
+        (Backend.connect b) (Backend.disconnect) 
+        (striping1 s) (connectionTimeout s) (striping2 s)
 
 
 -- * Transaction
