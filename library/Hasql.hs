@@ -71,8 +71,9 @@ session backend (SessionSettings size timeout) reader =
       \case
         Backend.CantConnect t -> throwIO $ CantConnect t
         Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-        Backend.UnparsableResult t -> throwIO $ UnexpectedResultStructure t
+        Backend.UnexpectedResult t -> throwIO $ UnexpectedResult t
         Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
+        Backend.NotInTransaction -> throwIO $ NotInTransaction
 
 
 -- ** Session Settings
@@ -121,7 +122,11 @@ data Error =
   -- |
   -- Unexpected result structure.
   -- Indicates usage of inappropriate statement executor.
-  UnexpectedResultStructure Text |
+  UnexpectedResult Text |
+  -- |
+  -- An operation, 
+  -- which requires a database transaction was executed without one.
+  NotInTransaction |
   -- |
   -- Attempt to parse a row into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
@@ -244,7 +249,8 @@ single s =
 -- 
 -- Cursor allows you to fetch virtually limitless results in a constant memory
 -- at a cost of a small overhead.
--- Note that in most databases cursors require establishing a database transaction.
+-- Note that in most databases cursors require establishing a database transaction,
+-- so a 'NotInTransaction' error will be raised if you run it improperly.
 stream :: Backend b => RowParser b r => Bool -> Backend.Statement b -> TxListT s (Tx b s) r
 stream cursor s =
   do
