@@ -63,9 +63,16 @@ session backend (SessionSettings size timeout) reader =
   join $ liftM restoreM $ liftBaseWith $ \runInIO ->
     mask $ \unmask -> do
       p <- Pool.createPool (Backend.connect backend) Backend.disconnect 1 timeout size
-      r <- ($ Pool.purgePool p) $ onException $ unmask $ runInIO $ runReaderT reader p
+      r <- try $ unmask $ runInIO $ runReaderT reader p
       Pool.purgePool p
-      return r
+      either onException return r
+  where
+    onException =
+      \case
+        Backend.CantConnect t -> throwIO $ CantConnect t
+        Backend.ConnectionLost t -> throwIO $ ConnectionLost t
+        Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
+        Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
 
 -- ** Session Settings
@@ -160,8 +167,7 @@ tx m t =
       Backend b => 
       Backend.Connection b -> Mode -> (forall s. Tx b s r) -> IO r
     runTx connection mode (Tx reader) =
-      handle backendHandler $ 
-        maybe (const id) inTransaction mode connection (runReaderT reader connection)
+      maybe (const id) inTransaction mode connection (runReaderT reader connection)
       where
         inTransaction ::
           Backend b => 
@@ -177,13 +183,6 @@ tx m t =
               Right r -> do
                 Backend.finishTransaction True c
                 return r
-        backendHandler :: Backend.Error -> IO a
-        backendHandler =
-          \case
-            Backend.CantConnect t -> throwIO $ CantConnect t
-            Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-            Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
-            Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
 
 -- * Results Stream
