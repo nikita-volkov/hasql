@@ -293,4 +293,4 @@ hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> ResultsStream 
 hoistBackendStream (w, s) =
   TransactionListT $ hoist (Transaction . lift) $ do
     row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
-    either (lift . throwIO . ResultParsingError) return $ RowParser.parse row
+    either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row

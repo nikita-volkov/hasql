@@ -7,13 +7,13 @@ import qualified Hasql.Backend as Backend
 
 
 class RowParser b r where
-  parse :: [Backend.Result b] -> Either Text r
+  parseRow :: [Backend.Result b] -> Either Text r
 
 instance RowParser b () where
-  parse = \case [] -> Right (); _ -> Left $ "Row is not empty"
+  parseRow = \case [] -> Right (); _ -> Left $ "Row is not empty"
 
 instance Backend.Mapping b v => RowParser b (Identity v) where
-  parse l = do
+  parseRow l = do
     h <- maybe (Left $ "Empty row") Right $ headMay l
     Identity <$> Backend.parseResult h
 
@@ -21,7 +21,7 @@ instance Backend.Mapping b v => RowParser b (Identity v) where
 let
   inst :: Int -> Dec
   inst arity =
-    InstanceD constraints head [parseDec]
+    InstanceD constraints head [parseRowDec]
     where
       varNames =
         [1 .. arity] >>= \i -> return (mkName ('_' : show i))
@@ -33,8 +33,8 @@ let
         map (\t -> ClassP ''Backend.Mapping [backendType, t]) varTypes
       head =
         AppT (AppT (ConT ''RowParser) backendType) (foldl AppT (TupleT arity) varTypes)
-      parseDec =
-        FunD 'parse [c1, c2]
+      parseRowDec =
+        FunD 'parseRow [c1, c2]
         where
           c1 = 
             Clause [ListP (map VarP varNames)] (NormalB e) []
