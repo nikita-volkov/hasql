@@ -2,7 +2,6 @@ module Hasql.RowParser where
 
 import Hasql.Prelude
 import Language.Haskell.TH
-import qualified Data.Text as Text
 import qualified Hasql.Backend as Backend
 
 
