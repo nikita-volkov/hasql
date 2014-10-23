@@ -191,19 +191,18 @@ txSession m t =
 -- |
 -- A stream of results, 
 -- which fetches only those that you reach.
--- 
--- It is implemented as a wrapper around 'ListT.ListT',
--- hence all the utility functions of the list transformer API 
--- are applicable to this type.
--- 
--- It uses the same trick as 'ST' to become impossible to be 
--- executed outside of its transaction.
--- Therefore you can only access it while remaining in a transaction,
--- and, when the transaction finishes,
--- all the acquired resources get automatically released.
 type ResultsStream b s r =
   TxListT s (Tx b s) r
 
+-- |
+-- A wrapper around 'ListT.ListT', 
+-- which uses the same trick as the 'ST' monad to associate with the
+-- context transaction and become impossible to be used outside of it.
+-- This lets the library ensure that it is safe to automatically
+-- release all the resources associated with this stream.
+-- 
+-- All the functions of the \"list-t\" library are applicable to this type,
+-- amongst which are 'ListT.fold', 'ListT.traverse_', 'ListT.toList'.
 newtype TxListT s m r =
   TxListT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
