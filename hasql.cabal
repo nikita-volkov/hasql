@@ -39,11 +39,9 @@ library
     library
   other-modules:
     Hasql.Prelude
-    Hasql.QQ.Parser
     Hasql.QQ
+    Hasql.QQ.Parser
     Hasql.RowParser
-    Hasql.Transaction
-    Hasql.Pool
   exposed-modules:
     Hasql
   build-depends:
