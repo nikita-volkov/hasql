@@ -10,7 +10,13 @@ import qualified Hasql.Backend as Backend
 -- |
 -- Produces a lambda-expression, 
 -- which takes as many parameters as there are placeholders in the quoted text
--- and results in an expression of type 'Backend.Statement'.
+-- and results in an expression of type 'Backend.Statement'. 
+-- 
+-- E.g.:
+-- 
+-- >selectFive :: Statement
+-- >selectFive = [|SELECT (? + ?)|] 2 3
+-- 
 q :: QuasiQuoter
 q = 
   QuasiQuoter

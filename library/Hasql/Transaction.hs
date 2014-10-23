@@ -16,6 +16,16 @@ newtype Transaction b s r =
   Transaction (ReaderT (Backend.Connection b) IO r)
   deriving (Functor, Applicative, Monad)
 
+-- |
+-- A transaction mode defining how a transaction should be executed.
+-- 
+-- * @Just (isolationLevel, write)@ indicates that a database transaction
+-- should be established with a specified isolation level and a boolean, 
+-- defining, whether it would perform any modification operations.
+-- 
+-- * @Nothing@ indicates that there should be no database transaction established on
+-- the backend and therefore it should be executed with no ACID guarantees,
+-- but also without any induced overhead.
 type Mode =
   Maybe (Backend.IsolationLevel, Bool)
 
@@ -110,6 +120,8 @@ instance Exception Error
 -- * Transactions
 -------------------------
 
+-- |
+-- A function executing a statement in a transaction.
 type StatementTx b s r =
   Backend b =>
   Backend.Statement b -> Transaction b s r
