@@ -7,28 +7,20 @@ module Hasql
   acquirePool,
   releasePool,
 
+  -- * Session
+  Session,
+  sessionInner,
+  
   -- * Transaction
   Tx,
   Mode,
   Backend.IsolationLevel(..),
-  
-  -- ** Execution
-  -- | For your convenience there are two models of execution:
-  -- 
-  -- * A simple function on IO.
-  -- 
-  -- * A session monad transformer, 
-  -- which is an adaptation of the 'ReaderT' API over the connections pool.
-  
-  -- *** Simple IO
-  txIO,
-
-  -- *** Session
-  Session,
-  sessionInner,
   txSession,
 
-  -- ** Statements execution
+  -- * Statement
+  Backend.Statement,
+
+  -- ** Statement Execution
   StatementTx,
   unitTx,
   countTx,
@@ -113,6 +105,22 @@ usePool f (Pool p) =
   Pool.withResource p f
 
 
+-- * Session
+-------------------------
+
+-- |
+-- A session monad transformer, 
+-- which is an adaptation of the 'ReaderT' API over the connections pool.
+type Session b =
+  ReaderT (Pool b)
+
+-- |
+-- Run the session monad transformer in the inner monad.
+sessionInner :: Pool b -> Session b m r -> m r
+sessionInner pool reader =
+  runReaderT reader pool
+
+
 -- * Transaction
 -------------------------
 
@@ -138,19 +146,14 @@ type Mode =
   Maybe (Backend.IsolationLevel, Bool)
 
 -- |
--- Execute a transaction on a pool of connections.
-txIO :: 
-  Backend.Backend b =>
-  Pool b -> Mode -> (forall s. Tx b s r) -> IO r
-txIO p m t =
-  usePool (\c -> txIO m c t) p
+-- Execute a transaction on a connection.
+txIO ::
+  Backend b => 
+  Backend.Connection b -> Mode -> (forall s. Tx b s r) -> IO r
+txIO connection mode (Tx reader) =
+  handle backendHandler $ 
+    maybe (const id) inTransaction mode connection (runReaderT reader connection)
   where
-    txIO ::
-      Backend b => 
-      Mode -> Backend.Connection b -> (forall s. Tx b s r) -> IO r
-    txIO mode connection (Tx reader) =
-      handle backendHandler $ 
-        maybe (const id) inTransaction mode connection (runReaderT reader connection)
     inTransaction ::
       Backend b => 
       Backend.TransactionMode -> Backend.Connection b -> IO r -> IO r
@@ -173,29 +176,13 @@ txIO p m t =
         Backend.UnexpectedResultStructure t -> throwIO $ UnexpectedResultStructure t
         Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
 
-
--- * Session
--------------------------
-
--- |
--- A convenience monad transformer, 
--- which is just a simple wrapper around a 'ReaderT'.
-type Session b =
-  ReaderT (Pool b)
-
--- |
--- Run the session monad transformer in the inner monad.
-sessionInner :: Pool b -> Session b m r -> m r
-sessionInner pool reader =
-  runReaderT reader pool
-
 -- |
 -- Execute a transaction in a session.
 txSession :: 
   Backend.Backend b => MonadIO m =>
   Mode -> (forall s. Tx b s r) -> Session b m r
 txSession m t =
-  ReaderT $ \p -> liftIO $ txIO p m t
+  ReaderT $ \p -> liftIO $ usePool (\c -> txIO c m t) p
 
 
 -- * Results Stream
