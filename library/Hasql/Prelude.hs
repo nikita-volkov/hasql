@@ -35,10 +35,6 @@ import Safe as Exports
 -------------------------
 import ListT as Exports (ListT)
 
--- hashable
--------------------------
-import Data.Hashable as Exports (Hashable)
-
 -- text
 -------------------------
 import Data.Text as Exports (Text)
