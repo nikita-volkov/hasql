@@ -27,7 +27,7 @@ module Hasql
   sessionInner,
   txSession,
 
-  -- ** Transactions
+  -- ** Statements execution
   StatementTx,
   unitTx,
   countTx,
