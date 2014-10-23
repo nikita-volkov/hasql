@@ -19,8 +19,8 @@ module Hasql
   -- * Statement Execution
   unitTx,
   countTx,
+  singleTx,
   streamTx,
-  cursorStreamTx,
 
   -- * Results Stream
   TxListT,
@@ -248,32 +248,31 @@ countTx s =
 
 -- |
 -- Execute a statement,
--- which produces a results stream: 
--- a @SELECT@ or an @INSERT@, 
--- which produces a generated value (e.g., an auto-incremented id).
-streamTx :: Backend b => RowParser b r => Backend.Statement b -> TxListT s (Tx b s) r
-streamTx s =
-  do
-    r <- lift $ Tx $ ReaderT $ \c -> Backend.executeAndStream s c
-    hoistBackendStream r
+-- which produces a single result row: 
+-- a @SELECT@ 
+-- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
+singleTx :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
+singleTx s =
+  ListT.head $ streamTx False s
 
 -- |
--- Execute a @SELECT@ statement
--- and produce a results stream, 
--- which utilizes a database cursor.
--- This function allows you to fetch virtually limitless results in a constant memory.
-cursorStreamTx :: Backend b => RowParser b r => Backend.Statement b -> TxListT s (Tx b s) r
-cursorStreamTx s =
+-- Execute a @SELECT@ statement,
+-- and produce a results stream.
+-- The boolean parameter specifies, 
+-- whether to utilize a cursor.
+-- 
+-- Cursor allows you to fetch virtually limitless results in a constant memory
+-- at a cost of a small overhead.
+-- Note that in most databases cursors require establishing a database transaction.
+streamTx :: Backend b => RowParser b r => Bool -> Backend.Statement b -> TxListT s (Tx b s) r
+streamTx cursor s =
   do
-    r <- lift $ Tx $ ReaderT $ \c -> Backend.executeAndStreamWithCursor s c
+    r <- lift $ Tx $ ReaderT $ \c -> executor s c
     hoistBackendStream r
-
-    
--- * Helpers
--------------------------
-
-hoistBackendStream :: RowParser b r => Backend.ResultsStream b -> TxListT s (Tx b s) r
-hoistBackendStream (w, s) =
-  TxListT $ hoist (Tx . lift) $ do
-    row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
-    either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row
+  where
+    executor = 
+      if cursor then Backend.executeAndStreamWithCursor else Backend.executeAndStream
+    hoistBackendStream (w, s) =
+      TxListT $ hoist (Tx . lift) $ do
+        row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
+        either (lift . throwIO . ResultParsingError) return $ RowParser.parseRow row
