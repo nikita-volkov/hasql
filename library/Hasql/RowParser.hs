@@ -3,17 +3,21 @@ module Hasql.RowParser where
 import Hasql.Prelude
 import Language.Haskell.TH
 import qualified Hasql.Backend as Backend
+import qualified Data.Vector as Vector
 
 
 class RowParser b r where
-  parseRow :: [Backend.Result b] -> Either Text r
+  parseRow :: Vector.Vector (Backend.Result b) -> Either Text r
 
 instance RowParser b () where
-  parseRow = \case [] -> Right (); _ -> Left $ "Row is not empty"
+  parseRow row = 
+    if Vector.null row
+      then Right ()
+      else Left $ "Row is not empty"
 
 instance Backend.Mapping b v => RowParser b (Identity v) where
-  parseRow l = do
-    h <- maybe (Left $ "Empty row") Right $ headMay l
+  parseRow row = do
+    h <- maybe (Left $ "Empty row") Right $ Vector.headM row
     Identity <$> Backend.parseResult h
 
 -- Generate tuple instaces using Template Haskell:
@@ -33,28 +37,30 @@ let
       head =
         AppT (AppT (ConT ''RowParser) backendType) (foldl AppT (TupleT arity) varTypes)
       parseRowDec =
-        FunD 'parseRow [c1, c2]
+        FunD 'parseRow [Clause [VarP n] (NormalB e) []]
         where
-          c1 = 
-            Clause [ListP (map VarP varNames)] (NormalB e) []
+          n = mkName "row"
+          e =
+            foldQueue queue
             where
-              e =
-                foldQueue queue
-                where
-                  con = ConE (tupleDataName arity)
-                  queue =
-                    (con :) $
-                    (VarE '(<$>) :) $
-                    intersperse (VarE '(<*>)) $
-                    map (AppE (VarE 'Backend.parseResult) . VarE) varNames
-                  foldQueue =
-                    \case
-                      e : o : t -> UInfixE e o (foldQueue t)
-                      e : [] -> e
-                      _ -> $bug "Unexpected queue size"
-          c2 =
-            Clause [WildP] (NormalB (AppE (ConE 'Left) (LitE (StringL m)))) []
-            where
-              m = "Not enough items in the row"
+              lookups = do
+                i <- [0 .. pred arity]
+                return $ purify $
+                  [|
+                    fromMaybe (Left "Invalid row length") $ 
+                      fmap Backend.parseResult $ 
+                      (Vector.!?) $(varE n) $(litE (IntegerL $ fromIntegral i)) 
+                  |]
+              queue =
+                (ConE (tupleDataName arity) :) $
+                (VarE '(<$>) :) $
+                intersperse (VarE '(<*>)) $
+                lookups
+              foldQueue =
+                \case
+                  e : o : t -> UInfixE e o (foldQueue t)
+                  e : [] -> e
+                  _ -> $bug "Unexpected queue size"
+      purify = unsafePerformIO . runQ
   in 
     mapM (return . inst) [2 .. 24]

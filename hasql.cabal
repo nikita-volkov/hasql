@@ -76,6 +76,7 @@ library
     -- database:
     ex-pool == 0.2.*,
     -- data:
+    vector < 0.11,
     time >= 1.4 && < 1.6,
     bytestring == 0.10.*,
     text >= 1.1 && < 1.3,
