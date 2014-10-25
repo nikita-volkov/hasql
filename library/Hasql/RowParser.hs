@@ -13,12 +13,11 @@ instance RowParser b () where
   parseRow row = 
     if Vector.null row
       then Right ()
-      else Left $ "Row is not empty"
+      else $bug "Not an empty row"
 
 instance Backend.Mapping b v => RowParser b (Identity v) where
   parseRow row = do
-    h <- maybe (Left $ "Empty row") Right $ Vector.headM row
-    Identity <$> Backend.parseResult h
+    Identity <$> Backend.parseResult (Vector.unsafeHead row)
 
 -- Generate tuple instaces using Template Haskell:
 let
@@ -47,9 +46,8 @@ let
                 i <- [0 .. pred arity]
                 return $ purify $
                   [|
-                    fromMaybe (Left "Invalid row length") $ 
-                      fmap Backend.parseResult $ 
-                      (Vector.!?) $(varE n) $(litE (IntegerL $ fromIntegral i)) 
+                    Backend.parseResult $ 
+                    (Vector.unsafeIndex) $(varE n) $(litE (IntegerL $ fromIntegral i)) 
                   |]
               queue =
                 (ConE (tupleDataName arity) :) $
