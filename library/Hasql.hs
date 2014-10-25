@@ -24,7 +24,7 @@ module Hasql
   unit,
   count,
   single,
-  vector,
+  list,
   stream,
 
   -- * Results Stream
@@ -249,16 +249,14 @@ count s =
 -- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
 single :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
 single s =
-  do
-    v <- vector s
-    return $ (Vector.!?) v 0
+  headMay <$> list s
 
 -- |
 -- Execute a @SELECT@ statement,
 -- and produce a vector of results.
-vector :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Vector r)
-vector s =
-  {-# SCC "vector" #-} 
+list :: Backend b => RowParser b r => Backend.Statement b -> Tx b s [r]
+list s =
+  {-# SCC "list" #-} 
   Tx $ ReaderT $ \c -> do
     m <- Backend.executeAndGetMatrix s c
     traverse (either (throwIO . UnparsableRow) return . RowParser.parseRow) m
