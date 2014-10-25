@@ -71,7 +71,9 @@ session backend (SessionSettings size timeout) reader =
       \case
         Backend.CantConnect t -> throwIO $ CantConnect t
         Backend.ConnectionLost t -> throwIO $ ConnectionLost t
+        Backend.ErroneousResult t -> throwIO $ ErroneousResult t
         Backend.UnexpectedResult t -> throwIO $ UnexpectedResult t
+        Backend.UnparsableTemplate t -> throwIO $ UnparsableTemplate t
         Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
         Backend.NotInTransaction -> throwIO $ NotInTransaction
 
@@ -120,9 +122,15 @@ data Error =
   -- The connection got interrupted.
   ConnectionLost Text |
   -- |
+  -- An error returned from the database.
+  ErroneousResult Text |
+  -- |
   -- Unexpected result structure.
   -- Indicates usage of inappropriate statement executor.
   UnexpectedResult Text |
+  -- |
+  -- Incorrect statement template.
+  UnparsableTemplate Text |
   -- |
   -- An operation, 
   -- which requires a database transaction was executed without one.
@@ -259,7 +267,7 @@ stream cursor s =
   where
     executor = 
       if cursor then Backend.executeAndStreamWithCursor else Backend.executeAndStream
-    hoistBackendStream (w, s) =
+    hoistBackendStream s =
       TxListT $ hoist (Tx . lift) $ do
-        row <- ($ s) $ ListT.slice $ fromMaybe ($bug "Invalid row width") $ ListT.positive w
+        row <- s
         either (lift . throwIO . UnparsableRow) return $ RowParser.parseRow row
