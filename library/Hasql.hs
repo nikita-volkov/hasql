@@ -24,6 +24,7 @@ module Hasql
   unit,
   count,
   single,
+  vector,
   stream,
 
   -- * Results Stream
@@ -42,6 +43,7 @@ import qualified Hasql.RowParser as RowParser
 import qualified Hasql.QQ as QQ
 import qualified ListT
 import qualified Data.Pool as Pool
+import qualified Data.Vector as Vector
 
 
 -- * Session
@@ -247,27 +249,33 @@ count s =
 -- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
 single :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
 single s =
-  ListT.head $ stream False s
+  do
+    v <- vector s
+    return $ (Vector.!?) v 0
 
 -- |
 -- Execute a @SELECT@ statement,
+-- and produce a vector of results.
+vector :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Vector r)
+vector s =
+  {-# SCC "vector" #-} 
+  Tx $ ReaderT $ \c -> do
+    m <- Backend.executeAndGetMatrix s c
+    traverse (either (throwIO . UnparsableRow) return . RowParser.parseRow) m
+
+-- |
+-- Execute a @SELECT@ statement with a cursor,
 -- and produce a results stream.
--- The boolean parameter specifies, 
--- whether to utilize a cursor.
 -- 
 -- Cursor allows you to fetch virtually limitless results in a constant memory
 -- at a cost of a small overhead.
 -- Note that in most databases cursors require establishing a database transaction,
 -- so a 'NotInTransaction' error will be raised if you run it improperly.
-stream :: Backend b => RowParser b r => Bool -> Backend.Statement b -> TxListT s (Tx b s) r
-stream cursor s =
+stream :: Backend b => RowParser b r => Backend.Statement b -> TxListT s (Tx b s) r
+stream s =
+  {-# SCC "stream" #-} 
   do
-    r <- lift $ Tx $ ReaderT $ \c -> executor s c
-    hoistBackendStream r
-  where
-    executor = 
-      if cursor then Backend.executeAndStreamWithCursor else Backend.executeAndStream
-    hoistBackendStream s =
-      TxListT $ hoist (Tx . lift) $ do
-        row <- s
-        either (lift . throwIO . UnparsableRow) return $ RowParser.parseRow row
+    s <- lift $ Tx $ ReaderT $ \c -> Backend.executeAndStream s c
+    TxListT $ hoist (Tx . lift) $ do
+      row <- s
+      either (lift . throwIO . UnparsableRow) return $ RowParser.parseRow row

@@ -35,6 +35,10 @@ import Safe as Exports
 -------------------------
 import ListT as Exports (ListT)
 
+-- vector
+-------------------------
+import Data.Vector as Exports (Vector)
+
 -- text
 -------------------------
 import Data.Text as Exports (Text)
