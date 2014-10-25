@@ -259,7 +259,7 @@ list s =
   {-# SCC "list" #-} 
   Tx $ ReaderT $ \c -> do
     m <- Backend.executeAndGetMatrix s c
-    traverse (either (throwIO . UnparsableRow) return . RowParser.parseRow) m
+    traverse (either (throwIO . UnparsableRow) return . RowParser.parseRow) $ Vector.toList m
 
 -- |
 -- Execute a @SELECT@ statement with a cursor,
