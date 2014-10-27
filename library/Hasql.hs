@@ -256,7 +256,6 @@ single s =
 -- and produce a vector of results.
 list :: Backend b => RowParser b r => Backend.Statement b -> Tx b s [r]
 list s =
-  {-# SCC "list" #-} 
   Tx $ ReaderT $ \c -> do
     m <- Backend.executeAndGetMatrix s c
     traverse (either (throwIO . UnparsableRow) return . RowParser.parseRow) $ Vector.toList m
@@ -271,7 +270,6 @@ list s =
 -- so a 'NotInTransaction' error will be raised if you run it improperly.
 stream :: Backend b => RowParser b r => Backend.Statement b -> TxListT s (Tx b s) r
 stream s =
-  {-# SCC "stream" #-} 
   do
     s <- lift $ Tx $ ReaderT $ \c -> Backend.executeAndStream s c
     TxListT $ hoist (Tx . lift) $ do
