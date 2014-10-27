@@ -14,9 +14,7 @@ description:
   * Automated management of resources related to connections, transactions and
   cursors.
   .
-  * Streaming processing of results. This means that only the results you
-  actually use get parsed and mapped, and only as soon as you reach them. No
-  resources get waisted on redundant traversals or parsing.
+  * A built-in connections pool.
   .
   * Employment of prepared statements. Every statement you emit gets prepared
   and cached. This raises the performance of the backend.
