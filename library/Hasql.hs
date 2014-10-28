@@ -1,3 +1,8 @@
+-- |
+-- This is the API of the \"hasql\" library.
+-- For an introduction to the package 
+-- and links to more documentation please refer to 
+-- <index.html the package's index page>.
 module Hasql
 (
   -- * Session
@@ -7,9 +12,6 @@ module Hasql
   -- ** Session Settings
   SessionSettings,
   sessionSettings,
-
-  -- ** Error
-  Error(..),
 
   -- * Transaction
   Tx,
@@ -32,6 +34,9 @@ module Hasql
 
   -- * Row parser
   RowParser.RowParser(..),
+  
+  -- * Error
+  Error(..),
 )
 where
 
