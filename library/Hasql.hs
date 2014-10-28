@@ -15,9 +15,11 @@ module Hasql
 
   -- * Transaction
   Tx,
+  tx,
+
+  -- ** Transaction Settings
   Mode,
   Backend.IsolationLevel(..),
-  tx,
 
   -- * Statement Quasi-Quoter
   QQ.q,
