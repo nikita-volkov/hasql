@@ -48,13 +48,12 @@ main = do
       H.tx (Just (H.Serializable, True)) $ do
         -- Use MaybeT to handle empty results:
         runMaybeT $ do
-          do
-            -- To distinguish results rows containing just one column, 
-            -- we use 'Identity' as a sort of a single element tuple.
-            Identity balance1 <- MaybeT $ H.single $ [H.q|SELECT balance FROM a WHERE id=?|] id1
-            Identity balance2 <- MaybeT $ H.single $ [H.q|SELECT balance FROM a WHERE id=?|] id2
-            lift $ H.unit $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance1 - amount) id1
-            lift $ H.unit $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance2 + amount) id2
+          -- To distinguish results rows containing just one column, 
+          -- we use 'Identity' as a sort of a single element tuple.
+          Identity balance1 <- MaybeT $ H.single $ [H.q|SELECT balance FROM a WHERE id=?|] id1
+          Identity balance2 <- MaybeT $ H.single $ [H.q|SELECT balance FROM a WHERE id=?|] id2
+          lift $ H.unit $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance1 - amount) id1
+          lift $ H.unit $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance2 + amount) id2
 
     -- Output all the updated rows:
     do
