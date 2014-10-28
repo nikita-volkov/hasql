@@ -40,9 +40,9 @@ description:
   .
   Links:
   .
-  * <http://hackage.haskell.org/package/hasql-0.1.3/src/demo/Main.hs A basic tutorial-demo>
+  * <http://hackage.haskell.org/package/hasql-0.1.3/src/demo/Main.hs A basic tutorial-demo>.
   .
-  * <http://hackage.haskell.org/package/hasql-postgres A PostgreSQL backend>
+  * <http://hackage.haskell.org/package/hasql-postgres A PostgreSQL backend>.
   .
 category:
   Database
