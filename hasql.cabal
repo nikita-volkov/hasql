@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.1.1
+  0.1.2
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -40,7 +40,7 @@ description:
   .
   Links:
   .
-  * <../src/demo/Main.hs A basic tutorial-demo>
+  * <src/demo/Main.hs A basic tutorial-demo>
   .
   * <http://hackage.haskell.org/package/hasql-postgres A PostgreSQL backend>
   .
