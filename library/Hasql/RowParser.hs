@@ -26,7 +26,7 @@ let
     InstanceD constraints head [parseRowDec]
     where
       varNames =
-        [1 .. arity] >>= \i -> return (mkName ('_' : show i))
+        [1 .. arity] >>= \i -> return (mkName ('v' : show i))
       varTypes =
         map VarT varNames
       backendType =
