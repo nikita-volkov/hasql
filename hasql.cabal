@@ -8,7 +8,7 @@ description:
   A robust and concise yet powerful API for communication with arbitrary
   relational databases. 
   .
-  __Features__:
+  Features:
   .
   * Concise and crisp API. Just a few functions and two monads doing all the
   boilerplate job for you.
@@ -38,7 +38,7 @@ description:
   .
   * Mapping to any types actually supported by the backend.
   .
-  __Links__:
+  Links:
   .
   * <../src/demo/Main.hs A basic tutorial-demo>
   .
