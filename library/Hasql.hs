@@ -260,7 +260,7 @@ single s =
 
 -- |
 -- Execute a @SELECT@ statement,
--- and produce a vector of results.
+-- and produce a list of results.
 list :: Backend b => RowParser b r => Backend.Statement b -> Tx b s [r]
 list s =
   Tx $ ReaderT $ \c -> do
