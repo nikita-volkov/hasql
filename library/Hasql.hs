@@ -2,7 +2,7 @@
 -- This is the API of the \"hasql\" library.
 -- For an introduction to the package 
 -- and links to more documentation please refer to 
--- <index.html the package's index page>.
+-- <../ the package's index page>.
 module Hasql
 (
   -- * Session
