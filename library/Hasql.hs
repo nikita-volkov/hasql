@@ -148,7 +148,7 @@ data Error =
   -- Attempt to parse a row into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
   UnparsableRow Text
-  deriving (Show, Typeable)
+  deriving (Show, Typeable, Eq, Ord)
 
 instance Exception Error
 
