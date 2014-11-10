@@ -42,9 +42,9 @@ description:
   .
   * <http://nikita-volkov.github.io/hasql-benchmarks/ Benchmarks analysis>.
   .
-  * <http://hackage.haskell.org/package/hasql-0.1.3/src/demo/Main.hs A basic tutorial-demo>.
+  * <http://hackage.haskell.org/package/hasql-0.1.3/src/demo/Main.hs Basic tutorial-demo>.
   .
-  * <http://hackage.haskell.org/package/hasql-postgres A PostgreSQL backend>.
+  * <http://hackage.haskell.org/package/hasql-postgres PostgreSQL backend>.
   .
 category:
   Database
