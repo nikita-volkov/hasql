@@ -8,3 +8,7 @@ install:
   - cabal install happy # a "haskell-src-exts" implicit dependency workaround
   - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
 
+script:
+  - cabal configure --enable-tests --enable-benchmarks
+  - cabal build
+  - cabal test --show-details=always
