@@ -4,6 +4,7 @@ import Hasql.Prelude
 import Language.Haskell.TH
 import qualified Hasql.Backend as Backend
 import qualified Data.Vector as Vector
+import qualified Hasql.TH as THUtil
 
 
 class RowParser b r where
@@ -20,45 +21,31 @@ instance Backend.Mapping b v => RowParser b (Identity v) where
     Identity <$> Backend.parseResult (Vector.unsafeHead row)
 
 -- Generate tuple instaces using Template Haskell:
-let
-  inst :: Int -> Dec
-  inst arity =
-    InstanceD constraints head [parseRowDec]
-    where
-      varNames =
-        [1 .. arity] >>= \i -> return (mkName ('v' : show i))
-      varTypes =
-        map VarT varNames
-      backendType =
-        VarT (mkName "b")
-      constraints =
-        map (\t -> ClassP ''Backend.Mapping [backendType, t]) varTypes
-      head =
-        AppT (AppT (ConT ''RowParser) backendType) (foldl AppT (TupleT arity) varTypes)
-      parseRowDec =
-        FunD 'parseRow [Clause [VarP n] (NormalB e) []]
-        where
-          n = mkName "row"
-          e =
-            foldQueue queue
-            where
-              lookups = do
-                i <- [0 .. pred arity]
-                return $ purify $
-                  [|
-                    Backend.parseResult $ 
-                    (Vector.unsafeIndex) $(varE n) $(litE (IntegerL $ fromIntegral i)) 
-                  |]
-              queue =
-                (ConE (tupleDataName arity) :) $
-                (VarE '(<$>) :) $
-                intersperse (VarE '(<*>)) $
-                lookups
-              foldQueue =
-                \case
-                  e : o : t -> UInfixE e o (foldQueue t)
-                  e : [] -> e
-                  _ -> $bug "Unexpected queue size"
-      purify = unsafePerformIO . runQ
-  in 
-    mapM (return . inst) [2 .. 24]
+return $ flip map [2 .. 24] $ \arity ->
+  let 
+    varNames =
+      [1 .. arity] >>= \i -> return (mkName ('v' : show i))
+    varTypes =
+      map VarT varNames
+    connectionType =
+      VarT (mkName "b")
+    constraints =
+      map (\t -> ClassP ''Backend.Mapping [connectionType, t]) varTypes
+    head =
+      AppT (AppT (ConT ''RowParser) connectionType) (foldl AppT (TupleT arity) varTypes)
+    parseRowDec =
+      FunD 'parseRow [Clause [VarP rowVarName] (NormalB e) []]
+      where
+        rowVarName = mkName "row"
+        e =
+          THUtil.applicativeE (ConE (tupleDataName arity)) lookups
+          where
+            lookups = do
+              i <- [0 .. pred arity]
+              return $ THUtil.purify $
+                [|
+                  Backend.parseResult
+                    (Vector.unsafeIndex $(varE rowVarName) $(litE (IntegerL $ fromIntegral i)) )
+                |]
+    in InstanceD constraints head [parseRowDec]
+

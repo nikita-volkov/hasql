@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.1.4
+  0.1.5
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -86,9 +86,9 @@ library
     Haskell2010
   other-modules:
     Hasql.Prelude
-    Hasql.QQ
-    Hasql.QQ.Parser
+    Hasql.QParser
     Hasql.RowParser
+    Hasql.TH
   exposed-modules:
     Hasql
   build-depends:
@@ -122,8 +122,8 @@ library
 
 
 -- Well, it's not a benchmark actually, 
--- but there's no better way to specify an executable, 
--- which is not intended for distribution, in Cabal.
+-- but in Cabal there's no better way to specify an executable, 
+-- which is not intended for distribution.
 benchmark demo
   type: 
     exitcode-stdio-1.0

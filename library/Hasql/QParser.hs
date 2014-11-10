@@ -1,4 +1,4 @@
-module Hasql.QQ.Parser where
+module Hasql.QParser where
 
 import Hasql.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)

@@ -22,7 +22,7 @@ module Hasql
   Backend.IsolationLevel(..),
 
   -- * Statement Quasi-Quoter
-  QQ.q,
+  q,
 
   -- * Statement Execution
   unit,
@@ -47,10 +47,13 @@ import Hasql.Backend (Backend)
 import Hasql.RowParser (RowParser)
 import qualified Hasql.Backend as Backend
 import qualified Hasql.RowParser as RowParser
-import qualified Hasql.QQ as QQ
+import qualified Hasql.QParser as QParser
 import qualified ListT
 import qualified Data.Pool as Pool
 import qualified Data.Vector as Vector
+import qualified Language.Haskell.TH as TH
+import qualified Language.Haskell.TH.Quote as TH
+import qualified Hasql.TH as THUtil
 
 
 -- * Session
@@ -282,3 +285,48 @@ stream s =
     TxListT $ hoist (Tx . lift) $ do
       row <- s
       either (lift . throwIO . UnparsableRow) return $ RowParser.parseRow row
+
+
+-- * Statements quasi-quotation
+-------------------------
+
+-- |
+-- Produces a lambda-expression, 
+-- which takes as many parameters as there are placeholders in the quoted text
+-- and results in a 'Backend.Statement'. 
+-- 
+-- E.g.:
+-- 
+-- >selectFive :: 'Backend.Statement' c
+-- >selectFive = [q|SELECT (? + ?)|] 2 3
+-- 
+q :: TH.QuasiQuoter
+q = 
+  TH.QuasiQuoter
+    (parseExp)
+    (const $ fail "Pattern context is not supported")
+    (const $ fail "Type context is not supported")
+    (const $ fail "Declaration context is not supported")
+  where
+    parseExp s =
+      do
+        n <- either (fail . showString "Parsing failure: ") return (QParser.parse (fromString s))
+        return $ statementF s n
+    statementF s n =
+      TH.LamE
+        (map TH.VarP argNames)
+        (TH.AppE 
+          (TH.AppE 
+            (TH.ConE '(,))
+            (statementE))
+          (argsE))
+      where
+        argNames = 
+          map (TH.mkName . ('_' :) . show) [1 .. n]
+        statementE = 
+          TH.LitE (TH.StringL s)
+        argsE = 
+          TH.ListE $ flip map argNames $ \x ->
+            THUtil.purify
+            [| Backend.renderValue $(TH.varE x) |]
+        
