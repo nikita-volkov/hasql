@@ -6,7 +6,7 @@ synopsis:
   A minimalistic general high level API for relational databases
 description:
   A robust and concise yet powerful API for communication with arbitrary
-  relational databases. 
+  relational databases using SQL.
   .
   Features:
   .
