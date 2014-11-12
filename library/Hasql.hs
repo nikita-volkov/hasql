@@ -69,7 +69,7 @@ type Session b =
 -- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
 session :: 
-  Backend.Backend b => MonadBaseControl IO m =>
+  (Backend.Backend b, MonadBaseControl IO m) =>
   b -> SessionSettings -> Session b m r -> m r
 session backend (SessionSettings size timeout) reader =
   join $ liftM restoreM $ liftBaseWith $ \runInIO ->
@@ -183,7 +183,7 @@ type Mode =
 -- |
 -- Execute a transaction in a session.
 tx :: 
-  Backend.Backend b => MonadBase IO m =>
+  (Backend.Backend b, MonadBase IO m) =>
   Mode -> (forall s. Tx b s r) -> Session b m r
 tx m t =
   ReaderT $ \p -> liftBase $ Pool.withResource p $ \c -> runTx c m t
@@ -248,7 +248,7 @@ unit s =
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-count :: Backend b => Backend.Mapping b Word64 => Backend.Statement b -> Tx b s Word64
+count :: (Backend b, Backend.Mapping b Word64) => Backend.Statement b -> Tx b s Word64
 count s =
   Tx $ ReaderT $ Backend.executeAndCountEffects s
 
@@ -257,14 +257,14 @@ count s =
 -- which produces a single result row: 
 -- a @SELECT@ 
 -- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
-single :: Backend b => RowParser b r => Backend.Statement b -> Tx b s (Maybe r)
+single :: (Backend b, RowParser b r) => Backend.Statement b -> Tx b s (Maybe r)
 single s =
   headMay <$> list s
 
 -- |
 -- Execute a @SELECT@ statement,
 -- and produce a list of results.
-list :: Backend b => RowParser b r => Backend.Statement b -> Tx b s [r]
+list :: (Backend b, RowParser b r) => Backend.Statement b -> Tx b s [r]
 list s =
   Tx $ ReaderT $ \c -> do
     m <- Backend.executeAndGetMatrix s c
@@ -278,7 +278,7 @@ list s =
 -- at a cost of a small overhead.
 -- Note that in most databases cursors require establishing a database transaction,
 -- so a 'NotInTransaction' error will be raised if you run it improperly.
-stream :: Backend b => RowParser b r => Backend.Statement b -> TxListT s (Tx b s) r
+stream :: (Backend b, RowParser b r) => Backend.Statement b -> TxListT s (Tx b s) r
 stream s =
   do
     s <- lift $ Tx $ ReaderT $ \c -> Backend.executeAndStream s c
