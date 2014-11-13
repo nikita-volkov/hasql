@@ -297,7 +297,7 @@ stream s =
 -- 
 -- E.g.:
 -- 
--- >selectFive :: 'Backend.Statement' c
+-- >selectFive :: Statement b
 -- >selectFive = [q|SELECT (? + ?)|] 2 3
 -- 
 q :: TH.QuasiQuoter
