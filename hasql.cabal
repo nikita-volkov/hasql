@@ -33,10 +33,10 @@ description:
   .
   * A built-in connections pool.
   .
-  * Type-level generation of templates. You just can't write a statement with an
+  * Compile-time generation of templates. You just can't write a statement with an
   incorrect number of placeholders.
   .
-  * Mapping to any types actually supported by the backend.
+  * Ability to map to any types actually supported by the backend.
   .
   Links:
   .
