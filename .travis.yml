@@ -4,7 +4,12 @@ ghc:
   - 7.6
   - 7.8
 
+env:
+  - transformers=0.2.*
+  - transformers=0.4.*
+
 install:
+  - cabal install "transformers == $transformers"
   - cabal install happy # a "haskell-src-exts" implicit dependency workaround
   - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
 
