@@ -22,7 +22,6 @@ install:
       cabal install "text == 1.0.*";
       cabal install "attoparsec == 0.10.*";
       cabal install "time == 1.4.*";
-      cabal install "hasql-backend == 0.1.*";
     fi;
   # Work around the "haskell-src-exts" implicit dependency:
   - cabal install happy
