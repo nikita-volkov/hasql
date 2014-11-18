@@ -1,16 +1,20 @@
-language: haskell
-
-ghc:
-  - 7.6
-  - 7.8
-
 env:
-  - lower_bound_dependencies=1
-  - 
+  - lower_bound_dependencies=1 
+    ghc=7.6.1
+  - lower_bound_dependencies=1 
+    ghc=7.8.1
+  - ghc=7.6.1
+  - ghc=7.8.1
 
 install:
   # Set up the Shell to treat the semicolon as &&
   - set -o pipefail && set -e
+  # Install GHC and Cabal
+  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
+  - travis_retry sudo apt-get update
+  - travis_retry sudo apt-get install cabal-install-1.18 ghc-$ghc
+  - export PATH=/opt/ghc/$ghc/bin:/opt/cabal/1.18/bin:$PATH
+  - cabal update
   # Install the lower bound dependencies
   - if [ $lower_bound_dependencies -eq 1 ];
     then
@@ -19,10 +23,18 @@ install:
       cabal install "attoparsec == 0.10.*";
       cabal install "time == 1.4.*";
     fi;
-  - cabal install happy # a "haskell-src-exts" implicit dependency workaround
-  - cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
-
-script:
+  # Work around the "haskell-src-exts" implicit dependency:
+  - cabal install happy
+  # Switch to the distro:
+  - export pkg_name=$(cabal info . | awk '{print $2;exit}');
+    cabal sdist;
+    cd dist;
+    tar xzvf $pkg_name.tar.gz;
+    cd $pkg_name;
+  - cabal install --only-dependencies --enable-tests --enable-benchmarks
   - cabal configure --enable-tests --enable-benchmarks
   - cabal build
+
+
+script:
   - cabal test --show-details=always
