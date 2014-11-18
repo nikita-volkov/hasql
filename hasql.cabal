@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.1.6
+  0.1.7
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -92,7 +92,7 @@ library
   exposed-modules:
     Hasql
   build-depends:
-    hasql-backend == 0.1.*,
+    hasql-backend >= 0.1 && < 0.3,
     -- template-haskell:
     template-haskell >= 2.8 && < 2.10,
     -- parsing:
