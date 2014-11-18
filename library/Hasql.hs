@@ -315,11 +315,7 @@ q =
     statementF s n =
       TH.LamE
         (map TH.VarP argNames)
-        (TH.AppE 
-          (TH.AppE 
-            (TH.ConE '(,))
-            (statementE))
-          (argsE))
+        (THUtil.purify [|(,,) $(pure statementE) $(pure argsE) True|])
       where
         argNames = 
           map (TH.mkName . ('_' :) . show) [1 .. n]

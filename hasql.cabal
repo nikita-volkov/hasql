@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.1.7
+  0.2.0
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -92,7 +92,7 @@ library
   exposed-modules:
     Hasql
   build-depends:
-    hasql-backend >= 0.1 && < 0.3,
+    hasql-backend == 0.2.*,
     -- template-haskell:
     template-haskell >= 2.8 && < 2.10,
     -- parsing:
@@ -121,6 +121,29 @@ library
     base >= 4.5 && < 4.8
 
 
+test-suite tests
+  type:             
+    exitcode-stdio-1.0
+  hs-source-dirs:   
+    tests
+  main-is:          
+    Main.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
+    -funbox-strict-fields
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    HTF == 0.12.*,
+    hasql == 0.2.*,
+    hasql-backend == 0.2.*,
+    base-prelude == 0.1.*,
+    base >= 4.5 && < 4.8
+
+
 -- Well, it's not a benchmark actually, 
 -- but in Cabal there's no better way to specify an executable, 
 -- which is not intended for distribution.
@@ -139,8 +162,8 @@ benchmark demo
   default-language:
     Haskell2010
   build-depends:
-    hasql-postgres == 0.6.*,
-    hasql == 0.1.*,
+    hasql-postgres == 0.7.*,
+    hasql == 0.2.*,
     transformers >= 0.2 && < 0.5,
     base >= 4.5 && < 4.8
 
