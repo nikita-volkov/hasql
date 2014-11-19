@@ -1,4 +1,5 @@
--- You can execute this file with 'cabal bench demo'.
+-- In order to run this file, first configure cabal with '-fWithExamples',
+-- then execute 'cabal run demo'.
 {-# LANGUAGE QuasiQuotes, ScopedTypeVariables, OverloadedStrings #-}
 
 import Control.Monad
