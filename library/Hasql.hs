@@ -8,6 +8,7 @@ module Hasql
   -- * Session
   Session,
   session,
+  sessionUnlifter,
 
   -- ** Session Settings
   SessionSettings,
@@ -62,32 +63,49 @@ import qualified Hasql.TH as THUtil
 -- |
 -- A monad transformer,
 -- which executes transactions.
-type Session b =
-  ReaderT (Pool.Pool (Backend.Connection b))
+newtype Session b s m r =
+  Session (ReaderT (Pool.Pool (Backend.Connection b)) m r)
+  deriving (Functor, Applicative, Monad, MonadTrans)
 
 -- |
 -- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
+-- 
+-- It uses the same trick as the 'ST' monad with the @s@ type argument
+-- to prohibit the use of the result of
+-- 'sessionUnlifter' outside of its creator session.
 session :: 
   (Backend.Backend b, MonadBaseControl IO m) =>
-  b -> SessionSettings -> Session b m r -> m r
-session backend (SessionSettings size timeout) reader =
-  join $ liftM restoreM $ liftBaseWith $ \runInIO ->
+  b -> SessionSettings -> (forall s. Session b s m r) -> m r
+session backend (SessionSettings size timeout) s =
+  control $ \runInIO ->
     mask $ \unmask -> do
       p <- Pool.createPool (Backend.connect backend) Backend.disconnect 1 timeout size
-      r <- try $ unmask $ runInIO $ runReaderT reader p
+      r <- try $ unmask $ runInIO $ runSession p s
       Pool.purgePool p
-      either onException return r
-  where
-    onException =
-      \case
-        Backend.CantConnect t -> throwIO $ CantConnect t
-        Backend.ConnectionLost t -> throwIO $ ConnectionLost t
-        Backend.ErroneousResult t -> throwIO $ ErroneousResult t
-        Backend.UnexpectedResult t -> throwIO $ UnexpectedResult t
-        Backend.UnparsableTemplate t -> throwIO $ UnparsableTemplate t
-        Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
-        Backend.NotInTransaction -> throwIO $ NotInTransaction
+      either (throwIO :: SomeException -> IO r) return r
+
+-- |
+-- Get a session unlifting function, 
+-- which allows to execute a session in the inner monad
+-- using the resources of a session this function is called in.
+-- 
+-- @sessionUnlifter >>= \unlift -> lift (unlift session) ≡ session@
+sessionUnlifter :: (MonadBaseControl IO m) => Session b s m (Session b s m r -> m r)
+sessionUnlifter =
+  Session $ ReaderT $ return . runSession
+
+runSession :: (MonadBaseControl IO m) => Pool.Pool (Backend.Connection b) -> Session b s m r -> m r
+runSession e (Session r) =
+  control $ \runInIO -> 
+    catch (runInIO (runReaderT r e)) $ \case
+      Backend.CantConnect t -> throwIO $ CantConnect t
+      Backend.ConnectionLost t -> throwIO $ ConnectionLost t
+      Backend.ErroneousResult t -> throwIO $ ErroneousResult t
+      Backend.UnexpectedResult t -> throwIO $ UnexpectedResult t
+      Backend.UnparsableTemplate t -> throwIO $ UnparsableTemplate t
+      Backend.TransactionConflict -> $bug "Unexpected TransactionConflict exception"
+      Backend.NotInTransaction -> throwIO $ NotInTransaction
 
 
 -- ** Session Settings
@@ -184,9 +202,9 @@ type Mode =
 -- Execute a transaction in a session.
 tx :: 
   (Backend.Backend b, MonadBase IO m) =>
-  Mode -> (forall s. Tx b s r) -> Session b m r
+  Mode -> (forall s. Tx b s r) -> Session b s m r
 tx m t =
-  ReaderT $ \p -> liftBase $ Pool.withResource p $ \c -> runTx c m t
+  Session $ ReaderT $ \p -> liftBase $ Pool.withResource p $ \c -> runTx c m t
   where
     runTx ::
       Backend b => 
