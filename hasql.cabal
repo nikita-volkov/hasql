@@ -144,6 +144,32 @@ test-suite tests
     base >= 4.5 && < 4.8
 
 
+test-suite postgres-tests
+  type:             
+    exitcode-stdio-1.0
+  hs-source-dirs:   
+    postgres-tests
+  main-is:          
+    Main.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
+    -funbox-strict-fields
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    HTF == 0.12.*,
+    hasql-postgres == 0.7.*,
+    hasql == 0.2.*,
+    scientific == 0.3.*,
+    transformers >= 0.2 && < 0.5,
+    mtl-prelude < 3,
+    base-prelude == 0.1.*,
+    base >= 4.5 && < 4.8
+
+
 -- Well, it's not a benchmark actually, 
 -- but in Cabal there's no better way to specify an executable, 
 -- which is not intended for distribution.
