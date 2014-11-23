@@ -38,7 +38,17 @@ return $ flip map [2 .. 24] $ \arity ->
       where
         rowVarName = mkName "row"
         e =
-          THUtil.applicativeE (ConE (tupleDataName arity)) lookups
+          THUtil.purify $
+            [|
+              let actualLength = Vector.length $(varE rowVarName)
+                  expectedLength = $(litE (IntegerL $ fromIntegral arity))
+                  in if actualLength == expectedLength
+                    then $(pure $ THUtil.applicativeE (ConE (tupleDataName arity)) lookups)
+                    else Left $ fromString $ ($ "") $
+                           showString "Inappropriate row length: " . shows actualLength .
+                           showString ", expecting: " . shows expectedLength . 
+                           showString " instead"
+            |]
           where
             lookups = do
               i <- [0 .. pred arity]
