@@ -63,6 +63,11 @@ import qualified Hasql.TH as THUtil
 -- |
 -- A monad transformer,
 -- which executes transactions.
+-- 
+-- @b@ is a backend, 
+-- @s@ is an anonymous state-thread (same as in 'ST'),
+-- @m@ is an inner (transformed) monad,
+-- @r@ is a result.
 newtype Session b s m r =
   Session (ReaderT (Pool.Pool (Backend.Connection b)) m r)
   deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
@@ -87,7 +92,7 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (Session b s m) where
 -- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
 -- 
--- It uses the same trick as the 'ST' monad with the @s@ type argument
+-- It uses the same trick as the 'ST' monad with the anonymous @s@ type argument
 -- to prohibit the use of the result of
 -- 'sessionUnlifter' outside of its creator session.
 session :: 
