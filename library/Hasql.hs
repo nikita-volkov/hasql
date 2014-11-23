@@ -65,7 +65,23 @@ import qualified Hasql.TH as THUtil
 -- which executes transactions.
 newtype Session b s m r =
   Session (ReaderT (Pool.Pool (Backend.Connection b)) m r)
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
+
+instance MonadTransControl (Session b s) where
+  newtype StT (Session b s) a = SessionStT a
+  liftWith onRunner =
+    Session $ ReaderT $ \e -> onRunner $ \(Session (ReaderT f)) -> liftM SessionStT $ f e
+  restoreT = 
+    Session . ReaderT . const . liftM (\(SessionStT a) -> a)
+
+instance (MonadBase IO m) => MonadBase IO (Session b s m) where
+  liftBase = Session . liftBase
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Session b s m) where
+  newtype StM (Session b s m) a = SessionStM (ComposeSt (Session b s) m a)
+  liftBaseWith = defaultLiftBaseWith SessionStM
+  restoreM = defaultRestoreM $ \(SessionStM x) -> x
+
 
 -- |
 -- Given backend settings, session settings, and a session monad transformer,
