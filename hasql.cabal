@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.2.1
+  0.3.0
 synopsis:
   A minimalistic general high level API for relational databases
 description:
