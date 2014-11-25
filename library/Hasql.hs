@@ -109,9 +109,11 @@ session backend (SessionSettings size timeout) s =
 -- |
 -- Get a session unlifting function, 
 -- which allows to execute a session in the inner monad
--- using the resources of a session this function is called in.
+-- using the resources of the current session.
 -- 
--- @sessionUnlifter >>= \unlift -> lift (unlift session) ≡ session@
+-- Using this function you can interleave 'Session' with other monad transformers.
+-- 
+-- > (sessionUnlifter >>= \unlift -> lift (unlift session)) ≡ session
 sessionUnlifter :: (MonadBaseControl IO m) => Session b s m (Session b s m r -> m r)
 sessionUnlifter =
   Session $ ReaderT $ return . runSession
