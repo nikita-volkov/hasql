@@ -159,8 +159,6 @@ test-suite postgres-tests
   build-depends:
     hasql,
     hasql-postgres == 0.7.*,
-    scientific == 0.3.*,
-    transformers >= 0.3 && < 0.5,
     mtl-prelude < 3,
     base-prelude == 0.1.*,
     HTF == 0.12.*,
