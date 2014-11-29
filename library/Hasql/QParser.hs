@@ -12,16 +12,16 @@ type Result =
 
 parse :: Text -> Either String Result
 parse = 
-  parseOnly countPlaceholders
+  parseOnly $ flip execStateT 0 $
+    statement *>
+    (lift endOfInput <|> 
+     (void (lift (char ';')) <* fail "A semicolon detected. Only single statements are allowed"))
   where
-    countPlaceholders =
-      count <|> pure 0
-      where
-        count =
-          do
-            many $ void stringLit <|> void (notChar '?')
-            char '?'
-            fmap succ countPlaceholders
+    statement =
+      skipMany1 $ 
+        void (lift stringLit) <|> 
+        void (lift (char '?') <* modify succ) <|>
+        void (lift (notChar ';'))
 
 stringLit :: Parser Text
 stringLit =
