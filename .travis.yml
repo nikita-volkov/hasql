@@ -28,7 +28,7 @@ install:
   - 
     if [ $lower_bound_dependencies -eq 1 ];
     then
-      cabal install "transformers == 0.2.*";
+      cabal install "transformers == 0.3.*";
       cabal install "text == 1.0.*";
       cabal install "attoparsec == 0.10.*";
       cabal install "time == 1.4.*";
