@@ -64,10 +64,14 @@ import qualified Hasql.TH as THUtil
 -- A monad transformer,
 -- which executes transactions.
 -- 
--- @b@ is a backend, 
--- @s@ is an anonymous state-thread (same as in 'ST'),
--- @m@ is an inner (transformed) monad,
--- @r@ is a result.
+-- * @b@ is a backend.
+-- 
+-- * @s@ is an anonymous variable, 
+-- used to associate 'sessionUnlifter' with a specific session. 
+-- 
+-- * @m@ is an inner (transformed) monad.
+-- 
+-- * @r@ is a result.
 newtype Session b s m r =
   Session (ReaderT (Pool.Pool (Backend.Connection b)) m r)
   deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
@@ -92,7 +96,7 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (Session b s m) where
 -- Given backend settings, session settings, and a session monad transformer,
 -- execute it in the inner monad.
 -- 
--- It uses the same trick as the 'ST' monad with the anonymous @s@ type argument
+-- It uses the same trick as 'ST' with the anonymous @s@ type argument
 -- to prohibit the use of the result of
 -- 'sessionUnlifter' outside of its creator session.
 session :: 
@@ -111,9 +115,12 @@ session backend (SessionSettings size timeout) s =
 -- which allows to execute a session in the inner monad
 -- using the resources of the current session.
 -- 
--- Using this function you can interleave 'Session' with other monad transformers.
+-- Using this function in combination with 'lift'
+-- you can interleave 'Session' with other monad transformers.
 -- 
--- > (sessionUnlifter >>= \unlift -> lift (unlift session)) ≡ session
+-- This function has the following property:
+-- 
+-- > (sessionUnlifter >>= \unlift -> lift (unlift m)) ≡ m
 sessionUnlifter :: (MonadBaseControl IO m) => Session b s m (Session b s m r -> m r)
 sessionUnlifter =
   Session $ ReaderT $ return . runSession
@@ -201,8 +208,8 @@ instance Exception Error
 -------------------------
 
 -- |
--- A transaction specialized for backend @b@, 
--- running on an anonymous state-thread @s@ 
+-- A transaction specialized for a backend @b@, 
+-- associated with its intermediate results using an anonymous type-argument @s@ (same as in 'ST')
 -- and producing a result @r@.
 newtype Tx b s r =
   Tx (ReaderT (Backend.Connection b) IO r)
@@ -223,6 +230,9 @@ type Mode =
 
 -- |
 -- Execute a transaction in a session.
+-- 
+-- This function ensures on the type level, 
+-- that it's impossible to return @'TxListT' s m r@ from it.
 tx :: 
   (Backend.Backend b, MonadBase IO m) =>
   Mode -> (forall s. Tx b s r) -> Session b s m r
