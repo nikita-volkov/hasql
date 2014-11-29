@@ -14,7 +14,7 @@ instance RowParser b () where
   parseRow row = 
     if Vector.null row
       then Right ()
-      else $bug "Not an empty row"
+      else Left "Not an empty row"
 
 instance Backend.Mapping b v => RowParser b (Identity v) where
   parseRow row = do

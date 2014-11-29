@@ -22,6 +22,7 @@ install:
       cabal install "text == 1.0.*";
       cabal install "attoparsec == 0.10.*";
       cabal install "time == 1.4.*";
+      cabal install "list-t == 0.2.*";
     fi;
   # Work around the "haskell-src-exts" implicit dependency:
   - cabal install happy
