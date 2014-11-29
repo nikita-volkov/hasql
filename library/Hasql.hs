@@ -279,12 +279,13 @@ tx m t =
 newtype TxListT s m r =
   TxListT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
-            Monoid, ListT.ListMonad)
+            Monoid, ListT.MonadCons)
 
-instance ListT.ListTrans (TxListT s) where
+instance ListT.MonadTransUncons (TxListT s) where
   uncons = 
-    unsafeCoerce 
-      (ListT.uncons :: ListT.ListT m r -> m (Maybe (r, ListT.ListT m r)))
+    (liftM . fmap . fmap) (unsafeCoerce :: ListT.ListT m r -> TxListT s m r) .
+    ListT.uncons . 
+    (unsafeCoerce :: TxListT s m r -> ListT.ListT m r)
 
 
 -- * Statements execution
