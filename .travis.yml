@@ -28,17 +28,22 @@ install:
   - 
     if [ $lower_bound_dependencies -eq 1 ];
     then
-      cabal install "transformers == 0.3.*";
-      cabal install "text == 1.0.*";
-      cabal install "attoparsec == 0.10.*";
-      cabal install "time == 1.4.*";
-      cabal install "list-t == 0.2.*";
+      constraint_options=(
+        "--constraint=transformers==0.3.*"
+        "--constraint=text==1.0.*"
+        "--constraint=attoparsec==0.10.*"
+        "--constraint=time==1.4.*"
+      );
     fi;
   # Install the "haskell-src-exts" implicit dependency
-  - cabal install happy
+  - cabal install -j ${constraint_options[@]} happy
+  # Install the library dependencies
+  - cabal install -j ${constraint_options[@]} --only-dependencies
+  # Build the library
+  - cabal build
   # Install the remaining dependencies
-  - cabal install --only-dependencies --enable-tests --enable-benchmarks --avoid-reinstalls
-  # Configure and build
+  - cabal install -j --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
+  # Configure and build the remaining stuff
   - cabal configure --enable-tests --enable-benchmarks && cabal build
 
 script:
