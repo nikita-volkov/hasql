@@ -25,7 +25,7 @@ import Control.Monad.Morph as Exports
 
 -- monad-control
 -------------------------
-import Control.Monad.Trans.Control as Exports
+import Control.Monad.Trans.Control as Exports hiding (embed, embed_)
 
 -- transformers-base
 -------------------------

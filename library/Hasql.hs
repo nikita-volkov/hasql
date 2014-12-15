@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 -- |
 -- This is the API of the \"hasql\" library.
 -- For an introduction to the package 
@@ -77,19 +78,19 @@ newtype Session b s m r =
   deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
 instance MonadTransControl (Session b s) where
-  newtype StT (Session b s) a = SessionStT a
+  type StT (Session b s) a = a
   liftWith onRunner =
-    Session $ ReaderT $ \e -> onRunner $ \(Session (ReaderT f)) -> liftM SessionStT $ f e
+    Session $ ReaderT $ \e -> onRunner $ \(Session (ReaderT f)) -> f e
   restoreT = 
-    Session . ReaderT . const . liftM (\(SessionStT a) -> a)
+    Session . ReaderT . const
 
 instance (MonadBase IO m) => MonadBase IO (Session b s m) where
   liftBase = Session . liftBase
 
 instance (MonadBaseControl IO m) => MonadBaseControl IO (Session b s m) where
-  newtype StM (Session b s m) a = SessionStM (ComposeSt (Session b s) m a)
-  liftBaseWith = defaultLiftBaseWith SessionStM
-  restoreM = defaultRestoreM $ \(SessionStM x) -> x
+  type StM (Session b s m) a = ComposeSt (Session b s) m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
 
 
 -- |
