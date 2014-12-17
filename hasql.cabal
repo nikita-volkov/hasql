@@ -167,7 +167,11 @@ test-suite hspec-postgres
     hasql,
     hasql-postgres == 0.8.*,
     -- 
+    slave-thread == 0.1.*,
+    -- 
     hspec == 2.1.*,
+    -- 
+    text,
     -- 
     mtl-prelude < 3,
     base-prelude,
