@@ -184,7 +184,7 @@ benchmark demo
     Haskell2010
   build-depends:
     hasql,
-    hasql-postgres == 0.7.*,
+    hasql-postgres == 0.8.*,
     transformers >= 0.3 && < 0.5,
     base >= 4.5 && < 4.8
 

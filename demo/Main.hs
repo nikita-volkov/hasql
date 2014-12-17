@@ -11,12 +11,12 @@ import Data.Functor.Identity
 import qualified Hasql as H
 
 -- Import the backend settings from the "hasql-postgres" library
-import qualified Hasql.Postgres as H
+import qualified Hasql.Postgres as HP
 
 
 main = do
 
-  let postgresSettings = H.Postgres "localhost" 5432 "postgres" "" "postgres"
+  let postgresSettings = HP.ParamSettings "localhost" 5432 "postgres" "" "postgres"
 
   -- Prepare session settings with a smart constructor,
   -- which checks the inputted values on correctness.
