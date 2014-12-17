@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.4.0
+  0.4.1
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -66,6 +66,8 @@ build-type:
   Simple
 cabal-version:
   >=1.10
+extra-source-files:
+  CHANGELOG.md
 
 
 source-repository head
@@ -118,11 +120,11 @@ library
     base >= 4.5 && < 4.8
 
 
-test-suite tests
+test-suite hspec
   type:             
     exitcode-stdio-1.0
   hs-source-dirs:   
-    tests
+    hspec
   main-is:          
     Main.hs
   ghc-options:
@@ -134,19 +136,23 @@ test-suite tests
   default-language:
     Haskell2010
   build-depends:
+    -- 
     hasql,
     hasql-backend == 0.2.*,
-    base-prelude == 0.1.*,
-    HTF == 0.12.*,
-    base >= 4.5 && < 4.8
+    -- 
+    hspec == 2.1.*,
+    -- 
+    mtl-prelude < 3,
+    base-prelude,
+    base
 
 
-test-suite postgres-tests
-  type:             
+test-suite hspec-postgres
+  type:
     exitcode-stdio-1.0
-  hs-source-dirs:   
-    postgres-tests
-  main-is:          
+  hs-source-dirs:
+    hspec-postgres
+  main-is:
     Main.hs
   ghc-options:
     -threaded
@@ -157,12 +163,19 @@ test-suite postgres-tests
   default-language:
     Haskell2010
   build-depends:
+    -- 
     hasql,
-    hasql-postgres == 0.7.*,
+    hasql-postgres == 0.8.*,
+    -- 
+    slave-thread == 0.1.*,
+    -- 
+    hspec == 2.1.*,
+    -- 
+    text,
+    -- 
     mtl-prelude < 3,
-    base-prelude == 0.1.*,
-    HTF == 0.12.*,
-    base >= 4.5 && < 4.8
+    base-prelude,
+    base
 
 
 -- Well, it's not a benchmark actually, 
@@ -184,7 +197,7 @@ benchmark demo
     Haskell2010
   build-depends:
     hasql,
-    hasql-postgres == 0.7.*,
+    hasql-postgres == 0.8.*,
     transformers >= 0.3 && < 0.5,
     base >= 4.5 && < 4.8
 

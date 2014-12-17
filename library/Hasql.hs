@@ -250,16 +250,16 @@ tx m t =
           Backend b => 
           Backend.TransactionMode -> Backend.Connection b -> IO r -> IO r
         inTransaction mode c io =
-          do
-            Backend.beginTransaction mode c
-            try io >>= \case
-              Left Backend.TransactionConflict -> do
-                Backend.finishTransaction False c
-                inTransaction mode c io
-              Left e -> throwIO e
-              Right r -> do
-                Backend.finishTransaction True c
-                return r
+          let 
+            io' = 
+              Backend.beginTransaction mode c *> io <* Backend.finishTransaction True c
+            in
+              try io' >>= \case
+                Left Backend.TransactionConflict -> do
+                  Backend.finishTransaction False c
+                  inTransaction mode c io
+                Left e -> throwIO e
+                Right r -> return r
 
 
 -- * Results Stream
