@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.5.0
+  0.6.0
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -10,7 +10,7 @@ description:
   .
   Features:
   .
-  * Concise and crisp API. Just a few functions and two monads doing all the
+  * Concise and crisp API. Just a few functions and one monad doing all the
   boilerplate job for you.
   .
   * A powerful transaction abstraction, which provides 
@@ -31,7 +31,7 @@ description:
   * Automated management of resources related to connections, transactions and
   cursors.
   .
-  * A built-in connections pool.
+  * A built-in connection pool.
   .
   * Compile-time generation of templates. You just can't write a statement with an
   incorrect number of placeholders.
@@ -94,27 +94,21 @@ library
   exposed-modules:
     Hasql
   build-depends:
-    hasql-backend == 0.2.*,
-    -- template-haskell:
+    -- 
+    resource-pool == 0.2.*,
+    hasql-backend == 0.3.*,
+    -- 
     template-haskell >= 2.8 && < 2.10,
-    -- parsing:
+    -- 
     attoparsec >= 0.10 && < 0.13,
-    -- database:
-    ex-pool == 0.2.*,
-    -- data:
+    -- 
     vector < 0.11,
-    time >= 1.4 && < 1.6,
-    bytestring == 0.10.*,
     text >= 1.0 && < 1.3,
-    -- errors:
-    loch-th == 0.2.*,
-    placeholders == 0.1.*,
-    -- general:
-    safe == 0.3.*,
-    list-t >= 0.4 && < 0.5,
+    -- 
+    either >= 4.3 && < 4.4,
+    list-t >= 0.3.1 && < 0.5,
     mmorph == 1.0.*,
-    monad-control == 1.0.*,
-    transformers-base == 0.4.*,
+    mtl >= 2.1 && < 2.3,
     transformers >= 0.3 && < 0.5,
     base-prelude >= 0.1.3 && < 0.2,
     base >= 4.5 && < 4.8
@@ -138,9 +132,11 @@ test-suite hspec
   build-depends:
     -- 
     hasql,
-    hasql-backend == 0.2.*,
+    hasql-backend,
     -- 
     hspec == 2.1.*,
+    -- 
+    vector,
     -- 
     mtl-prelude < 3,
     base-prelude,
@@ -165,7 +161,7 @@ test-suite hspec-postgres
   build-depends:
     -- 
     hasql,
-    hasql-postgres == 0.9.*,
+    hasql-postgres == 0.10.*,
     -- 
     slave-thread == 0.1.*,
     -- 
@@ -173,6 +169,8 @@ test-suite hspec-postgres
     -- 
     text,
     -- 
+    monad-control,
+    either,
     mtl-prelude < 3,
     base-prelude,
     base
@@ -197,7 +195,7 @@ benchmark demo
     Haskell2010
   build-depends:
     hasql,
-    hasql-postgres == 0.9.*,
+    hasql-postgres == 0.10.*,
     transformers >= 0.3 && < 0.5,
     base >= 4.5 && < 4.8
 

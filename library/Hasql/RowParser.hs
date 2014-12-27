@@ -2,23 +2,26 @@ module Hasql.RowParser where
 
 import Hasql.Prelude
 import Language.Haskell.TH
-import qualified Hasql.Backend as Backend
+import qualified Hasql.Backend as Bknd
 import qualified Data.Vector as Vector
 import qualified Hasql.TH as THUtil
 
 
-class RowParser b r where
-  parseRow :: Vector.Vector (Backend.Result b) -> Either Text r
+-- |
+-- This class is only intended to be used with the supplied instances,
+-- which should be enough to cover all use cases.
+class RowParser c r where
+  parseRow :: Bknd.ResultRow c -> Either Text r
 
-instance RowParser b () where
+instance RowParser c () where
   parseRow row = 
     if Vector.null row
       then Right ()
       else Left "Not an empty row"
 
-instance Backend.Mapping b v => RowParser b (Identity v) where
+instance Bknd.CxValue c v => RowParser c (Identity v) where
   parseRow row = do
-    Identity <$> Backend.parseResult (Vector.unsafeHead row)
+    Identity <$> Bknd.decodeValue (Vector.unsafeHead row)
 
 -- Generate tuple instaces using Template Haskell:
 return $ flip map [2 .. 24] $ \arity ->
@@ -28,9 +31,9 @@ return $ flip map [2 .. 24] $ \arity ->
     varTypes =
       map VarT varNames
     connectionType =
-      VarT (mkName "b")
+      VarT (mkName "c")
     constraints =
-      map (\t -> ClassP ''Backend.Mapping [connectionType, t]) varTypes
+      map (\t -> ClassP ''Bknd.CxValue [connectionType, t]) varTypes
     head =
       AppT (AppT (ConT ''RowParser) connectionType) (foldl AppT (TupleT arity) varTypes)
     parseRowDec =
@@ -54,7 +57,7 @@ return $ flip map [2 .. 24] $ \arity ->
               i <- [0 .. pred arity]
               return $ THUtil.purify $
                 [|
-                  Backend.parseResult
+                  Bknd.decodeValue
                     (Vector.unsafeIndex $(varE rowVarName) $(litE (IntegerL $ fromIntegral i)) )
                 |]
     in InstanceD constraints head [parseRowDec]

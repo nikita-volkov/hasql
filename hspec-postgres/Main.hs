@@ -1,5 +1,7 @@
 import BasePrelude
 import MTLPrelude
+import Control.Monad.Trans.Either
+import Control.Monad.Trans.Control
 import Test.Hspec
 import Data.Text (Text)
 import qualified Hasql as H
@@ -15,17 +17,17 @@ main =
       context "Unhandled transaction conflict" $ do
 
         it "should not be" $ do
-          session $ H.tx Nothing $ do
-            H.unit [H.q|DROP TABLE IF EXISTS artist|]
-            H.unit [H.q|DROP TABLE IF EXISTS artist_union|]
-            H.unit $
+          session $ tx Nothing $ do
+            H.unitTx [H.q|DROP TABLE IF EXISTS artist|]
+            H.unitTx [H.q|DROP TABLE IF EXISTS artist_union|]
+            H.unitTx $
               [H.q|
                 CREATE TABLE "artist_union" (
                   "id" BIGSERIAL,
                   PRIMARY KEY ("id")
                 )
               |]
-            H.unit $
+            H.unitTx $
               [H.q|
                 CREATE TABLE "artist" (
                   "id" BIGSERIAL,
@@ -39,13 +41,13 @@ main =
           let 
             insertArtistUnion :: H.Tx HP.Postgres s Int64
             insertArtistUnion =
-              fmap (runIdentity . fromJust) $ H.single $
+              fmap (runIdentity . fromJust) $ H.maybeTx $
               [H.q| 
                 INSERT INTO artist_union DEFAULT VALUES RETURNING id
               |]
             insertArtist :: Int64 -> [Text] -> H.Tx HP.Postgres s Int64
             insertArtist unionID artistNames = 
-              fmap (runIdentity . fromJust) $ H.single $
+              fmap (runIdentity . fromJust) $ H.maybeTx $
               [H.q| 
                 INSERT INTO artist
                   (artist_union_id, 
@@ -58,7 +60,7 @@ main =
             process = 
                 SlaveThread.fork $ do
                   session $ replicateM_ 100 $ do 
-                    H.tx (Just (H.Serializable, True)) $ do
+                    tx (Just (H.Serializable, Just True)) $ do
                       unionID <- insertArtistUnion
                       insertArtist unionID ["a", "b", "c"]
                   signal
@@ -68,31 +70,24 @@ main =
     context "RowParser" $ do
 
       it "should fail on incorrect arity" $ do
-        flip shouldThrow (\case H.UnparsableRow _ -> True; _ -> False) $
+        flip shouldSatisfy (\case Left (H.UnparsableResult _) -> True; _ -> False) =<< do
           session $ do
-            H.tx Nothing $ do
-              H.unit [H.q|DROP TABLE IF EXISTS data|]
-              H.unit [H.q|CREATE TABLE data (
+            tx Nothing $ do
+              H.unitTx [H.q|DROP TABLE IF EXISTS data|]
+              H.unitTx [H.q|CREATE TABLE data (
                               field1    DECIMAL NOT NULL,
                               field2    BIGINT  NOT NULL,
                               PRIMARY KEY (field1)
                           )|]
-              H.unit [H.q|INSERT INTO data (field1, field2) VALUES (0, 0)|]
+              H.unitTx [H.q|INSERT INTO data (field1, field2) VALUES (0, 0)|]
             mrow :: Maybe (Double, Int64, String) <- 
-              H.tx Nothing $  
-                H.single $ [H.q|SELECT * FROM data|]
+              tx Nothing $  
+                H.maybeTx $ [H.q|SELECT * FROM data|]
             return ()
 
 
 -- * Helpers
 -------------------------
-
-session :: (forall s. H.Session HP.Postgres s IO r) -> IO r
-session =
-  H.session backendSettings poolSettings
-  where
-    backendSettings = HP.ParamSettings "localhost" 5432 "postgres" "" "postgres"
-    poolSettings = fromJust $ H.sessionSettings 6 30
 
 newBatchGate :: Int -> IO (IO (), IO ())
 newBatchGate amount =
@@ -102,3 +97,29 @@ newBatchGate amount =
       let signal = atomically $ readTVar counter >>= writeTVar counter . pred
           block = atomically $ readTVar counter >>= \x -> when (x > 0) retry
           in (signal, block)
+
+
+-- * Hasql utils
+-------------------------
+
+newtype HSession m r =
+  HSession (ReaderT (H.Pool HP.Postgres) (EitherT (H.TxError HP.Postgres) m) r)
+  deriving (Functor, Applicative, Monad, MonadIO)
+
+instance MonadTrans HSession where
+  lift = HSession . lift . lift
+
+tx :: MonadIO m => H.TxMode -> (forall s. H.Tx HP.Postgres s a) -> HSession m a
+tx mode m =
+  HSession $ ReaderT $ \p -> EitherT $ liftIO $ H.tx p mode m
+
+session :: MonadBaseControl IO m => HSession m r -> m (Either (H.TxError HP.Postgres) r)
+session (HSession m) =
+  control $ \unlift -> do
+    p <- H.acquirePool backendSettings poolSettings
+    r <- unlift $ runEitherT $ runReaderT m p
+    H.releasePool p
+    return r
+  where
+    backendSettings = HP.ParamSettings "localhost" 5432 "postgres" "" "postgres"
+    poolSettings = fromJust $ H.poolSettings 6 30
