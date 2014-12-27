@@ -12,6 +12,12 @@ import qualified SlaveThread
 main = 
   hspec $ do
 
+    context "UTF-8 templates" $ do
+
+      it "encode properly" $ do
+        flip shouldBe (Right (Just (Identity ("Ёжик" :: Text)))) =<< do
+          session $ H.tx Nothing $ H.maybeTx $ [H.stmt| SELECT 'Ёжик' |]
+
     context "Bug" $ do
 
       context "Unhandled transaction conflict" $ do
