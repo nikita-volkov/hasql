@@ -166,6 +166,11 @@ instance (MonadBaseControl IO m) => MonadBaseControl IO (Session c m) where
   liftBaseWith = defaultLiftBaseWith
   restoreM = defaultRestoreM
 
+instance MFunctor (Session c) where
+  hoist f (Session m) = 
+    Session $ ReaderT $ \e ->
+      EitherT $ f $ runEitherT $ flip runReaderT e $ m
+
 -- |
 -- Execute a session using an established connection pool.
 -- 
