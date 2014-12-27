@@ -14,62 +14,6 @@ main =
 
     context "Tx" $ do
 
-      it "commits after a handled failure" $ do
-        flip shouldBe (Right (Just (Identity (234 :: Int)))) =<< do
-          session $ do
-            H.tx Nothing $ do
-              H.unitTx $ [H.stmt|DROP TABLE IF EXISTS a|]
-              H.unitTx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            H.tx (Just (H.Serializable, Just True)) $ do
-              flip catchError (const $ return ()) $
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (234)|] 
-            H.tx Nothing $ do
-              H.maybeTx $ [H.stmt|SELECT x FROM a WHERE x = 234|]
-
-      it "catches a failure in the end of the transaction" $ do
-        flip shouldBe (Right (Just (Identity (234 :: Int)))) =<< do
-          session $ do
-            H.tx Nothing $ do
-              H.unitTx $ [H.stmt|DROP TABLE IF EXISTS a|]
-              H.unitTx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            H.tx (Just (H.Serializable, Just True)) $ do
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (234)|] 
-              flip catchError (const $ return ()) $
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            H.tx Nothing $ do
-              H.maybeTx $ [H.stmt|SELECT x FROM a WHERE x = 234|]
-
-      it "does not commit after an unhandled failure" $ do
-        flip shouldBe (Right (Nothing :: Maybe (Identity Int))) =<< do
-          session $ do
-            H.tx Nothing $ do
-              H.unitTx $ [H.stmt|DROP TABLE IF EXISTS a|]
-              H.unitTx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            flip catchError (const $ return ()) $
-              H.tx (Just (H.Serializable, Just True)) $ do
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (234)|] 
-            H.tx Nothing $ do
-              H.maybeTx $ [H.stmt|SELECT x FROM a WHERE x = 234|]
-
-      it "does not commit before an unhandled failure" $ do
-        flip shouldBe (Right (Nothing :: Maybe (Identity Int))) =<< do
-          session $ do
-            H.tx Nothing $ do
-              H.unitTx $ [H.stmt|DROP TABLE IF EXISTS a|]
-              H.unitTx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            flip catchError (const $ return ()) $
-              H.tx (Just (H.Serializable, Just True)) $ do
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (234)|] 
-                H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
-            H.tx Nothing $ do
-              H.maybeTx $ [H.stmt|SELECT x FROM a WHERE x = 234|]
-
       it "does not commit if in uncommitting mode" $ do
         flip shouldBe (Right (Nothing :: Maybe (Identity Int))) =<< do
           session $ do

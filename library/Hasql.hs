@@ -200,29 +200,6 @@ newtype Tx c s r =
   Tx { unwrapTx :: EitherT (TxError c) (Bknd.Tx c) r }
   deriving (Functor, Applicative, Monad)
 
-instance MonadError (TxError c) (Tx c s) where
-  throwError =
-    \case
-      BackendTxError e ->
-        Tx $ lift $ throwError e
-      e ->
-        Tx $ throwError e
-  catchError m h =
-    Tx $ 
-    let 
-      m1 =
-        let 
-          m2 = 
-            runEitherT $ unwrapTx $ m
-          h2 = 
-            return . Left . BackendTxError
-          in 
-            EitherT $ catchError m2 h2
-      h1 =
-        unwrapTx . h
-      in
-        catchError m1 h1
-
 
 data TxError c =
   -- |
