@@ -141,9 +141,29 @@ poolSettings size timeout =
 
 -- |
 -- A convenience wrapper around 'ReaderT', 
--- which provides a shared context for execution of transactions.
-type Session c m =
-  ReaderT (Pool c) (EitherT (TxError c) m)
+-- which provides a shared context for execution and error-handling of transactions.
+newtype Session c m r =
+  Session (ReaderT (Pool c) (EitherT (TxError c) m) r)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadError (TxError c))
+
+instance MonadTrans (Session c) where
+  lift = Session . lift . lift
+
+instance MonadTransControl (Session c) where
+  type StT (Session c) a = Either (TxError c) a
+  liftWith onUnlift =
+    Session $ ReaderT $ \e -> 
+      lift $ onUnlift $ \(Session m) -> 
+        runEitherT $ flip runReaderT e $ m
+  restoreT = 
+    Session . ReaderT . const . EitherT
+
+deriving instance MonadBase IO m => MonadBase IO (Session c m)
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Session c m) where
+  type StM (Session c m) a = ComposeSt (Session c) m a
+  liftBaseWith = defaultLiftBaseWith
+  restoreM = defaultRestoreM
 
 -- |
 -- Execute a session using an established connection pool.
@@ -153,7 +173,7 @@ type Session c m =
 -- if you want.
 session :: Pool c -> Session c m a -> m (Either (TxError c) a)
 session pool m =
-  runEitherT $ flip runReaderT pool $ m
+  runEitherT $ flip runReaderT pool $ case m of Session m -> m
 
 
 -- * Transaction
@@ -199,7 +219,7 @@ deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (TxError c)
 -- that it's impossible to return @'TxListT' s m r@ from it.
 tx :: (Bknd.CxTx c, MonadBaseControl IO m) => Bknd.TxMode -> (forall s. Tx c s r) -> Session c m r
 tx mode (Tx m) =
-  ReaderT $ \(Pool pool) ->
+  Session $ ReaderT $ \(Pool pool) ->
     Pool.withResource pool $ \e -> do
       c <- hoistEither $ mapLeft BackendCxError e
       let
