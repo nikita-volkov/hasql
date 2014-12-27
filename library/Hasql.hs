@@ -60,6 +60,7 @@ import qualified Hasql.RowParser as RowParser
 import qualified Hasql.QParser as QParser
 import qualified ListT
 import qualified Data.Pool as Pool
+import qualified Data.Text as Text
 import qualified Data.Vector as Vector
 import qualified Data.Vector.Mutable as MVector
 import qualified Language.Haskell.TH as TH
@@ -337,8 +338,8 @@ stmt =
   where
     parseExp s =
       do
-        n <- either (fail . showString "Parsing failure: ") return (QParser.parse (fromString s))
-        return $ statementF s (fromIntegral n)
+        (t, n) <- either (fail . showString "Parsing failure: ") return (QParser.parse (fromString s))
+        return $ statementF (Text.unpack t) (fromIntegral n)
     statementF s n =
       TH.LamE
         (map TH.VarP argNames)

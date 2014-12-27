@@ -2,37 +2,49 @@ module Hasql.QParser where
 
 import Hasql.Prelude hiding (takeWhile)
 import Data.Attoparsec.Text hiding (Result)
-import qualified Data.Text as Text
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.Builder as TLB
 
 
 -- |
--- The amount of placeholders.
-type Result =
-  (Word)
-
-parse :: Text -> Either String Result
+-- Produces a whitespace-cleaned text and a count of placeholders in it.
+parse :: Text -> Either String (Text, Int)
 parse = 
-  parseOnly $ flip execStateT 0 $
-    statement *>
-    (lift endOfInput <|> 
-     (void (lift (char ';')) <* fail "A semicolon detected. Only single statements are allowed"))
-  where
-    statement =
-      skipMany1 $ 
-        void (lift stringLit) <|> 
-        void (lift (char '?') <* modify succ) <|>
-        void (lift (notChar ';'))
+  parseOnly $ singleTemplate
+
+singleTemplate :: Parser (Text, Int)
+singleTemplate =
+  template <* 
+  ((endOfInput) <|>
+   (() <$ skipSpace <* char ';' <* fail "A semicolon detected. Only single statements are allowed"))
+
+template :: Parser (Text, Int)
+template =
+  flip runStateT 0 $ do
+    lift $ skipSpace
+    fmap (TL.toStrict . TLB.toLazyText . mconcat) $ 
+      many $ 
+        (mempty <$ lift trailingWhitespace) <|>
+        (TLB.singleton ' ' <$ lift (takeWhile1 isSpace)) <|>
+        (TLB.fromText <$> lift stringLit) <|>
+        (TLB.singleton <$> lift (char '?') <* modify succ) <|>
+        (TLB.singleton <$> lift (notChar ';'))
+
+trailingWhitespace :: Parser ()
+trailingWhitespace =
+  () <$ takeWhile1 isSpace <* endOfInput
 
 stringLit :: Parser Text
 stringLit =
   do
     quote <- 
       char '"' <|> char '\''
-    text <- 
+    content <- 
       fmap mconcat $ many $ 
-        string "\\\\" <|> 
-        string (fromString ['\\', quote]) <|> 
-        (Text.singleton <$> notChar quote)
+        TLB.fromText <$> string "\\\\" <|> 
+        TLB.fromText <$> string (fromString ['\\', quote]) <|> 
+        TLB.singleton <$> notChar quote
     char quote
-    return text
-
+    return $ TL.toStrict . TLB.toLazyText $
+      TLB.singleton quote <> content <> TLB.singleton quote
