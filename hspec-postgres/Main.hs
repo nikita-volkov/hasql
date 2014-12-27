@@ -81,10 +81,10 @@ main =
             H.tx Nothing $ do
               H.unitTx [H.stmt|DROP TABLE IF EXISTS data|]
               H.unitTx [H.stmt|CREATE TABLE data (
-                              field1    DECIMAL NOT NULL,
-                              field2    BIGINT  NOT NULL,
-                              PRIMARY KEY (field1)
-                          )|]
+                                   field1    DECIMAL NOT NULL,
+                                   field2    BIGINT  NOT NULL,
+                                   PRIMARY KEY (field1)
+                               )|]
               H.unitTx [H.stmt|INSERT INTO data (field1, field2) VALUES (0, 0)|]
             mrow :: Maybe (Double, Int64, String) <- 
               H.tx Nothing $  
