@@ -28,7 +28,7 @@ import Control.Monad.Trans.Control as Exports hiding (embed, embed_)
 
 -- mtl
 -------------------------
-import Control.Monad.Error.Class as Exports
+import Control.Monad.Error.Class as Exports hiding (Error)
 
 -- mmorph
 -------------------------

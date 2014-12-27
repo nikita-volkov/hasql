@@ -23,6 +23,9 @@ module Hasql
   Session,
   session,
 
+  -- ** Session Error
+  SessionError(..),
+
   -- * Statement
   Bknd.Stmt,
   stmt,
@@ -42,9 +45,6 @@ module Hasql
   Bknd.TxMode(..),
   Bknd.TxIsolationLevel(..),
   Bknd.TxWriteMode(..),
-
-  -- ** Transaction Error
-  TxError(..),
 
   -- ** Result Stream
   TxListT,
@@ -144,14 +144,14 @@ poolSettings size timeout =
 -- A convenience wrapper around 'ReaderT', 
 -- which provides a shared context for execution and error-handling of transactions.
 newtype Session c m r =
-  Session (ReaderT (Pool c) (EitherT (TxError c) m) r)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadError (TxError c))
+  Session (ReaderT (Pool c) (EitherT (SessionError c) m) r)
+  deriving (Functor, Applicative, Monad, MonadIO, MonadError (SessionError c))
 
 instance MonadTrans (Session c) where
   lift = Session . lift . lift
 
 instance MonadTransControl (Session c) where
-  type StT (Session c) a = Either (TxError c) a
+  type StT (Session c) a = Either (SessionError c) a
   liftWith onUnlift =
     Session $ ReaderT $ \e -> 
       lift $ onUnlift $ \(Session m) -> 
@@ -177,7 +177,7 @@ instance MFunctor (Session c) where
 -- This is merely a wrapper around 'runReaderT',
 -- so you can run it around every transaction,
 -- if you want.
-session :: Pool c -> Session c m a -> m (Either (TxError c) a)
+session :: Pool c -> Session c m a -> m (Either (SessionError c) a)
 session pool m =
   runEitherT $ flip runReaderT pool $ case m of Session m -> m
 
@@ -197,27 +197,27 @@ session pool m =
 -- an unpredictable amount of times as well, 
 -- which, chances are, is not what you want.
 newtype Tx c s r =
-  Tx { unwrapTx :: EitherT (TxError c) (Bknd.Tx c) r }
+  Tx { unwrapTx :: EitherT (SessionError c) (Bknd.Tx c) r }
   deriving (Functor, Applicative, Monad)
 
 
-data TxError c =
+data SessionError c =
   -- |
   -- A backend-specific connection acquisition error.
   -- E.g., a failure to establish a connection.
-  BackendCxError (Bknd.CxError c) |
+  CxError (Bknd.CxError c) |
   -- |
   -- A backend-specific transaction error.
   -- It should cover all possible failures related to an established connection,
   -- including the loss of connection, query errors and database failures.
-  BackendTxError (Bknd.TxError c) |
+  TxError (Bknd.TxError c) |
   -- |
   -- Attempt to parse a result into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
   UnparsableResult Text
 
-deriving instance (Show (Bknd.CxError c), Show (Bknd.TxError c)) => Show (TxError c)
-deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (TxError c)
+deriving instance (Show (Bknd.CxError c), Show (Bknd.TxError c)) => Show (SessionError c)
+deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (SessionError c)
 
 -- |
 -- Execute a transaction in a session.
@@ -228,11 +228,11 @@ tx :: (Bknd.CxTx c, MonadBaseControl IO m) => Bknd.TxMode -> (forall s. Tx c s r
 tx mode (Tx m) =
   Session $ ReaderT $ \(Pool pool) ->
     Pool.withResource pool $ \e -> do
-      c <- hoistEither $ mapLeft BackendCxError e
+      c <- hoistEither $ mapLeft CxError e
       let
         attempt =
           do
-            r <- EitherT $ liftBase $ fmap (either (Left . BackendTxError) Right) $ 
+            r <- EitherT $ liftBase $ fmap (either (Left . TxError) Right) $ 
                  Bknd.runTx c mode $ runEitherT m
             maybe attempt hoistEither r
         in attempt

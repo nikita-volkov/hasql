@@ -124,7 +124,7 @@ newBatchGate amount =
 type Session m =
   H.Session HP.Postgres m
 
-session :: MonadBaseControl IO m => Session m r -> m (Either (H.TxError HP.Postgres) r)
+session :: MonadBaseControl IO m => Session m r -> m (Either (H.SessionError HP.Postgres) r)
 session m =
   control $ \unlift -> do
     p <- H.acquirePool backendSettings poolSettings
