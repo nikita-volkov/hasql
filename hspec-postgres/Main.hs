@@ -18,17 +18,17 @@ main =
 
         it "should not be" $ do
           session $ H.tx Nothing $ do
-            H.unitTx [H.q|DROP TABLE IF EXISTS artist|]
-            H.unitTx [H.q|DROP TABLE IF EXISTS artist_union|]
+            H.unitTx [H.stmt|DROP TABLE IF EXISTS artist|]
+            H.unitTx [H.stmt|DROP TABLE IF EXISTS artist_union|]
             H.unitTx $
-              [H.q|
+              [H.stmt|
                 CREATE TABLE "artist_union" (
                   "id" BIGSERIAL,
                   PRIMARY KEY ("id")
                 )
               |]
             H.unitTx $
-              [H.q|
+              [H.stmt|
                 CREATE TABLE "artist" (
                   "id" BIGSERIAL,
                   "artist_union_id" INT8 NOT NULL,
@@ -42,13 +42,13 @@ main =
             insertArtistUnion :: H.Tx HP.Postgres s Int64
             insertArtistUnion =
               fmap (runIdentity . fromJust) $ H.maybeTx $
-              [H.q| 
+              [H.stmt| 
                 INSERT INTO artist_union DEFAULT VALUES RETURNING id
               |]
             insertArtist :: Int64 -> [Text] -> H.Tx HP.Postgres s Int64
             insertArtist unionID artistNames = 
               fmap (runIdentity . fromJust) $ H.maybeTx $
-              [H.q| 
+              [H.stmt| 
                 INSERT INTO artist
                   (artist_union_id, 
                    names)
@@ -73,16 +73,16 @@ main =
         flip shouldSatisfy (\case Left (H.UnparsableResult _) -> True; _ -> False) =<< do
           session $ do
             H.tx Nothing $ do
-              H.unitTx [H.q|DROP TABLE IF EXISTS data|]
-              H.unitTx [H.q|CREATE TABLE data (
+              H.unitTx [H.stmt|DROP TABLE IF EXISTS data|]
+              H.unitTx [H.stmt|CREATE TABLE data (
                               field1    DECIMAL NOT NULL,
                               field2    BIGINT  NOT NULL,
                               PRIMARY KEY (field1)
                           )|]
-              H.unitTx [H.q|INSERT INTO data (field1, field2) VALUES (0, 0)|]
+              H.unitTx [H.stmt|INSERT INTO data (field1, field2) VALUES (0, 0)|]
             mrow :: Maybe (Double, Int64, String) <- 
               H.tx Nothing $  
-                H.maybeTx $ [H.q|SELECT * FROM data|]
+                H.maybeTx $ [H.stmt|SELECT * FROM data|]
             return ()
 
 

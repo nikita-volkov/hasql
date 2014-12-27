@@ -7,6 +7,7 @@
 * The transaction mode is now extended to support uncommittable transactions with the `TxWriteMode` type.
 * `Tx` now has a `MonadError` instance, which allows to handle errors while remaining in the transaction.
 * All `Tx` functions are now appended with a "Tx" suffix.
+* `q` statement quasi-quoter is now renamed to more meaningful `stmt`.
 * There is no `list` transaction any more. Instead there is `vectorTx`. 
 * The `Statement` type is renamed to `Stmt` and is now exported from the main API.
 * `RowParser` is now uninstantiable. This enforces the idiomatic usage of the library.

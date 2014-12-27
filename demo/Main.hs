@@ -36,11 +36,11 @@ main = do
 
     -- Execute a group of statements without any locking and ACID guarantees:
     H.tx Nothing $ do
-      H.unitTx [H.q|DROP TABLE IF EXISTS a|]
-      H.unitTx [H.q|CREATE TABLE a (id SERIAL NOT NULL, balance INT8, PRIMARY KEY (id))|]
+      H.unitTx [H.stmt|DROP TABLE IF EXISTS a|]
+      H.unitTx [H.stmt|CREATE TABLE a (id SERIAL NOT NULL, balance INT8, PRIMARY KEY (id))|]
       -- Insert three rows:
       replicateM_ 3 $ do 
-        H.unitTx [H.q|INSERT INTO a (balance) VALUES (0)|]
+        H.unitTx [H.stmt|INSERT INTO a (balance) VALUES (0)|]
 
     -- Declare a list of transfer settings, which we'll later use.
     -- The tuple structure is: 
@@ -56,16 +56,16 @@ main = do
         runMaybeT $ do
           -- To distinguish results rows containing just one column, 
           -- we use 'Identity' as a sort of a single element tuple.
-          Identity balance1 <- MaybeT $ H.maybeTx $ [H.q|SELECT balance FROM a WHERE id=?|] id1
-          Identity balance2 <- MaybeT $ H.maybeTx $ [H.q|SELECT balance FROM a WHERE id=?|] id2
-          lift $ H.unitTx $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance1 - amount) id1
-          lift $ H.unitTx $ [H.q|UPDATE a SET balance=? WHERE id=?|] (balance2 + amount) id2
+          Identity balance1 <- MaybeT $ H.maybeTx $ [H.stmt|SELECT balance FROM a WHERE id=?|] id1
+          Identity balance2 <- MaybeT $ H.maybeTx $ [H.stmt|SELECT balance FROM a WHERE id=?|] id2
+          lift $ H.unitTx $ [H.stmt|UPDATE a SET balance=? WHERE id=?|] (balance1 - amount) id1
+          lift $ H.unitTx $ [H.stmt|UPDATE a SET balance=? WHERE id=?|] (balance2 + amount) id2
 
     -- Output all the updated rows:
     do
       -- Unfortunately in this case there's no way to infer the type of the results,
       -- so we need to specify it explicitly:
-      rows <- H.tx Nothing $ H.vectorTx $ [H.q|SELECT * FROM a|]
+      rows <- H.tx Nothing $ H.vectorTx $ [H.stmt|SELECT * FROM a|]
       forM_ rows $ \(id :: Int, amount :: Int) -> do
         liftIO $ putStrLn $ "ID: " ++ show id ++ ", Amount: " ++ show amount
 

@@ -25,7 +25,7 @@ module Hasql
 
   -- * Statement
   Bknd.Stmt,
-  q,
+  stmt,
 
   -- ** Statement Execution
   unitTx,
@@ -305,10 +305,10 @@ instance ListT.MonadTransUncons (TxListT s) where
 -- E.g.:
 -- 
 -- >selectSum :: Int -> Int -> Stmt c
--- >selectSum = [q|SELECT (? + ?)|]
+-- >selectSum = [stmt|SELECT (? + ?)|]
 -- 
-q :: TH.QuasiQuoter
-q = 
+stmt :: TH.QuasiQuoter
+stmt = 
   TH.QuasiQuoter
     (parseExp)
     (const $ fail "Pattern context is not supported")

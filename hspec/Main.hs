@@ -23,4 +23,4 @@ main =
       it "generates a proper statement" $ do
         (flip shouldBe)
           (HB.Stmt " SELECT (? + ?) " (V.fromList [HB.encodeValue 'a', HB.encodeValue 'b']) True)
-          ([H.q| SELECT (? + ?) |] 'a' 'b' :: HB.Stmt X)
+          ([H.stmt| SELECT (? + ?) |] 'a' 'b' :: HB.Stmt X)
