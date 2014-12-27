@@ -17,7 +17,7 @@ main =
       context "Unhandled transaction conflict" $ do
 
         it "should not be" $ do
-          session $ tx Nothing $ do
+          session $ H.tx Nothing $ do
             H.unitTx [H.q|DROP TABLE IF EXISTS artist|]
             H.unitTx [H.q|DROP TABLE IF EXISTS artist_union|]
             H.unitTx $
@@ -60,7 +60,7 @@ main =
             process = 
                 SlaveThread.fork $ do
                   session $ replicateM_ 100 $ do 
-                    tx (Just (H.Serializable, Just True)) $ do
+                    H.tx (Just (H.Serializable, Just True)) $ do
                       unionID <- insertArtistUnion
                       insertArtist unionID ["a", "b", "c"]
                   signal
@@ -72,7 +72,7 @@ main =
       it "should fail on incorrect arity" $ do
         flip shouldSatisfy (\case Left (H.UnparsableResult _) -> True; _ -> False) =<< do
           session $ do
-            tx Nothing $ do
+            H.tx Nothing $ do
               H.unitTx [H.q|DROP TABLE IF EXISTS data|]
               H.unitTx [H.q|CREATE TABLE data (
                               field1    DECIMAL NOT NULL,
@@ -81,7 +81,7 @@ main =
                           )|]
               H.unitTx [H.q|INSERT INTO data (field1, field2) VALUES (0, 0)|]
             mrow :: Maybe (Double, Int64, String) <- 
-              tx Nothing $  
+              H.tx Nothing $  
                 H.maybeTx $ [H.q|SELECT * FROM data|]
             return ()
 
@@ -102,22 +102,14 @@ newBatchGate amount =
 -- * Hasql utils
 -------------------------
 
-newtype HSession m r =
-  HSession (ReaderT (H.Pool HP.Postgres) (EitherT (H.TxError HP.Postgres) m) r)
-  deriving (Functor, Applicative, Monad, MonadIO)
+type Session m =
+  H.Session HP.Postgres m
 
-instance MonadTrans HSession where
-  lift = HSession . lift . lift
-
-tx :: MonadIO m => H.TxMode -> (forall s. H.Tx HP.Postgres s a) -> HSession m a
-tx mode m =
-  HSession $ ReaderT $ \p -> EitherT $ liftIO $ H.tx p mode m
-
-session :: MonadBaseControl IO m => HSession m r -> m (Either (H.TxError HP.Postgres) r)
-session (HSession m) =
+session :: MonadBaseControl IO m => Session m r -> m (Either (H.TxError HP.Postgres) r)
+session m =
   control $ \unlift -> do
     p <- H.acquirePool backendSettings poolSettings
-    r <- unlift $ runEitherT $ runReaderT m p
+    r <- unlift $ H.session p m
     H.releasePool p
     return r
   where

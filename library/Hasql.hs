@@ -19,6 +19,10 @@ module Hasql
   PoolSettings,
   poolSettings,
 
+  -- * Session
+  Session,
+  session,
+
   -- * Statement
   Bknd.Stmt,
   q,
@@ -75,6 +79,16 @@ newtype Pool c =
 -- Given backend-specific connection settings and pool settings, 
 -- acquire a backend connection pool,
 -- which can then be used to work with the DB.
+-- 
+-- When combining Hasql with other libraries, 
+-- which throw exceptions it makes sence to utilize 
+-- @Control.Exception.'bracket'@
+-- like this:
+-- 
+-- >bracket (acquirePool bkndStngs poolStngs) (releasePool) $ \pool -> do
+-- >  session pool $ do
+-- >    ...
+-- >  ... any other IO code
 acquirePool :: Bknd.Cx c => Bknd.CxSettings c -> PoolSettings -> IO (Pool c)
 acquirePool cxSettings (PoolSettings size timeout) =
   fmap Pool $
@@ -122,6 +136,26 @@ poolSettings size timeout =
     else Nothing
 
 
+-- * Session
+-------------------------
+
+-- |
+-- A convenience wrapper around 'ReaderT', 
+-- which provides a shared context for execution of transactions.
+type Session c m =
+  ReaderT (Pool c) (EitherT (TxError c) m)
+
+-- |
+-- Execute a session using an established connection pool.
+-- 
+-- This is merely a wrapper around 'runReaderT',
+-- so you can run it around every transaction,
+-- if you want.
+session :: Pool c -> Session c m a -> m (Either (TxError c) a)
+session pool m =
+  runEitherT $ flip runReaderT pool $ m
+
+
 -- * Transaction
 -------------------------
 
@@ -159,19 +193,19 @@ deriving instance (Show (Bknd.CxError c), Show (Bknd.TxError c)) => Show (TxErro
 deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (TxError c)
 
 -- |
--- Execute a transaction on a connection pool.
+-- Execute a transaction in a session.
 -- 
 -- This function ensures on the type level, 
 -- that it's impossible to return @'TxListT' s m r@ from it.
-tx :: Bknd.CxTx c => Pool c -> Bknd.TxMode -> (forall s. Tx c s r) -> IO (Either (TxError c) r)
-tx (Pool pool) mode (Tx m) =
-  Pool.withResource pool $ \e ->
-    runEitherT $ do
+tx :: (Bknd.CxTx c, MonadBaseControl IO m) => Bknd.TxMode -> (forall s. Tx c s r) -> Session c m r
+tx mode (Tx m) =
+  ReaderT $ \(Pool pool) ->
+    Pool.withResource pool $ \e -> do
       c <- hoistEither $ mapLeft BackendCxError e
       let
         attempt =
           do
-            r <- EitherT $ fmap (either (Left . BackendTxError) Right) $ 
+            r <- EitherT $ liftBase $ fmap (either (Left . BackendTxError) Right) $ 
                  Bknd.runTx c mode $ runEitherT m
             maybe attempt hoistEither r
         in attempt
