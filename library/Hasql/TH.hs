@@ -39,8 +39,12 @@ vectorLamE arity =
 
 vectorE :: [Exp] -> Exp
 vectorE cellExps =
-  AppE (VarE 'runST) $ DoE $ 
-    pure vectorDeclarationStmt <> cellAssignmentStmts <> pure freezingStmt
+  if null cellExps
+    then
+      VarE 'Vector.empty
+    else
+      AppE (VarE 'runST) $ DoE $ 
+        pure vectorDeclarationStmt <> cellAssignmentStmts <> pure freezingStmt
   where
     vectorVarName =
       mkName "v"
