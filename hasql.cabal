@@ -10,7 +10,7 @@ description:
   .
   Features:
   .
-  * Concise and crisp API. Just a few functions and one monad doing all the
+  * Concise and crisp API. Just a few functions and two monads doing all the
   boilerplate job for you.
   .
   * A powerful transaction abstraction, which provides 
