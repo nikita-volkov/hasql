@@ -259,8 +259,7 @@ countTx =
 -- which produces a single result row.
 -- E.g., 
 -- a @SELECT@ 
--- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id),
--- or an @UPDATE@ or @DELETE@, counting the affected rows.
+-- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
 maybeTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Maybe r)
 maybeTx s =
   Tx $ do
