@@ -33,6 +33,7 @@ module Hasql
   -- ** Statement Execution
   unitTx,
   countTx,
+  singleTx,
   maybeTx,
   listTx,
   vectorTx,
@@ -215,7 +216,7 @@ data SessionError c =
   -- |
   -- Attempt to parse a result into an incompatible type.
   -- Indicates either a mismatching schema or an incorrect query.
-  UnparsableResult Text
+  ResultError Text
 
 deriving instance (Show (Bknd.CxError c), Show (Bknd.TxError c)) => Show (SessionError c)
 deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (SessionError c)
@@ -257,29 +258,42 @@ countTx =
 
 -- |
 -- Execute a statement,
--- which produces a single result row.
--- E.g., 
--- a @SELECT@ 
--- or an @INSERT@, which produces a generated value (e.g., an auto-incremented id).
+-- which produces exactly one result row.
+-- E.g., @INSERT@, which returns an autoincremented identifier,
+-- or @SELECT COUNT@, or @SELECT EXISTS@.
+-- 
+-- Please note that using this executor for selecting rows is conceptually wrong, 
+-- since in that case the results are always optional. 
+-- Use 'maybeTx', 'listTx' or 'vectorTx' instead.
+-- 
+-- If the result is empty this executor will raise 'ResultError'.
+singleTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s r
+singleTx =
+  join . fmap (maybe (Tx $ left $ ResultError "No rows on 'singleTx'") return) .
+  maybeTx
+
+-- |
+-- Execute a statement,
+-- which optionally produces a single result row.
 maybeTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Maybe r)
 maybeTx =
   fmap (fmap Vector.unsafeHead . mfilter (not . Vector.null) . Just) . vectorTx
 
 -- |
--- Execute a @SELECT@ statement,
+-- Execute a statement,
 -- and produce a list of results.
 listTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s [r]
 listTx =
   fmap toList . vectorTx
 
 -- |
--- Execute a @SELECT@ statement,
+-- Execute a statement,
 -- and produce a vector of results.
 vectorTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Vector r)
 vectorTx s =
   Tx $ do
     r <- lift $ Bknd.vectorTx s
-    EitherT $ return $ traverse ((mapLeft UnparsableResult) . RowParser.parseRow) $ r
+    EitherT $ return $ traverse ((mapLeft ResultError) . RowParser.parseRow) $ r
 
 -- |
 -- Execute a @SELECT@ statement with a cursor,
@@ -296,7 +310,7 @@ streamTx s =
     r <- lift $ Bknd.streamTx s
     return $ TxListT $ do
       row <- hoist (Tx . lift) r
-      lift $ Tx $ EitherT $ return $ mapLeft UnparsableResult $ RowParser.parseRow $ row
+      lift $ Tx $ EitherT $ return $ mapLeft ResultError $ RowParser.parseRow $ row
 
 
 -- * Result Stream

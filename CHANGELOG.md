@@ -6,6 +6,7 @@
 * The error types are now mostly backend-specific.
 * The transaction mode is now extended to support uncommittable transactions with the `TxWriteMode` type.
 * All `Tx` functions are now appended with a "Tx" suffix.
+* Added `vectorTx` and `maybeTx` and updated the semantics of `singleTx`.
 * `q` statement quasi-quoter is now renamed to more meaningful `stmt`.
 * The `Statement` type is renamed to `Stmt` and is now exported from the main API.
 * `RowParser` is now uninstantiable. This enforces the idiomatic usage of the library.

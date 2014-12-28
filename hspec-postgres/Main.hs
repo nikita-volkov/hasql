@@ -89,7 +89,7 @@ main =
     context "RowParser" $ do
 
       it "should fail on incorrect arity" $ do
-        flip shouldSatisfy (\case Left (H.UnparsableResult _) -> True; _ -> False) =<< do
+        flip shouldSatisfy (\case Left (H.ResultError _) -> True; _ -> False) =<< do
           session $ do
             H.tx Nothing $ do
               H.unitTx [H.stmt|DROP TABLE IF EXISTS data|]
