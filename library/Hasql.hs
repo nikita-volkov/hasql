@@ -34,6 +34,7 @@ module Hasql
   unitTx,
   countTx,
   maybeTx,
+  listTx,
   vectorTx,
   streamTx,
 
@@ -263,6 +264,13 @@ countTx =
 maybeTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Maybe r)
 maybeTx =
   fmap (fmap Vector.unsafeHead . mfilter (not . Vector.null) . Just) . vectorTx
+
+-- |
+-- Execute a @SELECT@ statement,
+-- and produce a list of results.
+listTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s [r]
+listTx =
+  fmap toList . vectorTx
 
 -- |
 -- Execute a @SELECT@ statement,
