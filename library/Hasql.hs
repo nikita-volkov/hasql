@@ -1,4 +1,4 @@
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE UndecidableInstances, CPP #-}
 -- |
 -- This is the API of the \"hasql\" library.
 -- For an introduction to the package 
@@ -161,6 +161,16 @@ newtype Session c m r =
 instance MonadTrans (Session c) where
   lift = Session . lift . lift
 
+deriving instance MonadBase IO m => MonadBase IO (Session c m)
+
+instance MFunctor (Session c) where
+  hoist f (Session m) = 
+    Session $ ReaderT $ \e ->
+      EitherT $ f $ runEitherT $ flip runReaderT e $ m
+
+
+#if MIN_VERSION_monad_control(1,0,0)
+
 instance MonadTransControl (Session c) where
   type StT (Session c) a = Either (SessionError c) a
   liftWith onUnlift =
@@ -170,17 +180,32 @@ instance MonadTransControl (Session c) where
   restoreT = 
     Session . ReaderT . const . EitherT
 
-deriving instance MonadBase IO m => MonadBase IO (Session c m)
-
 instance (MonadBaseControl IO m) => MonadBaseControl IO (Session c m) where
   type StM (Session c m) a = ComposeSt (Session c) m a
   liftBaseWith = defaultLiftBaseWith
   restoreM = defaultRestoreM
 
-instance MFunctor (Session c) where
-  hoist f (Session m) = 
-    Session $ ReaderT $ \e ->
-      EitherT $ f $ runEitherT $ flip runReaderT e $ m
+#else
+
+instance MonadTransControl (Session c) where
+  newtype StT (Session c) a = 
+    SessionStT (Either (SessionError c) a)
+  liftWith onUnlift =
+    Session $ ReaderT $ \e -> 
+      lift $ onUnlift $ \(Session m) -> 
+        liftM SessionStT $ runEitherT $ flip runReaderT e $ m
+  restoreT = 
+    Session . ReaderT . const . EitherT . liftM (\(SessionStT a) -> a)
+
+instance (MonadBaseControl IO m) => MonadBaseControl IO (Session c m) where
+  newtype StM (Session c m) a = 
+    SessionStM (ComposeSt (Session c) m a)
+  liftBaseWith = 
+    defaultLiftBaseWith SessionStM
+  restoreM = 
+    defaultRestoreM $ \(SessionStM a) -> a
+   
+#endif
 
 -- |
 -- Execute a session using an established connection pool.

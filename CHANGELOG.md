@@ -1,3 +1,6 @@
+# 0.7.1
+* Relaxed the dependency on "monad-control"
+
 # 0.7.0 - Refinements and minor updates
 * Streaming now is parameterized by the size of a chunk
 * Introduced a new type `Ex`
