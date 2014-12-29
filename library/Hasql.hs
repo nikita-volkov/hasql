@@ -67,6 +67,7 @@ import qualified Data.Vector as Vector
 import qualified Data.Vector.Mutable as MVector
 import qualified Language.Haskell.TH as TH
 import qualified Language.Haskell.TH.Quote as TH
+import qualified Language.Haskell.TH.Syntax as TH
 import qualified Hasql.TH as THUtil
 
 
@@ -115,6 +116,12 @@ releasePool (Pool p) =
 -- Settings of a pool.
 data PoolSettings =
   PoolSettings !Int !Int
+  deriving (Show)
+
+instance TH.Lift PoolSettings where
+  lift (PoolSettings a b) = 
+    [|PoolSettings a b|]
+    
 
 -- | 
 -- A smart constructor for pool settings.
