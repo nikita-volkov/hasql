@@ -50,7 +50,8 @@ module Hasql
   Bknd.TxWriteMode(..),
 
   -- ** Result Stream
-  TxListT,
+  TxStream,
+  TxStreamListT,
 
   -- * Row Parser
   CxRow.CxRow,
@@ -233,7 +234,7 @@ deriving instance (Eq (Bknd.CxError c), Eq (Bknd.TxError c)) => Eq (SessionError
 -- Execute a transaction in a session.
 -- 
 -- This function ensures on the type level, 
--- that it's impossible to return @'TxListT' s m r@ from it.
+-- that it's impossible to return @'TxStreamListT' s m r@ from it.
 tx :: (Bknd.CxTx c, MonadBaseControl IO m) => Bknd.TxMode -> (forall s. Tx c s r) -> Session c m r
 tx mode (Tx m) =
   Session $ ReaderT $ \(Pool pool) ->
@@ -324,11 +325,11 @@ vectorEx s =
 -- Note that in most databases cursors require establishing a database transaction,
 -- so depending on a backend the transaction may result in an error,
 -- if you run it improperly.
-streamEx :: CxRow.CxRow c r => Int -> Ex c s (TxListT s (Tx c s) r)
+streamEx :: CxRow.CxRow c r => Int -> Ex c s (TxStream c s r)
 streamEx n s =
   Tx $ do
     r <- lift $ Bknd.streamTx n s
-    return $ TxListT $ do
+    return $ TxStreamListT $ do
       row <- hoist (Tx . lift) r
       lift $ Tx $ EitherT $ return $ mapLeft ResultError $ CxRow.parseRow $ row
 
@@ -338,26 +339,30 @@ streamEx n s =
 
 -- |
 -- A stream of results, 
--- which fetches only those that you reach.
--- 
--- It's a wrapper around 'ListT.ListT', 
+-- which fetches approximately only those that you reach.
+type TxStream c s =
+  TxStreamListT s (Tx c s)
+
+-- |
+-- A wrapper around 'ListT.ListT', 
 -- which uses the same trick as the 'ST' monad to associate with the
--- context transaction and become impossible to be used outside of it.
+-- context monad and become impossible to be returned from it,
+-- using the anonymous type parameter @s@.
 -- This lets the library ensure that it is safe to automatically
 -- release all the connections associated with this stream.
 -- 
 -- All the functions of the \"list-t\" library are applicable to this type,
 -- amongst which are 'ListT.head', 'ListT.toList', 'ListT.fold', 'ListT.traverse_'.
-newtype TxListT s m r =
-  TxListT (ListT.ListT m r)
+newtype TxStreamListT s m r =
+  TxStreamListT (ListT.ListT m r)
   deriving (Functor, Applicative, Alternative, Monad, MonadTrans, MonadPlus, 
             Monoid, ListT.MonadCons)
 
-instance ListT.MonadTransUncons (TxListT s) where
+instance ListT.MonadTransUncons (TxStreamListT s) where
   uncons = 
-    (liftM . fmap . fmap) (unsafeCoerce :: ListT.ListT m r -> TxListT s m r) .
+    (liftM . fmap . fmap) (unsafeCoerce :: ListT.ListT m r -> TxStreamListT s m r) .
     ListT.uncons . 
-    (unsafeCoerce :: TxListT s m r -> ListT.ListT m r)
+    (unsafeCoerce :: TxStreamListT s m r -> ListT.ListT m r)
 
 
 -- * Statements quasi-quotation
