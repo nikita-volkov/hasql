@@ -18,18 +18,18 @@ main =
         flip shouldBe (Right (Nothing :: Maybe (Identity Int))) =<< do
           session $ do
             H.tx Nothing $ do
-              H.unitTx $ [H.stmt|DROP TABLE IF EXISTS a|]
-              H.unitTx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
+              H.unitSEx $ [H.stmt|DROP TABLE IF EXISTS a|]
+              H.unitSEx $ [H.stmt|CREATE TABLE a (x INT8 NOT NULL, PRIMARY KEY (x))|]
             H.tx (Just (H.Serializable, Just False)) $ do
-              H.unitTx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
+              H.unitSEx $ [H.stmt|INSERT INTO a (x) VALUES (2)|]
             H.tx Nothing $ do
-              H.maybeTx $ [H.stmt|SELECT x FROM a WHERE x = 2|]
+              H.maybeSEx $ [H.stmt|SELECT x FROM a WHERE x = 2|]
 
     context "UTF-8 templates" $ do
 
       it "encode properly" $ do
         flip shouldBe (Right (Just (Identity ("Ёжик" :: Text)))) =<< do
-          session $ H.tx Nothing $ H.maybeTx $ [H.stmt| SELECT 'Ёжик' |]
+          session $ H.tx Nothing $ H.maybeSEx $ [H.stmt| SELECT 'Ёжик' |]
 
     context "Bug" $ do
 
@@ -37,16 +37,16 @@ main =
 
         it "should not be" $ do
           session $ H.tx Nothing $ do
-            H.unitTx [H.stmt|DROP TABLE IF EXISTS artist|]
-            H.unitTx [H.stmt|DROP TABLE IF EXISTS artist_union|]
-            H.unitTx $
+            H.unitSEx [H.stmt|DROP TABLE IF EXISTS artist|]
+            H.unitSEx [H.stmt|DROP TABLE IF EXISTS artist_union|]
+            H.unitSEx $
               [H.stmt|
                 CREATE TABLE "artist_union" (
                   "id" BIGSERIAL,
                   PRIMARY KEY ("id")
                 )
               |]
-            H.unitTx $
+            H.unitSEx $
               [H.stmt|
                 CREATE TABLE "artist" (
                   "id" BIGSERIAL,
@@ -60,13 +60,13 @@ main =
           let 
             insertArtistUnion :: H.Tx HP.Postgres s Int64
             insertArtistUnion =
-              fmap (runIdentity . fromJust) $ H.maybeTx $
+              fmap (runIdentity . fromJust) $ H.maybeSEx $
               [H.stmt| 
                 INSERT INTO artist_union DEFAULT VALUES RETURNING id
               |]
             insertArtist :: Int64 -> [Text] -> H.Tx HP.Postgres s Int64
             insertArtist unionID artistNames = 
-              fmap (runIdentity . fromJust) $ H.maybeTx $
+              fmap (runIdentity . fromJust) $ H.maybeSEx $
               [H.stmt| 
                 INSERT INTO artist
                   (artist_union_id, 
@@ -92,16 +92,16 @@ main =
         flip shouldSatisfy (\case Left (H.ResultError _) -> True; _ -> False) =<< do
           session $ do
             H.tx Nothing $ do
-              H.unitTx [H.stmt|DROP TABLE IF EXISTS data|]
-              H.unitTx [H.stmt|CREATE TABLE data (
+              H.unitSEx [H.stmt|DROP TABLE IF EXISTS data|]
+              H.unitSEx [H.stmt|CREATE TABLE data (
                                    field1    DECIMAL NOT NULL,
                                    field2    BIGINT  NOT NULL,
                                    PRIMARY KEY (field1)
                                )|]
-              H.unitTx [H.stmt|INSERT INTO data (field1, field2) VALUES (0, 0)|]
+              H.unitSEx [H.stmt|INSERT INTO data (field1, field2) VALUES (0, 0)|]
             mrow :: Maybe (Double, Int64, String) <- 
               H.tx Nothing $  
-                H.maybeTx $ [H.stmt|SELECT * FROM data|]
+                H.maybeSEx $ [H.stmt|SELECT * FROM data|]
             return ()
 
 

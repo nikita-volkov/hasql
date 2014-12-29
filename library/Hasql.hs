@@ -30,14 +30,15 @@ module Hasql
   Bknd.Stmt,
   stmt,
 
-  -- ** Statement Execution
-  unitTx,
-  countTx,
-  singleTx,
-  maybeTx,
-  listTx,
-  vectorTx,
-  streamTx,
+  -- * Statement Execution
+  SEx,
+  unitSEx,
+  countSEx,
+  singleSEx,
+  maybeSEx,
+  listSEx,
+  vectorSEx,
+  streamSEx,
 
   -- * Transaction
   Tx,
@@ -251,16 +252,23 @@ tx mode (Tx m) =
 -------------------------
 
 -- |
+-- Statement executor.
+-- 
+-- Just an alias to a function, which executes a statement in 'Tx'.
+type SEx c s r =
+  Bknd.Stmt c -> Tx c s r
+
+-- |
 -- Execute a statement without processing the result.
-unitTx :: Bknd.Stmt c -> Tx c s ()
-unitTx = 
+unitSEx :: SEx c s ()
+unitSEx = 
   Tx . lift . Bknd.unitTx
 
 -- |
 -- Execute a statement and count the amount of affected rows.
 -- Useful for resolving how many rows were updated or deleted.
-countTx :: Bknd.CxValue c Word64 => Bknd.Stmt c -> Tx c s Word64
-countTx =
+countSEx :: Bknd.CxValue c Word64 => SEx c s Word64
+countSEx =
   Tx . lift . Bknd.countTx
 
 -- |
@@ -271,33 +279,33 @@ countTx =
 -- 
 -- Please note that using this executor for selecting rows is conceptually wrong, 
 -- since in that case the results are always optional. 
--- Use 'maybeTx', 'listTx' or 'vectorTx' instead.
+-- Use 'maybeSEx', 'listSEx' or 'vectorSEx' instead.
 -- 
 -- If the result is empty this executor will raise 'ResultError'.
-singleTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s r
-singleTx =
-  join . fmap (maybe (Tx $ left $ ResultError "No rows on 'singleTx'") return) .
-  maybeTx
+singleSEx :: CxRow.CxRow c r => SEx c s r
+singleSEx =
+  join . fmap (maybe (Tx $ left $ ResultError "No rows on 'singleSEx'") return) .
+  maybeSEx
 
 -- |
 -- Execute a statement,
 -- which optionally produces a single result row.
-maybeTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (Maybe r)
-maybeTx =
-  fmap (fmap Vector.unsafeHead . mfilter (not . Vector.null) . Just) . vectorTx
+maybeSEx :: CxRow.CxRow c r => SEx c s (Maybe r)
+maybeSEx =
+  fmap (fmap Vector.unsafeHead . mfilter (not . Vector.null) . Just) . vectorSEx
 
 -- |
 -- Execute a statement,
 -- and produce a list of results.
-listTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s [r]
-listTx =
-  fmap toList . vectorTx
+listSEx :: CxRow.CxRow c r => SEx c s [r]
+listSEx =
+  fmap toList . vectorSEx
 
 -- |
 -- Execute a statement,
 -- and produce a vector of results.
-vectorTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (Vector r)
-vectorTx s =
+vectorSEx :: CxRow.CxRow c r => SEx c s (Vector r)
+vectorSEx s =
   Tx $ do
     r <- lift $ Bknd.vectorTx s
     EitherT $ return $ traverse ((mapLeft ResultError) . CxRow.parseRow) $ r
@@ -316,8 +324,8 @@ vectorTx s =
 -- Note that in most databases cursors require establishing a database transaction,
 -- so depending on a backend the transaction may result in an error,
 -- if you run it improperly.
-streamTx :: CxRow.CxRow c r => Int -> Bknd.Stmt c -> Tx c s (TxListT s (Tx c s) r)
-streamTx n s =
+streamSEx :: CxRow.CxRow c r => Int -> SEx c s (TxListT s (Tx c s) r)
+streamSEx n s =
   Tx $ do
     r <- lift $ Bknd.streamTx n s
     return $ TxListT $ do
