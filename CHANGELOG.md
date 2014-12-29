@@ -1,3 +1,8 @@
+# 0.7.0 - Refinements and minor updates
+* Streaming now is parameterized by the size of a chunk
+* Introduced a new type `Ex`
+* Changed the suffix of statement execution functions to `Ex`
+
 # 0.6.0 - Major API overhaul
 * The connection pool acquisition is now explicit and is no longer handled by the `Session` monad. This should provide for a simpler integration with other libraries.
 * The `Session` monad is now merely a convenience thing for providing a context to multiple transactions. One can run it as many times as he wants - it won't reestablish any resources any more.
