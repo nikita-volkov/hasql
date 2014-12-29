@@ -1,4 +1,4 @@
-module Hasql.RowParser where
+module Hasql.CxRow where
 
 import Hasql.Prelude
 import Language.Haskell.TH
@@ -10,16 +10,16 @@ import qualified Hasql.TH as THUtil
 -- |
 -- This class is only intended to be used with the supplied instances,
 -- which should be enough to cover all use cases.
-class RowParser c r where
+class CxRow c r where
   parseRow :: Bknd.ResultRow c -> Either Text r
 
-instance RowParser c () where
+instance CxRow c () where
   parseRow row = 
     if Vector.null row
       then Right ()
       else Left "Not an empty row"
 
-instance Bknd.CxValue c v => RowParser c (Identity v) where
+instance Bknd.CxValue c v => CxRow c (Identity v) where
   parseRow row = do
     Identity <$> Bknd.decodeValue (Vector.unsafeHead row)
 
@@ -35,7 +35,7 @@ return $ flip map [2 .. 24] $ \arity ->
     constraints =
       map (\t -> ClassP ''Bknd.CxValue [connectionType, t]) varTypes
     head =
-      AppT (AppT (ConT ''RowParser) connectionType) (foldl AppT (TupleT arity) varTypes)
+      AppT (AppT (ConT ''CxRow) connectionType) (foldl AppT (TupleT arity) varTypes)
     parseRowDec =
       FunD 'parseRow [Clause [VarP rowVarName] (NormalB e) []]
       where

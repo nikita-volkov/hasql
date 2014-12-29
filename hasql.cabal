@@ -89,7 +89,7 @@ library
   other-modules:
     Hasql.Prelude
     Hasql.QParser
-    Hasql.RowParser
+    Hasql.CxRow
     Hasql.TH
   exposed-modules:
     Hasql

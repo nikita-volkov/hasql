@@ -52,13 +52,13 @@ module Hasql
   TxListT,
 
   -- * Row Parser
-  RowParser.RowParser,
+  CxRow.CxRow,
 )
 where
 
 import Hasql.Prelude
 import qualified Hasql.Backend as Bknd
-import qualified Hasql.RowParser as RowParser
+import qualified Hasql.CxRow as CxRow
 import qualified Hasql.QParser as QParser
 import qualified ListT
 import qualified Data.Pool as Pool
@@ -274,7 +274,7 @@ countTx =
 -- Use 'maybeTx', 'listTx' or 'vectorTx' instead.
 -- 
 -- If the result is empty this executor will raise 'ResultError'.
-singleTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s r
+singleTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s r
 singleTx =
   join . fmap (maybe (Tx $ left $ ResultError "No rows on 'singleTx'") return) .
   maybeTx
@@ -282,25 +282,25 @@ singleTx =
 -- |
 -- Execute a statement,
 -- which optionally produces a single result row.
-maybeTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Maybe r)
+maybeTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (Maybe r)
 maybeTx =
   fmap (fmap Vector.unsafeHead . mfilter (not . Vector.null) . Just) . vectorTx
 
 -- |
 -- Execute a statement,
 -- and produce a list of results.
-listTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s [r]
+listTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s [r]
 listTx =
   fmap toList . vectorTx
 
 -- |
 -- Execute a statement,
 -- and produce a vector of results.
-vectorTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (Vector r)
+vectorTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (Vector r)
 vectorTx s =
   Tx $ do
     r <- lift $ Bknd.vectorTx s
-    EitherT $ return $ traverse ((mapLeft ResultError) . RowParser.parseRow) $ r
+    EitherT $ return $ traverse ((mapLeft ResultError) . CxRow.parseRow) $ r
 
 -- |
 -- Execute a @SELECT@ statement with a cursor,
@@ -311,13 +311,13 @@ vectorTx s =
 -- Note that in most databases cursors require establishing a database transaction,
 -- so depending on a backend the transaction may result in an error,
 -- if you run it improperly.
-streamTx :: RowParser.RowParser c r => Bknd.Stmt c -> Tx c s (TxListT s (Tx c s) r)
+streamTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (TxListT s (Tx c s) r)
 streamTx s =
   Tx $ do
     r <- lift $ Bknd.streamTx s
     return $ TxListT $ do
       row <- hoist (Tx . lift) r
-      lift $ Tx $ EitherT $ return $ mapLeft ResultError $ RowParser.parseRow $ row
+      lift $ Tx $ EitherT $ return $ mapLeft ResultError $ CxRow.parseRow $ row
 
 
 -- * Result Stream

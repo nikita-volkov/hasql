@@ -86,7 +86,7 @@ main =
           replicateM_ 6 process
           block
 
-    context "RowParser" $ do
+    context "CxRow" $ do
 
       it "should fail on incorrect arity" $ do
         flip shouldSatisfy (\case Left (H.ResultError _) -> True; _ -> False) =<< do
