@@ -96,7 +96,7 @@ library
   build-depends:
     -- 
     resource-pool == 0.2.*,
-    hasql-backend == 0.3.*,
+    hasql-backend == 0.4.*,
     -- 
     template-haskell >= 2.8 && < 2.10,
     -- 

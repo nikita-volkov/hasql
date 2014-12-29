@@ -303,18 +303,23 @@ vectorTx s =
     EitherT $ return $ traverse ((mapLeft ResultError) . CxRow.parseRow) $ r
 
 -- |
--- Execute a @SELECT@ statement with a cursor,
+-- Given a batch size, execute a statement with a cursor,
 -- and produce a result stream.
 -- 
--- Cursor allows you to fetch virtually limitless results in a constant memory
+-- The cursor allows you to fetch virtually limitless results in a constant memory
 -- at a cost of a small overhead.
+-- 
+-- The batch size parameter controls how many rows will be fetched 
+-- during every roundtrip to the database. 
+-- A minimum value of 256 seems to be sane.
+-- 
 -- Note that in most databases cursors require establishing a database transaction,
 -- so depending on a backend the transaction may result in an error,
 -- if you run it improperly.
-streamTx :: CxRow.CxRow c r => Bknd.Stmt c -> Tx c s (TxListT s (Tx c s) r)
-streamTx s =
+streamTx :: CxRow.CxRow c r => Int -> Bknd.Stmt c -> Tx c s (TxListT s (Tx c s) r)
+streamTx n s =
   Tx $ do
-    r <- lift $ Bknd.streamTx s
+    r <- lift $ Bknd.streamTx n s
     return $ TxListT $ do
       row <- hoist (Tx . lift) r
       lift $ Tx $ EitherT $ return $ mapLeft ResultError $ CxRow.parseRow $ row
