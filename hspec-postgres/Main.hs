@@ -12,6 +12,19 @@ import qualified SlaveThread
 main = 
   hspec $ do
 
+    context "Multivalue clauses" $ do
+      -- See http://www.postgresql.org/docs/current/interactive/functions-comparisons.html
+
+      it "contains" $ do
+        flip shouldBe (Right True) =<< do
+          session $ 
+            fmap runIdentity $ H.tx Nothing $ H.singleEx $ [H.stmt|SELECT 2 = ANY (?)|] [1,2,3 :: Int]
+
+      it "contains not" $ do
+        flip shouldBe (Right False) =<< do
+          session $ 
+            fmap runIdentity $ H.tx Nothing $ H.singleEx $ [H.stmt|SELECT 2 != ALL (?)|] [1,2,3 :: Int]
+
     context "Tx" $ do
 
       it "does not commit if in uncommitting mode" $ do
