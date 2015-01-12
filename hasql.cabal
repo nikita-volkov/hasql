@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.7.1
+  0.7.2
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -88,9 +88,10 @@ library
     Haskell2010
   other-modules:
     Hasql.Prelude
-    Hasql.QParser
+    Hasql.QQ.Parser
     Hasql.CxRow
     Hasql.TH
+    Hasql.QQ
   exposed-modules:
     Hasql
   build-depends:

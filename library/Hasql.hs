@@ -28,7 +28,7 @@ module Hasql
 
   -- * Statement
   Bknd.Stmt,
-  stmt,
+  QQ.stmt,
 
   -- * Statement Execution
   Ex,
@@ -61,16 +61,12 @@ where
 import Hasql.Prelude
 import qualified Hasql.Backend as Bknd
 import qualified Hasql.CxRow as CxRow
-import qualified Hasql.QParser as QParser
+import qualified Hasql.QQ as QQ
 import qualified ListT
 import qualified Data.Pool as Pool
-import qualified Data.Text as Text
 import qualified Data.Vector as Vector
 import qualified Data.Vector.Mutable as MVector
-import qualified Language.Haskell.TH as TH
-import qualified Language.Haskell.TH.Quote as TH
 import qualified Language.Haskell.TH.Syntax as TH
-import qualified Hasql.TH as THUtil
 
 
 -- * Resources
@@ -389,42 +385,3 @@ instance ListT.MonadTransUncons (TxStreamListT s) where
     ListT.uncons . 
     (unsafeCoerce :: TxStreamListT s m r -> ListT.ListT m r)
 
-
--- * Statements quasi-quotation
--------------------------
-
--- |
--- Produces a lambda-expression, 
--- which takes as many parameters as there are placeholders in the quoted text
--- and results in a 'Bknd.Stmt'. 
--- 
--- E.g.:
--- 
--- >selectSum :: Int -> Int -> Stmt c
--- >selectSum = [stmt|SELECT (? + ?)|]
--- 
-stmt :: TH.QuasiQuoter
-stmt = 
-  TH.QuasiQuoter
-    (parseExp)
-    (const $ fail "Pattern context is not supported")
-    (const $ fail "Type context is not supported")
-    (const $ fail "Declaration context is not supported")
-  where
-    parseExp s =
-      do
-        (t, n) <- either (fail . showString "Parsing failure: ") return (QParser.parse (fromString s))
-        return $ statementF (Text.unpack t) (fromIntegral n)
-    statementF s n =
-      TH.LamE
-        (map TH.VarP argNames)
-        (THUtil.purify [|Bknd.Stmt $(pure statementE) $(pure argsE) True|])
-      where
-        argNames = 
-          map (TH.mkName . ('_' :) . show) [1 .. n]
-        statementE = 
-          TH.LitE (TH.StringL s)
-        argsE =
-          THUtil.vectorE $
-          map (\x -> THUtil.purify [| Bknd.encodeValue $(TH.varE x) |]) $
-          argNames

@@ -20,7 +20,14 @@ instance HB.CxValue X Char where
 main = 
   hspec $ do
     context "Quasi quoter" $ do
-      it "generates a proper statement" $ do
+      it "supports free variables" $ do
+        let a = 'a'
+            b = 'b'
+            in
+              (flip shouldBe)
+                (HB.Stmt "SELECT (? + ?)" (V.fromList [HB.encodeValue a, HB.encodeValue b]) True)
+                ([H.stmt| SELECT ($a + $b) |] :: HB.Stmt X)
+      it "supports ordered placeholders" $ do
         (flip shouldBe)
           (HB.Stmt "SELECT (? + ?)" (V.fromList [HB.encodeValue 'a', HB.encodeValue 'b']) True)
           ([H.stmt| SELECT (? + ?) |] 'a' 'b' :: HB.Stmt X)
