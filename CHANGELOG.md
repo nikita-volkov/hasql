@@ -1,3 +1,6 @@
+# 0.7.2
+* Implement support for free variables by the quasi-quoter
+
 # 0.7.1
 * Relaxed the dependency on "monad-control"
 
