@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.7.2
+  0.7.3
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -99,7 +99,7 @@ library
     resource-pool == 0.2.*,
     hasql-backend == 0.4.*,
     -- 
-    template-haskell >= 2.8 && < 2.10,
+    template-haskell >= 2.8 && < 2.11,
     -- 
     attoparsec >= 0.10 && < 0.13,
     -- 
@@ -114,7 +114,7 @@ library
     transformers-base == 0.4.*,
     transformers >= 0.3 && < 0.5,
     base-prelude >= 0.1.3 && < 0.2,
-    base >= 4.5 && < 4.8
+    base >= 4.6 && < 4.9
 
 
 test-suite hspec
@@ -142,8 +142,7 @@ test-suite hspec
     vector,
     -- 
     mtl-prelude < 3,
-    base-prelude,
-    base
+    base-prelude
 
 
 test-suite hspec-postgres
@@ -175,8 +174,7 @@ test-suite hspec-postgres
     monad-control,
     either,
     mtl-prelude < 3,
-    base-prelude,
-    base
+    base-prelude
 
 
 -- Well, it's not a benchmark actually, 
@@ -200,6 +198,6 @@ benchmark demo
     hasql,
     hasql-postgres == 0.10.*,
     transformers >= 0.3 && < 0.5,
-    base >= 4.5 && < 4.8
+    base
 
 

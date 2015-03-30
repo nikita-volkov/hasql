@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 -- |
 -- TH utils.
 module Hasql.TH where
@@ -71,3 +72,9 @@ vectorE cellExps =
           (VarE 'Vector.unsafeFreeze)
           (VarE vectorVarName)))
 
+classP :: Name -> [Type] -> Pred
+#if MIN_VERSION_template_haskell(2,10,0)
+classP n tl = foldl AppT (ConT n) tl
+#else
+classP = ClassP
+#endif

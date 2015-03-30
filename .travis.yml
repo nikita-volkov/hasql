@@ -1,20 +1,22 @@
 env:
-  - lower_bound_dependencies=1 
-    ghc=7.6.1
-  - lower_bound_dependencies=1 
-    ghc=7.8.1
-  - ghc=7.6.1
-  - ghc=7.8.1
+  - ghc=7.6.1  cabal=1.18 benchmarks=1 tests=1 lower_bound_dependencies=1
+  - ghc=7.6.1  cabal=1.18 benchmarks=1 tests=1
+  - ghc=7.8.1  cabal=1.18 benchmarks=1 tests=1
+  - ghc=7.10.1 cabal=1.22
+  - ghc=7.10.1 cabal=1.22 benchmarks=1 tests=1
+  
 
 install:
   # Set up the Shell to treat the semicolon as &&
   - set -o pipefail && set -e
   # Install GHC and Cabal
-  - 
+  -
+    ghc=${ghc=7.10.1}; 
+    cabal=${cabal=1.22};
     travis_retry sudo add-apt-repository -y ppa:hvr/ghc;
     travis_retry sudo apt-get update;
-    travis_retry sudo apt-get install cabal-install-1.18 ghc-$ghc;
-    export PATH=/opt/ghc/$ghc/bin:/opt/cabal/1.18/bin:$PATH;
+    travis_retry sudo apt-get install cabal-install-$cabal ghc-$ghc;
+    export PATH=/opt/ghc/$ghc/bin:/opt/cabal/$cabal/bin:$PATH;
   # Update the Cabal database
   - cabal update
   # Switch to the distro:
@@ -26,7 +28,7 @@ install:
     cd $pkg_name;
   # Install the lower bound dependencies
   - 
-    if [ $lower_bound_dependencies -eq 1 ];
+    if [ "$lower_bound_dependencies" = "1" ];
     then
       constraint_options=(
         "--constraint=transformers==0.3.*"
@@ -37,15 +39,24 @@ install:
       );
     fi;
   # Install the "haskell-src-exts" implicit dependency
-  - cabal install -j ${constraint_options[@]} happy
+  - cabal install happy --reorder-goals --force-reinstalls ${constraint_options[@]}
   # Install the library dependencies
-  - cabal install -j ${constraint_options[@]} --only-dependencies
+  - cabal install --only-dependencies --reorder-goals --force-reinstalls
+      ${constraint_options[@]}
+      $([ "$tests" = "1" ] && echo "--enable-tests")
+      $([ "$benchmarks" = "1" ] && echo "--enable-benchmarks")
   # Build the library
   - cabal build
-  # Install the remaining dependencies
-  - cabal install -j --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls
   # Configure and build the remaining stuff
-  - cabal configure --enable-tests --enable-benchmarks && cabal build
+  - cabal configure 
+      $([ "$tests" = "1" ] && echo "--enable-tests")
+      $([ "$benchmarks" = "1" ] && echo "--enable-benchmarks")
+      -f doctest
+  - cabal build
 
 script:
-  - cabal test --show-details=always
+  - |
+    if [ "$tests" = "1" ];
+    then
+      cabal test --show-details=always;
+    fi;

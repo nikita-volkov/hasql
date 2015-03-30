@@ -33,7 +33,7 @@ return $ flip map [2 .. 24] $ \arity ->
     connectionType =
       VarT (mkName "c")
     constraints =
-      map (\t -> ClassP ''Bknd.CxValue [connectionType, t]) varTypes
+      map (\t -> THUtil.classP ''Bknd.CxValue [connectionType, t]) varTypes
     head =
       AppT (AppT (ConT ''CxRow) connectionType) (foldl AppT (TupleT arity) varTypes)
     parseRowDec =

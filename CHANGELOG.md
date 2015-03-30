@@ -1,3 +1,6 @@
+# 0.7.3
+* GHC 7.10 support
+
 # 0.7.2
 * Implement support for free variables by the quasi-quoter
 
