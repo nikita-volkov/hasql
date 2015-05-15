@@ -1,3 +1,6 @@
+# 0.7.3.1
+* Attoparsec-0.13 support
+
 # 0.7.3
 * GHC 7.10 support
 

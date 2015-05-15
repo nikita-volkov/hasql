@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.7.3
+  0.7.3.1
 synopsis:
   A minimalistic general high level API for relational databases
 description:
@@ -101,7 +101,7 @@ library
     -- 
     template-haskell >= 2.8 && < 2.11,
     -- 
-    attoparsec >= 0.10 && < 0.13,
+    attoparsec >= 0.10 && < 0.14,
     -- 
     vector < 0.11,
     text >= 1.0 && < 1.3,
