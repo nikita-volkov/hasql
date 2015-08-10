@@ -58,5 +58,6 @@ script:
   - |
     if [ "$tests" = "1" ];
     then
+      cabal clean;
       cabal test --show-details=always;
     fi;
