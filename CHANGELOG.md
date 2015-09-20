@@ -1,3 +1,7 @@
+# 0.7.4.1
+* Stack support
+* Update dependencies
+
 # 0.7.3.1
 * Attoparsec-0.13 support
 

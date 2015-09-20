@@ -1,0 +1,6 @@
+flags: {}
+packages:
+- '.'
+extra-deps: []
+# resolver: lts-2.22  # for GHC-7.8
+resolver: lts-3.5
