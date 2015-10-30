@@ -7,7 +7,7 @@ Currently the only backend available is for PostgreSQL ([which can yield great p
 
 The code used here file is the [demo found in the repository](https://github.com/nikita-volkov/hasql/blob/master/demo/Main.hs)
 
-## Openning a connection
+## Opening a connection
 
 For greater convenience the Hasql has a built-in connection pool. All interactions with the database backend are done within the context of such a pool. 
 
