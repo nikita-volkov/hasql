@@ -221,7 +221,7 @@ rowsVector (Row row) =
 -- Zero or more rows packed into the list.
 -- 
 {-# INLINABLE rowsList #-}
-rowsList :: Row a -> Result [ a ]
+rowsList :: Row a -> Result [a]
 rowsList (Row row) =
   Result (Result.foldr (:) [] row)
 

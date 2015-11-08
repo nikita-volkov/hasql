@@ -19,8 +19,8 @@ import qualified Hasql.Deserialization.Row as Row
 
 
 newtype Results a =
-  Results ( ReaderT ( Bool , LibPQ.Connection ) ( EitherT Error IO ) a )
-  deriving ( Functor , Applicative , Monad )
+  Results (ReaderT (Bool, LibPQ.Connection) (EitherT Error IO) a)
+  deriving (Functor, Applicative, Monad)
 
 data Error =
   -- |
@@ -31,7 +31,7 @@ data Error =
   ResultError !Result.Error
 
 {-# INLINE run #-}
-run :: Results a -> ( Bool , LibPQ.Connection ) -> IO ( Either Error a )
+run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either Error a)
 run (Results stack) env =
   runEitherT (runReaderT stack env)
 
@@ -67,7 +67,7 @@ getResult =
 -- |
 -- Fetch a single result.
 {-# INLINABLE getResultMaybe #-}
-getResultMaybe :: Results ( Maybe LibPQ.Result )
+getResultMaybe :: Results (Maybe LibPQ.Result)
 getResultMaybe =
   Results $ ReaderT $ \(_, connection) -> lift $ LibPQ.getResult connection
 

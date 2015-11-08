@@ -15,8 +15,8 @@ import qualified Data.ByteString.Lazy as BL
 
 
 newtype Commands =
-  Commands ( DList BB.Builder )
-  deriving ( Monoid )
+  Commands (DList BB.Builder)
+  deriving (Monoid)
 
 asBytes :: Commands -> ByteString
 asBytes (Commands list) =

@@ -42,9 +42,9 @@ main =
 
 data Account =
   Account { 
-    email :: Text , 
-    password :: ByteString , 
-    firstName :: Text , 
+    email :: Text, 
+    password :: ByteString, 
+    firstName :: Text, 
     lastName :: Text
   }
 
@@ -103,7 +103,7 @@ accountDeserializer :: D.Row Account
 accountDeserializer =
   liftM4 Account (D.value def) (D.value def) (D.value def) (D.value def)
 
-identifiedDeserializer :: D.Row a -> D.Row ( Int64 , a )
+identifiedDeserializer :: D.Row a -> D.Row (Int64, a)
 identifiedDeserializer aDeserializer =
   liftM2 (,) idDeserializer aDeserializer
 

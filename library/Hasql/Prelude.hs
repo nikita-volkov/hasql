@@ -1,5 +1,5 @@
 module Hasql.Prelude
-( 
+(
   module Exports,
   LazyByteString,
   ByteStringBuilder,

@@ -9,8 +9,8 @@ import qualified Hasql.Prelude as Prelude
 
 
 newtype Result a =
-  Result ( ReaderT ( Bool , LibPQ.Result ) ( EitherT Error IO ) a )
-  deriving ( Functor , Applicative , Monad )
+  Result (ReaderT (Bool, LibPQ.Result) (EitherT Error IO) a)
+  deriving (Functor, Applicative, Monad)
 
 data Error =
   -- | 
@@ -30,7 +30,7 @@ data Error =
   -- * Hint: an optional suggestion what to do about the problem. 
   -- This is intended to differ from detail in that it offers advice (potentially inappropriate) 
   -- rather than hard facts. Might run to multiple lines.
-  ServerError !ByteString !ByteString !( Maybe ByteString ) !( Maybe ByteString ) |
+  ServerError !ByteString !ByteString !(Maybe ByteString) !(Maybe ByteString) |
   -- |
   -- The database returned an unexpected result.
   -- Indicates an improper statement or a schema mismatch.
@@ -41,9 +41,9 @@ data Error =
   -- |
   -- An unexpected amount of rows.
   UnexpectedAmountOfRows !Int
-  deriving ( Show )
+  deriving (Show)
 
-run :: Result a -> ( Bool , LibPQ.Result ) -> IO ( Either Error a )
+run :: Result a -> (Bool, LibPQ.Result) -> IO (Either Error a)
 run (Result reader) env =
   runEitherT (runReaderT reader env)
 
@@ -76,7 +76,7 @@ rowsAffected =
           mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m)) $
           Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
-checkExecStatus :: ( LibPQ.ExecStatus -> Bool ) -> Result ()
+checkExecStatus :: (LibPQ.ExecStatus -> Bool) -> Result ()
 checkExecStatus predicate =
   do
     status <- Result $ ReaderT $ \(_, result) -> lift $ LibPQ.resultStatus result
@@ -102,7 +102,7 @@ serverError =
       LibPQ.resultErrorField result LibPQ.DiagMessageHint
     pure $ Left $ ServerError code message detail hint
 
-maybe :: Row.Row a -> Result ( Maybe a )
+maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDes =
   do
     checkExecStatus $ \case
@@ -141,7 +141,7 @@ single rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
-generate :: ( forall m. Monad m => Int -> ( Int -> m a ) -> m b ) -> Row.Row a -> Result b
+generate :: (forall m. Monad m => Int -> (Int -> m a) -> m b) -> Row.Row a -> Result b
 generate generateM rowDes =
   do
     checkExecStatus $ \case
@@ -159,7 +159,7 @@ generate generateM rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
-foldl :: ( a -> b -> a ) -> a -> Row.Row b -> Result a
+foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
 foldl step init rowDes =
   do
     checkExecStatus $ \case
@@ -181,7 +181,7 @@ foldl step init rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
-foldr :: ( b -> a -> a ) -> a -> Row.Row b -> Result a
+foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDes =
   do
     checkExecStatus $ \case

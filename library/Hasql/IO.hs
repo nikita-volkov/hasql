@@ -59,7 +59,7 @@ initConnection c =
   void $ LibPQ.exec c (Commands.asBytes (Commands.setEncodingToUTF8 <> Commands.setMinClientMessagesToWarning))
 
 {-# INLINE getResults #-}
-getResults :: LibPQ.Connection -> Bool -> ResultsDeserialization.Results a -> IO ( Either ResultsDeserialization.Error a )
+getResults :: LibPQ.Connection -> Bool -> ResultsDeserialization.Results a -> IO (Either ResultsDeserialization.Error a)
 getResults connection integerDatetimes des =
   do
     result <- ResultsDeserialization.run des (integerDatetimes, connection)
@@ -69,8 +69,8 @@ getResults connection integerDatetimes des =
 {-# INLINABLE getPreparedStatementKey #-}
 getPreparedStatementKey ::
   LibPQ.Connection -> PreparedStatementRegistry.PreparedStatementRegistry ->
-  ByteString -> [ LibPQ.Oid ] ->
-  IO ( Either ResultsDeserialization.Error ByteString )
+  ByteString -> [LibPQ.Oid] ->
+  IO (Either ResultsDeserialization.Error ByteString)
 getPreparedStatementKey connection registry template oidList =
   do
     keyMaybe <- PreparedStatementRegistry.lookup template wordOIDList registry
@@ -93,7 +93,7 @@ getPreparedStatementKey connection registry template oidList =
       map (\(LibPQ.Oid x) -> fromIntegral x) oidList
 
 {-# INLINABLE checkedSend #-}
-checkedSend :: LibPQ.Connection -> IO Bool -> IO ( Either ResultsDeserialization.Error () )
+checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either ResultsDeserialization.Error ())
 checkedSend connection send =
   send >>= \case
     False -> fmap (Left . ResultsDeserialization.ClientError) $ LibPQ.errorMessage connection
@@ -104,9 +104,9 @@ sendPreparedParametricQuery ::
   LibPQ.Connection ->
   PreparedStatementRegistry.PreparedStatementRegistry ->
   ByteString ->
-  [ LibPQ.Oid ] ->
-  [ Maybe ( ByteString , LibPQ.Format ) ] ->
-  IO ( Either ResultsDeserialization.Error () )
+  [LibPQ.Oid] ->
+  [Maybe (ByteString, LibPQ.Format)] ->
+  IO (Either ResultsDeserialization.Error ())
 sendPreparedParametricQuery connection registry template oidList valueAndFormatList =
   runEitherT $ do
     key <- EitherT $ getPreparedStatementKey connection registry template oidList
@@ -116,8 +116,8 @@ sendPreparedParametricQuery connection registry template oidList valueAndFormatL
 sendUnpreparedParametricQuery ::
   LibPQ.Connection ->
   ByteString ->
-  [ Maybe ( LibPQ.Oid , ByteString , LibPQ.Format ) ] ->
-  IO ( Either ResultsDeserialization.Error () )
+  [Maybe (LibPQ.Oid, ByteString, LibPQ.Format)] ->
+  IO (Either ResultsDeserialization.Error ())
 sendUnpreparedParametricQuery connection template paramList =
   checkedSend connection $ LibPQ.sendQueryParams connection template paramList LibPQ.Binary
 
@@ -130,7 +130,7 @@ sendParametricQuery ::
   ParamsSerialization.Params a ->
   Bool ->
   a ->
-  IO ( Either ResultsDeserialization.Error () )
+  IO (Either ResultsDeserialization.Error ())
 sendParametricQuery connection integerDatetimes registry template serializer prepared params =
   if prepared
     then
