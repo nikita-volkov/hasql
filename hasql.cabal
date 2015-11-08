@@ -1,53 +1,13 @@
 name:
   hasql
 version:
-  0.7.4
-synopsis:
-  A minimalistic general high level API for relational databases
-description:
-  A robust and concise yet powerful API for communication with arbitrary
-  relational databases using SQL.
-  .
-  Features:
-  .
-  * Concise and crisp API. Just a few functions and two monads doing all the
-  boilerplate job for you.
-  .
-  * A powerful transaction abstraction, which provides 
-  an automated resolution of conflicts.
-  The API ensures that you're only able to perform a specific
-  set of actions in the transaction context,
-  which allows Hasql to safely resolve conflicting transactions 
-  by automatically retrying them.
-  This is much inspired by STM and ST.
-  .
-  * Support for cursors. Allows to fetch virtually limitless result sets in a
-  constant memory using streaming.
-  .
-  * Employment of prepared statements. 
-  Every statement you emit gets prepared and cached. 
-  This raises the performance of the backend.
-  .
-  * Automated management of resources related to connections, transactions and
-  cursors.
-  .
-  * A built-in connection pool.
-  .
-  * Compile-time generation of templates. You just can't write a statement with an
-  incorrect number of placeholders.
-  .
-  * Ability to map to any types actually supported by the backend.
-  .
-  Links:
-  .
-  * <http://nikita-volkov.github.io/hasql-benchmarks/ Benchmarks analysis>.
-  .
-  * <https://github.com/nikita-volkov/hasql/blob/master/demo/Main.hs Basic tutorial-demo>.
-  .
-  * <http://hackage.haskell.org/package/hasql-postgres PostgreSQL backend>.
-  .
+  1
 category:
-  Database
+  Hasql, Database, PostgreSQL
+synopsis:
+  A very efficient PostgreSQL driver and a flexible mapping API
+description:
+  This package is the root of the \"hasql\" ecosystem.
 homepage:
   https://github.com/nikita-volkov/hasql 
 bug-reports:
@@ -63,11 +23,9 @@ license:
 license-file:
   LICENSE
 build-type:
-  Simple
+  Custom
 cabal-version:
   >=1.10
-extra-source-files:
-  CHANGELOG.md
 
 
 source-repository head
@@ -81,123 +39,127 @@ library
   hs-source-dirs:
     library
   ghc-options:
-    -funbox-strict-fields
   default-extensions:
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   other-modules:
     Hasql.Prelude
-    Hasql.QQ.Parser
-    Hasql.CxRow
-    Hasql.TH
-    Hasql.QQ
+    Hasql.PTI
+    Hasql.IO
+    Hasql.Settings
+    Hasql.Commands
+    Hasql.Deserialization.Array
+    Hasql.Deserialization.Composite
+    Hasql.Deserialization.Value
+    Hasql.Deserialization.Row
+    Hasql.Deserialization.Result
+    Hasql.Deserialization.Results
+    Hasql.Serialization.Array
+    Hasql.Serialization.Value
+    Hasql.Serialization.Params
+    Hasql.PreparedStatementRegistry
   exposed-modules:
-    Hasql
+    Hasql.Query
+    Hasql.Deserialization
+    Hasql.Serialization
+    Hasql.Connection
   build-depends:
-    -- 
-    resource-pool == 0.2.*,
-    hasql-backend == 0.4.*,
-    -- 
-    template-haskell >= 2.8 && < 2.11,
-    -- 
+    -- parsing:
     attoparsec >= 0.10 && < 0.14,
-    -- 
-    vector < 0.12,
-    text >= 1.0 && < 1.3,
-    -- 
-    either >= 4.3 && < 5,
-    list-t >= 0.3.1 && < 0.5,
-    mmorph == 1.0.*,
-    mtl >= 2.1 && < 2.3,
-    monad-control >= 0.3 && < 1.1,
-    transformers-base == 0.4.*,
+    -- database:
+    postgresql-binary >= 0.7.2 && < 0.8,
+    postgresql-libpq == 0.9.*,
+    -- data:
+    dlist >= 0.7 && < 0.8,
+    aeson >= 0.7 && < 0.11,
+    uuid == 1.3.*,
+    vector >= 0.10 && < 0.12,
+    time >= 1.4 && < 1.6,
+    hashtables >= 1.1 && < 1.3,
+    scientific >= 0.2 && < 0.4,
+    text >= 1 && < 1.3,
+    bytestring >= 0.10 && < 0.11,
+    hashable >= 1.2 && < 1.3,
+    -- control:
+    data-default-class >= 0.0.1 && < 0.1,
+    profunctors >= 5.1 && < 6,
+    contravariant-extras == 0.1.*,
+    contravariant >= 1.3 && < 2,
+    either >= 4.4.1 && < 5,
     transformers >= 0.3 && < 0.5,
-    base-prelude >= 0.1.3 && < 0.2,
-    base >= 4.6 && < 4.9
+    -- errors:
+    loch-th == 0.2.*,
+    placeholders == 0.1.*,
+    -- general:
+    base-prelude >= 0.1.19 && < 0.2,
+    base >= 4.6 && < 5
 
 
-test-suite hspec
-  type:             
-    exitcode-stdio-1.0
-  hs-source-dirs:   
-    hspec
-  main-is:          
-    Main.hs
-  ghc-options:
-    -threaded
-    "-with-rtsopts=-N"
-    -funbox-strict-fields
-  default-extensions:
-    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
-  default-language:
-    Haskell2010
-  build-depends:
-    -- 
-    hasql,
-    hasql-backend,
-    -- 
-    hspec == 2.1.*,
-    -- 
-    vector,
-    -- 
-    mtl-prelude < 3,
-    base-prelude
-
-
-test-suite hspec-postgres
+test-suite doctest
   type:
     exitcode-stdio-1.0
   hs-source-dirs:
-    hspec-postgres
+    doctest
   main-is:
     Main.hs
   ghc-options:
     -threaded
     "-with-rtsopts=-N"
-    -funbox-strict-fields
+  build-depends:
+    doctest == 0.10.*,
+    directory == 1.2.*,
+    filepath >= 1.3 && < 1.5,
+    base-prelude >= 0.1.19 && < 0.2,
+    base
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+
+
+test-suite hspec
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    hspec
+  main-is:
+    Main.hs
+  ghc-options:
+    -threaded
+    "-with-rtsopts=-N"
   default-extensions:
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   build-depends:
-    -- 
+    -- database:
     hasql,
-    hasql-postgres == 0.10.*,
-    -- 
-    slave-thread == 0.1.*,
-    -- 
-    hspec == 2.1.*,
-    -- 
-    text,
-    -- 
-    monad-control,
-    either,
-    mtl-prelude < 3,
-    base-prelude
+    -- testing:
+    hspec >= 2.2.0 && < 2.3,
+    quickcheck-instances >= 0.3.11 && < 0.4,
+    QuickCheck >= 2.8.1 && < 2.9,
+    -- general:
+    base-prelude >= 0.1.19 && < 0.2
 
 
--- Well, it's not a benchmark actually, 
--- but in Cabal there's no better way to specify an executable, 
--- which is not intended for distribution.
-benchmark demo
-  type: 
-    exitcode-stdio-1.0
+executable demo
   hs-source-dirs:
     demo
   main-is:
     Main.hs
   ghc-options:
-    -O2
     -threaded
     "-with-rtsopts=-N"
-    -funbox-strict-fields
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFunctor, DeriveGeneric, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   build-depends:
+    data-default-class,
+    contravariant-extras,
+    contravariant,
     hasql,
-    hasql-postgres == 0.10.*,
-    transformers >= 0.3 && < 0.5,
-    base
-
-
+    text,
+    bytestring,
+    base-prelude
