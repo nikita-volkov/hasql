@@ -47,16 +47,33 @@ import qualified Hasql.Prelude as Prelude
 -------------------------
 
 -- |
--- Serializer of some representation of a parameters product.
+-- Serializer of some representation of the parameters product.
 -- 
 -- Has instances of 'Contravariant', 'Divisible' and 'Monoid',
 -- which you can use to compose multiple parameters together.
 -- E.g.,
 -- 
--- >someParamsSerializer :: Params (Int64, Maybe Text)
--- >someParamsSerializer =
--- >  contramap fst (value int8) <>
--- >  contramap snd (nullableValue text)
+-- @
+-- someParamsSerializer :: Params (Int64, Maybe Text)
+-- someParamsSerializer =
+--   'contramap' fst (value int8) <>
+--   'contramap' snd (nullableValue text)
+-- @
+-- 
+-- As a general solution for tuples of any arity, instead of 'fst' and 'snd',
+-- consider such solutions as
+-- the @<http://hackage.haskell.org/package/tuple-th-0.2.5/docs/TupleTH.html#v:proj proj>@ macro.
+-- 
+-- Alternatively you can achieve the same using the functions of the @contrazip@ family
+-- from the \"contravariant-extras\" package,
+-- which are especially helpful when dealing with tuples.
+-- E.g.,
+-- 
+-- @
+-- someParamsSerializer :: Params (Int64, Maybe Text)
+-- someParamsSerializer =
+--   'contrazip2' (value int8) (nullableValue text)
+-- @
 -- 
 newtype Params a =
   Params (Params.Params a)
@@ -195,6 +212,8 @@ json :: Value Aeson.Value
 json =
   Value (Value.unsafePTI PTI.json (const Encoder.json))
 
+-- |
+-- Unlifts the 'Array' serializer to the plain 'Value' serializer.
 {-# INLINABLE array #-}
 array :: Array a -> Value a
 array (Array imp) =
@@ -317,19 +336,45 @@ instance Default (Value Aeson.Value) where
 -- * Array
 -------------------------
 
+-- |
+-- A generic array serializer.
+-- 
+-- Here's an example of its usage:
+-- 
+-- >x :: Value [[Int64]]
+-- >x =
+-- >  array (arrayDimension foldl' (arrayDimension foldl' (arrayValue int8)))
+-- 
 newtype Array a =
   Array (Array.Array a)
 
+-- |
+-- Lifts the 'Value' serializer into the 'Array' serializer of a non-nullable value.
 {-# INLINABLE arrayValue #-}
 arrayValue :: Value a -> Array a
 arrayValue (Value (Value.Value elementOID arrayOID encoder')) =
   Array (Array.value elementOID arrayOID encoder')
 
+-- |
+-- Lifts the 'Value' serializer into the 'Array' serializer of a nullable value.
 {-# INLINABLE arrayNullableValue #-}
 arrayNullableValue :: Value a -> Array (Maybe a)
 arrayNullableValue (Value (Value.Value elementOID arrayOID encoder')) =
   Array (Array.nullableValue elementOID arrayOID encoder')
 
+-- |
+-- A serializer of an array dimension,
+-- which thus provides support for multidimensional arrays.
+-- 
+-- Accepts:
+-- 
+-- * An implementation of the left-fold operation,
+-- such as @Data.Foldable.'foldl''@,
+-- which determines the input value.
+-- 
+-- * A component serializer, which can be either another 'arrayDimension',
+-- 'arrayValue' or 'arrayNullableValue'.
+-- 
 {-# INLINABLE arrayDimension #-}
 arrayDimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
 arrayDimension foldl (Array imp) =

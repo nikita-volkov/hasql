@@ -37,6 +37,10 @@ import Data.Profunctor.Unsafe as Exports
 import Data.Functor.Contravariant as Exports
 import Data.Functor.Contravariant.Divisible as Exports
 
+-- contravariant-extras
+-------------------------
+import Contravariant.Extras as Exports
+
 -- either
 -------------------------
 import Control.Monad.Trans.Either as Exports
