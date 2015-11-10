@@ -45,6 +45,7 @@ module Hasql.Deserialization
   array,
   composite,
   hstore,
+  enum,
   -- * Array
   Array,
   arrayDimension,
@@ -524,6 +525,13 @@ composite (Composite imp) =
 hstore :: (forall m. Monad m => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
   Value (Value.decoder (const (Decoder.hstore replicateM Decoder.text_strict Decoder.text_strict)))
+
+-- |
+-- Given a partial mapping from text to value,
+-- produces a deserializer of that value.
+enum :: (Text -> Maybe a) -> Value a
+enum mapping =
+  Value (Value.decoder (const (Decoder.enum mapping)))
 
 
 -- ** Instances

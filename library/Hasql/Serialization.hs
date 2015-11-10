@@ -25,6 +25,7 @@ module Hasql.Serialization
   uuid,
   json,
   array,
+  enum,
   -- * Array
   Array,
   arrayValue,
@@ -219,6 +220,15 @@ array :: Array a -> Value a
 array (Array imp) =
   Array.run imp & \(arrayOID, encoder') ->
     Value (Value.Value arrayOID arrayOID encoder')
+
+-- |
+-- Given a function,
+-- which maps the value into the textual enum label from the DB side,
+-- produces a serializer of that value.
+{-# INLINABLE enum #-}
+enum :: (a -> Text) -> Value a
+enum mapping =
+  Value (Value.unsafePTI PTI.text (const (Encoder.enum mapping)))
 
 
 -- ** Instances

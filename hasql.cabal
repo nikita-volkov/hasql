@@ -68,7 +68,7 @@ library
     -- parsing:
     attoparsec >= 0.10 && < 0.14,
     -- database:
-    postgresql-binary >= 0.7.2 && < 0.8,
+    postgresql-binary >= 0.7.3 && < 0.8,
     postgresql-libpq == 0.9.*,
     -- data:
     dlist >= 0.7 && < 0.8,
