@@ -6,33 +6,32 @@ import Data.ByteString (ByteString)
 import Data.Functor.Contravariant
 import Data.Default.Class
 import Contravariant.Extras
-import qualified Hasql.Query as Query;
-import qualified Hasql.Serialization as S
-import qualified Hasql.Deserialization as D
-import qualified Hasql.Connection as Connection
+import qualified Hasql as H
+import qualified Hasql.Serialization as HS
+import qualified Hasql.Deserialization as HD
 
 
 main =
   do
-    connectionEither <- Connection.acquire settings
+    connectionEither <- H.acquire settings
     case connectionEither of
       Left e -> print e
       Right connection -> do
-        result <- Connection.executeParametricQuery connection sumParametricQuery (1, 2)
+        result <- H.executeParametricQuery connection sumParametricQuery (1, 2)
         print result
   where
     settings =
-      Connection.ParametricSettings "localhost" 5432 "postgres" "" "postgres"
+      H.ParametricSettings "localhost" 5432 "postgres" "" "postgres"
     sumParametricQuery =
       (,,,) template serializer deserializer True
       where
         template =
           "SELECT $1 + $2"
         serializer =
-          contramap fst (S.value S.int8) <>
-          contramap snd (S.value S.int8)
+          contramap fst (HS.value HS.int8) <>
+          contramap snd (HS.value HS.int8)
         deserializer =
-          D.result (D.singleRow (D.value D.int8))
+          HD.result (HD.singleRow (HD.value HD.int8))
 
 
 
@@ -53,19 +52,19 @@ data Account =
 -------------------------
 
 
-updateMenu :: Query.ParametricQuery (Text, Int64) Int64
+updateMenu :: H.ParametricQuery (Text, Int64) Int64
 updateMenu =
   (,,,) template serializer deserializer True
   where
     template =
       "UPDATE menu SET title = $1 WHERE id = $2"
     serializer =
-      contrazip2 (S.value S.text)
-                 (S.value S.int8)
+      contrazip2 (HS.value HS.text)
+                 (HS.value HS.int8)
     deserializer =
-      D.result (D.rowsAffected)
+      HD.result (HD.rowsAffected)
 
-accountByEmail :: Query.ParametricQuery Text (Maybe (Int64, Account))
+accountByEmail :: H.ParametricQuery Text (Maybe (Int64, Account))
 accountByEmail =
   (,,,) template serializer deserializer True
   where
@@ -73,11 +72,11 @@ accountByEmail =
       "SELECT id, email, password, first_name, last_name \
       \FROM account WHERE email = $1"
     serializer =
-      S.value S.text
+      HS.value HS.text
     deserializer =
-      D.result (D.maybeRow (identifiedDeserializer accountDeserializer))
+      HD.result (HD.maybeRow (identifiedDeserializer accountDeserializer))
 
-insertAccount :: Query.ParametricQuery Account Int64
+insertAccount :: H.ParametricQuery Account Int64
 insertAccount =
   (,,,) template serializer deserializer True
   where
@@ -88,22 +87,22 @@ insertAccount =
     serializer =
       accountSerializer
     deserializer =
-      D.result (D.singleRow idDeserializer)
+      HD.result (HD.singleRow idDeserializer)
 
 
 -- * Deserializers
 -------------------------
 
 
-idDeserializer :: D.Row Int64
+idDeserializer :: HD.Row Int64
 idDeserializer =
-  D.value D.int8
+  HD.value HD.int8
 
-accountDeserializer :: D.Row Account
+accountDeserializer :: HD.Row Account
 accountDeserializer =
-  liftM4 Account (D.value def) (D.value def) (D.value def) (D.value def)
+  liftM4 Account (HD.value def) (HD.value def) (HD.value def) (HD.value def)
 
-identifiedDeserializer :: D.Row a -> D.Row (Int64, a)
+identifiedDeserializer :: HD.Row a -> HD.Row (Int64, a)
 identifiedDeserializer aDeserializer =
   liftM2 (,) idDeserializer aDeserializer
 
@@ -112,11 +111,11 @@ identifiedDeserializer aDeserializer =
 -------------------------
 
 
-accountSerializer :: S.Params Account
+accountSerializer :: HS.Params Account
 accountSerializer =
   contramap (\(Account a b c d) -> (a, b, c, d)) $
-  contrazip4 (S.value S.text)
-             (S.value S.bytea)
-             (S.value S.text)
-             (S.value S.text)
+  contrazip4 (HS.value HS.text)
+             (HS.value HS.bytea)
+             (HS.value HS.text)
+             (HS.value HS.text)
 

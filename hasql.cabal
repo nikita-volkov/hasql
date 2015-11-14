@@ -60,10 +60,9 @@ library
     Hasql.Serialization.Params
     Hasql.PreparedStatementRegistry
   exposed-modules:
-    Hasql.Query
     Hasql.Deserialization
     Hasql.Serialization
-    Hasql.Connection
+    Hasql
   build-depends:
     -- parsing:
     attoparsec >= 0.10 && < 0.14,

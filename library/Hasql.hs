@@ -1,9 +1,13 @@
-module Hasql.Connection
+module Hasql
 (
+  -- * Connection management
   Connection,
   Settings.Settings(..),
   acquire,
   release,
+  -- * Query execution
+  ParametricQuery(..),
+  NonparametricQuery(..),
   executeParametricQuery,
   -- * Errors
   AcquisitionError(..),
@@ -15,7 +19,6 @@ where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Query as Query
 import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Deserialization.Results as ResultsDeserialization
 import qualified Hasql.Deserialization as Deserialization
@@ -104,9 +107,27 @@ release :: Connection -> IO ()
 release (Connection pqConnection _ _) =
   LibPQ.finish pqConnection
 
+
+-- |
+-- A strictly single-statement query, which can be parameterized and prepared.
+-- 
+-- SQL template, params serializer, results deserializer and a flag, determining whether it should be prepared.
+-- 
+type ParametricQuery a b =
+  (ByteString, Serialization.Params a, Deserialization.Results b, Bool)
+
+-- |
+-- A non-parameterizable and non-preparable query,
+-- which however can contain multiple statements.
+-- 
+-- SQL, results deserializer.
+-- 
+type NonparametricQuery a =
+  (ByteString, Deserialization.Results a)
+
 -- |
 -- Execute a query, producing either a deserialization failure or a successful result.
-executeParametricQuery :: Connection -> Query.ParametricQuery a b -> a -> IO (Either ResultsError b)
+executeParametricQuery :: Connection -> ParametricQuery a b -> a -> IO (Either ResultsError b)
 executeParametricQuery (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceSerializer serializer) preparable params

@@ -165,7 +165,7 @@ rowsAffected =
 
 -- |
 -- Exactly one row.
--- Will raise the 'Hasql.Connection.UnexpectedAmountOfRows' error if it's any other.
+-- Will raise the 'Hasql.UnexpectedAmountOfRows' error if it's any other.
 -- 
 {-# INLINABLE singleRow #-}
 singleRow :: Row a -> Result a
