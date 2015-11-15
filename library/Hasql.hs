@@ -1,15 +1,13 @@
 module Hasql
 (
-  -- * Connection management
+  -- * Connection
   Connection,
   Settings.Settings(..),
   acquire,
   release,
-  -- * Query execution
-  ParametricQuery(..),
-  NonparametricQuery(..),
-  executeParametricQuery,
-  executeNonparametricQuery,
+  -- * Query
+  Query(..),
+  query,
   -- * Errors
   AcquisitionError(..),
   ResultsError(..),
@@ -109,32 +107,15 @@ release (Connection pqConnection _ _) =
 -- 
 -- SQL template, params serializer, results deserializer and a flag, determining whether it should be prepared.
 -- 
-type ParametricQuery a b =
+type Query a b =
   (ByteString, Serialization.Params a, Deserialization.Results b, Bool)
 
 -- |
--- A non-parameterizable and non-preparable query,
--- which however can contain multiple statements.
--- 
--- SQL, results deserializer.
--- 
-type NonparametricQuery a =
-  (ByteString, Deserialization.Results a)
-
--- |
 -- Execute a parametric query, producing either a deserialization failure or a successful result.
-executeParametricQuery :: Connection -> ParametricQuery a b -> a -> IO (Either ResultsError b)
-executeParametricQuery (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
+query :: Connection -> Query a b -> a -> IO (Either ResultsError b)
+query (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceSerializer serializer) preparable params
-    EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)
-
--- |
--- Execute a non-parametric query, producing either a deserialization failure or a successful result.
-executeNonparametricQuery :: Connection -> NonparametricQuery a -> IO (Either ResultsError a)
-executeNonparametricQuery (Connection pqConnection integerDatetimes registry) (sql, deserializer) =
-  fmap (mapLeft coerceResultsError) $ runEitherT $ do
-    EitherT $ IO.sendNonparametricQuery pqConnection sql
     EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)
 
 -- |

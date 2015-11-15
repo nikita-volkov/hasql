@@ -17,12 +17,12 @@ main =
     case connectionEither of
       Left e -> print e
       Right connection -> do
-        result <- H.executeParametricQuery connection sumParametricQuery (1, 2)
+        result <- H.query connection sumQuery (1, 2)
         print result
   where
     settings =
       H.ParametricSettings "localhost" 5432 "postgres" "" "postgres"
-    sumParametricQuery =
+    sumQuery =
       (,,,) template serializer deserializer True
       where
         template =
@@ -52,7 +52,7 @@ data Account =
 -------------------------
 
 
-updateMenu :: H.ParametricQuery (Text, Int64) Int64
+updateMenu :: H.Query (Text, Int64) Int64
 updateMenu =
   (,,,) template serializer deserializer True
   where
@@ -64,7 +64,7 @@ updateMenu =
     deserializer =
       HD.result (HD.rowsAffected)
 
-accountByEmail :: H.ParametricQuery Text (Maybe (Int64, Account))
+accountByEmail :: H.Query Text (Maybe (Int64, Account))
 accountByEmail =
   (,,,) template serializer deserializer True
   where
@@ -76,7 +76,7 @@ accountByEmail =
     deserializer =
       HD.result (HD.maybeRow (identifiedDeserializer accountDeserializer))
 
-insertAccount :: H.ParametricQuery Account Int64
+insertAccount :: H.Query Account Int64
 insertAccount =
   (,,,) template serializer deserializer True
   where
