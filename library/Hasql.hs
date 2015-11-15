@@ -9,6 +9,7 @@ module Hasql
   ParametricQuery(..),
   NonparametricQuery(..),
   executeParametricQuery,
+  executeNonparametricQuery,
   -- * Errors
   AcquisitionError(..),
   ResultsError(..),
@@ -126,11 +127,19 @@ type NonparametricQuery a =
   (ByteString, Deserialization.Results a)
 
 -- |
--- Execute a query, producing either a deserialization failure or a successful result.
+-- Execute a parametric query, producing either a deserialization failure or a successful result.
 executeParametricQuery :: Connection -> ParametricQuery a b -> a -> IO (Either ResultsError b)
 executeParametricQuery (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceSerializer serializer) preparable params
+    EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)
+
+-- |
+-- Execute a non-parametric query, producing either a deserialization failure or a successful result.
+executeNonparametricQuery :: Connection -> NonparametricQuery a -> IO (Either ResultsError a)
+executeNonparametricQuery (Connection pqConnection integerDatetimes registry) (sql, deserializer) =
+  fmap (mapLeft coerceResultsError) $ runEitherT $ do
+    EitherT $ IO.sendNonparametricQuery pqConnection sql
     EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)
 
 -- |

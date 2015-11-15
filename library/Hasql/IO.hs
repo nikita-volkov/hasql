@@ -61,10 +61,7 @@ initConnection c =
 {-# INLINE getResults #-}
 getResults :: LibPQ.Connection -> Bool -> ResultsDeserialization.Results a -> IO (Either ResultsDeserialization.Error a)
 getResults connection integerDatetimes des =
-  do
-    result <- ResultsDeserialization.run des (integerDatetimes, connection)
-    fix $ \loop -> LibPQ.getResult connection >>= maybe (pure ()) (const loop)
-    pure result
+  ResultsDeserialization.run (des <* ResultsDeserialization.dropRemainders) (integerDatetimes, connection)
 
 {-# INLINABLE getPreparedStatementKey #-}
 getPreparedStatementKey ::
@@ -145,3 +142,8 @@ sendParametricQuery connection integerDatetimes registry template serializer pre
           ParamsSerialization.run'' serializer params integerDatetimes
         in
           sendUnpreparedParametricQuery connection template paramList
+
+{-# INLINABLE sendNonparametricQuery #-}
+sendNonparametricQuery :: LibPQ.Connection -> ByteString -> IO (Either ResultsDeserialization.Error ())
+sendNonparametricQuery connection sql =
+  checkedSend connection $ LibPQ.sendQuery connection sql

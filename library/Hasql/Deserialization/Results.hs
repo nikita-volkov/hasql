@@ -71,6 +71,22 @@ getResultMaybe :: Results (Maybe LibPQ.Result)
 getResultMaybe =
   Results $ ReaderT $ \(_, connection) -> lift $ LibPQ.getResult connection
 
+{-# INLINABLE dropRemainders #-}
+dropRemainders :: Results ()
+dropRemainders =
+  Results $ ReaderT $ \(integerDatetimes, connection) -> loop integerDatetimes connection
+  where
+    loop integerDatetimes connection =
+      getResultMaybe >>= Prelude.maybe (pure ()) onResult
+      where
+        getResultMaybe =
+          lift $ LibPQ.getResult connection
+        onResult result =
+          checkErrors *> loop integerDatetimes connection
+          where
+            checkErrors =
+              EitherT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)
+
 cancel :: Results ()
 cancel =
   undefined
