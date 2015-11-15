@@ -100,6 +100,11 @@ nullableValue (Value x) =
 -- ** Instances
 -------------------------
 
+instance Default (Params ()) where
+  {-# INLINE def #-}
+  def =
+    mempty
+
 instance Default (Value a) => Default (Params (Identity a)) where
   {-# INLINE def #-}
   def =
