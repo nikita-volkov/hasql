@@ -41,7 +41,7 @@ data ResultsError =
   -- Usually indicates problems with connection.
   ClientError !(Maybe ByteString) |
   ResultError !ResultError
-  deriving (Show)
+  deriving (Show, Eq)
 
 data ResultError =
   -- | 
@@ -72,22 +72,18 @@ data ResultError =
   -- |
   -- An unexpected amount of rows.
   UnexpectedAmountOfRows !Int
-  deriving (Show)
+  deriving (Show, Eq)
 
 data RowError =
   EndOfInput |
   UnexpectedNull |
   ValueError !Text
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- |
 -- A connection acquistion error.
-data AcquisitionError =
-  -- | Some errors during connection.
-  BadConnectionStatus !(Maybe ByteString) |
-  -- | The server is running a too old version of Postgres.
-  UnsupportedVersion !Int
-  deriving (Show)
+type AcquisitionError =
+  Maybe ByteString
 
 -- |
 -- Acquire a connection using the provided settings.
@@ -95,8 +91,7 @@ acquire :: Settings.Settings -> IO (Either AcquisitionError Connection)
 acquire settings =
   runEitherT $ do
     pqConnection <- lift (IO.acquireConnection settings)
-    lift (IO.checkConnectionStatus pqConnection) >>= traverse (left . BadConnectionStatus)
-    lift (IO.checkServerVersion pqConnection) >>= traverse (left . UnsupportedVersion)
+    lift (IO.checkConnectionStatus pqConnection) >>= traverse left
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
     registry <- lift (IO.acquirePreparedStatementRegistry)
