@@ -3,16 +3,15 @@ module Hasql
   -- * Connection
   Connection,
   Settings.Settings(..),
-  acquire,
-  release,
+  ConnectionError(..),
+  connect,
+  disconnect,
   -- * Query
   Query(..),
-  query,
-  -- * Errors
-  AcquisitionError(..),
   ResultsError(..),
   ResultError(..),
   RowError(..),
+  query,
 )
 where
 
@@ -80,13 +79,13 @@ data RowError =
 
 -- |
 -- A connection acquistion error.
-type AcquisitionError =
+type ConnectionError =
   Maybe ByteString
 
 -- |
 -- Acquire a connection using the provided settings.
-acquire :: Settings.Settings -> IO (Either AcquisitionError Connection)
-acquire settings =
+connect :: Settings.Settings -> IO (Either ConnectionError Connection)
+connect settings =
   runEitherT $ do
     pqConnection <- lift (IO.acquireConnection settings)
     lift (IO.checkConnectionStatus pqConnection) >>= traverse left
@@ -97,8 +96,8 @@ acquire settings =
 
 -- |
 -- Release the connection.
-release :: Connection -> IO ()
-release (Connection pqConnection _ _) =
+disconnect :: Connection -> IO ()
+disconnect (Connection pqConnection _ _) =
   LibPQ.finish pqConnection
 
 

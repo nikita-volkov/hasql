@@ -13,7 +13,7 @@ import qualified Hasql.Deserialization as HD
 
 main =
   do
-    connectionEither <- H.acquire settings
+    connectionEither <- H.connect settings
     case connectionEither of
       Left e -> print e
       Right connection -> do

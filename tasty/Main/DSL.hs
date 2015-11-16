@@ -11,7 +11,7 @@ newtype Session a =
   deriving (Functor, Applicative, Monad, MonadIO)
 
 data SessionError =
-  ConnectionError (H.AcquisitionError) |
+  ConnectionError (H.ConnectionError) |
   ResultsError (H.ResultsError)
   deriving (Show, Eq)
 
@@ -20,7 +20,7 @@ session (Session impl) =
   runEitherT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      EitherT $ fmap (mapLeft ConnectionError) $ H.acquire settings
+      EitherT $ fmap (mapLeft ConnectionError) $ H.connect settings
       where
         settings =
           H.ParametricSettings host port user password database
@@ -34,7 +34,7 @@ session (Session impl) =
       bimapEitherT ResultsError id $
       runReaderT impl connection
     release connection =
-      lift $ H.release connection
+      lift $ H.disconnect connection
 
 query :: a -> H.Query a b -> Session b
 query params query =
