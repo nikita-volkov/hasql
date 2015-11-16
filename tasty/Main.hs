@@ -27,14 +27,14 @@ tree =
         DSL.session $ do
           let
             query =
-              (sql, mempty, HD.result HD.noResult, True)
+              (sql, mempty, HD.noResult, True)
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              (sql, mempty, HD.result HD.noResult, True)
+              (sql, mempty, HD.noResult, True)
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
@@ -46,7 +46,7 @@ tree =
                 sql =
                   "select ($1 :: mood)"
                 deserializer =
-                  HD.result (HD.singleRow (HD.value (HD.enum (Just . id))))
+                  (HD.singleRow (HD.value (HD.enum (Just . id))))
                 serializer =
                   HS.value (HS.enum id)
             in DSL.query "ok" query
@@ -70,7 +70,7 @@ tree =
                     serializer =
                       HS.value HS.text
                     deserializer =
-                      HD.result (HD.singleRow (HD.value (HD.text)))
+                      (HD.singleRow (HD.value (HD.text)))
             effect2 =
               DSL.query 1 query
               where
@@ -82,7 +82,7 @@ tree =
                     serializer =
                       HS.value HS.int8
                     deserializer =
-                      HD.result (HD.singleRow (HD.value HD.int8))
+                      (HD.singleRow (HD.value HD.int8))
             in (,) <$> effect1 <*> effect2
       in actual
     ,
@@ -112,7 +112,7 @@ tree =
               sql =
                 "delete from a"
               deserializer =
-                HD.result HD.rowsAffected
+                HD.rowsAffected
       in actual
     ,
     HUnit.testCase "Result of an auto-incremented column" $
@@ -121,8 +121,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () ("insert into a (v) values ('a') returning id", def, HD.result (HD.singleRow (HD.value HD.int4)), False)
-          id2 <- DSL.query () ("insert into a (v) values ('b') returning id", def, HD.result (HD.singleRow (HD.value HD.int4)), False)
+          id1 <- DSL.query () ("insert into a (v) values ('a') returning id", def, (HD.singleRow (HD.value HD.int4)), False)
+          id2 <- DSL.query () ("insert into a (v) values ('b') returning id", def, (HD.singleRow (HD.value HD.int4)), False)
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in HUnit.assertEqual "" (Right (1, 2)) =<< actualIO

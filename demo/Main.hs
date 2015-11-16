@@ -31,7 +31,7 @@ main =
           contramap fst (HS.value HS.int8) <>
           contramap snd (HS.value HS.int8)
         deserializer =
-          HD.result (HD.singleRow (HD.value HD.int8))
+          HD.singleRow (HD.value HD.int8)
 
 
 
@@ -62,7 +62,7 @@ updateMenu =
       contrazip2 (HS.value HS.text)
                  (HS.value HS.int8)
     deserializer =
-      HD.result (HD.rowsAffected)
+      HD.rowsAffected
 
 accountByEmail :: H.Query Text (Maybe (Int64, Account))
 accountByEmail =
@@ -74,7 +74,7 @@ accountByEmail =
     serializer =
       HS.value HS.text
     deserializer =
-      HD.result (HD.maybeRow (identifiedDeserializer accountDeserializer))
+      HD.maybeRow (identifiedDeserializer accountDeserializer)
 
 insertAccount :: H.Query Account Int64
 insertAccount =
@@ -87,7 +87,7 @@ insertAccount =
     serializer =
       accountSerializer
     deserializer =
-      HD.result (HD.singleRow idDeserializer)
+      HD.singleRow idDeserializer
 
 
 -- * Deserializers

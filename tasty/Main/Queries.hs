@@ -13,7 +13,7 @@ def sql =
 
 plain :: ByteString -> H.Query () ()
 plain sql =
-  (sql, mempty, HD.result HD.noResult, False)
+  (sql, mempty, HD.noResult, False)
 
 dropType :: ByteString -> H.Query () ()
 dropType name =

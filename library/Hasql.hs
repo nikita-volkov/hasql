@@ -104,10 +104,10 @@ disconnect (Connection pqConnection _ _) =
 -- |
 -- A strictly single-statement query, which can be parameterized and prepared.
 -- 
--- SQL template, params serializer, results deserializer and a flag, determining whether it should be prepared.
+-- SQL template, params serializer, result deserializer and a flag, determining whether it should be prepared.
 -- 
 type Query a b =
-  (ByteString, Serialization.Params a, Deserialization.Results b, Bool)
+  (ByteString, Serialization.Params a, Deserialization.Result b, Bool)
 
 -- |
 -- Execute a parametric query, producing either a deserialization failure or a successful result.
@@ -125,7 +125,7 @@ coerceResultsError :: ResultsDeserialization.Error -> ResultsError
 coerceResultsError =
   unsafeCoerce
 
-coerceDeserializer :: Deserialization.Results a -> ResultsDeserialization.Results a
+coerceDeserializer :: Deserialization.Result a -> ResultsDeserialization.Results a
 coerceDeserializer =
   unsafeCoerce
 

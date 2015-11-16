@@ -2,9 +2,6 @@
 -- A DSL for creating result deserializers.
 module Hasql.Deserialization
 (
-  -- * Results
-  Results,
-  result,
   -- * Result
   Result,
   noResult,
@@ -71,77 +68,14 @@ import qualified Hasql.Deserialization.Composite as Composite
 import qualified Hasql.Prelude as Prelude
 
 
--- * Results
--------------------------
-
--- |
--- Deserializer of possibly multiple results of a single query.
--- 
--- Multiple results get produced by non-parametric queries with multiple statements.
--- 
--- Parametric queries always produce exactly one result,
--- so don't confuse this with a multi-row result.
--- 
-newtype Results a =
-  Results (Results.Results a)
-  deriving (Functor, Applicative, Monad)
-
--- |
--- Lift an individual result deserializer to
--- a deserializer of multiple results.
-{-# INLINABLE result #-}
-result :: Result a -> Results a
-result (Result result) =
-  Results (Results.single result)
-
--- ** Instances
--------------------------
-
--- | Maps to @(result 'noResult')@.
-instance Default (Results ()) where
-  {-# INLINE def #-}
-  def =
-    result noResult
-
--- | Maps to @(result 'rowsAffected')@.
-instance Default (Results Int64) where
-  {-# INLINE def #-}
-  def =
-    result rowsAffected
-
--- | Maps to @(result ('maybeRow' def))@.
-instance Default (Row a) => Default (Results (Maybe a)) where
-  {-# INLINE def #-}
-  def =
-    result (maybeRow def)
-
--- | Maps to @(result ('rowsVector' def))@.
-instance Default (Row a) => Default (Results (Vector a)) where
-  {-# INLINE def #-}
-  def =
-    result (rowsVector def)
-
--- | Maps to @(result ('rowsList' def))@.
-instance Default (Row a) => Default (Results ([] a)) where
-  {-# INLINE def #-}
-  def =
-    result (rowsList def)
-
--- | Maps to @(result (fmap Identity ('singleRow' def)))@.
-instance Default (Row a) => Default (Results (Identity a)) where
-  {-# INLINE def #-}
-  def =
-    result (fmap Identity (singleRow def))
-
-
 -- * Result
 -------------------------
 
 -- |
--- Deserializer of an individual result.
+-- Deserializer of a query result.
 -- 
 newtype Result a =
-  Result (Result.Result a)
+  Result (Results.Results a)
   deriving (Functor)
 
 -- |
@@ -152,7 +86,7 @@ newtype Result a =
 {-# INLINABLE noResult #-}
 noResult :: Result ()
 noResult =
-  Result Result.unit
+  Result (Results.single Result.unit)
 
 -- |
 -- Get the amount of rows affected by such statements as
@@ -161,7 +95,7 @@ noResult =
 {-# INLINABLE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
-  Result Result.rowsAffected
+  Result (Results.single Result.rowsAffected)
 
 -- |
 -- Exactly one row.
@@ -170,7 +104,7 @@ rowsAffected =
 {-# INLINABLE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow (Row row) =
-  Result (Result.single row)
+  Result (Results.single (Result.single row))
 
 -- ** Multi-row traversers
 -------------------------
@@ -181,7 +115,7 @@ singleRow (Row row) =
 {-# INLINABLE generateRows #-}
 generateRows :: (forall m. Monad m => Int -> (Int -> m a) -> m b) -> Row a -> Result b
 generateRows generateM (Row row) =
-  Result (Result.generate generateM row)
+  Result (Results.single (Result.generate generateM row))
 
 -- |
 -- Foldl multiple rows.
@@ -189,7 +123,7 @@ generateRows generateM (Row row) =
 {-# INLINABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
 foldlRows step init (Row row) =
-  Result (Result.foldl step init row)
+  Result (Results.single (Result.foldl step init row))
 
 -- |
 -- Foldr multiple rows.
@@ -197,7 +131,7 @@ foldlRows step init (Row row) =
 {-# INLINABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
 foldrRows step init (Row row) =
-  Result (Result.foldr step init row)
+  Result (Results.single (Result.foldr step init row))
 
 -- ** Specialized multi-row results
 -------------------------
@@ -208,7 +142,7 @@ foldrRows step init (Row row) =
 {-# INLINABLE maybeRow #-}
 maybeRow :: Row a -> Result (Maybe a)
 maybeRow (Row row) =
-  Result (Result.maybe row)
+  Result (Results.single (Result.maybe row))
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -216,7 +150,7 @@ maybeRow (Row row) =
 {-# INLINABLE rowsVector #-}
 rowsVector :: Row a -> Result (Vector a)
 rowsVector (Row row) =
-  Result (Result.generate Vector.generateM row)
+  Result (Results.single (Result.generate Vector.generateM row))
 
 -- |
 -- Zero or more rows packed into the list.
@@ -224,7 +158,7 @@ rowsVector (Row row) =
 {-# INLINABLE rowsList #-}
 rowsList :: Row a -> Result [a]
 rowsList (Row row) =
-  Result (Result.foldr (:) [] row)
+  Result (Results.single (Result.foldr (:) [] row))
 
 
 -- ** Instances
