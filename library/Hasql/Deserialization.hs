@@ -149,16 +149,16 @@ maybeRow (Row row) =
 -- 
 {-# INLINABLE rowsVector #-}
 rowsVector :: Row a -> Result (Vector a)
-rowsVector (Row row) =
-  Result (Results.single (Result.generate Vector.generateM row))
+rowsVector =
+  generateRows Vector.generateM
 
 -- |
 -- Zero or more rows packed into the list.
 -- 
 {-# INLINABLE rowsList #-}
 rowsList :: Row a -> Result [a]
-rowsList (Row row) =
-  Result (Results.single (Result.foldr (:) [] row))
+rowsList =
+  foldrRows (:) []
 
 
 -- ** Instances
