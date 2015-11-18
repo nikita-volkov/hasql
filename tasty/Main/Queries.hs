@@ -25,3 +25,12 @@ createEnum name values =
   plain $
     "create type " <> name <> " as enum (" <> 
     mconcat (intersperse ", " (map (\x -> "'" <> x <> "'") values)) <> ")"
+
+selectList :: H.Query () ([] (Int64, Int64))
+selectList =
+  (sql, mempty, deserializer, True)
+  where
+    sql =
+      "values (1,2), (3,4), (5,6)"
+    deserializer =
+      HD.rowsList ((,) <$> HD.value HD.int8 <*> HD.value HD.int8)

@@ -126,5 +126,11 @@ tree =
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in HUnit.assertEqual "" (Right (1, 2)) =<< actualIO
+    ,
+    HUnit.testCase "List decoding" $
+    let
+      actualIO =
+        DSL.session $ DSL.query () $ Queries.selectList
+      in HUnit.assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
   ]
 
