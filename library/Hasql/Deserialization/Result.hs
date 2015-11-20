@@ -196,6 +196,7 @@ foldl step init rowDes =
 {-# INLINE foldr #-}
 foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDes =
+  {-# SCC "foldr" #-} 
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
