@@ -7,13 +7,11 @@ import qualified Hasql.Deserialization.Value as Value
 
 
 newtype Row a =
-  Row
-    (EitherT Error 
-      (ReaderT 
-        (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) 
-        (StateT LibPQ.Column IO)) 
-      a)
+  Row (EitherT Error (ReaderT Env IO) a)
   deriving (Functor, Applicative, Monad)
+
+data Env =
+  Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
 
 data Error =
   EndOfInput |
@@ -22,11 +20,15 @@ data Error =
   deriving (Show)
 
 
+-- * Functions
+-------------------------
+
 {-# INLINE run #-}
 run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either Error a)
-run (Row m) env =
-  flip evalStateT 0 (flip runReaderT env (runEitherT m))
-
+run (Row impl) (result, row, columnsAmount, integerDatetimes) =
+  do
+    columnRef <- newIORef 0
+    runReaderT (runEitherT impl) (Env result row columnsAmount integerDatetimes columnRef)
 
 {-# INLINE error #-}
 error :: Error -> Row a
@@ -39,13 +41,17 @@ error x =
 value :: Value.Value a -> Row (Maybe a)
 value valueDes =
   {-# SCC "value" #-} 
-  Row $ EitherT $ ReaderT $ \(result, row, maxCol, integerDatetimes) -> StateT $ \col ->
-    if col < maxCol
-      then
-        flip fmap (LibPQ.getvalue result row col) $ \x ->
-          (traverse (mapLeft ValueError . Decoder.run (Value.run valueDes integerDatetimes)) x,
-           succ col)
-      else return (Left EndOfInput, col)
+  Row $ EitherT $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> do
+    col <- readIORef columnRef
+    writeIORef columnRef (succ col)
+    if col < columnsAmount
+      then do
+        valueMaybe <- LibPQ.getvalue result row col
+        pure $ 
+          case valueMaybe of
+            Nothing -> Right Nothing
+            Just value -> fmap Just $ mapLeft ValueError $ Decoder.run (Value.run valueDes integerDatetimes) value
+      else return (Left EndOfInput)
 
 -- |
 -- Next value, decoded using the provided value deserializer.
