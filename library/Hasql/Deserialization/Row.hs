@@ -22,19 +22,23 @@ data Error =
   deriving (Show)
 
 
+{-# INLINE run #-}
 run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either Error a)
 run (Row m) env =
   flip evalStateT 0 (flip runReaderT env (runEitherT m))
 
 
+{-# INLINE error #-}
 error :: Error -> Row a
 error x =
   Row (EitherT (return (Left x)))
 
 -- |
 -- Next value, decoded using the provided value deserializer.
+{-# INLINE value #-}
 value :: Value.Value a -> Row (Maybe a)
 value valueDes =
+  {-# SCC "value" #-} 
   Row $ EitherT $ ReaderT $ \(result, row, maxCol, integerDatetimes) -> StateT $ \col ->
     if col < maxCol
       then
@@ -45,6 +49,8 @@ value valueDes =
 
 -- |
 -- Next value, decoded using the provided value deserializer.
+{-# INLINE nonNullValue #-}
 nonNullValue :: Value.Value a -> Row a
 nonNullValue valueDes =
+  {-# SCC "nonNullValue" #-} 
   value valueDes >>= maybe (error UnexpectedNull) pure

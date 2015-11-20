@@ -42,7 +42,7 @@ clientError =
 
 -- |
 -- Parse a single result.
-{-# INLINABLE single #-}
+{-# INLINE single #-}
 single :: Result.Result a -> Results a
 single resultDes =
   Results $ ReaderT $ \(integerDatetimes, connection) -> EitherT $ do

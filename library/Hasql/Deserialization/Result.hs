@@ -43,10 +43,12 @@ data Error =
   UnexpectedAmountOfRows !Int
   deriving (Show)
 
+{-# INLINE run #-}
 run :: Result a -> (Bool, LibPQ.Result) -> IO (Either Error a)
 run (Result reader) env =
   runEitherT (runReaderT reader env)
 
+{-# INLINE unit #-}
 unit :: Result ()
 unit =
   checkExecStatus $ \case
@@ -54,6 +56,7 @@ unit =
     LibPQ.TuplesOk -> True
     _ -> False
 
+{-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
   do
@@ -76,8 +79,10 @@ rowsAffected =
           mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m)) $
           Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
+{-# INLINE checkExecStatus #-}
 checkExecStatus :: (LibPQ.ExecStatus -> Bool) -> Result ()
 checkExecStatus predicate =
+  {-# SCC "checkExecStatus" #-} 
   do
     status <- Result $ ReaderT $ \(_, result) -> lift $ LibPQ.resultStatus result
     unless (predicate status) $ do
@@ -87,6 +92,7 @@ checkExecStatus predicate =
         LibPQ.FatalError    -> serverError
         _ -> Result $ lift $ EitherT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
 
+{-# INLINE serverError #-}
 serverError :: Result ()
 serverError =
   Result $ ReaderT $ \(_, result) -> EitherT $ do
@@ -102,6 +108,7 @@ serverError =
       LibPQ.resultErrorField result LibPQ.DiagMessageHint
     pure $ Left $ ServerError code message detail hint
 
+{-# INLINE maybe #-}
 maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDes =
   do
@@ -122,6 +129,7 @@ maybe rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
+{-# INLINE single #-}
 single :: Row.Row a -> Result a
 single rowDes =
   do
@@ -141,8 +149,10 @@ single rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
+{-# INLINE generate #-}
 generate :: (forall m. Monad m => Int -> (Int -> m a) -> m b) -> Row.Row a -> Result b
 generate generateM rowDes =
+  {-# SCC "generate" #-} 
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -159,8 +169,10 @@ generate generateM rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
+{-# INLINE foldl #-}
 foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
 foldl step init rowDes =
+  {-# SCC "foldl" #-} 
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -181,6 +193,7 @@ foldl step init rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
+{-# INLINE foldr #-}
 foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDes =
   do

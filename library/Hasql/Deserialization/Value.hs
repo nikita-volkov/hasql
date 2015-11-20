@@ -18,5 +18,6 @@ run (Value imp) integerDatetimes =
 {-# INLINE decoder #-}
 decoder :: (Bool -> Decoder.Decoder a) -> Value a
 decoder =
+  {-# SCC "decoder" #-} 
   Value . ReaderT
 
