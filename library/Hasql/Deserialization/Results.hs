@@ -49,7 +49,8 @@ single resultDes =
     resultMaybe <- LibPQ.getResult connection
     case resultMaybe of
       Just result ->
-        fmap (mapLeft ResultError) (Result.run resultDes (integerDatetimes, result))
+        mapLeft ResultError <$> Result.run resultDes (integerDatetimes, result) 
+          <* LibPQ.unsafeFreeResult result
       Nothing ->
         fmap (Left . ClientError) (LibPQ.errorMessage connection)
 
