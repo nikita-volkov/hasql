@@ -7,6 +7,7 @@ module Hasql.Prelude
   TextBuilder,
   bug,
   bottom,
+  forMToZero_,
 )
 where
 
@@ -114,3 +115,8 @@ bug =
 
 bottom =
   [e| $bug "Bottom evaluated" |]
+
+{-# INLINE forMToZero_ #-}
+forMToZero_ :: Applicative m => Int -> (Int -> m a) -> m ()
+forMToZero_ !startN f =
+  ($ pred startN) $ fix $ \loop !n -> if n >= 0 then f n *> loop (pred n) else pure ()

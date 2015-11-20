@@ -177,16 +177,19 @@ foldl step init rowDes =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> do
-      maxRows <- lift $ LibPQ.ntuples result
-      maxCols <- lift $ LibPQ.nfields result
-      ref <- lift $ newIORef init
+    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+      maxRows <- LibPQ.ntuples result
+      maxCols <- LibPQ.nfields result
+      accRef <- newIORef init
+      failureRef <- newIORef Nothing
       forM_ [0 .. pred (rowToInt maxRows)] $ \rowIndex -> do
-        row <- 
-          EitherT $ fmap (mapLeft (RowError rowIndex)) $ 
-          Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
-        lift $ modifyIORef ref (\acc -> step acc row)
-      lift $ readIORef ref
+        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        case rowResult of
+          Left x -> writeIORef failureRef (Just (RowError rowIndex x))
+          Right x -> modifyIORef accRef (\acc -> step acc x)
+      readIORef failureRef >>= \case
+        Nothing -> Right <$> readIORef accRef
+        Just x -> pure (Left x)
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
@@ -201,19 +204,20 @@ foldr step init rowDes =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> do
-      maxRows <- lift $ LibPQ.ntuples result
-      maxCols <- lift $ LibPQ.nfields result
-      ref <- lift $ newIORef init
-      forM_ (enumToZero (rowToInt maxRows)) $ \rowIndex -> do
-        row <- 
-          EitherT $ fmap (mapLeft (RowError rowIndex)) $ 
-          Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
-        lift $ modifyIORef ref (\acc -> step row acc)
-      lift $ readIORef ref
+    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+      maxRows <- LibPQ.ntuples result
+      maxCols <- LibPQ.nfields result
+      accRef <- newIORef init
+      failureRef <- newIORef Nothing
+      forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
+        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        case rowResult of
+          Left x -> writeIORef failureRef (Just (RowError rowIndex x))
+          Right x -> modifyIORef accRef (\acc -> step x acc)
+      readIORef failureRef >>= \case
+        Nothing -> Right <$> readIORef accRef
+        Just x -> pure (Left x)
   where
-    enumToZero n =
-      iterate pred (pred n) & take n
     rowToInt (LibPQ.Row n) =
       fromIntegral n
     intToRow =
