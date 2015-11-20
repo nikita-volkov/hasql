@@ -7,7 +7,7 @@ import qualified Hasql.Deserialization.Value as Value
 
 
 newtype Row a =
-  Row (EitherT Error (ReaderT Env IO) a)
+  Row (ReaderT Env (EitherT Error IO) a)
   deriving (Functor, Applicative, Monad)
 
 data Env =
@@ -28,12 +28,12 @@ run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either Erro
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
-    runReaderT (runEitherT impl) (Env result row columnsAmount integerDatetimes columnRef)
+    runEitherT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef))
 
 {-# INLINE error #-}
 error :: Error -> Row a
 error x =
-  Row (EitherT (return (Left x)))
+  Row (ReaderT (const (EitherT (pure (Left x)))))
 
 -- |
 -- Next value, decoded using the provided value deserializer.
@@ -41,7 +41,7 @@ error x =
 value :: Value.Value a -> Row (Maybe a)
 value valueDes =
   {-# SCC "value" #-} 
-  Row $ EitherT $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> do
+  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> EitherT $ do
     col <- readIORef columnRef
     writeIORef columnRef (succ col)
     if col < columnsAmount
@@ -51,12 +51,22 @@ value valueDes =
           case valueMaybe of
             Nothing -> Right Nothing
             Just value -> fmap Just $ mapLeft ValueError $ Decoder.run (Value.run valueDes integerDatetimes) value
-      else return (Left EndOfInput)
+      else pure (Left EndOfInput)
 
 -- |
 -- Next value, decoded using the provided value deserializer.
 {-# INLINE nonNullValue #-}
 nonNullValue :: Value.Value a -> Row a
 nonNullValue valueDes =
-  {-# SCC "nonNullValue" #-} 
-  value valueDes >>= maybe (error UnexpectedNull) pure
+  {-# SCC "nonNullValue" #-}
+  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> EitherT $ do
+    col <- readIORef columnRef
+    writeIORef columnRef (succ col)
+    if col < columnsAmount
+      then do
+        valueMaybe <- LibPQ.getvalue result row col
+        pure $ 
+          case valueMaybe of
+            Nothing -> Left UnexpectedNull
+            Just value -> mapLeft ValueError $ Decoder.run (Value.run valueDes integerDatetimes) value
+      else pure (Left EndOfInput)
