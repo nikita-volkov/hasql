@@ -298,7 +298,8 @@ int4 =
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
 int8 =
-  Value (Value.decoder (const Decoder.int))
+  {-# SCC "int8" #-} 
+  Value (Value.decoder (const ({-# SCC "int8.int" #-} Decoder.int)))
 
 -- |
 -- Deserializer of the @FLOAT4@ values.
