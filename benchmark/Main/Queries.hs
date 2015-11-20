@@ -6,7 +6,7 @@ import qualified Hasql.Serialization as HS
 import qualified Hasql.Deserialization as HD
 
 
-select1 :: Int -> H.Query () (Vector Int64)
+select1 :: Int -> H.Query () ([] Int64)
 select1 amount =
   (sql, mempty, deserializer, True)
   where
@@ -14,9 +14,9 @@ select1 amount =
       "values " <>
       mconcat (intersperse ", " (replicate amount "(1)"))
     deserializer =
-      HD.rowsVector (HD.value HD.int8)
+      HD.rowsList (HD.value HD.int8)
 
-select4 :: Int -> H.Query () (Vector (Int64, Int64, Int64, Int64))
+select4 :: Int -> H.Query () ([] (Int64, Int64, Int64, Int64))
 select4 amount =
   (sql, mempty, deserializer, True)
   where
@@ -24,4 +24,4 @@ select4 amount =
       "values " <>
       mconcat (intersperse ", " (replicate amount "(1, 2, 3, 4)"))
     deserializer =
-      HD.rowsVector ((,,,) <$> HD.value HD.int8 <*> HD.value HD.int8 <*> HD.value HD.int8 <*> HD.value HD.int8)
+      HD.rowsList ((,,,) <$> HD.value HD.int8 <*> HD.value HD.int8 <*> HD.value HD.int8 <*> HD.value HD.int8)
