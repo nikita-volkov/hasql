@@ -49,8 +49,11 @@ value valueDes =
         valueMaybe <- LibPQ.getvalue result row col
         pure $ 
           case valueMaybe of
-            Nothing -> Right Nothing
-            Just value -> fmap Just $ mapLeft ValueError $ Decoder.run (Value.run valueDes integerDatetimes) value
+            Nothing ->
+              Right Nothing
+            Just value ->
+              fmap Just $ mapLeft ValueError $
+              {-# SCC "decode" #-} Decoder.run (Value.run valueDes integerDatetimes) value
       else pure (Left EndOfInput)
 
 -- |
@@ -58,15 +61,5 @@ value valueDes =
 {-# INLINE nonNullValue #-}
 nonNullValue :: Value.Value a -> Row a
 nonNullValue valueDes =
-  {-# SCC "nonNullValue" #-}
-  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> EitherT $ do
-    col <- readIORef columnRef
-    writeIORef columnRef (succ col)
-    if col < columnsAmount
-      then do
-        valueMaybe <- LibPQ.getvalue result row col
-        pure $ 
-          case valueMaybe of
-            Nothing -> Left UnexpectedNull
-            Just value -> mapLeft ValueError $ Decoder.run (Value.run valueDes integerDatetimes) value
-      else pure (Left EndOfInput)
+  {-# SCC "nonNullValue" #-} 
+  value valueDes >>= maybe (error UnexpectedNull) pure
