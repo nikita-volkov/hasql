@@ -26,20 +26,20 @@ main =
         [
           bgroup "1 column"
           [
-            bench "1 row" $ nfIO $ query () (Q.select1 1)
+            bench "1 row" $ nfIO $! query () $! Q.select1 1
             ,
-            bench "100 rows" $ nfIO $ query () (Q.select1 100)
+            bench "100 rows" $ nfIO $! query () $! Q.select1 100
             ,
-            bench "10000 rows" $ nfIO $ query () (Q.select1 10000)
+            bench "10000 rows" $ nfIO $! query () $! Q.select1 10000
           ]
           ,
           bgroup "4 columns"
           [
-            bench "1 row" $ nfIO $ query () (Q.select4 1)
+            bench "1 row" $ nfIO $! query () $! Q.select4 1
             ,
-            bench "100 rows" $ nfIO $ query () (Q.select4 100)
+            bench "100 rows" $ nfIO $! query () $! Q.select4 100
             ,
-            bench "10000 rows" $ nfIO $ query () (Q.select4 10000)
+            bench "10000 rows" $ nfIO $! query () $! Q.select4 10000
           ]
         ]
       ]
