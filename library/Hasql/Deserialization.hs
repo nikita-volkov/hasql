@@ -158,7 +158,7 @@ rowsVector =
 {-# INLINABLE rowsList #-}
 rowsList :: Row a -> Result [a]
 rowsList =
-  foldrRows (:) []
+  foldrRows strictCons []
 
 
 -- ** Instances
