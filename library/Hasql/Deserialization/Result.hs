@@ -6,6 +6,8 @@ import qualified Hasql.Deserialization.Row as Row
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import qualified Data.ByteString as ByteString
 import qualified Hasql.Prelude as Prelude
+import qualified Data.Vector as Vector
+import qualified Data.Vector.Mutable as MutableVector
 
 
 newtype Result a =
@@ -149,10 +151,9 @@ single rowDes =
     intToRow =
       LibPQ.Row . fromIntegral
 
-{-# INLINE generate #-}
-generate :: (forall m. Monad m => Int -> (Int -> m a) -> m b) -> Row.Row a -> Result b
-generate generateM rowDes =
-  {-# SCC "generate" #-} 
+{-# INLINE vector #-}
+vector :: Row.Row a -> Result (Vector a)
+vector rowDes =
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -160,9 +161,16 @@ generate generateM rowDes =
     Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
       maxRows <- LibPQ.ntuples result
       maxCols <- LibPQ.nfields result
-      runEitherT $ generateM (rowToInt maxRows) $ \row ->
-        EitherT $ fmap (mapLeft (RowError row)) $ 
-        Row.run rowDes (result, intToRow row, maxCols, integerDatetimes)
+      mvector <- MutableVector.unsafeNew (rowToInt maxRows)
+      failureRef <- newIORef Nothing
+      forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
+        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        case rowResult of
+          Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
+          Right !x -> MutableVector.unsafeWrite mvector rowIndex x
+      readIORef failureRef >>= \case
+        Nothing -> Right <$> Vector.unsafeFreeze mvector
+        Just x -> pure (Left x)
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
@@ -185,8 +193,8 @@ foldl step init rowDes =
       forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
         rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
-          Left x -> writeIORef failureRef (Just (RowError rowIndex x))
-          Right x -> modifyIORef accRef (\acc -> step acc x)
+          Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
+          Right !x -> modifyIORef accRef (\acc -> step acc x)
       readIORef failureRef >>= \case
         Nothing -> Right <$> readIORef accRef
         Just x -> pure (Left x)
@@ -212,8 +220,8 @@ foldr step init rowDes =
       forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
         rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
-          Left x -> writeIORef failureRef (Just (RowError rowIndex x))
-          Right x -> modifyIORef accRef (\acc -> step x acc)
+          Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
+          Right !x -> modifyIORef accRef (\acc -> step x acc)
       readIORef failureRef >>= \case
         Nothing -> Right <$> readIORef accRef
         Just x -> pure (Left x)
@@ -222,4 +230,3 @@ foldr step init rowDes =
       fromIntegral n
     intToRow =
       LibPQ.Row . fromIntegral
-

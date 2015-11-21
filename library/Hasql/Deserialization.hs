@@ -14,7 +14,6 @@ module Hasql.Deserialization
   -- ** Multi-row traversers
   foldlRows,
   foldrRows,
-  generateRows,
   -- * Row
   Row,
   value,
@@ -110,14 +109,6 @@ singleRow (Row row) =
 -------------------------
 
 -- |
--- Given a function like 'Vector.generateM' packs multiple results accordingly.
--- 
-{-# INLINABLE generateRows #-}
-generateRows :: (forall m. Monad m => Int -> (Int -> m a) -> m b) -> Row a -> Result b
-generateRows generateM (Row row) =
-  Result (Results.single (Result.generate generateM row))
-
--- |
 -- Foldl multiple rows.
 -- 
 {-# INLINABLE foldlRows #-}
@@ -149,8 +140,8 @@ maybeRow (Row row) =
 -- 
 {-# INLINABLE rowsVector #-}
 rowsVector :: Row a -> Result (Vector a)
-rowsVector =
-  generateRows Vector.generateM
+rowsVector (Row row) =
+  Result (Results.single (Result.vector row))
 
 -- |
 -- Zero or more rows packed into the list.
