@@ -8,6 +8,7 @@ module Hasql.Prelude
   bug,
   bottom,
   forMToZero_,
+  forMFromZero_,
   strictCons,
 )
 where
@@ -121,6 +122,11 @@ bottom =
 forMToZero_ :: Applicative m => Int -> (Int -> m a) -> m ()
 forMToZero_ !startN f =
   ($ pred startN) $ fix $ \loop !n -> if n >= 0 then f n *> loop (pred n) else pure ()
+
+{-# INLINE forMFromZero_ #-}
+forMFromZero_ :: Applicative m => Int -> (Int -> m a) -> m ()
+forMFromZero_ !endN f =
+  ($ 0) $ fix $ \loop !n -> if n < endN then f n *> loop (succ n) else pure ()
 
 {-# INLINE strictCons #-}
 strictCons :: a -> [a] -> [a]

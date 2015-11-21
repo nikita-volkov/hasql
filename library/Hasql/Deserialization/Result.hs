@@ -182,7 +182,7 @@ foldl step init rowDes =
       maxCols <- LibPQ.nfields result
       accRef <- newIORef init
       failureRef <- newIORef Nothing
-      forM_ [0 .. pred (rowToInt maxRows)] $ \rowIndex -> do
+      forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
         rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
           Left x -> writeIORef failureRef (Just (RowError rowIndex x))
