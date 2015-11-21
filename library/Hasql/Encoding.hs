@@ -57,10 +57,10 @@ import qualified Hasql.Prelude as Prelude
 -- E.g.,
 -- 
 -- @
--- someParamsEncoder :: Params (Int64, Maybe Text)
+-- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contramap' 'fst' (value int8) '<>'
---   'contramap' 'snd' (nullableValue text)
+--   'contramap' 'fst' ('value' 'int8') '<>'
+--   'contramap' 'snd' ('nullableValue' 'text')
 -- @
 -- 
 -- As a general solution for tuples of any arity, instead of 'fst' and 'snd',
@@ -69,9 +69,9 @@ import qualified Hasql.Prelude as Prelude
 -- E.g., here's how you can achieve the same as the above:
 -- 
 -- @
--- someParamsEncoder :: Params (Int64, Maybe Text)
+-- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contrazip2' (value int8) (nullableValue text)
+--   'contrazip2' ('value' 'int8') ('nullableValue' 'text')
 -- @
 -- 
 -- Here's how you can implement encoders for custom composite types:
@@ -83,15 +83,15 @@ import qualified Hasql.Prelude as Prelude
 -- data Gender =
 --   Male | Female
 -- 
--- personParams :: Params Person
+-- personParams :: 'Params' Person
 -- personParams =
---   'contramap' name (value text) '<>'
---   'contramap' gender (value genderValue) '<>'
---   'contramap' (fromIntegral . age) (value int8)
+--   'contramap' name ('value' 'text') '<>'
+--   'contramap' gender ('value' genderValue) '<>'
+--   'contramap' (fromIntegral . age) ('value' 'int8')
 -- 
--- genderValue :: Value Gender
+-- genderValue :: 'Value' Gender
 -- genderValue =
---   'contramap' genderText text
+--   'contramap' genderText 'text'
 --   where
 --     genderText gender =
 --       case gender of
