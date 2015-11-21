@@ -46,7 +46,7 @@ value valueDes =
     writeIORef columnRef (succ col)
     if col < columnsAmount
       then do
-        valueMaybe <- LibPQ.getvalue result row col
+        valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
         pure $ 
           case valueMaybe of
             Nothing ->
