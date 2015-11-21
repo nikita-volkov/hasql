@@ -89,7 +89,3 @@ dropRemainders =
           where
             checkErrors =
               EitherT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)
-
-cancel :: Results ()
-cancel =
-  undefined
