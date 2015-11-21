@@ -139,7 +139,7 @@ maybeRow (Row row) =
 -- Zero or more rows packed into the vector.
 -- 
 -- It's recommended to prefer this function to 'rowsList',
--- since it performs notably faster.
+-- since it performs notably better.
 -- 
 {-# INLINABLE rowsVector #-}
 rowsVector :: Row a -> Result (Vector a)
