@@ -23,7 +23,7 @@ session (Session impl) =
       EitherT $ fmap (mapLeft ConnectionError) $ H.connect settings
       where
         settings =
-          H.ParametricSettings host port user password database
+          H.settings host port user password database
           where
             host = "localhost"
             port = 5432

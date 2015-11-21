@@ -4,9 +4,11 @@
 -- The API is completely disinfected from exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 module Hasql
 (
+  -- * Connection settings
+  Settings.Settings(..),
+  Settings.settings,
   -- * Connection
   Connection,
-  Settings.Settings(..),
   ConnectionError(..),
   connect,
   disconnect,

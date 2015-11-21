@@ -10,14 +10,13 @@ import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Decoding.Result as ResultDecoding
 import qualified Hasql.Decoding.Results as ResultsDecoding
 import qualified Hasql.Encoding.Params as ParamsEncoding
-import qualified Hasql.Settings as Settings
 import qualified Data.DList as DList
 
 
 {-# INLINE acquireConnection #-}
-acquireConnection :: Settings.Settings -> IO LibPQ.Connection
-acquireConnection settings =
-  LibPQ.connectdb (Settings.asBytes settings)
+acquireConnection :: ByteString -> IO LibPQ.Connection
+acquireConnection =
+  LibPQ.connectdb
 
 {-# INLINE acquirePreparedStatementRegistry #-}
 acquirePreparedStatementRegistry :: IO PreparedStatementRegistry.PreparedStatementRegistry
