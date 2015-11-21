@@ -12,11 +12,11 @@ import qualified Data.ByteString.Lazy as BL
 data Settings =
   -- | 
   -- A host, a port, a user, a password and a database.
-  ParametricSettings ByteString Word16 ByteString ByteString ByteString |
+  ParametricSettings !ByteString !Word16 !ByteString !ByteString !ByteString |
   -- | 
   -- All settings encoded in a single byte string according to 
   -- <http://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
-  RawSettings ByteString
+  RawSettings !ByteString
   deriving (Show)
 
 {-# INLINE asBytes #-}
