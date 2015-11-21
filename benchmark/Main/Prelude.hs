@@ -71,3 +71,7 @@ import Data.Vector as Exports (Vector)
 -- dlist
 -------------------------
 import Data.DList as Exports (DList)
+
+-- deepseq
+-------------------------
+import Control.DeepSeq as Exports (NFData(..), force, deepseq, ($!!))

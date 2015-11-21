@@ -178,6 +178,7 @@ benchmark benchmark
     hashable,
     dlist,
     -- general:
+    deepseq >= 1 && < 2,
     data-default-class,
     profunctors,
     contravariant,
