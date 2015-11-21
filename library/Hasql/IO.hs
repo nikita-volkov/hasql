@@ -29,7 +29,7 @@ releaseConnection :: LibPQ.Connection -> IO ()
 releaseConnection connection =
   LibPQ.finish connection
 
-{-# INLINABLE checkConnectionStatus #-}
+{-# INLINE checkConnectionStatus #-}
 checkConnectionStatus :: LibPQ.Connection -> IO (Maybe (Maybe ByteString))
 checkConnectionStatus c =
   do
@@ -53,7 +53,7 @@ getIntegerDatetimes c =
         Just "on" -> True
         _ -> False
 
-{-# INLINABLE initConnection #-}
+{-# INLINE initConnection #-}
 initConnection :: LibPQ.Connection -> IO ()
 initConnection c =
   void $ LibPQ.exec c (Commands.asBytes (Commands.setEncodingToUTF8 <> Commands.setMinClientMessagesToWarning))
@@ -64,7 +64,7 @@ getResults connection integerDatetimes des =
   {-# SCC "getResults" #-} 
   ResultsDeserialization.run (des <* ResultsDeserialization.dropRemainders) (integerDatetimes, connection)
 
-{-# INLINABLE getPreparedStatementKey #-}
+{-# INLINE getPreparedStatementKey #-}
 getPreparedStatementKey ::
   LibPQ.Connection -> PreparedStatementRegistry.PreparedStatementRegistry ->
   ByteString -> [LibPQ.Oid] ->
@@ -91,14 +91,14 @@ getPreparedStatementKey connection registry template oidList =
     wordOIDList =
       map (\(LibPQ.Oid x) -> fromIntegral x) oidList
 
-{-# INLINABLE checkedSend #-}
+{-# INLINE checkedSend #-}
 checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either ResultsDeserialization.Error ())
 checkedSend connection send =
   send >>= \case
     False -> fmap (Left . ResultsDeserialization.ClientError) $ LibPQ.errorMessage connection
     True -> pure (Right ())
 
-{-# INLINABLE sendPreparedParametricQuery #-}
+{-# INLINE sendPreparedParametricQuery #-}
 sendPreparedParametricQuery ::
   LibPQ.Connection ->
   PreparedStatementRegistry.PreparedStatementRegistry ->
@@ -111,7 +111,7 @@ sendPreparedParametricQuery connection registry template oidList valueAndFormatL
     key <- EitherT $ getPreparedStatementKey connection registry template oidList
     EitherT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
 
-{-# INLINABLE sendUnpreparedParametricQuery #-}
+{-# INLINE sendUnpreparedParametricQuery #-}
 sendUnpreparedParametricQuery ::
   LibPQ.Connection ->
   ByteString ->
@@ -120,7 +120,7 @@ sendUnpreparedParametricQuery ::
 sendUnpreparedParametricQuery connection template paramList =
   checkedSend connection $ LibPQ.sendQueryParams connection template paramList LibPQ.Binary
 
-{-# INLINABLE sendParametricQuery #-}
+{-# INLINE sendParametricQuery #-}
 sendParametricQuery ::
   LibPQ.Connection ->
   Bool -> 
@@ -146,7 +146,7 @@ sendParametricQuery connection integerDatetimes registry template serializer pre
         in
           sendUnpreparedParametricQuery connection template paramList
 
-{-# INLINABLE sendNonparametricQuery #-}
+{-# INLINE sendNonparametricQuery #-}
 sendNonparametricQuery :: LibPQ.Connection -> ByteString -> IO (Either ResultsDeserialization.Error ())
 sendNonparametricQuery connection sql =
   checkedSend connection $ LibPQ.sendQuery connection sql

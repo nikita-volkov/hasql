@@ -35,6 +35,7 @@ run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either Error a)
 run (Results stack) env =
   runEitherT (runReaderT stack env)
 
+{-# INLINE clientError #-}
 clientError :: Results a
 clientError =
   Results $ ReaderT $ \(_, connection) -> EitherT $
@@ -56,7 +57,7 @@ single resultDes =
 
 -- |
 -- Fetch a single result.
-{-# INLINABLE getResult #-}
+{-# INLINE getResult #-}
 getResult :: Results LibPQ.Result
 getResult =
   Results $ ReaderT $ \(_, connection) -> EitherT $ do
@@ -67,12 +68,12 @@ getResult =
 
 -- |
 -- Fetch a single result.
-{-# INLINABLE getResultMaybe #-}
+{-# INLINE getResultMaybe #-}
 getResultMaybe :: Results (Maybe LibPQ.Result)
 getResultMaybe =
   Results $ ReaderT $ \(_, connection) -> lift $ LibPQ.getResult connection
 
-{-# INLINABLE dropRemainders #-}
+{-# INLINE dropRemainders #-}
 dropRemainders :: Results ()
 dropRemainders =
   {-# SCC "dropRemainders" #-} 
