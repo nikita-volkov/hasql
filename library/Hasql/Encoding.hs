@@ -1,3 +1,5 @@
+-- |
+-- A DSL for declaration of query parameter encoders.
 module Hasql.Encoding
 (
   -- * Params

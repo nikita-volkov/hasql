@@ -1,5 +1,5 @@
 -- |
--- A DSL for creating result decoders.
+-- A DSL for declaration of result decoders.
 module Hasql.Decoding
 (
   -- * Result
