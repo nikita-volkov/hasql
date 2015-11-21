@@ -65,7 +65,7 @@ import qualified Hasql.Prelude as Prelude
 -- consider such solutions as
 -- the @<http://hackage.haskell.org/package/tuple-th-0.2.5/docs/TupleTH.html#v:proj proj>@ macro.
 -- 
--- Alternatively you can achieve the same using the functions of the @contrazip@ family
+-- Alternatively you can achieve the same using the functions of the @contramap@ family
 -- from the \"contravariant-extras\" package,
 -- which are especially helpful when dealing with tuples.
 -- E.g.,
@@ -73,7 +73,7 @@ import qualified Hasql.Prelude as Prelude
 -- @
 -- someParamsEncoder :: Params (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contrazip2' (value int8) (nullableValue text)
+--   'contramap2' (value int8) (nullableValue text)
 -- @
 -- 
 newtype Params a =
