@@ -654,14 +654,14 @@ newtype Composite a =
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Lift a 'Value' deserializer into an 'Composite' deserializer for parsing of non-nullable leaf values.
+-- Lift a 'Value' deserializer into a 'Composite' deserializer for parsing of non-nullable leaf values.
 {-# INLINABLE compositeValue #-}
 compositeValue :: Value a -> Composite a
 compositeValue (Value imp) =
   Composite (Composite.nonNullValue (Value.run imp))
 
 -- |
--- Lift a 'Value' deserializer into an 'Composite' deserializer for parsing of nullable leaf values.
+-- Lift a 'Value' deserializer into a 'Composite' deserializer for parsing of nullable leaf values.
 {-# INLINABLE compositeNullableValue #-}
 compositeNullableValue :: Value a -> Composite (Maybe a)
 compositeNullableValue (Value imp) =
