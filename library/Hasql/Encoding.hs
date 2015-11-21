@@ -193,7 +193,7 @@ numeric =
 {-# INLINABLE char #-}
 char :: Value Char
 char =
-  Value (Value.unsafePTI PTI.char (const Encoder.char))
+  Value (Value.unsafePTI PTI.text (const Encoder.char))
 
 {-# INLINABLE text #-}
 text :: Value Text
