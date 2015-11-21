@@ -164,10 +164,13 @@ data Query a b =
   deriving (Functor)
 
 instance Profunctor Query where
+  {-# INLINE lmap #-}
   lmap f (Query p1 p2 p3 p4) =
     Query p1 (contramap f p2) p3 p4
+  {-# INLINE rmap #-}
   rmap f (Query p1 p2 p3 p4) =
     Query p1 p2 (fmap f p3) p4
+  {-# INLINE dimap #-}
   dimap f1 f2 (Query p1 p2 p3 p4) =
     Query p1 (contramap f1 p2) (fmap f2 p3) p4
 
