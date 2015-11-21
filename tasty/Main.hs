@@ -27,21 +27,21 @@ tree =
         DSL.session $ do
           let
             query =
-              (sql, mempty, HD.noResult, True)
+              H.Query sql mempty HD.noResult True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              (sql, mempty, HD.noResult, True)
+              H.Query sql mempty HD.noResult True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
             in DSL.query () query
           let
             query =
-              (sql, encoder, decoder, True)
+              H.Query sql encoder decoder True
               where
                 sql =
                   "select ($1 :: mood)"
@@ -63,7 +63,7 @@ tree =
               DSL.query "ok" query
               where
                 query =
-                  (sql, encoder, decoder, True)
+                  H.Query sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -75,7 +75,7 @@ tree =
               DSL.query 1 query
               where
                 query =
-                  (sql, encoder, decoder, True)
+                  H.Query sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -107,7 +107,7 @@ tree =
             DSL.query () $ Queries.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.query () (sql, def, decoder, False)
+            DSL.query () $ H.Query sql def decoder False
             where
               sql =
                 "delete from a"
@@ -121,8 +121,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () ("insert into a (v) values ('a') returning id", def, (HD.singleRow (HD.value HD.int4)), False)
-          id2 <- DSL.query () ("insert into a (v) values ('b') returning id", def, (HD.singleRow (HD.value HD.int4)), False)
+          id1 <- DSL.query () $ H.Query "insert into a (v) values ('a') returning id" def (HD.singleRow (HD.value HD.int4)) False
+          id2 <- DSL.query () $ H.Query "insert into a (v) values ('b') returning id" def (HD.singleRow (HD.value HD.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in HUnit.assertEqual "" (Right (1, 2)) =<< actualIO

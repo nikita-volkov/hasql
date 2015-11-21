@@ -109,15 +109,55 @@ disconnect (Connection pqConnection _ _) =
 -- |
 -- A strictly single-statement query, which can be parameterized and prepared.
 -- 
--- SQL template, params encoder, result decoder and a flag, determining whether it should be prepared.
+-- Consists of the following:
 -- 
-type Query a b =
-  (ByteString, Encoding.Params a, Decoding.Result b, Bool)
+-- * SQL template,
+-- * params encoder,
+-- * result decoder,
+-- * a flag, determining whether it should be prepared.
+-- 
+-- The SQL template must be formatted according to Postgres' standard,
+-- with any non-ASCII characters of the template must be encoded using UTF-8.
+-- According to the format,
+-- parameters must be referred to using the positional notation, as in the following:
+-- @$1@, @$2@, @$3@ and etc.
+-- Those references must be used to refer to the values of the 'Encoding.Params' encoder.
+-- 
+-- Following is an example of the declaration of a prepared statement with its associated codecs.
+-- 
+-- @
+-- selectSum :: Hasql.'Hasql.Query' (Int64, Int64) Int64
+-- selectSum =
+--   Hasql.'Hasql.Query' sql encoder decoder True
+--   where
+--     sql =
+--       "select ($1 + $2)"
+--     encoder =
+--       'contramap' 'fst' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8') <>
+--       'contramap' 'snd' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8')
+--     decoder =
+--       Hasql.Decoding.'Hasql.Decoding.singleRow' (Hasql.Decoding.'Hasql.Decoding.value' Hasql.Decoding.'Hasql.Decoding.int8')
+-- @
+-- 
+-- The statement above accepts a product of two parameters of type 'Int64'
+-- and results in a single result of type 'Int64'.
+-- 
+data Query a b =
+  Query !ByteString !(Encoding.Params a) !(Decoding.Result b) !Bool
+  deriving (Functor)
+
+instance Profunctor Query where
+  lmap f (Query p1 p2 p3 p4) =
+    Query p1 (contramap f p2) p3 p4
+  rmap f (Query p1 p2 p3 p4) =
+    Query p1 p2 (fmap f p3) p4
+  dimap f1 f2 (Query p1 p2 p3 p4) =
+    Query p1 (contramap f1 p2) (fmap f2 p3) p4
 
 -- |
 -- Execute a parametric query, producing either a deserialization failure or a successful result.
 query :: Connection -> Query a b -> a -> IO (Either ResultsError b)
-query (Connection pqConnection integerDatetimes registry) (template, encoder, decoder, preparable) params =
+query (Connection pqConnection integerDatetimes registry) (Query template encoder decoder preparable) params =
   {-# SCC "query" #-} 
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params
