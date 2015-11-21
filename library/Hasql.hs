@@ -18,10 +18,10 @@ where
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.Deserialization.Results as ResultsDeserialization
-import qualified Hasql.Deserialization as Deserialization
-import qualified Hasql.Serialization.Params as ParamsSerialization
-import qualified Hasql.Serialization as Serialization
+import qualified Hasql.Decoding.Results as ResultsDecoding
+import qualified Hasql.Decoding as Decoding
+import qualified Hasql.Encoding.Params as ParamsEncoding
+import qualified Hasql.Encoding as Encoding
 import qualified Hasql.Settings as Settings
 import qualified Hasql.IO as IO
 
@@ -105,32 +105,32 @@ disconnect (Connection pqConnection _ _) =
 -- |
 -- A strictly single-statement query, which can be parameterized and prepared.
 -- 
--- SQL template, params serializer, result deserializer and a flag, determining whether it should be prepared.
+-- SQL template, params encoder, result decoder and a flag, determining whether it should be prepared.
 -- 
 type Query a b =
-  (ByteString, Serialization.Params a, Deserialization.Result b, Bool)
+  (ByteString, Encoding.Params a, Decoding.Result b, Bool)
 
 -- |
 -- Execute a parametric query, producing either a deserialization failure or a successful result.
 query :: Connection -> Query a b -> a -> IO (Either ResultsError b)
-query (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
+query (Connection pqConnection integerDatetimes registry) (template, encoder, decoder, preparable) params =
   {-# SCC "query" #-} 
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
-    EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceSerializer serializer) preparable params
-    EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)
+    EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params
+    EitherT $ IO.getResults pqConnection integerDatetimes (coerceDecoder decoder)
 
 -- |
 -- WARNING: We need to take special care that the structure of
--- the "ResultsDeserialization.Error" type in the public API is an exact copy of
+-- the "ResultsDecoding.Error" type in the public API is an exact copy of
 -- "Error", since we're using coercion.
-coerceResultsError :: ResultsDeserialization.Error -> ResultsError
+coerceResultsError :: ResultsDecoding.Error -> ResultsError
 coerceResultsError =
   unsafeCoerce
 
-coerceDeserializer :: Deserialization.Result a -> ResultsDeserialization.Results a
-coerceDeserializer =
+coerceDecoder :: Decoding.Result a -> ResultsDecoding.Results a
+coerceDecoder =
   unsafeCoerce
 
-coerceSerializer :: Serialization.Params a -> ParamsSerialization.Params a
-coerceSerializer =
+coerceEncoder :: Encoding.Params a -> ParamsEncoding.Params a
+coerceEncoder =
   unsafeCoerce

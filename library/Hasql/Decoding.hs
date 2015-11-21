@@ -1,6 +1,6 @@
 -- |
--- A DSL for creating result deserializers.
-module Hasql.Deserialization
+-- A DSL for creating result decoders.
+module Hasql.Decoding
 (
   -- * Result
   Result,
@@ -58,12 +58,12 @@ import Hasql.Prelude hiding (maybe, bool)
 import qualified Data.Aeson as Aeson
 import qualified Data.Vector as Vector
 import qualified PostgreSQL.Binary.Decoder as Decoder
-import qualified Hasql.Deserialization.Results as Results
-import qualified Hasql.Deserialization.Result as Result
-import qualified Hasql.Deserialization.Row as Row
-import qualified Hasql.Deserialization.Value as Value
-import qualified Hasql.Deserialization.Array as Array
-import qualified Hasql.Deserialization.Composite as Composite
+import qualified Hasql.Decoding.Results as Results
+import qualified Hasql.Decoding.Result as Result
+import qualified Hasql.Decoding.Row as Row
+import qualified Hasql.Decoding.Value as Value
+import qualified Hasql.Decoding.Array as Array
+import qualified Hasql.Decoding.Composite as Composite
 import qualified Hasql.Prelude as Prelude
 
 
@@ -71,14 +71,14 @@ import qualified Hasql.Prelude as Prelude
 -------------------------
 
 -- |
--- Deserializer of a query result.
+-- Decoder of a query result.
 -- 
 newtype Result a =
   Result (Results.Results a)
   deriving (Functor)
 
 -- |
--- Deserialize no value from the result.
+-- Decode no value from the result.
 -- 
 -- Useful for statements like @INSERT@ or @CREATE@.
 -- 
@@ -199,8 +199,8 @@ instance Default (Row a) => Default (Result (Identity a)) where
 -------------------------
 
 -- |
--- Deserializer of an individual row,
--- which gets composed of column value deserializers.
+-- Decoder of an individual row,
+-- which gets composed of column value decoders.
 -- 
 -- E.g.:
 -- 
@@ -213,7 +213,7 @@ newtype Row a =
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Lift an individual non-nullable value deserializer to a composable row deserializer.
+-- Lift an individual non-nullable value decoder to a composable row decoder.
 -- 
 {-# INLINABLE value #-}
 value :: Value a -> Row a
@@ -221,7 +221,7 @@ value (Value imp) =
   Row (Row.nonNullValue imp)
 
 -- |
--- Lift an individual nullable value deserializer to a composable row deserializer.
+-- Lift an individual nullable value decoder to a composable row decoder.
 -- 
 {-# INLINABLE nullableValue #-}
 nullableValue :: Value a -> Row (Maybe a)
@@ -252,18 +252,18 @@ instance (Default (Value a1), Default (Value a2)) => Default (Row (a1, a2)) wher
 -------------------------
 
 -- |
--- Deserializer of an individual value.
+-- Decoder of an individual value.
 -- 
 newtype Value a =
   Value (Value.Value a)
   deriving (Functor)
 
 
--- ** Plain value deserializers
+-- ** Plain value decoders
 -------------------------
 
 -- |
--- Deserializer of the @BOOL@ values.
+-- Decoder of the @BOOL@ values.
 -- 
 {-# INLINABLE bool #-}
 bool :: Value Bool
@@ -271,7 +271,7 @@ bool =
   Value (Value.decoder (const Decoder.bool))
 
 -- |
--- Deserializer of the @INT2@ values.
+-- Decoder of the @INT2@ values.
 -- 
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
@@ -279,7 +279,7 @@ int2 =
   Value (Value.decoder (const Decoder.int))
 
 -- |
--- Deserializer of the @INT4@ values.
+-- Decoder of the @INT4@ values.
 -- 
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
@@ -287,7 +287,7 @@ int4 =
   Value (Value.decoder (const Decoder.int))
 
 -- |
--- Deserializer of the @INT8@ values.
+-- Decoder of the @INT8@ values.
 -- 
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
@@ -296,7 +296,7 @@ int8 =
   Value (Value.decoder (const ({-# SCC "int8.int" #-} Decoder.int)))
 
 -- |
--- Deserializer of the @FLOAT4@ values.
+-- Decoder of the @FLOAT4@ values.
 -- 
 {-# INLINABLE float4 #-}
 float4 :: Value Float
@@ -304,7 +304,7 @@ float4 =
   Value (Value.decoder (const Decoder.float4))
 
 -- |
--- Deserializer of the @FLOAT8@ values.
+-- Decoder of the @FLOAT8@ values.
 -- 
 {-# INLINABLE float8 #-}
 float8 :: Value Double
@@ -312,7 +312,7 @@ float8 =
   Value (Value.decoder (const Decoder.float8))
 
 -- |
--- Deserializer of the @NUMERIC@ values.
+-- Decoder of the @NUMERIC@ values.
 -- 
 {-# INLINABLE numeric #-}
 numeric :: Value Scientific
@@ -320,7 +320,7 @@ numeric =
   Value (Value.decoder (const Decoder.numeric))
 
 -- |
--- Deserializer of the @CHAR@ values.
+-- Decoder of the @CHAR@ values.
 -- Note that it supports UTF-8 values.
 {-# INLINABLE char #-}
 char :: Value Char
@@ -328,7 +328,7 @@ char =
   Value (Value.decoder (const Decoder.char))
 
 -- |
--- Deserializer of the @TEXT@ values.
+-- Decoder of the @TEXT@ values.
 -- 
 {-# INLINABLE text #-}
 text :: Value Text
@@ -336,7 +336,7 @@ text =
   Value (Value.decoder (const Decoder.text_strict))
 
 -- |
--- Deserializer of the @BYTEA@ values.
+-- Decoder of the @BYTEA@ values.
 -- 
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
@@ -344,7 +344,7 @@ bytea =
   Value (Value.decoder (const Decoder.bytea_strict))
 
 -- |
--- Deserializer of the @DATE@ values.
+-- Decoder of the @DATE@ values.
 -- 
 {-# INLINABLE date #-}
 date :: Value Day
@@ -352,7 +352,7 @@ date =
   Value (Value.decoder (const Decoder.date))
 
 -- |
--- Deserializer of the @TIMESTAMP@ values.
+-- Decoder of the @TIMESTAMP@ values.
 -- 
 {-# INLINABLE timestamp #-}
 timestamp :: Value LocalTime
@@ -360,7 +360,7 @@ timestamp =
   Value (Value.decoder (Prelude.bool Decoder.timestamp_float Decoder.timestamp_int))
 
 -- |
--- Deserializer of the @TIMESTAMPTZ@ values.
+-- Decoder of the @TIMESTAMPTZ@ values.
 -- 
 -- /NOTICE/
 -- 
@@ -375,7 +375,7 @@ timestamptz =
   Value (Value.decoder (Prelude.bool Decoder.timestamptz_float Decoder.timestamptz_int))
 
 -- |
--- Deserializer of the @TIME@ values.
+-- Decoder of the @TIME@ values.
 -- 
 {-# INLINABLE time #-}
 time :: Value TimeOfDay
@@ -383,7 +383,7 @@ time =
   Value (Value.decoder (Prelude.bool Decoder.time_float Decoder.time_int))
 
 -- |
--- Deserializer of the @TIMETZ@ values.
+-- Decoder of the @TIMETZ@ values.
 -- 
 -- Unlike in case of @TIMESTAMPTZ@, 
 -- Postgres does store the timezone information for @TIMETZ@.
@@ -396,7 +396,7 @@ timetz =
   Value (Value.decoder (Prelude.bool Decoder.timetz_float Decoder.timetz_int))
 
 -- |
--- Deserializer of the @INTERVAL@ values.
+-- Decoder of the @INTERVAL@ values.
 -- 
 {-# INLINABLE interval #-}
 interval :: Value DiffTime
@@ -404,7 +404,7 @@ interval =
   Value (Value.decoder (Prelude.bool Decoder.interval_float Decoder.interval_int))
 
 -- |
--- Deserializer of the @UUID@ values.
+-- Decoder of the @UUID@ values.
 -- 
 {-# INLINABLE uuid #-}
 uuid :: Value UUID
@@ -412,7 +412,7 @@ uuid =
   Value (Value.decoder (const Decoder.uuid))
 
 -- |
--- Deserializer of the @JSON@ values.
+-- Decoder of the @JSON@ values.
 -- 
 {-# INLINABLE json #-}
 json :: Value Aeson.Value
@@ -420,11 +420,11 @@ json =
   Value (Value.decoder (const Decoder.json))
 
 
--- ** Composite value deserializers
+-- ** Composite value decoders
 -------------------------
 
 -- |
--- Lifts the 'Array' deserializer to the 'Value' deserializer.
+-- Lifts the 'Array' decoder to the 'Value' decoder.
 -- 
 {-# INLINABLE array #-}
 array :: Array a -> Value a
@@ -432,7 +432,7 @@ array (Array imp) =
   Value (Value.decoder (Array.run imp))
 
 -- |
--- Lifts the 'Composite' deserializer to the 'Value' deserializer.
+-- Lifts the 'Composite' decoder to the 'Value' decoder.
 -- 
 {-# INLINABLE composite #-}
 composite :: Composite a -> Value a
@@ -440,7 +440,7 @@ composite (Composite imp) =
   Value (Value.decoder (Composite.run imp))
 
 -- |
--- A generic deserializer of @HSTORE@ values.
+-- A generic decoder of @HSTORE@ values.
 -- 
 -- Here's how you can use it to construct a specific value:
 -- 
@@ -457,7 +457,7 @@ hstore replicateM =
 
 -- |
 -- Given a partial mapping from text to value,
--- produces a deserializer of that value.
+-- produces a decoder of that value.
 enum :: (Text -> Maybe a) -> Value a
 enum mapping =
   Value (Value.decoder (const (Decoder.enum mapping)))
@@ -593,13 +593,13 @@ instance Default (Value Aeson.Value) where
     json
 
 
--- * Array deserializers
+-- * Array decoders
 -------------------------
 
 -- |
--- A generic array deserializer.
+-- A generic array decoder.
 -- 
--- Here's how you can use it to produce a specific array value deserializer:
+-- Here's how you can use it to produce a specific array value decoder:
 -- 
 -- @
 -- x :: Value [[Text]]
@@ -621,7 +621,7 @@ newtype Array a =
 -- (@Control.Monad.'Control.Monad.replicateM'@, @Data.Vector.'Data.Vector.replicateM'@),
 -- which determines the output value.
 -- 
--- * A deserializer of its components, which can be either another 'arrayDimension',
+-- * A decoder of its components, which can be either another 'arrayDimension',
 -- 'arrayValue' or 'arrayNullableValue'.
 -- 
 {-# INLINABLE arrayDimension #-}
@@ -630,38 +630,38 @@ arrayDimension replicateM (Array imp) =
   Array (Array.dimension replicateM imp)
 
 -- |
--- Lift a 'Value' deserializer into an 'Array' deserializer for parsing of non-nullable leaf values.
+-- Lift a 'Value' decoder into an 'Array' decoder for parsing of non-nullable leaf values.
 {-# INLINABLE arrayValue #-}
 arrayValue :: Value a -> Array a
 arrayValue (Value imp) =
   Array (Array.nonNullValue (Value.run imp))
 
 -- |
--- Lift a 'Value' deserializer into an 'Array' deserializer for parsing of nullable leaf values.
+-- Lift a 'Value' decoder into an 'Array' decoder for parsing of nullable leaf values.
 {-# INLINABLE arrayNullableValue #-}
 arrayNullableValue :: Value a -> Array (Maybe a)
 arrayNullableValue (Value imp) =
   Array (Array.value (Value.run imp))
 
 
--- * Composite deserializers
+-- * Composite decoders
 -------------------------
 
 -- |
--- Composable deserializer of composite values (rows, records).
+-- Composable decoder of composite values (rows, records).
 newtype Composite a =
   Composite (Composite.Composite a)
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Lift a 'Value' deserializer into a 'Composite' deserializer for parsing of non-nullable leaf values.
+-- Lift a 'Value' decoder into a 'Composite' decoder for parsing of non-nullable leaf values.
 {-# INLINABLE compositeValue #-}
 compositeValue :: Value a -> Composite a
 compositeValue (Value imp) =
   Composite (Composite.nonNullValue (Value.run imp))
 
 -- |
--- Lift a 'Value' deserializer into a 'Composite' deserializer for parsing of nullable leaf values.
+-- Lift a 'Value' decoder into a 'Composite' decoder for parsing of nullable leaf values.
 {-# INLINABLE compositeNullableValue #-}
 compositeNullableValue :: Value a -> Composite (Maybe a)
 compositeNullableValue (Value imp) =

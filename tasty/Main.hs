@@ -10,8 +10,8 @@ import qualified Test.Tasty.QuickCheck as QuickCheck
 import qualified Test.QuickCheck as QuickCheck
 import qualified Main.DSL as DSL
 import qualified Hasql as H
-import qualified Hasql.Serialization as HS
-import qualified Hasql.Deserialization as HD
+import qualified Hasql.Encoding as HE
+import qualified Hasql.Decoding as HD
 
 main =
   defaultMain tree
@@ -41,14 +41,14 @@ tree =
             in DSL.query () query
           let
             query =
-              (sql, serializer, deserializer, True)
+              (sql, encoder, decoder, True)
               where
                 sql =
                   "select ($1 :: mood)"
-                deserializer =
+                decoder =
                   (HD.singleRow (HD.value (HD.enum (Just . id))))
-                serializer =
-                  HS.value (HS.enum id)
+                encoder =
+                  HE.value (HE.enum id)
             in DSL.query "ok" query
       in actual
     ,
@@ -63,25 +63,25 @@ tree =
               DSL.query "ok" query
               where
                 query =
-                  (sql, serializer, deserializer, True)
+                  (sql, encoder, decoder, True)
                   where
                     sql =
                       "select $1"
-                    serializer =
-                      HS.value HS.text
-                    deserializer =
+                    encoder =
+                      HE.value HE.text
+                    decoder =
                       (HD.singleRow (HD.value (HD.text)))
             effect2 =
               DSL.query 1 query
               where
                 query =
-                  (sql, serializer, deserializer, True)
+                  (sql, encoder, decoder, True)
                   where
                     sql =
                       "select $1"
-                    serializer =
-                      HS.value HS.int8
-                    deserializer =
+                    encoder =
+                      HE.value HE.int8
+                    decoder =
                       (HD.singleRow (HD.value HD.int8))
             in (,) <$> effect1 <*> effect2
       in actual
@@ -107,11 +107,11 @@ tree =
             DSL.query () $ Queries.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.query () (sql, def, deserializer, False)
+            DSL.query () (sql, def, decoder, False)
             where
               sql =
                 "delete from a"
-              deserializer =
+              decoder =
                 HD.rowsAffected
       in actual
     ,

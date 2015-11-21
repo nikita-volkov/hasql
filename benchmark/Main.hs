@@ -3,8 +3,8 @@ module Main where
 import Main.Prelude
 import Criterion.Main
 import qualified Hasql as H
-import qualified Hasql.Serialization as HS
-import qualified Hasql.Deserialization as HD
+import qualified Hasql.Encoding as HE
+import qualified Hasql.Decoding as HD
 import qualified Main.Queries as Q
 
 

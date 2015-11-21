@@ -1,8 +1,8 @@
-module Hasql.Deserialization.Result where
+module Hasql.Decoding.Result where
 
 import Hasql.Prelude hiding (maybe, many)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Deserialization.Row as Row
+import qualified Hasql.Decoding.Row as Row
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import qualified Data.ByteString as ByteString
 import qualified Hasql.Prelude as Prelude
@@ -112,7 +112,7 @@ serverError =
 
 {-# INLINE maybe #-}
 maybe :: Row.Row a -> Result (Maybe a)
-maybe rowDes =
+maybe rowDec =
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -123,7 +123,7 @@ maybe rowDes =
         0 -> return (Right Nothing)
         1 -> do
           maxCols <- LibPQ.nfields result
-          fmap (fmap Just . mapLeft (RowError 0)) $ Row.run rowDes (result, 0, maxCols, integerDatetimes)
+          fmap (fmap Just . mapLeft (RowError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
         _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
@@ -133,7 +133,7 @@ maybe rowDes =
 
 {-# INLINE single #-}
 single :: Row.Row a -> Result a
-single rowDes =
+single rowDec =
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -143,7 +143,7 @@ single rowDes =
       case maxRows of
         1 -> do
           maxCols <- LibPQ.nfields result
-          fmap (mapLeft (RowError 0)) $ Row.run rowDes (result, 0, maxCols, integerDatetimes)
+          fmap (mapLeft (RowError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
         _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
@@ -153,7 +153,7 @@ single rowDes =
 
 {-# INLINE vector #-}
 vector :: Row.Row a -> Result (Vector a)
-vector rowDes =
+vector rowDec =
   do
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
@@ -164,7 +164,7 @@ vector rowDes =
       mvector <- MutableVector.unsafeNew (rowToInt maxRows)
       failureRef <- newIORef Nothing
       forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
           Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
           Right !x -> MutableVector.unsafeWrite mvector rowIndex x
@@ -179,7 +179,7 @@ vector rowDes =
 
 {-# INLINE foldl #-}
 foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
-foldl step init rowDes =
+foldl step init rowDec =
   {-# SCC "foldl" #-} 
   do
     checkExecStatus $ \case
@@ -191,7 +191,7 @@ foldl step init rowDes =
       accRef <- newIORef init
       failureRef <- newIORef Nothing
       forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
           Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
           Right !x -> modifyIORef accRef (\acc -> step acc x)
@@ -206,7 +206,7 @@ foldl step init rowDes =
 
 {-# INLINE foldr #-}
 foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
-foldr step init rowDes =
+foldr step init rowDec =
   {-# SCC "foldr" #-} 
   do
     checkExecStatus $ \case
@@ -218,7 +218,7 @@ foldr step init rowDes =
       accRef <- newIORef init
       failureRef <- newIORef Nothing
       forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-        rowResult <- Row.run rowDes (result, intToRow rowIndex, maxCols, integerDatetimes)
+        rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
           Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
           Right !x -> modifyIORef accRef (\acc -> step x acc)

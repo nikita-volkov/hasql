@@ -1,4 +1,4 @@
-module Hasql.Deserialization.Composite where
+module Hasql.Decoding.Composite where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ

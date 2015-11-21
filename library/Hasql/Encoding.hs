@@ -1,4 +1,4 @@
-module Hasql.Serialization
+module Hasql.Encoding
 (
   -- * Params
   Params,
@@ -37,26 +37,26 @@ where
 import Hasql.Prelude hiding (bool)
 import qualified PostgreSQL.Binary.Encoder as Encoder
 import qualified Data.Aeson as Aeson
-import qualified Hasql.Serialization.Params as Params
-import qualified Hasql.Serialization.Value as Value
-import qualified Hasql.Serialization.Array as Array
+import qualified Hasql.Encoding.Params as Params
+import qualified Hasql.Encoding.Value as Value
+import qualified Hasql.Encoding.Array as Array
 import qualified Hasql.PTI as PTI
 import qualified Hasql.Prelude as Prelude
 
 
--- * Parameters Product Serializer
+-- * Parameters Product Encoder
 -------------------------
 
 -- |
--- Serializer of some representation of the parameters product.
+-- Encoder of some representation of the parameters product.
 -- 
 -- Has instances of 'Contravariant', 'Divisible' and 'Monoid',
 -- which you can use to compose multiple parameters together.
 -- E.g.,
 -- 
 -- @
--- someParamsSerializer :: Params (Int64, Maybe Text)
--- someParamsSerializer =
+-- someParamsEncoder :: Params (Int64, Maybe Text)
+-- someParamsEncoder =
 --   'contramap' fst (value int8) <>
 --   'contramap' snd (nullableValue text)
 -- @
@@ -71,8 +71,8 @@ import qualified Hasql.Prelude as Prelude
 -- E.g.,
 -- 
 -- @
--- someParamsSerializer :: Params (Int64, Maybe Text)
--- someParamsSerializer =
+-- someParamsEncoder :: Params (Int64, Maybe Text)
+-- someParamsEncoder =
 --   'contrazip2' (value int8) (nullableValue text)
 -- @
 -- 
@@ -81,7 +81,7 @@ newtype Params a =
   deriving (Contravariant, Divisible, Monoid)
 
 -- |
--- Lift an individual value serializer to a parameters serializer.
+-- Lift an individual value encoder to a parameters encoder.
 -- 
 {-# INLINABLE value #-}
 value :: Value a -> Params a
@@ -89,7 +89,7 @@ value (Value x) =
   Params (Params.value x)
 
 -- |
--- Lift an individual nullable value serializer to a parameters serializer.
+-- Lift an individual nullable value encoder to a parameters encoder.
 -- 
 {-# INLINABLE nullableValue #-}
 nullableValue :: Value a -> Params (Maybe a)
@@ -117,11 +117,11 @@ instance (Default (Value a1), Default (Value a2)) => Default (Params (a1, a2)) w
     contramap snd (value def)
 
 
--- * Value Serializer
+-- * Value Encoder
 -------------------------
 
 -- |
--- An individual value serializer.
+-- An individual value encoder.
 -- Will be mapped to a single placeholder in the query.
 -- 
 newtype Value a =
@@ -219,7 +219,7 @@ json =
   Value (Value.unsafePTI PTI.json (const Encoder.json))
 
 -- |
--- Unlifts the 'Array' serializer to the plain 'Value' serializer.
+-- Unlifts the 'Array' encoder to the plain 'Value' encoder.
 {-# INLINABLE array #-}
 array :: Array a -> Value a
 array (Array imp) =
@@ -229,7 +229,7 @@ array (Array imp) =
 -- |
 -- Given a function,
 -- which maps the value into the textual enum label from the DB side,
--- produces a serializer of that value.
+-- produces a encoder of that value.
 {-# INLINABLE enum #-}
 enum :: (a -> Text) -> Value a
 enum mapping =
@@ -352,7 +352,7 @@ instance Default (Value Aeson.Value) where
 -------------------------
 
 -- |
--- A generic array serializer.
+-- A generic array encoder.
 -- 
 -- Here's an example of its usage:
 -- 
@@ -364,21 +364,21 @@ newtype Array a =
   Array (Array.Array a)
 
 -- |
--- Lifts the 'Value' serializer into the 'Array' serializer of a non-nullable value.
+-- Lifts the 'Value' encoder into the 'Array' encoder of a non-nullable value.
 {-# INLINABLE arrayValue #-}
 arrayValue :: Value a -> Array a
 arrayValue (Value (Value.Value elementOID arrayOID encoder')) =
   Array (Array.value elementOID arrayOID encoder')
 
 -- |
--- Lifts the 'Value' serializer into the 'Array' serializer of a nullable value.
+-- Lifts the 'Value' encoder into the 'Array' encoder of a nullable value.
 {-# INLINABLE arrayNullableValue #-}
 arrayNullableValue :: Value a -> Array (Maybe a)
 arrayNullableValue (Value (Value.Value elementOID arrayOID encoder')) =
   Array (Array.nullableValue elementOID arrayOID encoder')
 
 -- |
--- A serializer of an array dimension,
+-- A encoder of an array dimension,
 -- which thus provides support for multidimensional arrays.
 -- 
 -- Accepts:
@@ -387,7 +387,7 @@ arrayNullableValue (Value (Value.Value elementOID arrayOID encoder')) =
 -- such as @Data.Foldable.'foldl''@,
 -- which determines the input value.
 -- 
--- * A component serializer, which can be either another 'arrayDimension',
+-- * A component encoder, which can be either another 'arrayDimension',
 -- 'arrayValue' or 'arrayNullableValue'.
 -- 
 {-# INLINABLE arrayDimension #-}

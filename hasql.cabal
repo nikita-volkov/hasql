@@ -49,19 +49,19 @@ library
     Hasql.IO
     Hasql.Settings
     Hasql.Commands
-    Hasql.Deserialization.Array
-    Hasql.Deserialization.Composite
-    Hasql.Deserialization.Value
-    Hasql.Deserialization.Row
-    Hasql.Deserialization.Result
-    Hasql.Deserialization.Results
-    Hasql.Serialization.Array
-    Hasql.Serialization.Value
-    Hasql.Serialization.Params
+    Hasql.Decoding.Array
+    Hasql.Decoding.Composite
+    Hasql.Decoding.Value
+    Hasql.Decoding.Row
+    Hasql.Decoding.Result
+    Hasql.Decoding.Results
+    Hasql.Encoding.Array
+    Hasql.Encoding.Value
+    Hasql.Encoding.Params
     Hasql.PreparedStatementRegistry
   exposed-modules:
-    Hasql.Deserialization
-    Hasql.Serialization
+    Hasql.Decoding
+    Hasql.Encoding
     Hasql
   build-depends:
     -- parsing:

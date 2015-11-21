@@ -1,9 +1,9 @@
-module Hasql.Deserialization.Row where
+module Hasql.Decoding.Row where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Decoder as Decoder
-import qualified Hasql.Deserialization.Value as Value
+import qualified Hasql.Decoding.Value as Value
 
 
 newtype Row a =
@@ -36,10 +36,10 @@ error x =
   Row (ReaderT (const (EitherT (pure (Left x)))))
 
 -- |
--- Next value, decoded using the provided value deserializer.
+-- Next value, decoded using the provided value decoder.
 {-# INLINE value #-}
 value :: Value.Value a -> Row (Maybe a)
-value valueDes =
+value valueDec =
   {-# SCC "value" #-} 
   Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> EitherT $ do
     col <- readIORef columnRef
@@ -53,13 +53,13 @@ value valueDes =
               Right Nothing
             Just value ->
               fmap Just $ mapLeft ValueError $
-              {-# SCC "decode" #-} Decoder.run (Value.run valueDes integerDatetimes) value
+              {-# SCC "decode" #-} Decoder.run (Value.run valueDec integerDatetimes) value
       else pure (Left EndOfInput)
 
 -- |
--- Next value, decoded using the provided value deserializer.
+-- Next value, decoded using the provided value decoder.
 {-# INLINE nonNullValue #-}
 nonNullValue :: Value.Value a -> Row a
-nonNullValue valueDes =
+nonNullValue valueDec =
   {-# SCC "nonNullValue" #-} 
-  value valueDes >>= maybe (error UnexpectedNull) pure
+  value valueDec >>= maybe (error UnexpectedNull) pure

@@ -2,8 +2,8 @@ module Main.Queries where
 
 import Main.Prelude hiding (def)
 import qualified Hasql as H
-import qualified Hasql.Serialization as HS
-import qualified Hasql.Deserialization as HD
+import qualified Hasql.Encoding as HE
+import qualified Hasql.Decoding as HD
 import qualified Main.Prelude as Prelude
 
 
@@ -28,9 +28,9 @@ createEnum name values =
 
 selectList :: H.Query () ([] (Int64, Int64))
 selectList =
-  (sql, mempty, deserializer, True)
+  (sql, mempty, decoder, True)
   where
     sql =
       "values (1,2), (3,4), (5,6)"
-    deserializer =
+    decoder =
       HD.rowsList ((,) <$> HD.value HD.int8 <*> HD.value HD.int8)

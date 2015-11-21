@@ -9,13 +9,13 @@
 -- 
 -- * Row-by-row fetching.
 -- 
-module Hasql.Deserialization.Results where
+module Hasql.Decoding.Results where
 
 import Hasql.Prelude hiding (maybe, many)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Prelude as Prelude
-import qualified Hasql.Deserialization.Result as Result
-import qualified Hasql.Deserialization.Row as Row
+import qualified Hasql.Decoding.Result as Result
+import qualified Hasql.Decoding.Row as Row
 
 
 newtype Results a =
@@ -45,12 +45,12 @@ clientError =
 -- Parse a single result.
 {-# INLINE single #-}
 single :: Result.Result a -> Results a
-single resultDes =
+single resultDec =
   Results $ ReaderT $ \(integerDatetimes, connection) -> EitherT $ do
     resultMaybe <- LibPQ.getResult connection
     case resultMaybe of
       Just result ->
-        mapLeft ResultError <$> Result.run resultDes (integerDatetimes, result) 
+        mapLeft ResultError <$> Result.run resultDec (integerDatetimes, result) 
           <* LibPQ.unsafeFreeResult result
       Nothing ->
         fmap (Left . ClientError) (LibPQ.errorMessage connection)

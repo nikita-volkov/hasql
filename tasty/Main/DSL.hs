@@ -2,8 +2,8 @@ module Main.DSL where
 
 import Main.Prelude
 import qualified Hasql as H
-import qualified Hasql.Serialization as HS
-import qualified Hasql.Deserialization as HD
+import qualified Hasql.Encoding as HE
+import qualified Hasql.Decoding as HD
 
 
 newtype Session a =

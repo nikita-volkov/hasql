@@ -1,4 +1,4 @@
-module Hasql.Serialization.Array where
+module Hasql.Encoding.Array where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ

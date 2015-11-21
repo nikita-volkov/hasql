@@ -1,14 +1,14 @@
-module Hasql.Serialization.Params where
+module Hasql.Encoding.Params where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Encoder as Encoder
-import qualified Hasql.Serialization.Value as Value
+import qualified Hasql.Encoding.Value as Value
 import qualified Hasql.PTI as PTI
 
 
 -- |
--- Serializer of some representation of a parameters product.
+-- Encoder of some representation of a parameters product.
 newtype Params a =
   Params (Op (DList (LibPQ.Oid, Bool -> Maybe ByteString)) a)
   deriving (Contravariant, Divisible, Monoid)
