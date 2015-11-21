@@ -1,3 +1,7 @@
+-- |
+-- This module provides a low-level effectful API dealing with connections to the database.
+-- 
+-- The API is completely disinfected from exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 module Hasql
 (
   -- * Connection
