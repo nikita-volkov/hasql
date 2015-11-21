@@ -177,7 +177,7 @@ foldl step init rowDes =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ {-# SCC "traversal" #-} do
       maxRows <- LibPQ.ntuples result
       maxCols <- LibPQ.nfields result
       accRef <- newIORef init

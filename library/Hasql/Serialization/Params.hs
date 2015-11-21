@@ -15,10 +15,12 @@ newtype Params a =
 
 run :: Params a -> a -> DList (LibPQ.Oid, Bool -> Maybe ByteString)
 run (Params (Op op)) params =
+  {-# SCC "run" #-} 
   op params
 
 run' :: Params a -> a -> Bool -> ([LibPQ.Oid], [Maybe (ByteString, LibPQ.Format)])
 run' (Params (Op op)) params integerDatetimes =
+  {-# SCC "run'" #-} 
   foldr step ([], []) (op params)
   where
     step (oid, bytesGetter) ~(oidList, bytesAndFormatList) =
@@ -28,6 +30,7 @@ run' (Params (Op op)) params integerDatetimes =
 
 run'' :: Params a -> a -> Bool -> [Maybe (LibPQ.Oid, ByteString, LibPQ.Format)]
 run'' (Params (Op op)) params integerDatetimes =
+  {-# SCC "run''" #-} 
   foldr step [] (op params)
   where
     step a b =

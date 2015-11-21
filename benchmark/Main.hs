@@ -46,4 +46,5 @@ main =
       where
         query :: a -> H.Query a b -> IO b
         query params query =
+          {-# SCC "query" #-} 
           H.query connection query params >>= either (fail . show) pure

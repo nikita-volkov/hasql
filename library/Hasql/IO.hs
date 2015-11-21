@@ -61,6 +61,7 @@ initConnection c =
 {-# INLINE getResults #-}
 getResults :: LibPQ.Connection -> Bool -> ResultsDeserialization.Results a -> IO (Either ResultsDeserialization.Error a)
 getResults connection integerDatetimes des =
+  {-# SCC "getResults" #-} 
   ResultsDeserialization.run (des <* ResultsDeserialization.dropRemainders) (integerDatetimes, connection)
 
 {-# INLINABLE getPreparedStatementKey #-}
@@ -69,6 +70,7 @@ getPreparedStatementKey ::
   ByteString -> [LibPQ.Oid] ->
   IO (Either ResultsDeserialization.Error ByteString)
 getPreparedStatementKey connection registry template oidList =
+  {-# SCC "getPreparedStatementKey" #-} 
   do
     keyMaybe <- PreparedStatementRegistry.lookup template wordOIDList registry
     case keyMaybe of
@@ -129,6 +131,7 @@ sendParametricQuery ::
   a ->
   IO (Either ResultsDeserialization.Error ())
 sendParametricQuery connection integerDatetimes registry template serializer prepared params =
+  {-# SCC "sendParametricQuery" #-} 
   if prepared
     then
       let

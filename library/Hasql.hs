@@ -86,6 +86,7 @@ type ConnectionError =
 -- Acquire a connection using the provided settings.
 connect :: Settings.Settings -> IO (Either ConnectionError Connection)
 connect settings =
+  {-# SCC "connect" #-} 
   runEitherT $ do
     pqConnection <- lift (IO.acquireConnection settings)
     lift (IO.checkConnectionStatus pqConnection) >>= traverse left
@@ -113,6 +114,7 @@ type Query a b =
 -- Execute a parametric query, producing either a deserialization failure or a successful result.
 query :: Connection -> Query a b -> a -> IO (Either ResultsError b)
 query (Connection pqConnection integerDatetimes registry) (template, serializer, deserializer, preparable) params =
+  {-# SCC "query" #-} 
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceSerializer serializer) preparable params
     EitherT $ IO.getResults pqConnection integerDatetimes (coerceDeserializer deserializer)

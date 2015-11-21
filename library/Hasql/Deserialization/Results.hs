@@ -75,6 +75,7 @@ getResultMaybe =
 {-# INLINABLE dropRemainders #-}
 dropRemainders :: Results ()
 dropRemainders =
+  {-# SCC "dropRemainders" #-} 
   Results $ ReaderT $ \(integerDatetimes, connection) -> loop integerDatetimes connection
   where
     loop integerDatetimes connection =

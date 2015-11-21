@@ -8,9 +8,10 @@ import qualified Hasql.Deserialization as HD
 
 select1 :: Int -> H.Query () ([] Int64)
 select1 amount =
+  {-# SCC "select1" #-} 
   (sql, mempty, deserializer, True)
   where
-    sql =
+    !sql =
       "values " <>
       mconcat (intersperse ", " (replicate amount "(1)"))
     deserializer =
@@ -18,9 +19,10 @@ select1 amount =
 
 select4 :: Int -> H.Query () ([] (Int64, Int64, Int64, Int64))
 select4 amount =
+  {-# SCC "select4" #-} 
   (sql, mempty, deserializer, True)
   where
-    sql =
+    !sql =
       "values " <>
       mconcat (intersperse ", " (replicate amount "(1, 2, 3, 4)"))
     deserializer =
