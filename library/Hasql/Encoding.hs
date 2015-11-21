@@ -155,91 +155,129 @@ newtype Value a =
   Value (Value.Value a)
   deriving (Contravariant)
 
+-- |
+-- Encoder of @BOOL@ values.
 {-# INLINABLE bool #-}
 bool :: Value Bool
 bool =
   Value (Value.unsafePTI PTI.bool (const Encoder.bool))
 
+-- |
+-- Encoder of @INT2@ values.
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
 int2 =
   Value (Value.unsafePTI PTI.int2 (const Encoder.int2_int16))
 
+-- |
+-- Encoder of @INT4@ values.
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
 int4 =
   Value (Value.unsafePTI PTI.int4 (const Encoder.int4_int32))
 
+-- |
+-- Encoder of @INT8@ values.
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
 int8 =
   Value (Value.unsafePTI PTI.int8 (const Encoder.int8_int64))
 
+-- |
+-- Encoder of @FLOAT4@ values.
 {-# INLINABLE float4 #-}
 float4 :: Value Float
 float4 =
   Value (Value.unsafePTI PTI.float4 (const Encoder.float4))
 
+-- |
+-- Encoder of @FLOAT8@ values.
 {-# INLINABLE float8 #-}
 float8 :: Value Double
 float8 =
   Value (Value.unsafePTI PTI.float8 (const Encoder.float8))
 
+-- |
+-- Encoder of @NUMERIC@ values.
 {-# INLINABLE numeric #-}
 numeric :: Value Scientific
 numeric =
   Value (Value.unsafePTI PTI.numeric (const Encoder.numeric))
 
+-- |
+-- Encoder of @CHAR@ values.
+-- Note that it supports UTF-8 values and
+-- identifies itself under the @TEXT@ OID because of that.
 {-# INLINABLE char #-}
 char :: Value Char
 char =
   Value (Value.unsafePTI PTI.text (const Encoder.char))
 
+-- |
+-- Encoder of @TEXT@ values.
 {-# INLINABLE text #-}
 text :: Value Text
 text =
   Value (Value.unsafePTI PTI.text (const Encoder.text_strict))
 
+-- |
+-- Encoder of @BYTEA@ values.
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
 bytea =
   Value (Value.unsafePTI PTI.bytea (const Encoder.bytea_strict))
 
+-- |
+-- Encoder of @DATE@ values.
 {-# INLINABLE date #-}
 date :: Value Day
 date =
   Value (Value.unsafePTI PTI.date (const Encoder.date))
 
+-- |
+-- Encoder of @TIMESTAMP@ values.
 {-# INLINABLE timestamp #-}
 timestamp :: Value LocalTime
 timestamp =
   Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_int Encoder.timestamp_float))
 
+-- |
+-- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINABLE timestamptz #-}
 timestamptz :: Value UTCTime
 timestamptz =
   Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_int Encoder.timestamptz_float))
 
+-- |
+-- Encoder of @TIME@ values.
 {-# INLINABLE time #-}
 time :: Value TimeOfDay
 time =
   Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_int Encoder.time_float))
 
+-- |
+-- Encoder of @TIMETZ@ values.
 {-# INLINABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
 timetz =
   Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_int Encoder.timetz_float))
 
+-- |
+-- Encoder of @INTERVAL@ values.
 {-# INLINABLE interval #-}
 interval :: Value DiffTime
 interval =
   Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_int Encoder.interval_float))
 
+-- |
+-- Encoder of @UUID@ values.
 {-# INLINABLE uuid #-}
 uuid :: Value UUID
 uuid =
   Value (Value.unsafePTI PTI.uuid (const Encoder.uuid))
 
+-- |
+-- Encoder of @JSON@ values.
 {-# INLINABLE json #-}
 json :: Value Aeson.Value
 json =
