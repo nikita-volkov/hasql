@@ -124,7 +124,7 @@ disconnect (Connection pqConnection _ _) =
 
 
 -- |
--- A strictly single-statement query, which can be parameterized and prepared.
+-- A specification of a strictly single-statement query, which can be parameterized and prepared.
 -- 
 -- Consists of the following:
 -- 
