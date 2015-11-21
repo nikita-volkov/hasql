@@ -76,6 +76,31 @@ import qualified Hasql.Prelude as Prelude
 --   'contrazip2' (value int8) (nullableValue text)
 -- @
 -- 
+-- Here's how you can implement encoders for custom composite types:
+-- 
+-- @
+-- data Person =
+--   Person { name :: Text, gender :: Gender, age :: Int }
+-- 
+-- data Gender =
+--   Male | Female
+-- 
+-- personParams :: Params Person
+-- personParams =
+--   'contramap' name (value text) <>
+--   'contramap' gender (value genderValue) <>
+--   'contramap' (fromIntegral . age) (value int8)
+-- 
+-- genderValue :: Value Gender
+-- genderValue =
+--   'contramap' genderText text
+--   where
+--     genderText gender =
+--       case gender of
+--         Male -> "male"
+--         Female -> "female"
+-- @
+-- 
 newtype Params a =
   Params (Params.Params a)
   deriving (Contravariant, Divisible, Monoid)
