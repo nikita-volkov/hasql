@@ -59,18 +59,14 @@ import qualified Hasql.Prelude as Prelude
 -- @
 -- someParamsEncoder :: Params (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contramap' fst (value int8) <>
---   'contramap' snd (nullableValue text)
+--   'contramap' 'fst' (value int8) '<>'
+--   'contramap' 'snd' (nullableValue text)
 -- @
 -- 
 -- As a general solution for tuples of any arity, instead of 'fst' and 'snd',
--- consider such solutions as
--- the @<http://hackage.haskell.org/package/tuple-th-0.2.5/docs/TupleTH.html#v:proj proj>@ macro.
--- 
--- Alternatively you can achieve the same using the functions of the @contrazip@ family
--- from the \"contravariant-extras\" package,
--- which are especially helpful when dealing with tuples.
--- E.g.,
+-- consider the functions of the @contrazip@ family
+-- from the \"contravariant-extras\" package.
+-- E.g., here's how you can achieve the same as the above:
 -- 
 -- @
 -- someParamsEncoder :: Params (Int64, Maybe Text)
@@ -89,8 +85,8 @@ import qualified Hasql.Prelude as Prelude
 -- 
 -- personParams :: Params Person
 -- personParams =
---   'contramap' name (value text) <>
---   'contramap' gender (value genderValue) <>
+--   'contramap' name (value text) '<>'
+--   'contramap' gender (value genderValue) '<>'
 --   'contramap' (fromIntegral . age) (value int8)
 -- 
 -- genderValue :: Value Gender

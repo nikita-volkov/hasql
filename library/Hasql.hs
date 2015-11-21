@@ -150,7 +150,7 @@ disconnect (Connection pqConnection _ _) =
 --     sql =
 --       "select ($1 + $2)"
 --     encoder =
---       'contramap' 'fst' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8') <>
+--       'contramap' 'fst' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8') '<>'
 --       'contramap' 'snd' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8')
 --     decoder =
 --       Hasql.Decoding.'Hasql.Decoding.singleRow' (Hasql.Decoding.'Hasql.Decoding.value' Hasql.Decoding.'Hasql.Decoding.int8')
