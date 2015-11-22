@@ -1,34 +1,34 @@
 module Main.Queries where
 
 import Main.Prelude hiding (def)
-import qualified Hasql as H
+import qualified Hasql.Query as HQ
 import qualified Hasql.Encoding as HE
 import qualified Hasql.Decoding as HD
 import qualified Main.Prelude as Prelude
 
 
-def :: ByteString -> H.Query () ()
+def :: ByteString -> HQ.Query () ()
 def sql =
-  H.Query sql Prelude.def Prelude.def False
+  HQ.Query sql Prelude.def Prelude.def False
 
-plain :: ByteString -> H.Query () ()
+plain :: ByteString -> HQ.Query () ()
 plain sql =
-  H.Query sql mempty HD.unit False
+  HQ.Query sql mempty HD.unit False
 
-dropType :: ByteString -> H.Query () ()
+dropType :: ByteString -> HQ.Query () ()
 dropType name =
   plain $
     "drop type if exists " <> name
 
-createEnum :: ByteString -> [ByteString] -> H.Query () ()
+createEnum :: ByteString -> [ByteString] -> HQ.Query () ()
 createEnum name values =
   plain $
     "create type " <> name <> " as enum (" <> 
     mconcat (intersperse ", " (map (\x -> "'" <> x <> "'") values)) <> ")"
 
-selectList :: H.Query () ([] (Int64, Int64))
+selectList :: HQ.Query () ([] (Int64, Int64))
 selectList =
-  H.Query sql mempty decoder True
+  HQ.Query sql mempty decoder True
   where
     sql =
       "values (1,2), (3,4), (5,6)"

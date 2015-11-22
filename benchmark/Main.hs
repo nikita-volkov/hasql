@@ -2,17 +2,19 @@ module Main where
 
 import Main.Prelude
 import Criterion.Main
-import qualified Hasql as H
+import qualified Hasql.Connection as HC
+import qualified Hasql.Settings as HS
+import qualified Hasql.Query as HQ
 import qualified Hasql.Encoding as HE
 import qualified Hasql.Decoding as HD
 import qualified Main.Queries as Q
 
 
 main =
-  H.connect settings >>= either (fail . show) use
+  HC.connect settings >>= either (fail . show) use
   where
     settings =
-      H.settings host port user password database
+      HS.settings host port user password database
       where
         host = "localhost"
         port = 5432
@@ -44,7 +46,7 @@ main =
         ]
       ]
       where
-        query :: a -> H.Query a b -> IO b
+        query :: a -> HQ.Query a b -> IO b
         query params query =
           {-# SCC "query" #-} 
-          H.query connection query params >>= either (fail . show) pure
+          HQ.run query params connection >>= either (fail . show) pure

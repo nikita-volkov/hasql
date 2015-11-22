@@ -1,23 +1,13 @@
 -- |
 -- This module provides a low-level effectful API dealing with connections to the database.
--- 
--- The API is completely disinfected from exceptions. All error-reporting is explicit and is presented using the 'Either' type.
-module Hasql
+module Hasql.Query
 (
-  -- * Connection settings
-  Settings.Settings(..),
-  Settings.settings,
-  -- * Connection
-  Connection,
-  ConnectionError(..),
-  connect,
-  disconnect,
-  -- * Query
   Query(..),
+  -- * Execution
   ResultsError(..),
   ResultError(..),
   RowError(..),
-  query,
+  run,
 )
 where
 
@@ -30,12 +20,8 @@ import qualified Hasql.Encoding.Params as ParamsEncoding
 import qualified Hasql.Encoding as Encoding
 import qualified Hasql.Settings as Settings
 import qualified Hasql.IO as IO
+import qualified Hasql.Connection.Impl as Connection
 
-
--- |
--- A single connection to the database.
-data Connection =
-  Connection !LibPQ.Connection !Bool !PreparedStatementRegistry.PreparedStatementRegistry
 
 -- |
 -- An error of the result-decoder.
@@ -103,30 +89,6 @@ data RowError =
   ValueError !Text
   deriving (Show, Eq)
 
--- |
--- Possible details of the connection acquistion error.
-type ConnectionError =
-  Maybe ByteString
-
--- |
--- Acquire a connection using the provided settings.
-connect :: Settings.Settings -> IO (Either ConnectionError Connection)
-connect settings =
-  {-# SCC "connect" #-} 
-  runEitherT $ do
-    pqConnection <- lift (IO.acquireConnection settings)
-    lift (IO.checkConnectionStatus pqConnection) >>= traverse left
-    lift (IO.initConnection pqConnection)
-    integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
-    registry <- lift (IO.acquirePreparedStatementRegistry)
-    pure (Connection pqConnection integerDatetimes registry)
-
--- |
--- Release the connection.
-disconnect :: Connection -> IO ()
-disconnect (Connection pqConnection _ _) =
-  LibPQ.finish pqConnection
-
 
 -- |
 -- A specification of a strictly single-statement query, which can be parameterized and prepared.
@@ -180,9 +142,9 @@ instance Profunctor Query where
     Query p1 (contramap f1 p2) (fmap f2 p3) p4
 
 -- |
--- Execute a parametric query, producing either a deserialization failure or a successful result.
-query :: Connection -> Query a b -> a -> IO (Either ResultsError b)
-query (Connection pqConnection integerDatetimes registry) (Query template encoder decoder preparable) params =
+-- Execute the query, producing either a deserialization failure or a successful result.
+run :: Query a b -> a -> Connection.Connection -> IO (Either ResultsError b)
+run (Query template encoder decoder preparable) params (Connection.Connection pqConnection integerDatetimes registry) =
   {-# SCC "query" #-} 
   fmap (mapLeft coerceResultsError) $ runEitherT $ do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params

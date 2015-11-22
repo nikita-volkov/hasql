@@ -1,18 +1,20 @@
 module Main.DSL where
 
 import Main.Prelude
-import qualified Hasql as H
+import qualified Hasql.Connection as HC
+import qualified Hasql.Query as HQ
+import qualified Hasql.Settings as HS
 import qualified Hasql.Encoding as HE
 import qualified Hasql.Decoding as HD
 
 
 newtype Session a =
-  Session (ReaderT H.Connection (EitherT H.ResultsError IO) a)
+  Session (ReaderT HC.Connection (EitherT HQ.ResultsError IO) a)
   deriving (Functor, Applicative, Monad, MonadIO)
 
 data SessionError =
-  ConnectionError (H.ConnectionError) |
-  ResultsError (H.ResultsError)
+  ConnectionError (HC.ConnectionError) |
+  ResultsError (HQ.ResultsError)
   deriving (Show, Eq)
 
 session :: Session a -> IO (Either SessionError a)
@@ -20,10 +22,10 @@ session (Session impl) =
   runEitherT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      EitherT $ fmap (mapLeft ConnectionError) $ H.connect settings
+      EitherT $ fmap (mapLeft ConnectionError) $ HC.connect settings
       where
         settings =
-          H.settings host port user password database
+          HS.settings host port user password database
           where
             host = "localhost"
             port = 5432
@@ -34,8 +36,8 @@ session (Session impl) =
       bimapEitherT ResultsError id $
       runReaderT impl connection
     release connection =
-      lift $ H.disconnect connection
+      lift $ HC.disconnect connection
 
-query :: a -> H.Query a b -> Session b
+query :: a -> HQ.Query a b -> Session b
 query params query =
-  Session $ ReaderT $ \connection -> EitherT $ H.query connection query params
+  Session $ ReaderT $ EitherT . HQ.run query params

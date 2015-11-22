@@ -1,15 +1,15 @@
 module Main.Queries where
 
 import Main.Prelude
-import qualified Hasql as H
+import qualified Hasql.Query as HQ
 import qualified Hasql.Encoding as HE
 import qualified Hasql.Decoding as HD
 
 
-select1 :: Int -> H.Query () (Vector Int64)
+select1 :: Int -> HQ.Query () (Vector Int64)
 select1 amount =
   {-# SCC "select1" #-} 
-  H.Query sql mempty decoder True
+  HQ.Query sql mempty decoder True
   where
     !sql =
       "values " <>
@@ -17,10 +17,10 @@ select1 amount =
     decoder =
       HD.rowsVector (HD.value HD.int8)
 
-select4 :: Int -> H.Query () (Vector (Int64, Int64, Int64, Int64))
+select4 :: Int -> HQ.Query () (Vector (Int64, Int64, Int64, Int64))
 select4 amount =
   {-# SCC "select4" #-} 
-  H.Query sql mempty decoder True
+  HQ.Query sql mempty decoder True
   where
     !sql =
       "values " <>

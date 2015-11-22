@@ -9,9 +9,9 @@ import qualified Test.Tasty.SmallCheck as SmallCheck
 import qualified Test.Tasty.QuickCheck as QuickCheck
 import qualified Test.QuickCheck as QuickCheck
 import qualified Main.DSL as DSL
-import qualified Hasql as H
-import qualified Hasql.Encoding as HE
-import qualified Hasql.Decoding as HD
+import qualified Hasql.Query as Query
+import qualified Hasql.Encoding as Encoding
+import qualified Hasql.Decoding as Decoding
 
 main =
   defaultMain tree
@@ -27,28 +27,28 @@ tree =
         DSL.session $ do
           let
             query =
-              H.Query sql mempty HD.unit True
+              Query.Query sql mempty Decoding.unit True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              H.Query sql mempty HD.unit True
+              Query.Query sql mempty Decoding.unit True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
             in DSL.query () query
           let
             query =
-              H.Query sql encoder decoder True
+              Query.Query sql encoder decoder True
               where
                 sql =
                   "select ($1 :: mood)"
                 decoder =
-                  (HD.singleRow (HD.value (HD.enum (Just . id))))
+                  (Decoding.singleRow (Decoding.value (Decoding.enum (Just . id))))
                 encoder =
-                  HE.value (HE.enum id)
+                  Encoding.value (Encoding.enum id)
             in DSL.query "ok" query
       in actual
     ,
@@ -63,26 +63,26 @@ tree =
               DSL.query "ok" query
               where
                 query =
-                  H.Query sql encoder decoder True
+                  Query.Query sql encoder decoder True
                   where
                     sql =
                       "select $1"
                     encoder =
-                      HE.value HE.text
+                      Encoding.value Encoding.text
                     decoder =
-                      (HD.singleRow (HD.value (HD.text)))
+                      (Decoding.singleRow (Decoding.value (Decoding.text)))
             effect2 =
               DSL.query 1 query
               where
                 query =
-                  H.Query sql encoder decoder True
+                  Query.Query sql encoder decoder True
                   where
                     sql =
                       "select $1"
                     encoder =
-                      HE.value HE.int8
+                      Encoding.value Encoding.int8
                     decoder =
-                      (HD.singleRow (HD.value HD.int8))
+                      (Decoding.singleRow (Decoding.value Decoding.int8))
             in (,) <$> effect1 <*> effect2
       in actual
     ,
@@ -107,12 +107,12 @@ tree =
             DSL.query () $ Queries.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.query () $ H.Query sql def decoder False
+            DSL.query () $ Query.Query sql def decoder False
             where
               sql =
                 "delete from a"
               decoder =
-                HD.rowsAffected
+                Decoding.rowsAffected
       in actual
     ,
     HUnit.testCase "Result of an auto-incremented column" $
@@ -121,8 +121,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () $ H.Query "insert into a (v) values ('a') returning id" def (HD.singleRow (HD.value HD.int4)) False
-          id2 <- DSL.query () $ H.Query "insert into a (v) values ('b') returning id" def (HD.singleRow (HD.value HD.int4)) False
+          id1 <- DSL.query () $ Query.Query "insert into a (v) values ('a') returning id" def (Decoding.singleRow (Decoding.value Decoding.int4)) False
+          id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoding.singleRow (Decoding.value Decoding.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in HUnit.assertEqual "" (Right (1, 2)) =<< actualIO
