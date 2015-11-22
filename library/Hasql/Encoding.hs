@@ -464,7 +464,7 @@ arrayNullableValue (Value (Value.Value elementOID arrayOID encoder')) =
   Array (Array.nullableValue elementOID arrayOID encoder')
 
 -- |
--- A encoder of an array dimension,
+-- An encoder of an array dimension,
 -- which thus provides support for multidimensional arrays.
 -- 
 -- Accepts:
