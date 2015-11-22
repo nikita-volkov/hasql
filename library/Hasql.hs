@@ -54,22 +54,27 @@ data ResultsError =
 -- Decoder error details.
 data ResultError =
   -- | 
-  -- An error reported by the DB. Code, message, details, hint.
+  -- An error reported by the DB.
+  -- Consists of the following: Code, message, details, hint.
   -- 
-  -- * The SQLSTATE code for the error. The SQLSTATE code identifies the type of error that has occurred; 
-  -- it can be used by front-end applications to perform specific operations (such as error handling) 
-  -- in response to a particular database error. 
-  -- For a list of the possible SQLSTATE codes, see Appendix A.
-  -- This field is not localizable, and is always present.
+  -- * __Code__.
+  -- The SQLSTATE code for the error.
+  -- It's recommended to use
+  -- <http://hackage.haskell.org/package/postgresql-error-codes the "postgresql-error-codes" package>
+  -- to work with those.
   -- 
-  -- * The primary human-readable error message (typically one line). Always present.
+  -- * __Message__.
+  -- The primary human-readable error message (typically one line). Always present.
   -- 
-  -- * Detail: an optional secondary error message carrying more detail about the problem. 
+  -- * __Details__.
+  -- An optional secondary error message carrying more detail about the problem. 
   -- Might run to multiple lines.
   -- 
-  -- * Hint: an optional suggestion what to do about the problem. 
+  -- * __Hint__.
+  -- An optional suggestion on what to do about the problem. 
   -- This is intended to differ from detail in that it offers advice (potentially inappropriate) 
-  -- rather than hard facts. Might run to multiple lines.
+  -- rather than hard facts.
+  -- Might run to multiple lines.
   ServerError !ByteString !ByteString !(Maybe ByteString) !(Maybe ByteString) |
   -- |
   -- The database returned an unexpected result.
