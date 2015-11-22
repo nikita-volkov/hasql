@@ -4,8 +4,8 @@ module Hasql.Connection
 (
   Connection,
   ConnectionError(..),
-  connect,
-  disconnect,
+  acquire,
+  release,
 )
 where
 

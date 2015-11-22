@@ -18,10 +18,10 @@ type ConnectionError =
   Maybe ByteString
 
 -- |
--- Acquire a connection using the provided settings.
-connect :: ByteString -> IO (Either ConnectionError Connection)
-connect settings =
-  {-# SCC "connect" #-} 
+-- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
+acquire :: ByteString -> IO (Either ConnectionError Connection)
+acquire settings =
+  {-# SCC "acquire" #-} 
   runEitherT $ do
     pqConnection <- lift (IO.acquireConnection settings)
     lift (IO.checkConnectionStatus pqConnection) >>= traverse left
@@ -32,6 +32,6 @@ connect settings =
 
 -- |
 -- Release the connection.
-disconnect :: Connection -> IO ()
-disconnect (Connection pqConnection _ _) =
+release :: Connection -> IO ()
+release (Connection pqConnection _ _) =
   LibPQ.finish pqConnection
