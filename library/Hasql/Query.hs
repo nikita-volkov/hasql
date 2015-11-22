@@ -1,5 +1,3 @@
--- |
--- This module provides a low-level effectful API dealing with connections to the database.
 module Hasql.Query
 (
   Query(..),
