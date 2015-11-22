@@ -4,6 +4,7 @@ module Hasql.Encoding
 (
   -- * Params
   Params,
+  unit,
   value,
   nullableValue,
   -- * Value
@@ -104,6 +105,14 @@ newtype Params a =
   deriving (Contravariant, Divisible, Monoid)
 
 -- |
+-- Encode no parameters.
+-- 
+{-# INLINABLE unit #-}
+unit :: Params ()
+unit =
+  Params mempty
+
+-- |
 -- Lift an individual value encoder to a parameters encoder.
 -- 
 {-# INLINABLE value #-}
@@ -123,10 +132,12 @@ nullableValue (Value x) =
 -- ** Instances
 -------------------------
 
+-- |
+-- Maps to 'unit'.
 instance Default (Params ()) where
   {-# INLINE def #-}
   def =
-    mempty
+    unit
 
 instance Default (Value a) => Default (Params (Identity a)) where
   {-# INLINE def #-}
