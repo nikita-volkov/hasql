@@ -27,14 +27,14 @@ tree =
         DSL.session $ do
           let
             query =
-              H.Query sql mempty HD.noResult True
+              H.Query sql mempty HD.unit True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              H.Query sql mempty HD.noResult True
+              H.Query sql mempty HD.unit True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"

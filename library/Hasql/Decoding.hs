@@ -4,7 +4,7 @@ module Hasql.Decoding
 (
   -- * Result
   Result,
-  noResult,
+  unit,
   rowsAffected,
   singleRow,
   -- ** Specialized multi-row results
@@ -82,9 +82,9 @@ newtype Result a =
 -- 
 -- Useful for statements like @INSERT@ or @CREATE@.
 -- 
-{-# INLINABLE noResult #-}
-noResult :: Result ()
-noResult =
+{-# INLINABLE unit #-}
+unit :: Result ()
+unit =
   Result (Results.single Result.unit)
 
 -- |
@@ -158,11 +158,11 @@ rowsList =
 -- ** Instances
 -------------------------
 
--- | Maps to 'noResult'.
+-- | Maps to 'unit'.
 instance Default (Result ()) where
   {-# INLINE def #-}
   def =
-    noResult
+    unit
 
 -- | Maps to 'rowsAffected'.
 instance Default (Result Int64) where
