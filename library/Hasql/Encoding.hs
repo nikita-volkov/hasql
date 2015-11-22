@@ -136,8 +136,22 @@ instance Default (Value a) => Default (Params (Identity a)) where
 instance (Default (Value a1), Default (Value a2)) => Default (Params (a1, a2)) where
   {-# INLINE def #-}
   def =
-    contramap fst (value def) <>
-    contramap snd (value def)
+    contrazip2 (value def) (value def)
+
+instance (Default (Value a1), Default (Value a2), Default (Value a3)) => Default (Params (a1, a2, a3)) where
+  {-# INLINE def #-}
+  def =
+    contrazip3 (value def) (value def) (value def)
+
+instance (Default (Value a1), Default (Value a2), Default (Value a3), Default (Value a4)) => Default (Params (a1, a2, a3, a4)) where
+  {-# INLINE def #-}
+  def =
+    contrazip4 (value def) (value def) (value def) (value def)
+
+instance (Default (Value a1), Default (Value a2), Default (Value a3), Default (Value a4), Default (Value a5)) => Default (Params (a1, a2, a3, a4, a5)) where
+  {-# INLINE def #-}
+  def =
+    contrazip5 (value def) (value def) (value def) (value def) (value def)
 
 
 -- * Value Encoder
