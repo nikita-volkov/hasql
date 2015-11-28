@@ -155,6 +155,7 @@ benchmark benchmark
     Main.hs
   other-modules:
     Main.Queries
+    Main.Prelude
   ghc-options:
     -O2
     -threaded
