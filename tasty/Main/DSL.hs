@@ -22,7 +22,7 @@ session (Session impl) =
   runEitherT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      EitherT $ fmap (mapLeft ConnectionError) $ HC.connect settings
+      EitherT $ fmap (mapLeft ConnectionError) $ HC.acquire settings
       where
         settings =
           HS.settings host port user password database
@@ -36,7 +36,7 @@ session (Session impl) =
       bimapEitherT ResultsError id $
       runReaderT impl connection
     release connection =
-      lift $ HC.disconnect connection
+      lift $ HC.release connection
 
 query :: a -> HQ.Query a b -> Session b
 query params query =

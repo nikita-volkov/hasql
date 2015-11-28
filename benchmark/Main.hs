@@ -11,7 +11,7 @@ import qualified Main.Queries as Q
 
 
 main =
-  HC.connect settings >>= either (fail . show) use
+  HC.acquire settings >>= either (fail . show) use
   where
     settings =
       HS.settings host port user password database
