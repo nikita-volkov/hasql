@@ -99,7 +99,7 @@ data RowError =
 -- * a flag, determining whether it should be prepared.
 -- 
 -- The SQL template must be formatted according to Postgres' standard,
--- with any non-ASCII characters of the template must be encoded using UTF-8.
+-- with any non-ASCII characters of the template encoded using UTF-8.
 -- According to the format,
 -- parameters must be referred to using the positional notation, as in the following:
 -- @$1@, @$2@, @$3@ and etc.
@@ -122,7 +122,7 @@ data RowError =
 -- @
 -- 
 -- The statement above accepts a product of two parameters of type 'Int64'
--- and results in a single result of type 'Int64'.
+-- and produces a single result of type 'Int64'.
 -- 
 data Query a b =
   Query !ByteString !(Encoders.Params a) !(Decoders.Result b) !Bool
