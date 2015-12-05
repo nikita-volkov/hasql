@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.14.0.2
+  0.15
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -50,20 +50,20 @@ library
     Hasql.PTI
     Hasql.IO
     Hasql.Commands
-    Hasql.Decoding.Array
-    Hasql.Decoding.Composite
-    Hasql.Decoding.Value
-    Hasql.Decoding.Row
-    Hasql.Decoding.Result
-    Hasql.Decoding.Results
-    Hasql.Encoding.Array
-    Hasql.Encoding.Value
-    Hasql.Encoding.Params
+    Hasql.Decoders.Array
+    Hasql.Decoders.Composite
+    Hasql.Decoders.Value
+    Hasql.Decoders.Row
+    Hasql.Decoders.Result
+    Hasql.Decoders.Results
+    Hasql.Encoders.Array
+    Hasql.Encoders.Value
+    Hasql.Encoders.Params
     Hasql.PreparedStatementRegistry
     Hasql.Connection.Impl
   exposed-modules:
-    Hasql.Decoding
-    Hasql.Encoding
+    Hasql.Decoders
+    Hasql.Encoders
     Hasql.Settings
     Hasql.Connection
     Hasql.Query

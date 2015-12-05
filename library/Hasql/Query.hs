@@ -12,10 +12,10 @@ where
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.Decoding.Results as ResultsDecoding
-import qualified Hasql.Decoding as Decoding
-import qualified Hasql.Encoding.Params as ParamsEncoding
-import qualified Hasql.Encoding as Encoding
+import qualified Hasql.Decoders.Results as ResultsDecoders
+import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Encoders.Params as ParamsEncoders
+import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Settings as Settings
 import qualified Hasql.IO as IO
 import qualified Hasql.Connection.Impl as Connection
@@ -103,7 +103,7 @@ data RowError =
 -- According to the format,
 -- parameters must be referred to using the positional notation, as in the following:
 -- @$1@, @$2@, @$3@ and etc.
--- Those references must be used to refer to the values of the 'Encoding.Params' encoder.
+-- Those references must be used to refer to the values of the 'Encoders.Params' encoder.
 -- 
 -- Following is an example of the declaration of a prepared statement with its associated codecs.
 -- 
@@ -115,17 +115,17 @@ data RowError =
 --     sql =
 --       "select ($1 + $2)"
 --     encoder =
---       'contramap' 'fst' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8') '<>'
---       'contramap' 'snd' (Hasql.Encoding.'Hasql.Encoding.value' Hasql.Encoding.'Hasql.Encoding.int8')
+--       'contramap' 'fst' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8') '<>'
+--       'contramap' 'snd' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8')
 --     decoder =
---       Hasql.Decoding.'Hasql.Decoding.singleRow' (Hasql.Decoding.'Hasql.Decoding.value' Hasql.Decoding.'Hasql.Decoding.int8')
+--       Hasql.Decoders.'Hasql.Decoders.singleRow' (Hasql.Decoders.'Hasql.Decoders.value' Hasql.Decoders.'Hasql.Decoders.int8')
 -- @
 -- 
 -- The statement above accepts a product of two parameters of type 'Int64'
 -- and results in a single result of type 'Int64'.
 -- 
 data Query a b =
-  Query !ByteString !(Encoding.Params a) !(Decoding.Result b) !Bool
+  Query !ByteString !(Encoders.Params a) !(Decoders.Result b) !Bool
   deriving (Functor)
 
 instance Profunctor Query where
@@ -150,16 +150,16 @@ run (Query template encoder decoder preparable) params (Connection.Connection pq
 
 -- |
 -- WARNING: We need to take special care that the structure of
--- the "ResultsDecoding.Error" type in the public API is an exact copy of
+-- the "ResultsDecoders.Error" type in the public API is an exact copy of
 -- "Error", since we're using coercion.
-coerceResultsError :: ResultsDecoding.Error -> ResultsError
+coerceResultsError :: ResultsDecoders.Error -> ResultsError
 coerceResultsError =
   unsafeCoerce
 
-coerceDecoder :: Decoding.Result a -> ResultsDecoding.Results a
+coerceDecoder :: Decoders.Result a -> ResultsDecoders.Results a
 coerceDecoder =
   unsafeCoerce
 
-coerceEncoder :: Encoding.Params a -> ParamsEncoding.Params a
+coerceEncoder :: Encoders.Params a -> ParamsEncoders.Params a
 coerceEncoder =
   unsafeCoerce

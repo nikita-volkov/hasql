@@ -1,6 +1,6 @@
 -- |
 -- A DSL for declaration of result decoders.
-module Hasql.Decoding
+module Hasql.Decoders
 (
   -- * Result
   Result,
@@ -58,12 +58,12 @@ import Hasql.Prelude hiding (maybe, bool)
 import qualified Data.Aeson as Aeson
 import qualified Data.Vector as Vector
 import qualified PostgreSQL.Binary.Decoder as Decoder
-import qualified Hasql.Decoding.Results as Results
-import qualified Hasql.Decoding.Result as Result
-import qualified Hasql.Decoding.Row as Row
-import qualified Hasql.Decoding.Value as Value
-import qualified Hasql.Decoding.Array as Array
-import qualified Hasql.Decoding.Composite as Composite
+import qualified Hasql.Decoders.Results as Results
+import qualified Hasql.Decoders.Result as Result
+import qualified Hasql.Decoders.Row as Row
+import qualified Hasql.Decoders.Value as Value
+import qualified Hasql.Decoders.Array as Array
+import qualified Hasql.Decoders.Composite as Composite
 import qualified Hasql.Prelude as Prelude
 
 

@@ -5,8 +5,8 @@ import Criterion.Main
 import qualified Hasql.Connection as HC
 import qualified Hasql.Settings as HS
 import qualified Hasql.Query as HQ
-import qualified Hasql.Encoding as HE
-import qualified Hasql.Decoding as HD
+import qualified Hasql.Encoders as HE
+import qualified Hasql.Decoders as HD
 import qualified Main.Queries as Q
 
 

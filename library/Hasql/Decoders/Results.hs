@@ -9,13 +9,13 @@
 -- 
 -- * Row-by-row fetching.
 -- 
-module Hasql.Decoding.Results where
+module Hasql.Decoders.Results where
 
 import Hasql.Prelude hiding (maybe, many)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Prelude as Prelude
-import qualified Hasql.Decoding.Result as Result
-import qualified Hasql.Decoding.Row as Row
+import qualified Hasql.Decoders.Result as Result
+import qualified Hasql.Decoders.Row as Row
 
 
 newtype Results a =

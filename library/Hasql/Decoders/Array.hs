@@ -1,4 +1,4 @@
-module Hasql.Decoding.Array where
+module Hasql.Decoders.Array where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ

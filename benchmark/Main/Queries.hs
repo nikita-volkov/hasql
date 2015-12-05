@@ -2,8 +2,8 @@ module Main.Queries where
 
 import Main.Prelude
 import qualified Hasql.Query as HQ
-import qualified Hasql.Encoding as HE
-import qualified Hasql.Decoding as HD
+import qualified Hasql.Encoders as HE
+import qualified Hasql.Decoders as HD
 
 
 select1 :: Int -> HQ.Query () (Vector Int64)

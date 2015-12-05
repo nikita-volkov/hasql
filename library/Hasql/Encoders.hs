@@ -1,6 +1,6 @@
 -- |
 -- A DSL for declaration of query parameter encoders.
-module Hasql.Encoding
+module Hasql.Encoders
 (
   -- * Params
   Params,
@@ -40,9 +40,9 @@ where
 import Hasql.Prelude hiding (bool)
 import qualified PostgreSQL.Binary.Encoder as Encoder
 import qualified Data.Aeson as Aeson
-import qualified Hasql.Encoding.Params as Params
-import qualified Hasql.Encoding.Value as Value
-import qualified Hasql.Encoding.Array as Array
+import qualified Hasql.Encoders.Params as Params
+import qualified Hasql.Encoders.Value as Value
+import qualified Hasql.Encoders.Array as Array
 import qualified Hasql.PTI as PTI
 import qualified Hasql.Prelude as Prelude
 

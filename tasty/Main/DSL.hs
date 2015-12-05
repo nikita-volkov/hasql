@@ -4,8 +4,8 @@ import Main.Prelude
 import qualified Hasql.Connection as HC
 import qualified Hasql.Query as HQ
 import qualified Hasql.Settings as HS
-import qualified Hasql.Encoding as HE
-import qualified Hasql.Decoding as HD
+import qualified Hasql.Encoders as HE
+import qualified Hasql.Decoders as HD
 
 
 newtype Session a =

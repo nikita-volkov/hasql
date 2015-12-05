@@ -1,8 +1,8 @@
-module Hasql.Decoding.Result where
+module Hasql.Decoders.Result where
 
 import Hasql.Prelude hiding (maybe, many)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Decoding.Row as Row
+import qualified Hasql.Decoders.Row as Row
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import qualified Data.ByteString as ByteString
 import qualified Hasql.Prelude as Prelude

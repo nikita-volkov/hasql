@@ -2,7 +2,7 @@ module Hasql.Commands
 (
   Commands,
   asBytes,
-  setEncodingToUTF8,
+  setEncodersToUTF8,
   setMinClientMessagesToWarning,
 )
 where
@@ -22,8 +22,8 @@ asBytes :: Commands -> ByteString
 asBytes (Commands list) =
   BL.toStrict $ BB.toLazyByteString $ foldMap (<> BB.char7 ';') $ list
 
-setEncodingToUTF8 :: Commands
-setEncodingToUTF8 =
+setEncodersToUTF8 :: Commands
+setEncodersToUTF8 =
   Commands (pure "SET client_encoding = 'UTF8'")
 
 setMinClientMessagesToWarning :: Commands
