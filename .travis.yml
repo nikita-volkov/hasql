@@ -1,10 +1,7 @@
 env:
-  - ghc=7.6.1  cabal=1.18 benchmarks=1 tests=1 lower_bound_dependencies=1
-  - ghc=7.6.1  cabal=1.18 benchmarks=1 tests=1
-  - ghc=7.8.1  cabal=1.18 benchmarks=1 tests=1
-  - ghc=7.10.1 cabal=1.22
+  - ghc=7.6.1  cabal=1.18 lower_bound_dependencies=1
+  - ghc=7.8.1  cabal=1.18
   - ghc=7.10.1 cabal=1.22 benchmarks=1 tests=1
-  
 
 install:
   # Set up the Shell to treat the semicolon as &&
@@ -32,9 +29,6 @@ install:
     then
       constraint_options=(
         "--constraint=transformers==0.3.*"
-        "--constraint=monad-control==0.3.*"
-        "--constraint=text==1.0.*"
-        "--constraint=attoparsec==0.10.*"
         "--constraint=time==1.4.*"
       );
     fi;
