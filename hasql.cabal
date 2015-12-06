@@ -99,8 +99,6 @@ library
     base >= 4.6 && < 5
 
 
--- Note that this test-suite is supposed to be single-threaded.
--- Hence the absense of the appropriate GHC flags.
 test-suite tasty
   type:
     exitcode-stdio-1.0

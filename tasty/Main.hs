@@ -3,11 +3,11 @@ module Main where
 import Main.Prelude hiding (assert, isRight, isLeft)
 import Test.QuickCheck.Instances
 import Test.Tasty
-import qualified Main.Queries as Queries
-import qualified Test.Tasty.HUnit as HUnit
-import qualified Test.Tasty.SmallCheck as SmallCheck
-import qualified Test.Tasty.QuickCheck as QuickCheck
+import Test.Tasty.Runners
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 import qualified Test.QuickCheck as QuickCheck
+import qualified Main.Queries as Queries
 import qualified Main.DSL as DSL
 import qualified Hasql.Query as Query
 import qualified Hasql.Encoders as Encoders
@@ -17,13 +17,15 @@ main =
   defaultMain tree
 
 tree =
+  localOption (NumThreads 1) $
   testGroup "All tests"
   [
-    HUnit.testCase "Enum" $
-    HUnit.assertEqual "" (Right "ok") $
+    testCase "Executing the same query twice" $
+    pure ()
+    ,
+    testCase "Enum" $
     let
-      actual =
-        unsafePerformIO $
+      actualIO =
         DSL.session $ do
           let
             query =
@@ -50,13 +52,11 @@ tree =
                 encoder =
                   Encoders.value (Encoders.enum id)
             in DSL.query "ok" query
-      in actual
+      in actualIO >>= assertEqual "" (Right "ok")
     ,
-    HUnit.testCase "The same prepared statement used on different types" $ 
-    HUnit.assertEqual "" (Right ("ok", 1)) $
+    testCase "The same prepared statement used on different types" $ 
     let
-      actual =
-        unsafePerformIO $
+      actualIO =
         DSL.session $ do
           let
             effect1 =
@@ -84,13 +84,12 @@ tree =
                     decoder =
                       (Decoders.singleRow (Decoders.value Decoders.int8))
             in (,) <$> effect1 <*> effect2
-      in actual
+      in actualIO >>= assertEqual "" (Right ("ok", 1))
     ,
-    HUnit.testCase "Affected rows counting" $
-    HUnit.assertEqual "" (Right 100) $
+    testCase "Affected rows counting" $
+    replicateM_ 13 $
     let
-      actual =
-        unsafePerformIO $
+      actualIO =
         DSL.session $ do
           dropTable
           createTable
@@ -113,9 +112,9 @@ tree =
                 "delete from a"
               decoder =
                 Decoders.rowsAffected
-      in actual
+      in actualIO >>= assertEqual "" (Right 100)
     ,
-    HUnit.testCase "Result of an auto-incremented column" $
+    testCase "Result of an auto-incremented column" $
     let
       actualIO =
         DSL.session $ do
@@ -125,12 +124,12 @@ tree =
           id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
-      in HUnit.assertEqual "" (Right (1, 2)) =<< actualIO
+      in assertEqual "" (Right (1, 2)) =<< actualIO
     ,
-    HUnit.testCase "List decoding" $
+    testCase "List decoding" $
     let
       actualIO =
         DSL.session $ DSL.query () $ Queries.selectList
-      in HUnit.assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
+      in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
   ]
 
