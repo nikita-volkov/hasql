@@ -51,7 +51,6 @@ single resultDec =
     case resultMaybe of
       Just result ->
         mapLeft ResultError <$> Result.run resultDec (integerDatetimes, result) 
-          <* LibPQ.unsafeFreeResult result
       Nothing ->
         fmap (Left . ClientError) (LibPQ.errorMessage connection)
 
