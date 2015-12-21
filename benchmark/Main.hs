@@ -2,7 +2,7 @@ module Main where
 
 import Main.Prelude
 import Criterion.Main
-import qualified Hasql.IO as IO
+import qualified Hasql.Connection as Connection
 import qualified Hasql.Settings as HS
 import qualified Hasql.Query as HQ
 import qualified Hasql.Encoders as HE
@@ -12,7 +12,7 @@ import qualified Main.Queries as Q
 
 
 main =
-  IO.acquireConnection settings >>= either (fail . show) use
+  Connection.acquire settings >>= either (fail . show) use
   where
     settings =
       HS.settings host port user password database
@@ -51,4 +51,4 @@ main =
         query params query =
           {-# SCC "query" #-} 
           (=<<) (either (fail . show) pure) $
-          IO.session connection $ Hasql.Session.query params query
+          flip Hasql.Session.run connection $ Hasql.Session.query params query

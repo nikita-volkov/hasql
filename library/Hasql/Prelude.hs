@@ -27,6 +27,10 @@ import Control.Monad.Trans.Reader as Exports hiding (liftCallCC, liftCatch)
 import Control.Monad.Trans.State.Strict as Exports hiding (liftCallCC, liftCatch, liftListen, liftPass)
 import Data.Functor.Identity as Exports
 
+-- mtl
+-------------------------
+import Control.Monad.Error.Class as Exports (MonadError (..))
+
 -- data-default-class
 -------------------------
 import Data.Default.Class as Exports

@@ -3,8 +3,8 @@ where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Private.IO as IO
+import qualified Hasql.Private.Connection as Connection
 import qualified Hasql.Decoders.Results as Decoders.Results
 import qualified Hasql.Encoders.Params as Encoders.Params
 
@@ -34,13 +34,7 @@ import qualified Hasql.Encoders.Params as Encoders.Params
 --       else insert -< params
 -- @
 newtype Query a b =
-  Query
-    (Kleisli
-      (ReaderT
-        (LibPQ.Connection, Bool, PreparedStatementRegistry.PreparedStatementRegistry)
-        (EitherT Decoders.Results.Error IO))
-      a
-      b)
+  Query (Kleisli (ReaderT Connection.Connection (EitherT Decoders.Results.Error IO)) a b)
   deriving (Category, Arrow, ArrowChoice, ArrowLoop, ArrowApply)
 
 instance Functor (Query a) where
@@ -58,7 +52,7 @@ instance Profunctor Query where
 
 statement :: ByteString -> Encoders.Params.Params a -> Decoders.Results.Results b -> Bool -> Query a b
 statement template encoder decoder preparable =
-  Query $ Kleisli $ \params -> ReaderT $ \(pqConnection, integerDatetimes, registry) -> do
+  Query $ Kleisli $ \params -> ReaderT $ \(Connection.Connection pqConnection integerDatetimes registry) -> do
     EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
     EitherT $ IO.getResults pqConnection integerDatetimes decoder
 

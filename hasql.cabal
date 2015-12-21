@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.16
+  0.17
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -51,6 +51,7 @@ library
     Hasql.Private.IO
     Hasql.Private.Query
     Hasql.Private.Session
+    Hasql.Private.Connection
     Hasql.Private.PreparedStatementRegistry
     Hasql.Commands
     Hasql.Decoders.Array
@@ -66,7 +67,7 @@ library
     Hasql.Decoders
     Hasql.Encoders
     Hasql.Settings
-    Hasql.IO
+    Hasql.Connection
     Hasql.Query
     Hasql.Session
   build-depends:
@@ -92,6 +93,7 @@ library
     contravariant-extras == 0.3.*,
     contravariant >= 1.3 && < 2,
     either >= 4.4.1 && < 5,
+    mtl >= 2 && < 3,
     transformers >= 0.3 && < 0.5,
     -- errors:
     loch-th == 0.2.*,
