@@ -9,7 +9,7 @@ import qualified Hasql.Decoders as HD
 select1 :: Int -> HQ.Query () (Vector Int64)
 select1 amount =
   {-# SCC "select1" #-} 
-  HQ.Query sql mempty decoder True
+  HQ.statement sql mempty decoder True
   where
     !sql =
       "values " <>
@@ -20,7 +20,7 @@ select1 amount =
 select4 :: Int -> HQ.Query () (Vector (Int64, Int64, Int64, Int64))
 select4 amount =
   {-# SCC "select4" #-} 
-  HQ.Query sql mempty decoder True
+  HQ.statement sql mempty decoder True
   where
     !sql =
       "values " <>

@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.15.0.2
+  0.16
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -48,7 +48,10 @@ library
   other-modules:
     Hasql.Prelude
     Hasql.PTI
-    Hasql.IO
+    Hasql.Private.IO
+    Hasql.Private.Query
+    Hasql.Private.Session
+    Hasql.Private.PreparedStatementRegistry
     Hasql.Commands
     Hasql.Decoders.Array
     Hasql.Decoders.Composite
@@ -59,14 +62,13 @@ library
     Hasql.Encoders.Array
     Hasql.Encoders.Value
     Hasql.Encoders.Params
-    Hasql.PreparedStatementRegistry
-    Hasql.Connection.Impl
   exposed-modules:
     Hasql.Decoders
     Hasql.Encoders
     Hasql.Settings
-    Hasql.Connection
+    Hasql.IO
     Hasql.Query
+    Hasql.Session
   build-depends:
     -- parsing:
     attoparsec >= 0.10 && < 0.14,

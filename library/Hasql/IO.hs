@@ -1,151 +1,132 @@
 -- |
--- An API of low-level IO operations.
+-- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.IO
+(
+  -- * Connection
+  Connection,
+  ConnectionError(..),
+  acquireConnection,
+  releaseConnection,
+  -- * Session
+  SessionError(..),
+  ResultError(..),
+  RowError(..),
+  session,
+)
 where
 
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Commands as Commands
-import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.Decoders.Result as ResultDecoders
-import qualified Hasql.Decoders.Results as ResultsDecoders
-import qualified Hasql.Encoders.Params as ParamsEncoders
-import qualified Data.DList as DList
+import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
+import qualified Hasql.Private.IO as IO
+import qualified Hasql.Private.Session as Session
+import qualified Hasql.Settings as Settings
 
 
-{-# INLINE acquireConnection #-}
-acquireConnection :: ByteString -> IO LibPQ.Connection
-acquireConnection =
-  LibPQ.connectdb
+-- |
+-- A single connection to the database.
+data Connection =
+  Connection !LibPQ.Connection !Bool !PreparedStatementRegistry.PreparedStatementRegistry
 
-{-# INLINE acquirePreparedStatementRegistry #-}
-acquirePreparedStatementRegistry :: IO PreparedStatementRegistry.PreparedStatementRegistry
-acquirePreparedStatementRegistry =
-  PreparedStatementRegistry.new
+-- |
+-- Possible details of the connection acquistion error.
+type ConnectionError =
+  Maybe ByteString
 
-{-# INLINE releaseConnection #-}
-releaseConnection :: LibPQ.Connection -> IO ()
-releaseConnection connection =
-  LibPQ.finish connection
-
-{-# INLINE checkConnectionStatus #-}
-checkConnectionStatus :: LibPQ.Connection -> IO (Maybe (Maybe ByteString))
-checkConnectionStatus c =
-  do
-    s <- LibPQ.status c
-    case s of
-      LibPQ.ConnectionOk -> return Nothing
-      _ -> fmap Just (LibPQ.errorMessage c)
-
-{-# INLINE checkServerVersion #-}
-checkServerVersion :: LibPQ.Connection -> IO (Maybe Int)
-checkServerVersion c =
-  fmap (mfilter (< 80200) . Just) (LibPQ.serverVersion c)
-
-{-# INLINE getIntegerDatetimes #-}
-getIntegerDatetimes :: LibPQ.Connection -> IO Bool
-getIntegerDatetimes c =
-  fmap decodeValue $ LibPQ.parameterStatus c "integer_datetimes"
-  where
-    decodeValue = 
-      \case
-        Just "on" -> True
-        _ -> False
-
-{-# INLINE initConnection #-}
-initConnection :: LibPQ.Connection -> IO ()
-initConnection c =
-  void $ LibPQ.exec c (Commands.asBytes (Commands.setEncodersToUTF8 <> Commands.setMinClientMessagesToWarning))
-
-{-# INLINE getResults #-}
-getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either ResultsDecoders.Error a)
-getResults connection integerDatetimes des =
-  {-# SCC "getResults" #-} 
-  ResultsDecoders.run (des <* ResultsDecoders.dropRemainders) (integerDatetimes, connection)
-
-{-# INLINE getPreparedStatementKey #-}
-getPreparedStatementKey ::
-  LibPQ.Connection -> PreparedStatementRegistry.PreparedStatementRegistry ->
-  ByteString -> [LibPQ.Oid] ->
-  IO (Either ResultsDecoders.Error ByteString)
-getPreparedStatementKey connection registry template oidList =
-  {-# SCC "getPreparedStatementKey" #-} 
-  do
-    keyMaybe <- PreparedStatementRegistry.lookup template wordOIDList registry
-    case keyMaybe of
-      Just key ->
-        pure (pure key)
-      Nothing -> 
-        do
-          key <- PreparedStatementRegistry.register template wordOIDList registry
-          sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
-          let resultsDecoder = 
-                if sent
-                  then ResultsDecoders.single ResultDecoders.unit
-                  else ResultsDecoders.clientError
-          runEitherT $ do
-            EitherT $ getResults connection undefined resultsDecoder
-            pure key
-  where
-    wordOIDList =
-      map (\(LibPQ.Oid x) -> fromIntegral x) oidList
-
-{-# INLINE checkedSend #-}
-checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either ResultsDecoders.Error ())
-checkedSend connection send =
-  send >>= \case
-    False -> fmap (Left . ResultsDecoders.ClientError) $ LibPQ.errorMessage connection
-    True -> pure (Right ())
-
-{-# INLINE sendPreparedParametricQuery #-}
-sendPreparedParametricQuery ::
-  LibPQ.Connection ->
-  PreparedStatementRegistry.PreparedStatementRegistry ->
-  ByteString ->
-  [LibPQ.Oid] ->
-  [Maybe (ByteString, LibPQ.Format)] ->
-  IO (Either ResultsDecoders.Error ())
-sendPreparedParametricQuery connection registry template oidList valueAndFormatList =
+-- |
+-- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
+acquireConnection :: Settings.Settings -> IO (Either ConnectionError Connection)
+acquireConnection settings =
+  {-# SCC "acquireConnection" #-} 
   runEitherT $ do
-    key <- EitherT $ getPreparedStatementKey connection registry template oidList
-    EitherT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+    pqConnection <- lift (IO.acquireConnection settings)
+    lift (IO.checkConnectionStatus pqConnection) >>= traverse left
+    lift (IO.initConnection pqConnection)
+    integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
+    registry <- lift (IO.acquirePreparedStatementRegistry)
+    pure (Connection pqConnection integerDatetimes registry)
 
-{-# INLINE sendUnpreparedParametricQuery #-}
-sendUnpreparedParametricQuery ::
-  LibPQ.Connection ->
-  ByteString ->
-  [Maybe (LibPQ.Oid, ByteString, LibPQ.Format)] ->
-  IO (Either ResultsDecoders.Error ())
-sendUnpreparedParametricQuery connection template paramList =
-  checkedSend connection $ LibPQ.sendQueryParams connection template paramList LibPQ.Binary
+-- |
+-- Release the connection.
+releaseConnection :: Connection -> IO ()
+releaseConnection (Connection pqConnection _ _) =
+  LibPQ.finish pqConnection
 
-{-# INLINE sendParametricQuery #-}
-sendParametricQuery ::
-  LibPQ.Connection ->
-  Bool -> 
-  PreparedStatementRegistry.PreparedStatementRegistry ->
-  ByteString ->
-  ParamsEncoders.Params a ->
-  Bool ->
-  a ->
-  IO (Either ResultsDecoders.Error ())
-sendParametricQuery connection integerDatetimes registry template encoder prepared params =
-  {-# SCC "sendParametricQuery" #-} 
-  if prepared
-    then
-      let
-        (oidList, valueAndFormatList) =
-          ParamsEncoders.run' encoder params integerDatetimes
-        in
-          sendPreparedParametricQuery connection registry template oidList valueAndFormatList
-    else
-      let
-        paramList =
-          ParamsEncoders.run'' encoder params integerDatetimes
-        in
-          sendUnpreparedParametricQuery connection template paramList
 
-{-# INLINE sendNonparametricQuery #-}
-sendNonparametricQuery :: LibPQ.Connection -> ByteString -> IO (Either ResultsDecoders.Error ())
-sendNonparametricQuery connection sql =
-  checkedSend connection $ LibPQ.sendQuery connection sql
+-- * Session
+-------------------------
+
+-- |
+-- An error of some command in the session.
+data SessionError =
+  -- |
+  -- An error on the client-side,
+  -- with a message generated by the \"libpq\" library.
+  -- Usually indicates problems with connection.
+  ClientError !(Maybe ByteString) |
+  -- |
+  -- Some error with a command result.
+  ResultError !ResultError
+  deriving (Show, Eq)
+
+-- |
+-- An error with a command result.
+data ResultError =
+  -- | 
+  -- An error reported by the DB.
+  -- Consists of the following: Code, message, details, hint.
+  -- 
+  -- * __Code__.
+  -- The SQLSTATE code for the error.
+  -- It's recommended to use
+  -- <http://hackage.haskell.org/package/postgresql-error-codes the "postgresql-error-codes" package>
+  -- to work with those.
+  -- 
+  -- * __Message__.
+  -- The primary human-readable error message (typically one line). Always present.
+  -- 
+  -- * __Details__.
+  -- An optional secondary error message carrying more detail about the problem. 
+  -- Might run to multiple lines.
+  -- 
+  -- * __Hint__.
+  -- An optional suggestion on what to do about the problem. 
+  -- This is intended to differ from detail in that it offers advice (potentially inappropriate) 
+  -- rather than hard facts.
+  -- Might run to multiple lines.
+  ServerError !ByteString !ByteString !(Maybe ByteString) !(Maybe ByteString) |
+  -- |
+  -- The database returned an unexpected result.
+  -- Indicates an improper statement or a schema mismatch.
+  UnexpectedResult !Text |
+  -- |
+  -- An error of the row reader, preceded by the index of the row.
+  RowError !Int !RowError |
+  -- |
+  -- An unexpected amount of rows.
+  UnexpectedAmountOfRows !Int
+  deriving (Show, Eq)
+
+-- |
+-- An error during the decoding of a specific row.
+data RowError =
+  -- |
+  -- Appears on the attempt to parse more columns than there are in the result.
+  EndOfInput |
+  -- |
+  -- Appears on the attempt to parse a @NULL@ as some value.
+  UnexpectedNull |
+  -- |
+  -- Appears when a wrong value parser is used.
+  -- Comes with the error details.
+  ValueError !Text
+  deriving (Show, Eq)
+
+-- |
+-- Executes a bunch of commands on the provided connection.
+session :: Connection -> Session.Session a -> IO (Either SessionError a)
+session (Connection pqConnection integerDatetimes registry) (Session.Session impl) =
+  fmap (mapLeft unsafeCoerce) $
+  runEitherT $
+  runReaderT impl (pqConnection, integerDatetimes, registry)
+

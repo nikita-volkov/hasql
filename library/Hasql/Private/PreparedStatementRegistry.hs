@@ -1,4 +1,4 @@
-module Hasql.PreparedStatementRegistry
+module Hasql.Private.PreparedStatementRegistry
 (
   PreparedStatementRegistry,
   new,

@@ -29,21 +29,21 @@ tree =
         DSL.session $ do
           let
             query =
-              Query.Query sql mempty Decoders.unit True
+              Query.statement sql mempty Decoders.unit True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              Query.Query sql mempty Decoders.unit True
+              Query.statement sql mempty Decoders.unit True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
             in DSL.query () query
           let
             query =
-              Query.Query sql encoder decoder True
+              Query.statement sql encoder decoder True
               where
                 sql =
                   "select ($1 :: mood)"
@@ -63,7 +63,7 @@ tree =
               DSL.query "ok" query
               where
                 query =
-                  Query.Query sql encoder decoder True
+                  Query.statement sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -75,7 +75,7 @@ tree =
               DSL.query 1 query
               where
                 query =
-                  Query.Query sql encoder decoder True
+                  Query.statement sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -106,7 +106,7 @@ tree =
             DSL.query () $ Queries.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.query () $ Query.Query sql def decoder False
+            DSL.query () $ Query.statement sql def decoder False
             where
               sql =
                 "delete from a"
@@ -120,8 +120,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () $ Query.Query "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
-          id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
+          id1 <- DSL.query () $ Query.statement "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
+          id2 <- DSL.query () $ Query.statement "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO
