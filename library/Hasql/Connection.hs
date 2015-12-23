@@ -3,7 +3,7 @@
 module Hasql.Connection
 (
   Connection,
-  AcquisitionError(..),
+  ConnectionError(..),
   acquire,
   release,
 )

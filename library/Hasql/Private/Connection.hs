@@ -17,12 +17,12 @@ data Connection =
 
 -- |
 -- Possible details of the connection acquistion error.
-type AcquisitionError =
+type ConnectionError =
   Maybe ByteString
 
 -- |
 -- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
-acquire :: Settings.Settings -> IO (Either AcquisitionError Connection)
+acquire :: Settings.Settings -> IO (Either ConnectionError Connection)
 acquire settings =
   {-# SCC "acquire" #-} 
   runEitherT $ do
