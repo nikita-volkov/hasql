@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.18
+  0.19
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -53,6 +53,7 @@ library
     Hasql.Private.Session
     Hasql.Private.Connection
     Hasql.Private.PreparedStatementRegistry
+    Hasql.Settings
     Hasql.Commands
     Hasql.Decoders.Array
     Hasql.Decoders.Composite
@@ -66,7 +67,6 @@ library
   exposed-modules:
     Hasql.Decoders
     Hasql.Encoders
-    Hasql.Settings
     Hasql.Connection
     Hasql.Query
     Hasql.Session
