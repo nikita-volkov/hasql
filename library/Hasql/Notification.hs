@@ -38,12 +38,20 @@ module Hasql.Notification
 import           Hasql.Prelude
 import           Hasql.Connection.Impl
 
-import           Control.Concurrent
 import           Control.Exception ( throwIO )
 import qualified Data.ByteString as B
 import qualified Database.PostgreSQL.LibPQ as PQ
 import           GHC.IO.Exception  ( IOError(..) )
 import           System.Posix.Types ( CPid )
+
+#if defined(mingw32_HOST_OS)
+import           Control.Concurrent ( threadDelay )
+#elif !MIN_VERSION_base(4,7,0)
+import           Control.Concurrent ( threadWaitRead )
+#else
+import           GHC.Conc           ( atomically )
+import           Control.Concurrent ( threadWaitReadSTM )
+#endif
 
 data Notification = Notification
    { notificationPid     :: !CPid
@@ -81,11 +89,20 @@ getNotification conn = join $ withConnection conn fetch
                 --
                 -- We could call select(), but FFI calls can't be interrupted
                 -- with async exceptions, whereas threadDelay can.
-                Just _fd -> return (threadDelay 1000000 >> loop)
+                Just _fd -> do
+                  return (threadDelay 1000000 >> loop)
+#elif !MIN_VERSION_base(4,7,0)
+                Just fd  -> do
+                  return $ try (threadWaitRead fd) >>= \case
+                              Left  err -> return (Left (setLoc err))
+                              Right _   -> loop
 #else
-                Just fd  -> return $ try (threadWaitRead fd) >>= \case
-                                       Left  err -> return (Left (setLoc err))
-                                       Right _   -> loop
+                Just fd  -> do
+                  (waitRead, _) <- threadWaitReadSTM fd
+                  return $ try (atomically waitRead) >>= \case
+                              Left  err -> return (Left (setLoc err))
+                              Right _   -> loop
+
 #endif
 
     loop = join $ withConnection conn $ \c -> do
