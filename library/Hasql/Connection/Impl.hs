@@ -47,3 +47,8 @@ release (Connection pqConnectionRef _ _) =
 withConnectionRef :: MVar LibPQ.Connection -> (LibPQ.Connection -> IO a) -> IO a
 withConnectionRef =
   withMVar
+
+{-# INLINE withConnection #-}
+withConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
+withConnection (Connection connectionRef _ _) =
+  withConnectionRef connectionRef
