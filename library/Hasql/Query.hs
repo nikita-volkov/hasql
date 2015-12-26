@@ -37,26 +37,26 @@ data ResultsError =
 -- |
 -- Decoder error details.
 data ResultError =
-  -- | 
+  -- |
   -- An error reported by the DB.
   -- Consists of the following: Code, message, details, hint.
-  -- 
+  --
   -- * __Code__.
   -- The SQLSTATE code for the error.
   -- It's recommended to use
   -- <http://hackage.haskell.org/package/postgresql-error-codes the "postgresql-error-codes" package>
   -- to work with those.
-  -- 
+  --
   -- * __Message__.
   -- The primary human-readable error message (typically one line). Always present.
-  -- 
+  --
   -- * __Details__.
-  -- An optional secondary error message carrying more detail about the problem. 
+  -- An optional secondary error message carrying more detail about the problem.
   -- Might run to multiple lines.
-  -- 
+  --
   -- * __Hint__.
-  -- An optional suggestion on what to do about the problem. 
-  -- This is intended to differ from detail in that it offers advice (potentially inappropriate) 
+  -- An optional suggestion on what to do about the problem.
+  -- This is intended to differ from detail in that it offers advice (potentially inappropriate)
   -- rather than hard facts.
   -- Might run to multiple lines.
   ServerError !ByteString !ByteString !(Maybe ByteString) !(Maybe ByteString) |
@@ -90,23 +90,23 @@ data RowError =
 
 -- |
 -- A specification of a strictly single-statement query, which can be parameterized and prepared.
--- 
+--
 -- Consists of the following:
--- 
+--
 -- * SQL template,
 -- * params encoder,
 -- * result decoder,
 -- * a flag, determining whether it should be prepared.
--- 
+--
 -- The SQL template must be formatted according to Postgres' standard,
 -- with any non-ASCII characters of the template encoded using UTF-8.
 -- According to the format,
 -- parameters must be referred to using the positional notation, as in the following:
 -- @$1@, @$2@, @$3@ and etc.
 -- Those references must be used to refer to the values of the 'Encoders.Params' encoder.
--- 
+--
 -- Following is an example of the declaration of a prepared statement with its associated codecs.
--- 
+--
 -- @
 -- selectSum :: Hasql.'Hasql.Query' (Int64, Int64) Int64
 -- selectSum =
@@ -120,10 +120,10 @@ data RowError =
 --     decoder =
 --       Hasql.Decoders.'Hasql.Decoders.singleRow' (Hasql.Decoders.'Hasql.Decoders.value' Hasql.Decoders.'Hasql.Decoders.int8')
 -- @
--- 
+--
 -- The statement above accepts a product of two parameters of type 'Int64'
 -- and produces a single result of type 'Int64'.
--- 
+--
 data Query a b =
   Query !ByteString !(Encoders.Params a) !(Decoders.Result b) !Bool
   deriving (Functor)
@@ -142,11 +142,12 @@ instance Profunctor Query where
 -- |
 -- Execute the query, producing either a deserialization failure or a successful result.
 run :: Query a b -> a -> Connection.Connection -> IO (Either ResultsError b)
-run (Query template encoder decoder preparable) params (Connection.Connection pqConnection integerDatetimes registry) =
-  {-# SCC "query" #-} 
-  fmap (mapLeft coerceResultsError) $ runEitherT $ do
-    EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params
-    EitherT $ IO.getResults pqConnection integerDatetimes (coerceDecoder decoder)
+run (Query template encoder decoder preparable) params (Connection.Connection pqConnectionRef integerDatetimes registry) =
+  {-# SCC "query" #-}
+  Connection.withConnectionRef pqConnectionRef $ \pqConnection ->
+    fmap (mapLeft coerceResultsError) $ runEitherT $ do
+      EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params
+      EitherT $ IO.getResults pqConnection integerDatetimes (coerceDecoder decoder)
 
 -- |
 -- WARNING: We need to take special care that the structure of
