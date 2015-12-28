@@ -144,7 +144,7 @@ instance Profunctor Query where
 run :: Query a b -> a -> Connection.Connection -> IO (Either ResultsError b)
 run (Query template encoder decoder preparable) params (Connection.Connection pqConnectionRef integerDatetimes registry) =
   {-# SCC "query" #-}
-  Connection.withConnectionRef pqConnectionRef $ \pqConnection ->
+  withMVar pqConnectionRef $ \pqConnection ->
     fmap (mapLeft coerceResultsError) $ runEitherT $ do
       EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template (coerceEncoder encoder) preparable params
       EitherT $ IO.getResults pqConnection integerDatetimes (coerceDecoder decoder)

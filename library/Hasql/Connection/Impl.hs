@@ -1,10 +1,7 @@
-{-# OPTIONS_GHC -funbox-strict-fields #-}
-
 module Hasql.Connection.Impl
 where
 
 import Hasql.Prelude
-import Control.Concurrent.MVar (newMVar, swapMVar)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.IO as IO
@@ -42,8 +39,3 @@ release (Connection pqConnectionRef _ _) =
     nullConnection <- LibPQ.newNullConnection
     pqConnection <- swapMVar pqConnectionRef nullConnection
     IO.releaseConnection pqConnection
-
-{-# INLINE withConnectionRef #-}
-withConnectionRef :: MVar LibPQ.Connection -> (LibPQ.Connection -> IO a) -> IO a
-withConnectionRef =
-  withMVar
