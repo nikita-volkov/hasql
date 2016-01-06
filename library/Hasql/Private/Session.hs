@@ -29,8 +29,9 @@ run (Session impl) connection =
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  Session $ ReaderT $ \(Connection.Connection pqConnection integerDatetimes registry) ->
-    EitherT $ fmap (mapLeft unsafeCoerce) $ IO.sendNonparametricQuery pqConnection sql
+  Session $ ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection ->
+      IO.sendNonparametricQuery pqConnection sql
 
 -- |
 -- Parameters and a specification of the parametric query to apply them to.

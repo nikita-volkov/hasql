@@ -52,7 +52,10 @@ instance Profunctor Query where
 
 statement :: ByteString -> Encoders.Params.Params a -> Decoders.Results.Results b -> Bool -> Query a b
 statement template encoder decoder preparable =
-  Query $ Kleisli $ \params -> ReaderT $ \(Connection.Connection pqConnection integerDatetimes registry) -> do
-    EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
-    EitherT $ IO.getResults pqConnection integerDatetimes decoder
+  Query $ Kleisli $ \params -> 
+    ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) -> 
+      EitherT $ withMVar pqConnectionRef $ \pqConnection ->
+        runEitherT $ do
+          EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
+          EitherT $ IO.getResults pqConnection integerDatetimes decoder
 

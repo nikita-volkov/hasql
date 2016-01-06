@@ -29,5 +29,3 @@ setEncodersToUTF8 =
 setMinClientMessagesToWarning :: Commands
 setMinClientMessagesToWarning =
   Commands (pure "SET client_min_messages TO WARNING")
-
-
