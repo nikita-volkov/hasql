@@ -23,6 +23,57 @@ tree =
     testCase "Executing the same query twice" $
     pure ()
     ,
+    testCase "Interval Encoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1 = interval '10 seconds'"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                encoder =
+                  Encoders.value (Encoders.interval)
+            in DSL.query (10 :: DiffTime) query
+      in actualIO >>= \x -> assertEqual (show x) (Right True) x
+    ,
+    testCase "Interval Decoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select interval '10 seconds'"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                encoder =
+                  Encoders.unit
+            in DSL.query () query
+      in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
+    ,
+    testCase "Interval Encoding/Decoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                encoder =
+                  Encoders.value (Encoders.interval)
+            in DSL.query (10 :: DiffTime) query
+      in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
+    ,
     testCase "Enum" $
     let
       actualIO =
