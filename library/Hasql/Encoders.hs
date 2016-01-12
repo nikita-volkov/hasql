@@ -260,35 +260,35 @@ date =
 {-# INLINABLE timestamp #-}
 timestamp :: Value LocalTime
 timestamp =
-  Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_int Encoder.timestamp_float))
+  Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_float Encoder.timestamp_int))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINABLE timestamptz #-}
 timestamptz :: Value UTCTime
 timestamptz =
-  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_int Encoder.timestamptz_float))
+  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_float Encoder.timestamptz_int))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINABLE time #-}
 time :: Value TimeOfDay
 time =
-  Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_int Encoder.time_float))
+  Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_float Encoder.time_int))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
 timetz =
-  Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_int Encoder.timetz_float))
+  Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_float Encoder.timetz_int))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINABLE interval #-}
 interval :: Value DiffTime
 interval =
-  Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_int Encoder.interval_float))
+  Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_float Encoder.interval_int))
 
 -- |
 -- Encoder of @UUID@ values.
