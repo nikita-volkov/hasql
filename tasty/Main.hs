@@ -74,6 +74,37 @@ tree =
             in DSL.query (10 :: DiffTime) query
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
+    testCase "Unknown" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql mempty Decoders.unit True
+              where
+                sql =
+                  "drop type if exists mood"
+            in DSL.query () query
+          let
+            query =
+              Query.statement sql mempty Decoders.unit True
+              where
+                sql =
+                  "create type mood as enum ('sad', 'ok', 'happy')"
+            in DSL.query () query
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1 = ('ok' :: mood)"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                encoder =
+                  Encoders.value (Encoders.unknown)
+            in DSL.query "ok" query
+      in actualIO >>= assertEqual "" (Right True)
+    ,
     testCase "Enum" $
     let
       actualIO =
