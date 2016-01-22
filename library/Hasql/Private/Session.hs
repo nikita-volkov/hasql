@@ -4,6 +4,7 @@ where
 import Hasql.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Decoders.Results as Decoders.Results
+import qualified Hasql.Decoders.Result as Decoders.Result
 import qualified Hasql.Settings as Settings
 import qualified Hasql.Private.IO as IO
 import qualified Hasql.Private.Query as Query
@@ -30,8 +31,13 @@ run (Session impl) connection =
 sql :: ByteString -> Session ()
 sql sql =
   Session $ ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
-    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection ->
-      IO.sendNonparametricQuery pqConnection sql
+    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection -> runEitherT $ do
+      EitherT $ IO.sendNonparametricQuery pqConnection sql
+      EitherT $ IO.getResults pqConnection integerDatetimes decoder
+  where
+    decoder =
+      Decoders.Results.single $
+      Decoders.Result.unit
 
 -- |
 -- Parameters and a specification of the parametric query to apply them to.
