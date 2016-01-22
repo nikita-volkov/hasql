@@ -1,6 +1,6 @@
 module Main where
 
-import Main.Prelude hiding (assert, isRight, isLeft)
+import Main.Prelude hiding (assert)
 import Test.QuickCheck.Instances
 import Test.Tasty
 import Test.Tasty.Runners
@@ -12,6 +12,7 @@ import qualified Main.DSL as DSL
 import qualified Hasql.Query as Query
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Session as Session
 
 main =
   defaultMain tree
@@ -20,6 +21,28 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "\"another command is already in progress\" bugfix" $
+    let
+      sumQuery :: Query.Query (Int64, Int64) Int64
+      sumQuery =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select ($1 + $2)"
+          encoder =
+            contramap fst (Encoders.value Encoders.int8) <>
+            contramap snd (Encoders.value Encoders.int8)
+          decoder =
+            Decoders.singleRow (Decoders.value Decoders.int8)
+      session :: Session.Session Int64
+      session =
+        do
+          Session.sql "begin;"
+          s <- Session.query (1,1) sumQuery
+          Session.sql "end;"
+          return s
+      in DSL.session session >>= \x -> assertBool (show x) (isRight x)
+    ,
     testCase "Executing the same query twice" $
     pure ()
     ,
