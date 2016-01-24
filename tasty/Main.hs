@@ -9,6 +9,7 @@ import Test.Tasty.QuickCheck
 import qualified Test.QuickCheck as QuickCheck
 import qualified Main.Queries as Queries
 import qualified Main.DSL as DSL
+import qualified Main.Connection as Connection
 import qualified Hasql.Query as Query
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Decoders as Decoders
@@ -21,6 +22,31 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "\"in progress after error\" bugfix" $
+    let
+      sumQuery :: Query.Query (Int64, Int64) Int64
+      sumQuery =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select ($1 + $2)"
+          encoder =
+            contramap fst (Encoders.value Encoders.int8) <>
+            contramap snd (Encoders.value Encoders.int8)
+          decoder =
+            Decoders.singleRow (Decoders.value Decoders.int8)
+      sumSession :: Session.Session Int64
+      sumSession =
+        Session.sql "begin" *> Session.query (1, 1) sumQuery <* Session.sql "end"
+      errorSession :: Session.Session ()
+      errorSession =
+        Session.sql "asldfjsldk"
+      io =
+        Connection.with $ \c -> do
+          Session.run errorSession c
+          Session.run sumSession c
+      in io >>= \x -> assertBool (show x) (either (const False) isRight x)
+    ,
     testCase "\"another command is already in progress\" bugfix" $
     let
       sumQuery :: Query.Query (Int64, Int64) Int64
@@ -41,7 +67,7 @@ tree =
           s <- Session.query (1,1) sumQuery
           Session.sql "end;"
           return s
-      in DSL.session session >>= \x -> assertBool (show x) (isRight x)
+      in DSL.session session >>= \x -> assertEqual (show x) (Right 2) x
     ,
     testCase "Executing the same query twice" $
     pure ()
