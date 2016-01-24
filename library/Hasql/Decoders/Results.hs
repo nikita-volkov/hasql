@@ -29,6 +29,7 @@ data Error =
   -- Usually indicates problems with the connection.
   ClientError !(Maybe ByteString) |
   ResultError !Result.Error
+  deriving (Show)
 
 {-# INLINE run #-}
 run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either Error a)

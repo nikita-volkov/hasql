@@ -54,8 +54,8 @@ statement :: ByteString -> Encoders.Params.Params a -> Decoders.Results.Results 
 statement template encoder decoder preparable =
   Query $ Kleisli $ \params -> 
     ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) -> 
-      EitherT $ withMVar pqConnectionRef $ \pqConnection ->
-        runEitherT $ do
-          EitherT $ IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
-          EitherT $ IO.getResults pqConnection integerDatetimes decoder
+      EitherT $ withMVar pqConnectionRef $ \pqConnection -> do
+        r1 <- IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
+        r2 <- IO.getResults pqConnection integerDatetimes decoder
+        return $ r1 *> r2
 

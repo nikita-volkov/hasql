@@ -31,9 +31,10 @@ run (Session impl) connection =
 sql :: ByteString -> Session ()
 sql sql =
   Session $ ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
-    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection -> runEitherT $ do
-      EitherT $ IO.sendNonparametricQuery pqConnection sql
-      EitherT $ IO.getResults pqConnection integerDatetimes decoder
+    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection -> do
+      r1 <- IO.sendNonparametricQuery pqConnection sql
+      r2 <- IO.getResults pqConnection integerDatetimes decoder
+      return $ r1 *> r2
   where
     decoder =
       Decoders.Results.single $
