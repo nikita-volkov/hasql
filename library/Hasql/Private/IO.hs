@@ -59,9 +59,14 @@ initConnection c =
 
 {-# INLINE getResults #-}
 getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either ResultsDecoders.Error a)
-getResults connection integerDatetimes des =
+getResults connection integerDatetimes decoder =
   {-# SCC "getResults" #-} 
-  ResultsDecoders.run (des <* ResultsDecoders.dropRemainders) (integerDatetimes, connection)
+  (<*) <$> get <*> dropRemainders
+  where
+    get =
+      ResultsDecoders.run decoder (integerDatetimes, connection)
+    dropRemainders =
+      ResultsDecoders.run ResultsDecoders.dropRemainders (integerDatetimes, connection)
 
 {-# INLINE getPreparedStatementKey #-}
 getPreparedStatementKey ::
