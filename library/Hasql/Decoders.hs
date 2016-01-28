@@ -42,6 +42,7 @@ module Hasql.Decoders
   composite,
   hstore,
   enum,
+  custom,
   -- * Array
   Array,
   arrayDimension,
@@ -418,6 +419,14 @@ uuid =
 json :: Value Aeson.Value
 json =
   Value (Value.decoder (const Decoder.json))
+
+-- |
+-- Lifts a custom value decoder function to a 'Value' decoder.
+-- 
+{-# INLINABLE custom #-}
+custom :: (Bool -> ByteString -> Either Text a) -> Value a
+custom fn =
+  Value (Value.decoderFn fn)
 
 
 -- ** Composite value decoders
