@@ -38,6 +38,7 @@ module Hasql.Decoders
   interval,
   uuid,
   json,
+  jsonb,
   array,
   composite,
   hstore,
@@ -419,6 +420,14 @@ uuid =
 json :: Value Aeson.Value
 json =
   Value (Value.decoder (const Decoder.json))
+
+-- |
+-- Decoder of the @JSONB@ values.
+-- 
+{-# INLINABLE jsonb #-}
+jsonb :: Value Aeson.Value
+jsonb =
+  Value (Value.decoder (const Decoder.jsonb))
 
 -- |
 -- Lifts a custom value decoder function to a 'Value' decoder.

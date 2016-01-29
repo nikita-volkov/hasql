@@ -27,6 +27,7 @@ module Hasql.Encoders
   interval,
   uuid,
   json,
+  jsonb,
   array,
   enum,
   unknown,
@@ -304,6 +305,13 @@ uuid =
 json :: Value Aeson.Value
 json =
   Value (Value.unsafePTI PTI.json (const Encoder.json))
+
+-- |
+-- Encoder of @JSONB@ values.
+{-# INLINABLE jsonb #-}
+jsonb :: Value Aeson.Value
+jsonb =
+  Value (Value.unsafePTI PTI.jsonb (const Encoder.jsonb))
 
 -- |
 -- Unlifts the 'Array' encoder to the plain 'Value' encoder.
