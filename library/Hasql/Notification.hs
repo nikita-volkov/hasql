@@ -92,11 +92,30 @@ getNotification conn = join $ withConnection conn fetch
                 Just _fd -> do
                   return (threadDelay 1000000 >> loop)
 #elif !MIN_VERSION_base(4,7,0)
+                -- Technically there's a race condition that is usually benign.
+                -- If the connection is closed or reset after we drop the
+                -- lock,  and then the fd index is reallocated to a new
+                -- descriptor before we call threadWaitRead,  then
+                -- we could end up waiting on the wrong descriptor.
+                --
+                -- Now, if the descriptor becomes readable promptly,  then
+                -- it's no big deal as we'll wake up and notice the change
+                -- on the next iteration of the loop.   But if are very
+                -- unlucky,  then we could end up waiting a long time.
                 Just fd  -> do
                   return $ try (threadWaitRead fd) >>= \case
                               Left  err -> return (Left (setLoc err))
                               Right _   -> loop
 #else
+                -- This case fixes the race condition above.   By registering
+                -- our interest in the descriptor before we drop the lock,
+                -- there is no opportunity for the descriptor index to be
+                -- reallocated on us.
+                --
+                -- (That is, assuming there isn't concurrently executing
+                -- code that manipulates the descriptor without holding
+                -- the lock... but such a major bug is likely to exhibit
+                -- itself in an at least somewhat more dramatic fashion.)
                 Just fd  -> do
                   (waitRead, _) <- threadWaitReadSTM fd
                   return $ try (atomically waitRead) >>= \case
@@ -106,7 +125,7 @@ getNotification conn = join $ withConnection conn fetch
 #endif
 
     loop = join $ withConnection conn $ \c -> do
-             PQ.consumeInput c
+             void $ PQ.consumeInput c
              fetch c
 
     setLoc :: IOError -> IOError
@@ -128,13 +147,11 @@ getNotification conn = join $ withConnection conn fetch
 getNotificationNonBlocking :: Connection -> IO (Maybe Notification)
 getNotificationNonBlocking conn =
     withConnection conn $ \c -> do
-        mmsg <- PQ.notifies c
-        case mmsg of
+        PQ.notifies c >>= \case
           Just msg -> return $! Just $! convertNotice msg
           Nothing -> do
-              _ <- PQ.consumeInput c
-              mmsg' <- PQ.notifies c
-              case mmsg' of
+              void $ PQ.consumeInput c
+              PQ.notifies c >>= \case
                 Just msg -> return $! Just $! convertNotice msg
                 Nothing  -> return Nothing
 
