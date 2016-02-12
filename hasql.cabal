@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.19.7
+  0.19.8
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -99,7 +99,7 @@ library
     loch-th == 0.2.*,
     placeholders == 0.1.*,
     -- general:
-    base-prelude >= 0.1.19 && < 0.2,
+    base-prelude >= 0.1.19 && < 2,
     base >= 4.6 && < 5
 
 
