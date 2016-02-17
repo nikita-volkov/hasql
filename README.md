@@ -1,6 +1,6 @@
 # What Hasql is
 
-Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both the users, who need a low level of abstraction, and the users, who face the typical tasks of DB-oriented applications, providing them with higher-level APIs.
+Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both the users, who need a low level of abstraction, and the users, who face the typical tasks of DB-powered applications, providing them with higher-level APIs.
 
 ## Ecosystem
 
