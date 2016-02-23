@@ -88,6 +88,7 @@ library
     bytestring >= 0.10 && < 0.11,
     hashable >= 1.2 && < 1.3,
     -- control:
+    semigroups >= 0.18 && < 0.20,
     data-default-class >= 0.0.1 && < 0.1,
     profunctors >= 5.1 && < 6,
     contravariant-extras == 0.3.*,

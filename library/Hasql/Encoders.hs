@@ -106,7 +106,7 @@ import qualified Hasql.Prelude as Prelude
 -- 
 newtype Params a =
   Params (Params.Params a)
-  deriving (Contravariant, Divisible, Monoid)
+  deriving (Contravariant, Divisible, Monoid, Semigroup)
 
 -- |
 -- Encode no parameters.

@@ -16,7 +16,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, error)
+import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, error, (<>), First(..), Last(..))
 
 -- transformers
 -------------------------
@@ -52,6 +52,10 @@ import Contravariant.Extras as Exports
 -------------------------
 import Control.Monad.Trans.Either as Exports
 import Data.Either.Combinators as Exports
+
+-- semigroups
+-------------------------
+import Data.Semigroup as Exports
 
 -- hashable
 -------------------------
