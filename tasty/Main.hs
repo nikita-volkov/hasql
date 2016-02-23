@@ -22,6 +22,31 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "Prepared statements after error" $
+    let
+      io =
+        Connection.with (Session.run session) >>=
+        \x -> assertBool (show x) (either (const False) isRight x)
+        where
+          session =
+            try *> fail *> try
+            where
+              try =
+                Session.query 1 query
+                where
+                  query =
+                    Query.statement sql encoder decoder True
+                    where
+                      sql =
+                        "select $1 :: int8"
+                      encoder =
+                        Encoders.value Encoders.int8
+                      decoder =
+                        Decoders.singleRow $ Decoders.value Decoders.int8
+              fail =
+                catchError (Session.sql "absurd") (const (pure ()))
+      in io
+    ,
     testCase "\"in progress after error\" bugfix" $
     let
       sumQuery :: Query.Query (Int64, Int64) Int64

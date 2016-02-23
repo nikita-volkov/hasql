@@ -130,24 +130,10 @@ test-suite tasty
     tasty-hunit == 0.9.*,
     quickcheck-instances >= 0.3.11 && < 0.4,
     QuickCheck >= 2.8.1 && < 2.9,
-    -- data:
-    uuid,
-    time,
-    scientific,
-    bytestring,
-    text,
-    vector,
-    hashable,
-    dlist,
     -- general:
     data-default-class,
-    profunctors,
-    contravariant,
-    contravariant-extras,
-    either,
-    transformers,
-    base-prelude,
-    base
+    -- base,
+    rebase
 
 
 benchmark benchmark
