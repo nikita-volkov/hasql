@@ -22,6 +22,33 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "Failing prepared statements" $
+    let
+      io =
+        Connection.with (Session.run session) >>=
+        (assertBool <$> show <*> resultTest)
+        where
+          resultTest =
+            \case
+              Right (Left (Session.ResultError (Session.ServerError "26000" _ _ _))) -> False
+              _ -> True
+          session =
+            catchError session (const (pure ())) *> session
+            where
+              session =
+                Session.query () query
+                where
+                  query =
+                    Query.statement sql encoder decoder True
+                    where
+                      sql =
+                        "absurd"
+                      encoder =
+                        Encoders.unit
+                      decoder =
+                        Decoders.unit
+      in io
+    ,
     testCase "Prepared statements after error" $
     let
       io =
