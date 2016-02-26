@@ -75,25 +75,28 @@ getPreparedStatementKey ::
   IO (Either ResultsDecoders.Error ByteString)
 getPreparedStatementKey connection registry template oidList =
   {-# SCC "getPreparedStatementKey" #-} 
-  do
-    keyMaybe <- PreparedStatementRegistry.lookup template wordOIDList registry
-    case keyMaybe of
-      Just key ->
-        pure (pure key)
-      Nothing -> 
-        do
-          key <- PreparedStatementRegistry.register template wordOIDList registry
-          sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
-          let resultsDecoder = 
-                if sent
-                  then ResultsDecoders.single ResultDecoders.unit
-                  else ResultsDecoders.clientError
-          runEitherT $ do
-            EitherT $ getResults connection undefined resultsDecoder
-            pure key
+  PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
   where
-    wordOIDList =
-      map (\(LibPQ.Oid x) -> fromIntegral x) oidList
+    localKey =
+      PreparedStatementRegistry.LocalKey template wordOIDList
+      where
+        wordOIDList =
+          map (\(LibPQ.Oid x) -> fromIntegral x) oidList
+    onNewRemoteKey key =
+      do
+        sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
+        let resultsDecoder = 
+              if sent
+                then ResultsDecoders.single ResultDecoders.unit
+                else ResultsDecoders.clientError
+        fmap resultsMapping $ getResults connection undefined resultsDecoder
+      where
+        resultsMapping =
+          \case
+            Left x -> (False, Left x)
+            Right _ -> (True, Right key)
+    onOldRemoteKey key =
+      pure (pure key)
 
 {-# INLINE checkedSend #-}
 checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either ResultsDecoders.Error ())
