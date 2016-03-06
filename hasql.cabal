@@ -138,6 +138,30 @@ test-suite tasty
     rebase
 
 
+test-suite threads-test
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    threads-test
+  main-is:
+    Main.hs
+  other-modules:
+    Main.Queries
+  ghc-options:
+    -O2
+    -threaded
+    "-with-rtsopts=-N"
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    -- database:
+    hasql,
+    -- base,
+    rebase
+
+
 benchmark benchmark
   type: 
     exitcode-stdio-1.0
