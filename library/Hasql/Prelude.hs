@@ -16,7 +16,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, error)
+import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, error, (<>), First(..), Last(..))
 
 -- transformers
 -------------------------
@@ -26,6 +26,10 @@ import Control.Monad.Trans.Maybe as Exports hiding (liftListen, liftPass)
 import Control.Monad.Trans.Reader as Exports hiding (liftCallCC, liftCatch)
 import Control.Monad.Trans.State.Strict as Exports hiding (liftCallCC, liftCatch, liftListen, liftPass)
 import Data.Functor.Identity as Exports
+
+-- mtl
+-------------------------
+import Control.Monad.Error.Class as Exports (MonadError (..))
 
 -- data-default-class
 -------------------------
@@ -48,6 +52,10 @@ import Contravariant.Extras as Exports
 -------------------------
 import Control.Monad.Trans.Either as Exports
 import Data.Either.Combinators as Exports
+
+-- semigroups
+-------------------------
+import Data.Semigroup as Exports
 
 -- hashable
 -------------------------

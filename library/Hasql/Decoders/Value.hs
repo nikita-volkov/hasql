@@ -21,3 +21,8 @@ decoder =
   {-# SCC "decoder" #-} 
   Value . ReaderT
 
+{-# INLINE decoderFn #-}
+decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
+decoderFn fn =
+  Value $ ReaderT $ \integerDatetimes -> Decoder.fn $ fn integerDatetimes
+

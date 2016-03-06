@@ -6,7 +6,10 @@ module Hasql.Connection
   ConnectionError(..),
   acquire,
   release,
+  Settings,
+  settings,
 )
 where
 
-import Hasql.Connection.Impl
+import Hasql.Private.Connection
+import Hasql.Settings

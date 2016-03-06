@@ -27,8 +27,12 @@ module Hasql.Encoders
   interval,
   uuid,
   json,
+  jsonBytes,
+  jsonb,
+  jsonbBytes,
   array,
   enum,
+  unknown,
   -- * Array
   Array,
   arrayValue,
@@ -102,7 +106,7 @@ import qualified Hasql.Prelude as Prelude
 -- 
 newtype Params a =
   Params (Params.Params a)
-  deriving (Contravariant, Divisible, Monoid)
+  deriving (Contravariant, Divisible, Monoid, Semigroup)
 
 -- |
 -- Encode no parameters.
@@ -260,35 +264,35 @@ date =
 {-# INLINABLE timestamp #-}
 timestamp :: Value LocalTime
 timestamp =
-  Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_int Encoder.timestamp_float))
+  Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_float Encoder.timestamp_int))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINABLE timestamptz #-}
 timestamptz :: Value UTCTime
 timestamptz =
-  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_int Encoder.timestamptz_float))
+  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_float Encoder.timestamptz_int))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINABLE time #-}
 time :: Value TimeOfDay
 time =
-  Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_int Encoder.time_float))
+  Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_float Encoder.time_int))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
 timetz =
-  Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_int Encoder.timetz_float))
+  Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_float Encoder.timetz_int))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINABLE interval #-}
 interval :: Value DiffTime
 interval =
-  Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_int Encoder.interval_float))
+  Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_float Encoder.interval_int))
 
 -- |
 -- Encoder of @UUID@ values.
@@ -298,11 +302,32 @@ uuid =
   Value (Value.unsafePTI PTI.uuid (const Encoder.uuid))
 
 -- |
--- Encoder of @JSON@ values.
+-- Encoder of @JSON@ values from JSON AST.
 {-# INLINABLE json #-}
 json :: Value Aeson.Value
 json =
-  Value (Value.unsafePTI PTI.json (const Encoder.json))
+  Value (Value.unsafePTI PTI.json (const Encoder.json_ast))
+
+-- |
+-- Encoder of @JSON@ values from raw JSON.
+{-# INLINABLE jsonBytes #-}
+jsonBytes :: Value ByteString
+jsonBytes =
+  Value (Value.unsafePTI PTI.json (const Encoder.json_bytes))
+
+-- |
+-- Encoder of @JSONB@ values from JSON AST.
+{-# INLINABLE jsonb #-}
+jsonb :: Value Aeson.Value
+jsonb =
+  Value (Value.unsafePTI PTI.jsonb (const Encoder.jsonb_ast))
+
+-- |
+-- Encoder of @JSONB@ values from raw JSON.
+{-# INLINABLE jsonbBytes #-}
+jsonbBytes :: Value ByteString
+jsonbBytes =
+  Value (Value.unsafePTI PTI.jsonb (const Encoder.jsonb_bytes))
 
 -- |
 -- Unlifts the 'Array' encoder to the plain 'Value' encoder.
@@ -320,6 +345,23 @@ array (Array imp) =
 enum :: (a -> Text) -> Value a
 enum mapping =
   Value (Value.unsafePTI PTI.text (const (Encoder.enum mapping)))
+
+-- |
+-- Identifies the value with the PostgreSQL's \"unknown\" type,
+-- thus leaving it up to Postgres to infer the actual type of the value.
+-- 
+-- The bytestring needs to be encoded according to the Postgres\' binary format
+-- of the type it expects.
+-- 
+-- Essentially this is a low-level hook for encoding of values with custom codecs.
+-- The
+-- <http://hackage.haskell.org/package/postgresql-binary "postgresql-binary">
+-- library will provide you with the toolchain.
+-- 
+{-# INLINABLE unknown #-}
+unknown :: Value ByteString
+unknown =
+  Value (Value.unsafePTI PTI.unknown (const Encoder.bytea_strict))
 
 
 -- ** Instances

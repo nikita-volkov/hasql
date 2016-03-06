@@ -1,13 +1,13 @@
-{-# OPTIONS_GHC -funbox-strict-fields #-}
-
-module Hasql.Connection.Impl
+-- |
+-- This module provides a low-level effectful API dealing with the connections to the database.
+module Hasql.Private.Connection
 where
 
 import Hasql.Prelude
-import Control.Concurrent.MVar (newMVar, swapMVar)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.IO as IO
+import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
+import qualified Hasql.Private.IO as IO
+import qualified Hasql.Settings as Settings
 
 
 -- |
@@ -22,7 +22,7 @@ type ConnectionError =
 
 -- |
 -- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
-acquire :: ByteString -> IO (Either ConnectionError Connection)
+acquire :: Settings.Settings -> IO (Either ConnectionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
   runEitherT $ do
@@ -42,13 +42,3 @@ release (Connection pqConnectionRef _ _) =
     nullConnection <- LibPQ.newNullConnection
     pqConnection <- swapMVar pqConnectionRef nullConnection
     IO.releaseConnection pqConnection
-
-{-# INLINE withConnectionRef #-}
-withConnectionRef :: MVar LibPQ.Connection -> (LibPQ.Connection -> IO a) -> IO a
-withConnectionRef =
-  withMVar
-
-{-# INLINE withConnection #-}
-withConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
-withConnection (Connection connectionRef _ _) =
-  withConnectionRef connectionRef

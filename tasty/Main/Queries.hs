@@ -9,11 +9,11 @@ import qualified Main.Prelude as Prelude
 
 def :: ByteString -> HQ.Query () ()
 def sql =
-  HQ.Query sql Prelude.def Prelude.def False
+  HQ.statement sql Prelude.def Prelude.def False
 
 plain :: ByteString -> HQ.Query () ()
 plain sql =
-  HQ.Query sql mempty HD.unit False
+  HQ.statement sql mempty HD.unit False
 
 dropType :: ByteString -> HQ.Query () ()
 dropType name =
@@ -28,7 +28,7 @@ createEnum name values =
 
 selectList :: HQ.Query () ([] (Int64, Int64))
 selectList =
-  HQ.Query sql mempty decoder True
+  HQ.statement sql mempty decoder True
   where
     sql =
       "values (1,2), (3,4), (5,6)"

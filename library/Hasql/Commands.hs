@@ -18,6 +18,8 @@ newtype Commands =
   Commands (DList BB.Builder)
   deriving (Monoid)
 
+instance Semigroup Commands
+
 asBytes :: Commands -> ByteString
 asBytes (Commands list) =
   BL.toStrict $ BB.toLazyByteString $ foldMap (<> BB.char7 ';') $ list

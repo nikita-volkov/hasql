@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.15.0.2
+  0.19.9
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -42,13 +42,18 @@ library
     library
   ghc-options:
   default-extensions:
-    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   other-modules:
     Hasql.Prelude
     Hasql.PTI
-    Hasql.IO
+    Hasql.Private.IO
+    Hasql.Private.Query
+    Hasql.Private.Session
+    Hasql.Private.Connection
+    Hasql.Private.PreparedStatementRegistry
+    Hasql.Settings
     Hasql.Commands
     Hasql.Decoders.Array
     Hasql.Decoders.Composite
@@ -59,44 +64,46 @@ library
     Hasql.Encoders.Array
     Hasql.Encoders.Value
     Hasql.Encoders.Params
-    Hasql.PreparedStatementRegistry
-    Hasql.Connection.Impl
+    Hasql.Notification
   exposed-modules:
     Hasql.Decoders
     Hasql.Encoders
-    Hasql.Settings
     Hasql.Connection
     Hasql.Query
-    Hasql.Notification
+    Hasql.Session
   build-depends:
     -- parsing:
     attoparsec >= 0.10 && < 0.14,
     -- database:
-    postgresql-binary >= 0.7.3 && < 0.8,
+    postgresql-binary >= 0.8 && < 0.9,
     postgresql-libpq == 0.9.*,
+    -- builders:
+    bytestring-tree-builder >= 0.2.5 && < 0.3,
     -- data:
     dlist >= 0.7 && < 0.8,
-    aeson >= 0.7 && < 0.11,
+    aeson >= 0.7 && < 0.12,
     uuid == 1.3.*,
     vector >= 0.10 && < 0.12,
-    time >= 1.4 && < 1.6,
+    time >= 1.4 && < 2,
     hashtables >= 1.1 && < 1.3,
     scientific >= 0.2 && < 0.4,
     text >= 1 && < 1.3,
     bytestring >= 0.10 && < 0.11,
     hashable >= 1.2 && < 1.3,
     -- control:
+    semigroups >= 0.18 && < 0.20,
     data-default-class >= 0.0.1 && < 0.1,
     profunctors >= 5.1 && < 6,
     contravariant-extras == 0.3.*,
     contravariant >= 1.3 && < 2,
     either >= 4.4.1 && < 5,
-    transformers >= 0.3 && < 0.5,
+    mtl >= 2 && < 3,
+    transformers >= 0.3 && < 0.6,
     -- errors:
     loch-th == 0.2.*,
     placeholders == 0.1.*,
     -- general:
-    base-prelude >= 0.1.19 && < 0.2,
+    base-prelude >= 0.1.19 && < 2,
     base >= 4.6 && < 5
 
 
@@ -109,10 +116,11 @@ test-suite tasty
     Main.hs
   other-modules:
     Main.DSL
+    Main.Connection
     Main.Queries
     Main.Prelude
   default-extensions:
-    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   build-depends:
@@ -125,24 +133,34 @@ test-suite tasty
     tasty-hunit == 0.9.*,
     quickcheck-instances >= 0.3.11 && < 0.4,
     QuickCheck >= 2.8.1 && < 2.9,
-    -- data:
-    uuid,
-    time,
-    scientific,
-    bytestring,
-    text,
-    vector,
-    hashable,
-    dlist,
     -- general:
     data-default-class,
-    profunctors,
-    contravariant,
-    contravariant-extras,
-    either,
-    transformers,
-    base-prelude,
-    base
+    -- base,
+    rebase
+
+
+test-suite threads-test
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    threads-test
+  main-is:
+    Main.hs
+  other-modules:
+    Main.Queries
+  ghc-options:
+    -O2
+    -threaded
+    "-with-rtsopts=-N"
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    -- database:
+    hasql,
+    -- base,
+    rebase
 
 
 benchmark benchmark
@@ -165,7 +183,7 @@ benchmark benchmark
     -fprof-auto
     "-with-rtsopts=-N -p -s -h -i0.1"
   default-extensions:
-    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, ImpredicativeTypes, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
   build-depends:

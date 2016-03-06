@@ -29,41 +29,29 @@
 -----------------------------------------------------------------------------
 
 module Hasql.Notification
-     ( Notification(..)
-     , getNotification
-     , getNotificationNonBlocking
-     , getBackendPID
-     ) where
+( 
+  Notification(..),
+  getNotification,
+  getNotificationNonBlocking,
+  getBackendPID,
+) where
 
-import           Hasql.Prelude
-import           Hasql.Connection.Impl
-
-import           Control.Exception ( throwIO )
+import Hasql.Prelude
+import System.Posix.Types (CPid)
 import qualified Data.ByteString as B
 import qualified Database.PostgreSQL.LibPQ as PQ
-import           GHC.IO.Exception  ( IOError(..) )
-import           System.Posix.Types ( CPid )
 
-#if defined(mingw32_HOST_OS)
-import           Control.Concurrent ( threadDelay )
-#elif !MIN_VERSION_base(4,7,0)
-import           Control.Concurrent ( threadWaitRead )
-#else
-import           GHC.Conc           ( atomically )
-import           Control.Concurrent ( threadWaitReadSTM )
-#endif
 
-data Notification = Notification
-   { notificationPid     :: !CPid
-   , notificationChannel :: !B.ByteString
-   , notificationData    :: !B.ByteString
-   }
+data Notification =
+  Notification {
+    notificationPid :: !CPid,
+    notificationChannel :: !B.ByteString,
+    notificationData :: !B.ByteString
+  }
 
 convertNotice :: PQ.Notify -> Notification
-convertNotice PQ.Notify{..}
-    = Notification { notificationPid     = notifyBePid
-                   , notificationChannel = notifyRelname
-                   , notificationData    = notifyExtra   }
+convertNotice PQ.Notify{..} =
+  Notification notifyBePid notifyRelname notifyExtra
 
 -- | Returns a single notification.   If no notifications are available,
 --   'getNotification' blocks until one arrives.
@@ -71,13 +59,14 @@ convertNotice PQ.Notify{..}
 --   It is safe to call 'getNotification' on a connection that is concurrently
 --   being used for other purposes,   note however that PostgreSQL does not
 --   deliver notifications while a connection is inside a transaction.
-
-getNotification :: Connection -> IO (Either IOError Notification)
-getNotification conn = join $ withConnection conn fetch
+getNotification :: PQ.Connection -> IO (Either IOError Notification)
+getNotification c =
+  fetch
   where
-    funcName = "Hasql.Notification.getNotification"
-
-    fetch c = do
+    funcName =
+      "Hasql.Notification.getNotification"
+    fetch = 
+      join $ do
         PQ.notifies c >>= \case
           Just msg -> return (return $! (Right $! convertNotice msg))
           Nothing -> do
@@ -124,36 +113,37 @@ getNotification conn = join $ withConnection conn fetch
 
 #endif
 
-    loop = join $ withConnection conn $ \c -> do
-             void $ PQ.consumeInput c
-             fetch c
+    loop =
+      do
+        void $ PQ.consumeInput c
+        fetch
 
     setLoc :: IOError -> IOError
-    setLoc err = err { ioe_location = funcName }
+    setLoc err =
+      err { ioe_location = funcName }
 
     fdError :: IOError
-    fdError = IOError {
-                     ioe_handle      = Nothing,
-                     ioe_type        = ResourceVanished,
-                     ioe_location    = funcName,
-                     ioe_description = "failed to fetch file descriptor (did the connection time out?)",
-                     ioe_errno       = Nothing,
-                     ioe_filename    = Nothing
-                   }
+    fdError =
+      IOError {
+        ioe_handle      = Nothing,
+        ioe_type        = ResourceVanished,
+        ioe_location    = funcName,
+        ioe_description = "failed to fetch file descriptor (did the connection time out?)",
+        ioe_errno       = Nothing,
+        ioe_filename    = Nothing
+      }
 
 -- | Non-blocking variant of 'getNotification'.   Returns a single notification,
 -- if available.   If no notifications are available,  returns 'Nothing'.
-
-getNotificationNonBlocking :: Connection -> IO (Maybe Notification)
-getNotificationNonBlocking conn =
-    withConnection conn $ \c -> do
+getNotificationNonBlocking :: PQ.Connection -> IO (Maybe Notification)
+getNotificationNonBlocking c =
+  PQ.notifies c >>= \case
+    Just msg -> return $! Just $! convertNotice msg
+    Nothing -> do
+        void $ PQ.consumeInput c
         PQ.notifies c >>= \case
           Just msg -> return $! Just $! convertNotice msg
-          Nothing -> do
-              void $ PQ.consumeInput c
-              PQ.notifies c >>= \case
-                Just msg -> return $! Just $! convertNotice msg
-                Nothing  -> return Nothing
+          Nothing  -> return Nothing
 
 -- | Returns the process 'CPid' of the backend server process
 -- handling this connection.
@@ -162,6 +152,6 @@ getNotificationNonBlocking conn =
 -- to NOTIFY messages (which include the PID of the notifying backend
 -- process). Note that the PID belongs to a process executing on the
 -- database server host, not the local host!
-
-getBackendPID :: Connection -> IO CPid
-getBackendPID conn = withConnection conn PQ.backendPID
+getBackendPID :: PQ.Connection -> IO CPid
+getBackendPID =
+  PQ.backendPID

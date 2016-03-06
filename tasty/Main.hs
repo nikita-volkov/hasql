@@ -1,6 +1,6 @@
 module Main where
 
-import Main.Prelude hiding (assert, isRight, isLeft)
+import Main.Prelude hiding (assert)
 import Test.QuickCheck.Instances
 import Test.Tasty
 import Test.Tasty.Runners
@@ -9,9 +9,11 @@ import Test.Tasty.QuickCheck
 import qualified Test.QuickCheck as QuickCheck
 import qualified Main.Queries as Queries
 import qualified Main.DSL as DSL
+import qualified Main.Connection as Connection
 import qualified Hasql.Query as Query
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Session as Session
 
 main =
   defaultMain tree
@@ -20,8 +22,189 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "Failing prepared statements" $
+    let
+      io =
+        Connection.with (Session.run session) >>=
+        (assertBool <$> show <*> resultTest)
+        where
+          resultTest =
+            \case
+              Right (Left (Session.ResultError (Session.ServerError "26000" _ _ _))) -> False
+              _ -> True
+          session =
+            catchError session (const (pure ())) *> session
+            where
+              session =
+                Session.query () query
+                where
+                  query =
+                    Query.statement sql encoder decoder True
+                    where
+                      sql =
+                        "absurd"
+                      encoder =
+                        Encoders.unit
+                      decoder =
+                        Decoders.unit
+      in io
+    ,
+    testCase "Prepared statements after error" $
+    let
+      io =
+        Connection.with (Session.run session) >>=
+        \x -> assertBool (show x) (either (const False) isRight x)
+        where
+          session =
+            try *> fail *> try
+            where
+              try =
+                Session.query 1 query
+                where
+                  query =
+                    Query.statement sql encoder decoder True
+                    where
+                      sql =
+                        "select $1 :: int8"
+                      encoder =
+                        Encoders.value Encoders.int8
+                      decoder =
+                        Decoders.singleRow $ Decoders.value Decoders.int8
+              fail =
+                catchError (Session.sql "absurd") (const (pure ()))
+      in io
+    ,
+    testCase "\"in progress after error\" bugfix" $
+    let
+      sumQuery :: Query.Query (Int64, Int64) Int64
+      sumQuery =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select ($1 + $2)"
+          encoder =
+            contramap fst (Encoders.value Encoders.int8) <>
+            contramap snd (Encoders.value Encoders.int8)
+          decoder =
+            Decoders.singleRow (Decoders.value Decoders.int8)
+      sumSession :: Session.Session Int64
+      sumSession =
+        Session.sql "begin" *> Session.query (1, 1) sumQuery <* Session.sql "end"
+      errorSession :: Session.Session ()
+      errorSession =
+        Session.sql "asldfjsldk"
+      io =
+        Connection.with $ \c -> do
+          Session.run errorSession c
+          Session.run sumSession c
+      in io >>= \x -> assertBool (show x) (either (const False) isRight x)
+    ,
+    testCase "\"another command is already in progress\" bugfix" $
+    let
+      sumQuery :: Query.Query (Int64, Int64) Int64
+      sumQuery =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select ($1 + $2)"
+          encoder =
+            contramap fst (Encoders.value Encoders.int8) <>
+            contramap snd (Encoders.value Encoders.int8)
+          decoder =
+            Decoders.singleRow (Decoders.value Decoders.int8)
+      session :: Session.Session Int64
+      session =
+        do
+          Session.sql "begin;"
+          s <- Session.query (1,1) sumQuery
+          Session.sql "end;"
+          return s
+      in DSL.session session >>= \x -> assertEqual (show x) (Right 2) x
+    ,
     testCase "Executing the same query twice" $
     pure ()
+    ,
+    testCase "Interval Encoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1 = interval '10 seconds'"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                encoder =
+                  Encoders.value (Encoders.interval)
+            in DSL.query (10 :: DiffTime) query
+      in actualIO >>= \x -> assertEqual (show x) (Right True) x
+    ,
+    testCase "Interval Decoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select interval '10 seconds'"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                encoder =
+                  Encoders.unit
+            in DSL.query () query
+      in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
+    ,
+    testCase "Interval Encoding/Decoding" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                encoder =
+                  Encoders.value (Encoders.interval)
+            in DSL.query (10 :: DiffTime) query
+      in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
+    ,
+    testCase "Unknown" $
+    let
+      actualIO =
+        DSL.session $ do
+          let
+            query =
+              Query.statement sql mempty Decoders.unit True
+              where
+                sql =
+                  "drop type if exists mood"
+            in DSL.query () query
+          let
+            query =
+              Query.statement sql mempty Decoders.unit True
+              where
+                sql =
+                  "create type mood as enum ('sad', 'ok', 'happy')"
+            in DSL.query () query
+          let
+            query =
+              Query.statement sql encoder decoder True
+              where
+                sql =
+                  "select $1 = ('ok' :: mood)"
+                decoder =
+                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                encoder =
+                  Encoders.value (Encoders.unknown)
+            in DSL.query "ok" query
+      in actualIO >>= assertEqual "" (Right True)
     ,
     testCase "Enum" $
     let
@@ -29,21 +212,21 @@ tree =
         DSL.session $ do
           let
             query =
-              Query.Query sql mempty Decoders.unit True
+              Query.statement sql mempty Decoders.unit True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.query () query
           let
             query =
-              Query.Query sql mempty Decoders.unit True
+              Query.statement sql mempty Decoders.unit True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
             in DSL.query () query
           let
             query =
-              Query.Query sql encoder decoder True
+              Query.statement sql encoder decoder True
               where
                 sql =
                   "select ($1 :: mood)"
@@ -63,7 +246,7 @@ tree =
               DSL.query "ok" query
               where
                 query =
-                  Query.Query sql encoder decoder True
+                  Query.statement sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -75,7 +258,7 @@ tree =
               DSL.query 1 query
               where
                 query =
-                  Query.Query sql encoder decoder True
+                  Query.statement sql encoder decoder True
                   where
                     sql =
                       "select $1"
@@ -106,7 +289,7 @@ tree =
             DSL.query () $ Queries.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.query () $ Query.Query sql def decoder False
+            DSL.query () $ Query.statement sql def decoder False
             where
               sql =
                 "delete from a"
@@ -120,8 +303,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () $ Query.Query "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
-          id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
+          id1 <- DSL.query () $ Query.statement "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
+          id2 <- DSL.query () $ Query.statement "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO

@@ -13,6 +13,8 @@ newtype Params a =
   Params (Op (DList (LibPQ.Oid, Bool -> Maybe ByteString)) a)
   deriving (Contravariant, Divisible, Monoid)
 
+instance Semigroup (Params a)
+
 run :: Params a -> a -> DList (LibPQ.Oid, Bool -> Maybe ByteString)
 run (Params (Op op)) params =
   {-# SCC "run" #-} 
