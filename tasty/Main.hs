@@ -22,6 +22,27 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "Empty array" $
+    let
+      io =
+        do
+          x <- Connection.with (Session.run session)
+          assertEqual (show x) (Right (Right [])) x
+        where
+          session =
+            Session.query () query
+            where
+              query =
+                Query.statement sql encoder decoder True
+                where
+                  sql =
+                    "select array[]::int8[]"
+                  encoder =
+                    Encoders.unit
+                  decoder =
+                    Decoders.singleRow (Decoders.value (Decoders.array (Decoders.arrayDimension replicateM (Decoders.arrayValue Decoders.int8))))
+      in io
+    ,
     testCase "Failing prepared statements" $
     let
       io =
