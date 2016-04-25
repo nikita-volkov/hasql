@@ -11,7 +11,7 @@ import qualified Hasql.PTI as PTI
 -- Encoder of some representation of a parameters product.
 newtype Params a =
   Params (Op (DList (LibPQ.Oid, Bool -> Maybe ByteString)) a)
-  deriving (Contravariant, Divisible, Monoid)
+  deriving (Contravariant, Divisible, Decidable, Monoid)
 
 instance Semigroup (Params a)
 
