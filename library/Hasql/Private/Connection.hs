@@ -42,3 +42,9 @@ release (Connection pqConnectionRef _ _) =
     nullConnection <- LibPQ.newNullConnection
     pqConnection <- swapMVar pqConnectionRef nullConnection
     IO.releaseConnection pqConnection
+
+-- | Execute an operation on the raw @libpq@ 'LibPQ.Connection'.
+--
+-- The access to the connection is exclusive.
+withLibPQConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
+withLibPQConnection (Connection pqConnectionRef _ _) = withMVar pqConnectionRef
