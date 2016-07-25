@@ -12,7 +12,9 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - a **composable** abstraction over the database transactions with an **automated conflict resolution**.
 
-* ["hasql-cursor"](https://github.com/nikita-volkov/hasql-cursor) - an abstraction over cursors. *Yet to be released.*
+* ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
+
+* ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-query) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
 
 * ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting the SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
 
