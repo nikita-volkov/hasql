@@ -13,4 +13,4 @@ module Hasql.Connection
 where
 
 import Hasql.Private.Connection
-import Hasql.Settings
+import Hasql.Private.Settings

@@ -5,11 +5,11 @@ module Hasql.Query
 )
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Hasql.Private.Query as Query
-import qualified Hasql.Decoders.Results as Decoders.Results
+import qualified Hasql.Private.Decoders.Results as Decoders.Results
 import qualified Hasql.Decoders as Decoders
-import qualified Hasql.Encoders.Params as Encoders.Params
+import qualified Hasql.Private.Encoders.Params as Encoders.Params
 import qualified Hasql.Encoders as Encoders
 
 
@@ -41,10 +41,10 @@ import qualified Hasql.Encoders as Encoders
 --     sql =
 --       "select ($1 + $2)"
 --     encoder =
---       'contramap' 'fst' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8') '<>'
---       'contramap' 'snd' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8')
+--       'contramap' 'fst' (Hasql.Private.Encoders.'Hasql.Private.Encoders.value' Hasql.Private.Encoders.'Hasql.Private.Encoders.int8') '<>'
+--       'contramap' 'snd' (Hasql.Private.Encoders.'Hasql.Private.Encoders.value' Hasql.Private.Encoders.'Hasql.Private.Encoders.int8')
 --     decoder =
---       Hasql.Decoders.'Hasql.Decoders.singleRow' (Hasql.Decoders.'Hasql.Decoders.value' Hasql.Decoders.'Hasql.Decoders.int8')
+--       Hasql.Private.Decoders.'Hasql.Private.Decoders.singleRow' (Hasql.Private.Decoders.'Hasql.Private.Decoders.value' Hasql.Private.Decoders.'Hasql.Private.Decoders.int8')
 -- @
 -- 
 -- The statement above accepts a product of two parameters of type 'Int64'

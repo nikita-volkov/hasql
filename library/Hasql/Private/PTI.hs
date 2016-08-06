@@ -1,6 +1,6 @@
-module Hasql.PTI where
+module Hasql.Private.PTI where
 
-import Hasql.Prelude hiding (bool)
+import Hasql.Private.Prelude hiding (bool)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 
 

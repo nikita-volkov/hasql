@@ -3,11 +3,11 @@
 module Hasql.Private.Connection
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Private.IO as IO
-import qualified Hasql.Settings as Settings
+import qualified Hasql.Private.Settings as Settings
 
 
 -- |

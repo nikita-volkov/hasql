@@ -1,9 +1,9 @@
-module Hasql.Decoders.Row where
+module Hasql.Private.Decoders.Row where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Decoder as Decoder
-import qualified Hasql.Decoders.Value as Value
+import qualified Hasql.Private.Decoders.Value as Value
 
 
 newtype Row a =

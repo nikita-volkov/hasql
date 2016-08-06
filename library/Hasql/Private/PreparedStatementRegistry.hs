@@ -7,7 +7,7 @@ module Hasql.Private.PreparedStatementRegistry
 )
 where
 
-import Hasql.Prelude hiding (lookup)
+import Hasql.Private.Prelude hiding (lookup)
 import qualified Data.HashTable.IO as A
 import qualified ByteString.TreeBuilder as B
 

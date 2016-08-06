@@ -1,11 +1,11 @@
 module Hasql.Private.Session
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Decoders.Results as Decoders.Results
-import qualified Hasql.Decoders.Result as Decoders.Result
-import qualified Hasql.Settings as Settings
+import qualified Hasql.Private.Decoders.Results as Decoders.Results
+import qualified Hasql.Private.Decoders.Result as Decoders.Result
+import qualified Hasql.Private.Settings as Settings
 import qualified Hasql.Private.IO as IO
 import qualified Hasql.Private.Query as Query
 import qualified Hasql.Private.Connection as Connection

@@ -1,6 +1,6 @@
-module Hasql.Decoders.Composite where
+module Hasql.Private.Decoders.Composite where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Decoder as Decoder
 

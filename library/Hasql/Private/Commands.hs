@@ -1,4 +1,4 @@
-module Hasql.Commands
+module Hasql.Private.Commands
 (
   Commands,
   asBytes,
@@ -7,7 +7,7 @@ module Hasql.Commands
 )
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.Builder as BB
 import qualified Data.ByteString.Lazy.Builder.ASCII as BB

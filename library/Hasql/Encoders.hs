@@ -41,14 +41,14 @@ module Hasql.Encoders
 )
 where
 
-import Hasql.Prelude hiding (bool)
+import Hasql.Private.Prelude hiding (bool)
 import qualified PostgreSQL.Binary.Encoder as Encoder
 import qualified Data.Aeson as Aeson
-import qualified Hasql.Encoders.Params as Params
-import qualified Hasql.Encoders.Value as Value
-import qualified Hasql.Encoders.Array as Array
-import qualified Hasql.PTI as PTI
-import qualified Hasql.Prelude as Prelude
+import qualified Hasql.Private.Encoders.Params as Params
+import qualified Hasql.Private.Encoders.Value as Value
+import qualified Hasql.Private.Encoders.Array as Array
+import qualified Hasql.Private.PTI as PTI
+import qualified Hasql.Private.Prelude as Prelude
 
 
 -- * Parameters Product Encoder

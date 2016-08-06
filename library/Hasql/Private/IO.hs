@@ -3,13 +3,13 @@
 module Hasql.Private.IO
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Commands as Commands
+import qualified Hasql.Private.Commands as Commands
 import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.Decoders.Result as ResultDecoders
-import qualified Hasql.Decoders.Results as ResultsDecoders
-import qualified Hasql.Encoders.Params as ParamsEncoders
+import qualified Hasql.Private.Decoders.Result as ResultDecoders
+import qualified Hasql.Private.Decoders.Results as ResultsDecoders
+import qualified Hasql.Private.Encoders.Params as ParamsEncoders
 import qualified Data.DList as DList
 
 

@@ -1,6 +1,6 @@
-module Hasql.Settings where
+module Hasql.Private.Settings where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.Builder as BB
 import qualified Data.ByteString.Lazy.Builder.ASCII as BB

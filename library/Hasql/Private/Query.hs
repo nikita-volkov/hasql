@@ -1,12 +1,12 @@
 module Hasql.Private.Query
 where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.IO as IO
 import qualified Hasql.Private.Connection as Connection
-import qualified Hasql.Decoders.Results as Decoders.Results
-import qualified Hasql.Encoders.Params as Encoders.Params
+import qualified Hasql.Private.Decoders.Results as Decoders.Results
+import qualified Hasql.Private.Encoders.Params as Encoders.Params
 
 
 -- |

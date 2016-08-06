@@ -46,24 +46,24 @@ library
   default-language:
     Haskell2010
   other-modules:
-    Hasql.Prelude
-    Hasql.PTI
+    Hasql.Private.Prelude
+    Hasql.Private.PTI
     Hasql.Private.IO
     Hasql.Private.Query
     Hasql.Private.Session
     Hasql.Private.Connection
     Hasql.Private.PreparedStatementRegistry
-    Hasql.Settings
-    Hasql.Commands
-    Hasql.Decoders.Array
-    Hasql.Decoders.Composite
-    Hasql.Decoders.Value
-    Hasql.Decoders.Row
-    Hasql.Decoders.Result
-    Hasql.Decoders.Results
-    Hasql.Encoders.Array
-    Hasql.Encoders.Value
-    Hasql.Encoders.Params
+    Hasql.Private.Settings
+    Hasql.Private.Commands
+    Hasql.Private.Decoders.Array
+    Hasql.Private.Decoders.Composite
+    Hasql.Private.Decoders.Value
+    Hasql.Private.Decoders.Row
+    Hasql.Private.Decoders.Result
+    Hasql.Private.Decoders.Results
+    Hasql.Private.Encoders.Array
+    Hasql.Private.Encoders.Value
+    Hasql.Private.Encoders.Params
   exposed-modules:
     Hasql.Decoders
     Hasql.Encoders

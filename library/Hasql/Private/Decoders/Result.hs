@@ -1,11 +1,11 @@
-module Hasql.Decoders.Result where
+module Hasql.Private.Decoders.Result where
 
-import Hasql.Prelude hiding (maybe, many)
+import Hasql.Private.Prelude hiding (maybe, many)
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Decoders.Row as Row
+import qualified Hasql.Private.Decoders.Row as Row
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
 import qualified Data.ByteString as ByteString
-import qualified Hasql.Prelude as Prelude
+import qualified Hasql.Private.Prelude as Prelude
 import qualified Data.Vector as Vector
 import qualified Data.Vector.Mutable as MutableVector
 

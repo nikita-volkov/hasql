@@ -1,9 +1,9 @@
-module Hasql.Encoders.Array where
+module Hasql.Private.Encoders.Array where
 
-import Hasql.Prelude
+import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Encoder as Encoder
-import qualified Hasql.PTI as PTI
+import qualified Hasql.Private.PTI as PTI
 
 
 data Array a =
