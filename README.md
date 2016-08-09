@@ -4,19 +4,19 @@ Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both
 
 ## Ecosystem
 
-Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task, do that well and stay simple. 
+Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple. 
 
 * ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything revolves around that library.
 
 * ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
-* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - a composable abstraction over the database transactions with the automated conflict resolution.
+* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over the database transactions with the automated conflict resolution.
 
 * ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
 
 * ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-query) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
 
-* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting the SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
+* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
 
 * "hasql-migration" - an abstraction over the migration strategies. *Yet to be released.*
 
