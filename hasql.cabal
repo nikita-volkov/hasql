@@ -5,7 +5,7 @@ version:
 category:
   Hasql, Database, PostgreSQL
 synopsis:
-  A very efficient PostgreSQL driver and a flexible mapping API
+  An efficient PostgreSQL driver and a flexible mapping API
 description:
   This package is the root of the \"hasql\" ecosystem.
   .
