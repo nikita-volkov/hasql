@@ -32,7 +32,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * **Interchangeability and competition of the ecosystem components.** E.g., [not everyone will agree](https://github.com/nikita-volkov/hasql/issues/41) with the restrictive design decisions made in the "hasql-transaction" library. However those decisions are not imposed on the user, and instead of having endless debates about how to abstract over transactions, another extension library can simply be released, which will provide a different interpretation of what the abstraction over transactions should be.
 
-* **Horizontal scalability of the ecosystem.** Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical unscalable one, where some core-team is responsible for everything.
+* **Horizontal scalability of the ecosystem.** Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical one, where some core-team is responsible for everything. One is scalable, the other is not.
 
 ---
 
