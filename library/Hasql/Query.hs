@@ -41,10 +41,10 @@ import qualified Hasql.Encoders as Encoders
 --     sql =
 --       "select ($1 + $2)"
 --     encoder =
---       'contramap' 'fst' (Hasql.Private.Encoders.'Hasql.Private.Encoders.value' Hasql.Private.Encoders.'Hasql.Private.Encoders.int8') '<>'
---       'contramap' 'snd' (Hasql.Private.Encoders.'Hasql.Private.Encoders.value' Hasql.Private.Encoders.'Hasql.Private.Encoders.int8')
+--       'contramap' 'fst' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8') '<>'
+--       'contramap' 'snd' (Hasql.Encoders.'Hasql.Encoders.value' Hasql.Encoders.'Hasql.Encoders.int8')
 --     decoder =
---       Hasql.Private.Decoders.'Hasql.Private.Decoders.singleRow' (Hasql.Private.Decoders.'Hasql.Private.Decoders.value' Hasql.Private.Decoders.'Hasql.Private.Decoders.int8')
+--       Hasql.Decoders.'Hasql.Decoders.singleRow' (Hasql.Decoders.'Hasql.Decoders.value' Hasql.Decoders.'Hasql.Decoders.int8')
 -- @
 -- 
 -- The statement above accepts a product of two parameters of type 'Int64'
