@@ -22,6 +22,23 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "Composite decoding" $
+    let
+      query =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select (1, true)"
+          encoder = 
+            Encoders.unit
+          decoder =
+            Decoders.singleRow (Decoders.value (Decoders.composite ((,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool)))
+      session =
+        Session.query () query
+      in do
+        x <- Connection.with (Session.run session)
+        assertEqual (show x) (Right (Right (1, True))) x
+    ,
     testCase "Empty array" $
     let
       io =
@@ -334,6 +351,6 @@ tree =
     let
       actualIO =
         DSL.session $ DSL.query () $ Queries.selectList
-      in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
+      in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO 
   ]
 
