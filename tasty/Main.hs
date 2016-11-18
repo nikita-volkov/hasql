@@ -22,6 +22,42 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testCase "IN simulation" $
+    let
+      query =
+        Query.statement "select true where 1 = any ($1)" encoder decoder True
+        where
+          encoder =
+            Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue Encoders.int8)))
+          decoder =
+            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.value Decoders.bool))
+      session =
+        do
+          result1 <- Session.query [1, 2] query
+          result2 <- Session.query [2, 3] query
+          return (result1, result2)
+      in do
+        x <- Connection.with (Session.run session)
+        assertEqual (show x) (Right (Right (True, False))) x
+    ,
+    testCase "NOT IN simulation" $
+    let
+      query =
+        Query.statement "select true where 3 <> all ($1)" encoder decoder True
+        where
+          encoder =
+            Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue Encoders.int8)))
+          decoder =
+            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.value Decoders.bool))
+      session =
+        do
+          result1 <- Session.query [1, 2] query
+          result2 <- Session.query [2, 3] query
+          return (result1, result2)
+      in do
+        x <- Connection.with (Session.run session)
+        assertEqual (show x) (Right (Right (True, False))) x
+    ,
     testCase "Composite decoding" $
     let
       query =
