@@ -488,6 +488,9 @@ instance Default (Value Aeson.Value) where
 -- >x =
 -- >  array (arrayDimension foldl' (arrayDimension foldl' (arrayValue int8)))
 -- 
+-- Please note that the PostgreSQL __IN__ keyword does not "accept" an array, but rather a syntactical list of
+-- values, thus this encoder is not suited for that. Use a **field** = ANY($1) query instead.
+--
 newtype Array a =
   Array (Array.Array a)
 
