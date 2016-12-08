@@ -75,6 +75,28 @@ tree =
         x <- Connection.with (Session.run session)
         assertEqual (show x) (Right (Right (1, True))) x
     ,
+    testCase "Complex composite decoding" $
+    let
+      query =
+        Query.statement sql encoder decoder True
+        where
+          sql =
+            "select (1, true) as entity1, ('hello', 3) as entity2"
+          encoder =
+            Encoders.unit
+          entity1Decoder =
+            (,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool
+          entity2Decoder =
+            (,) <$> Decoders.compositeValue Decoders.text <*> Decoders.compositeValue Decoders.int8
+          decoder =
+            Decoders.singleRow $ Decoders.value $ Decoders.composite
+            ((,) <$> entity1Decoder <*> entity2Decoder)
+      session =
+        Session.query () query
+      in do
+        x <- Connection.with (Session.run session)
+        assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x
+    ,
     testCase "Empty array" $
     let
       io =
