@@ -5,9 +5,9 @@ module Main.Prelude
 where
 
 
--- base-prelude
+-- rerebase
 -------------------------
-import Rebase.Prelude as Exports
+import Prelude as Exports
 
 -- data-default-class
 -------------------------
