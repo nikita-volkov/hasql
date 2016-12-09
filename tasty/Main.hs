@@ -84,13 +84,16 @@ tree =
             "select (1, true) as entity1, ('hello', 3) as entity2"
           encoder =
             Encoders.unit
-          entity1Decoder =
-            (,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool
-          entity2Decoder =
-            (,) <$> Decoders.compositeValue Decoders.text <*> Decoders.compositeValue Decoders.int8
           decoder =
-            Decoders.singleRow $ Decoders.value $ Decoders.composite
-            ((,) <$> entity1Decoder <*> entity2Decoder)
+            Decoders.singleRow $
+            (,) <$> Decoders.value entity1 <*> Decoders.value entity2
+            where
+              entity1 =
+                Decoders.composite $
+                (,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool
+              entity2 =
+                Decoders.composite $
+                (,) <$> Decoders.compositeValue Decoders.text <*> Decoders.compositeValue Decoders.int8
       session =
         Session.query () query
       in do
