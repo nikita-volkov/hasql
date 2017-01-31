@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.19.15.2
+  0.19.16
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -82,7 +82,7 @@ library
     dlist >= 0.7 && < 0.9,
     aeson >= 0.7 && < 2,
     uuid == 1.3.*,
-    vector >= 0.10 && < 0.12,
+    vector >= 0.10 && < 0.13,
     time >= 1.4 && < 2,
     hashtables >= 1.1 && < 2,
     scientific >= 0.2 && < 0.4,
