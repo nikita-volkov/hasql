@@ -65,6 +65,7 @@ library
     Hasql.Private.Encoders.Value
     Hasql.Private.Encoders.Params
   exposed-modules:
+    Hasql.Data
     Hasql.Decoders
     Hasql.Encoders
     Hasql.Connection

@@ -37,6 +37,7 @@ module Hasql.Decoders
   timetz,
   interval,
   uuid,
+  inet,
   json,
   jsonBytes,
   jsonb,
@@ -61,6 +62,7 @@ where
 import Hasql.Private.Prelude hiding (maybe, bool)
 import qualified Data.Aeson as Aeson
 import qualified Data.Vector as Vector
+import qualified PostgreSQL.Binary.Data as Data
 import qualified PostgreSQL.Binary.Decoder as Decoder
 import qualified Hasql.Private.Decoders.Results as Results
 import qualified Hasql.Private.Decoders.Result as Result
@@ -414,6 +416,14 @@ interval =
 uuid :: Value UUID
 uuid =
   Value (Value.decoder (const Decoder.uuid))
+
+-- |
+-- Decoder of the @INET@ values.
+--
+{-# INLINABLE inet #-}
+inet :: Value Data.Inet
+inet =
+  Value (Value.decoder (const Decoder.inet))
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
