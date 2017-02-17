@@ -26,6 +26,7 @@ module Hasql.Encoders
   timetz,
   interval,
   uuid,
+  inet,
   json,
   jsonBytes,
   jsonb,
@@ -42,6 +43,7 @@ module Hasql.Encoders
 where
 
 import Hasql.Private.Prelude hiding (bool)
+import qualified PostgreSQL.Binary.Data as Data
 import qualified PostgreSQL.Binary.Encoder as Encoder
 import qualified Data.Aeson as Aeson
 import qualified Hasql.Private.Encoders.Params as Params
@@ -300,6 +302,13 @@ interval =
 uuid :: Value UUID
 uuid =
   Value (Value.unsafePTI PTI.uuid (const Encoder.uuid))
+
+-- |
+-- Encoder of @INET@ values.
+{-# INLINABLE inet #-}
+inet :: Value Data.Inet
+inet =
+  Value (Value.unsafePTI PTI.inet (const Encoder.inet))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
