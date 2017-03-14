@@ -26,6 +26,7 @@ module Hasql.Encoders
   timetz,
   interval,
   uuid,
+  inet,
   json,
   jsonBytes,
   jsonb,
@@ -49,7 +50,7 @@ import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.PTI as PTI
 import qualified Hasql.Private.Prelude as Prelude
-
+import qualified Network.IP.Addr as IPAddr
 
 -- * Parameters Product Encoder
 -------------------------
@@ -300,6 +301,13 @@ interval =
 uuid :: Value UUID
 uuid =
   Value (Value.unsafePTI PTI.uuid (const Encoder.uuid))
+
+-- |
+-- Encoder of @INET@ values.
+{-# INLINABLE inet #-}
+inet :: Value (IPAddr.NetAddr IPAddr.IP)
+inet =
+  Value (Value.unsafePTI PTI.inet (const Encoder.inet))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
