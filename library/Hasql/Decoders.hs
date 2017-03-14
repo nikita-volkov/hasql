@@ -77,16 +77,16 @@ import qualified Network.IP.Addr as IPAddr
 
 -- |
 -- Decoder of a query result.
--- 
+--
 newtype Result a =
   Result (Results.Results a)
   deriving (Functor)
 
 -- |
 -- Decode no value from the result.
--- 
+--
 -- Useful for statements like @INSERT@ or @CREATE@.
--- 
+--
 {-# INLINABLE unit #-}
 unit :: Result ()
 unit =
@@ -95,7 +95,7 @@ unit =
 -- |
 -- Get the amount of rows affected by such statements as
 -- @UPDATE@ or @DELETE@.
--- 
+--
 {-# INLINABLE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
@@ -104,7 +104,7 @@ rowsAffected =
 -- |
 -- Exactly one row.
 -- Will raise the 'Hasql.Query.UnexpectedAmountOfRows' error if it's any other.
--- 
+--
 {-# INLINABLE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow (Row row) =
@@ -115,7 +115,7 @@ singleRow (Row row) =
 
 -- |
 -- Foldl multiple rows.
--- 
+--
 {-# INLINABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
 foldlRows step init (Row row) =
@@ -123,7 +123,7 @@ foldlRows step init (Row row) =
 
 -- |
 -- Foldr multiple rows.
--- 
+--
 {-# INLINABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
 foldrRows step init (Row row) =
@@ -134,7 +134,7 @@ foldrRows step init (Row row) =
 
 -- |
 -- Maybe one row or none.
--- 
+--
 {-# INLINABLE maybeRow #-}
 maybeRow :: Row a -> Result (Maybe a)
 maybeRow (Row row) =
@@ -142,10 +142,10 @@ maybeRow (Row row) =
 
 -- |
 -- Zero or more rows packed into the vector.
--- 
+--
 -- It's recommended to prefer this function to 'rowsList',
 -- since it performs notably better.
--- 
+--
 {-# INLINABLE rowsVector #-}
 rowsVector :: Row a -> Result (Vector a)
 rowsVector (Row row) =
@@ -153,7 +153,7 @@ rowsVector (Row row) =
 
 -- |
 -- Zero or more rows packed into the list.
--- 
+--
 {-# INLINABLE rowsList #-}
 rowsList :: Row a -> Result [a]
 rowsList =
@@ -206,20 +206,20 @@ instance Default (Row a) => Default (Result (Identity a)) where
 -- |
 -- Decoder of an individual row,
 -- which gets composed of column value decoders.
--- 
+--
 -- E.g.:
--- 
+--
 -- >x :: Row (Maybe Int64, Text, TimeOfDay)
 -- >x =
 -- >  (,,) <$> nullableValue int8 <*> value text <*> value time
--- 
+--
 newtype Row a =
   Row (Row.Row a)
   deriving (Functor, Applicative, Monad)
 
 -- |
 -- Lift an individual non-nullable value decoder to a composable row decoder.
--- 
+--
 {-# INLINABLE value #-}
 value :: Value a -> Row a
 value (Value imp) =
@@ -227,7 +227,7 @@ value (Value imp) =
 
 -- |
 -- Lift an individual nullable value decoder to a composable row decoder.
--- 
+--
 {-# INLINABLE nullableValue #-}
 nullableValue :: Value a -> Row (Maybe a)
 nullableValue (Value imp) =
@@ -258,10 +258,10 @@ instance (Default (Value a1), Default (Value a2)) => Default (Row (a1, a2)) wher
 
 -- |
 -- Decoder of an individual value.
--- 
+--
 newtype Value a =
   Value (Value.Value a)
-  deriving (Functor)
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
 
 
 -- ** Plain value decoders
@@ -269,7 +269,7 @@ newtype Value a =
 
 -- |
 -- Decoder of the @BOOL@ values.
--- 
+--
 {-# INLINABLE bool #-}
 bool :: Value Bool
 bool =
@@ -277,7 +277,7 @@ bool =
 
 -- |
 -- Decoder of the @INT2@ values.
--- 
+--
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
 int2 =
@@ -285,7 +285,7 @@ int2 =
 
 -- |
 -- Decoder of the @INT4@ values.
--- 
+--
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
 int4 =
@@ -293,16 +293,16 @@ int4 =
 
 -- |
 -- Decoder of the @INT8@ values.
--- 
+--
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
 int8 =
-  {-# SCC "int8" #-} 
+  {-# SCC "int8" #-}
   Value (Value.decoder (const ({-# SCC "int8.int" #-} Decoder.int)))
 
 -- |
 -- Decoder of the @FLOAT4@ values.
--- 
+--
 {-# INLINABLE float4 #-}
 float4 :: Value Float
 float4 =
@@ -310,7 +310,7 @@ float4 =
 
 -- |
 -- Decoder of the @FLOAT8@ values.
--- 
+--
 {-# INLINABLE float8 #-}
 float8 :: Value Double
 float8 =
@@ -318,7 +318,7 @@ float8 =
 
 -- |
 -- Decoder of the @NUMERIC@ values.
--- 
+--
 {-# INLINABLE numeric #-}
 numeric :: Value Scientific
 numeric =
@@ -334,7 +334,7 @@ char =
 
 -- |
 -- Decoder of the @TEXT@ values.
--- 
+--
 {-# INLINABLE text #-}
 text :: Value Text
 text =
@@ -342,7 +342,7 @@ text =
 
 -- |
 -- Decoder of the @BYTEA@ values.
--- 
+--
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
 bytea =
@@ -350,7 +350,7 @@ bytea =
 
 -- |
 -- Decoder of the @DATE@ values.
--- 
+--
 {-# INLINABLE date #-}
 date :: Value Day
 date =
@@ -358,7 +358,7 @@ date =
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
--- 
+--
 {-# INLINABLE timestamp #-}
 timestamp :: Value LocalTime
 timestamp =
@@ -366,9 +366,9 @@ timestamp =
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
--- 
+--
 -- /NOTICE/
--- 
+--
 -- Postgres does not store the timezone information of @TIMESTAMPTZ@.
 -- Instead it stores a UTC value and performs silent conversions
 -- to the currently set timezone, when dealt with in the text format.
@@ -381,7 +381,7 @@ timestamptz =
 
 -- |
 -- Decoder of the @TIME@ values.
--- 
+--
 {-# INLINABLE time #-}
 time :: Value TimeOfDay
 time =
@@ -389,8 +389,8 @@ time =
 
 -- |
 -- Decoder of the @TIMETZ@ values.
--- 
--- Unlike in case of @TIMESTAMPTZ@, 
+--
+-- Unlike in case of @TIMESTAMPTZ@,
 -- Postgres does store the timezone information for @TIMETZ@.
 -- However the Haskell's \"time\" library does not contain any composite type,
 -- that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
@@ -402,7 +402,7 @@ timetz =
 
 -- |
 -- Decoder of the @INTERVAL@ values.
--- 
+--
 {-# INLINABLE interval #-}
 interval :: Value DiffTime
 interval =
@@ -410,7 +410,7 @@ interval =
 
 -- |
 -- Decoder of the @UUID@ values.
--- 
+--
 {-# INLINABLE uuid #-}
 uuid :: Value UUID
 uuid =
@@ -426,7 +426,7 @@ inet =
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
--- 
+--
 {-# INLINABLE json #-}
 json :: Value Aeson.Value
 json =
@@ -434,7 +434,7 @@ json =
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
--- 
+--
 {-# INLINABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
 jsonBytes fn =
@@ -442,7 +442,7 @@ jsonBytes fn =
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
--- 
+--
 {-# INLINABLE jsonb #-}
 jsonb :: Value Aeson.Value
 jsonb =
@@ -450,7 +450,7 @@ jsonb =
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
--- 
+--
 {-# INLINABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
 jsonbBytes fn =
@@ -458,7 +458,7 @@ jsonbBytes fn =
 
 -- |
 -- Lifts a custom value decoder function to a 'Value' decoder.
--- 
+--
 {-# INLINABLE custom #-}
 custom :: (Bool -> ByteString -> Either Text a) -> Value a
 custom fn =
@@ -470,7 +470,7 @@ custom fn =
 
 -- |
 -- Lifts the 'Array' decoder to the 'Value' decoder.
--- 
+--
 {-# INLINABLE array #-}
 array :: Array a -> Value a
 array (Array imp) =
@@ -478,7 +478,7 @@ array (Array imp) =
 
 -- |
 -- Lifts the 'Composite' decoder to the 'Value' decoder.
--- 
+--
 {-# INLINABLE composite #-}
 composite :: Composite a -> Value a
 composite (Composite imp) =
@@ -486,15 +486,15 @@ composite (Composite imp) =
 
 -- |
 -- A generic decoder of @HSTORE@ values.
--- 
+--
 -- Here's how you can use it to construct a specific value:
--- 
+--
 -- @
 -- x :: Value [(Text, Maybe Text)]
 -- x =
 --   hstore 'replicateM'
 -- @
--- 
+--
 {-# INLINABLE hstore #-}
 hstore :: (forall m. Monad m => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
@@ -643,15 +643,15 @@ instance Default (Value Aeson.Value) where
 
 -- |
 -- A generic array decoder.
--- 
+--
 -- Here's how you can use it to produce a specific array value decoder:
--- 
+--
 -- @
 -- x :: Value [[Text]]
 -- x =
 --   array (arrayDimension 'replicateM' (arrayDimension 'replicateM' (arrayValue text)))
 -- @
--- 
+--
 newtype Array a =
   Array (Array.Array a)
   deriving (Functor)
@@ -659,16 +659,16 @@ newtype Array a =
 -- |
 -- A function for parsing a dimension of an array.
 -- Provides support for multi-dimensional arrays.
--- 
+--
 -- Accepts:
--- 
+--
 -- * An implementation of the @replicateM@ function
 -- (@Control.Monad.'Control.Monad.replicateM'@, @Data.Vector.'Data.Vector.replicateM'@),
 -- which determines the output value.
--- 
+--
 -- * A decoder of its components, which can be either another 'arrayDimension',
 -- 'arrayValue' or 'arrayNullableValue'.
--- 
+--
 {-# INLINABLE arrayDimension #-}
 arrayDimension :: (forall m. Monad m => Int -> m a -> m b) -> Array a -> Array b
 arrayDimension replicateM (Array imp) =
@@ -711,4 +711,3 @@ compositeValue (Value imp) =
 compositeNullableValue :: Value a -> Composite (Maybe a)
 compositeNullableValue (Value imp) =
   Composite (Composite.value (Value.run imp))
-

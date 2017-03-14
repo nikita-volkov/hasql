@@ -7,7 +7,7 @@ import qualified PostgreSQL.Binary.Decoder as Decoder
 
 newtype Value a =
   Value (ReaderT Bool Decoder.Decoder a)
-  deriving (Functor)
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
 
 
 {-# INLINE run #-}
@@ -18,11 +18,10 @@ run (Value imp) integerDatetimes =
 {-# INLINE decoder #-}
 decoder :: (Bool -> Decoder.Decoder a) -> Value a
 decoder =
-  {-# SCC "decoder" #-} 
+  {-# SCC "decoder" #-}
   Value . ReaderT
 
 {-# INLINE decoderFn #-}
 decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
 decoderFn fn =
   Value $ ReaderT $ \integerDatetimes -> Decoder.fn $ fn integerDatetimes
-
