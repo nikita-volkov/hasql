@@ -37,6 +37,7 @@ module Hasql.Decoders
   timetz,
   interval,
   uuid,
+  inet,
   json,
   jsonBytes,
   jsonb,
@@ -69,7 +70,7 @@ import qualified Hasql.Private.Decoders.Value as Value
 import qualified Hasql.Private.Decoders.Array as Array
 import qualified Hasql.Private.Decoders.Composite as Composite
 import qualified Hasql.Private.Prelude as Prelude
-
+import qualified Network.IP.Addr as IPAddr
 
 -- * Result
 -------------------------
@@ -414,6 +415,14 @@ interval =
 uuid :: Value UUID
 uuid =
   Value (Value.decoder (const Decoder.uuid))
+
+-- |
+-- Decoder of the @INET@ values.
+--
+{-# INLINABLE inet #-}
+inet :: Value (IPAddr.NetAddr IPAddr.IP)
+inet =
+  Value (Value.decoder (const Decoder.inet))
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
