@@ -60,9 +60,9 @@ module Hasql.Decoders
 where
 
 import Hasql.Private.Prelude hiding (maybe, bool)
-import qualified Data.Aeson as Aeson
 import qualified Data.Vector as Vector
-import qualified PostgreSQL.Binary.Decoder as Decoder
+import qualified PostgreSQL.Binary.Decoding as A
+import qualified PostgreSQL.Binary.Data as B
 import qualified Hasql.Private.Decoders.Results as Results
 import qualified Hasql.Private.Decoders.Result as Result
 import qualified Hasql.Private.Decoders.Row as Row
@@ -70,7 +70,6 @@ import qualified Hasql.Private.Decoders.Value as Value
 import qualified Hasql.Private.Decoders.Array as Array
 import qualified Hasql.Private.Decoders.Composite as Composite
 import qualified Hasql.Private.Prelude as Prelude
-import qualified Network.IP.Addr as IPAddr
 
 -- * Result
 -------------------------
@@ -273,7 +272,7 @@ newtype Value a =
 {-# INLINABLE bool #-}
 bool :: Value Bool
 bool =
-  Value (Value.decoder (const Decoder.bool))
+  Value (Value.decoder (const A.bool))
 
 -- |
 -- Decoder of the @INT2@ values.
@@ -281,7 +280,7 @@ bool =
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
 int2 =
-  Value (Value.decoder (const Decoder.int))
+  Value (Value.decoder (const A.int))
 
 -- |
 -- Decoder of the @INT4@ values.
@@ -289,7 +288,7 @@ int2 =
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
 int4 =
-  Value (Value.decoder (const Decoder.int))
+  Value (Value.decoder (const A.int))
 
 -- |
 -- Decoder of the @INT8@ values.
@@ -298,7 +297,7 @@ int4 =
 int8 :: Value Int64
 int8 =
   {-# SCC "int8" #-} 
-  Value (Value.decoder (const ({-# SCC "int8.int" #-} Decoder.int)))
+  Value (Value.decoder (const ({-# SCC "int8.int" #-} A.int)))
 
 -- |
 -- Decoder of the @FLOAT4@ values.
@@ -306,7 +305,7 @@ int8 =
 {-# INLINABLE float4 #-}
 float4 :: Value Float
 float4 =
-  Value (Value.decoder (const Decoder.float4))
+  Value (Value.decoder (const A.float4))
 
 -- |
 -- Decoder of the @FLOAT8@ values.
@@ -314,15 +313,15 @@ float4 =
 {-# INLINABLE float8 #-}
 float8 :: Value Double
 float8 =
-  Value (Value.decoder (const Decoder.float8))
+  Value (Value.decoder (const A.float8))
 
 -- |
 -- Decoder of the @NUMERIC@ values.
 -- 
 {-# INLINABLE numeric #-}
-numeric :: Value Scientific
+numeric :: Value B.Scientific
 numeric =
-  Value (Value.decoder (const Decoder.numeric))
+  Value (Value.decoder (const A.numeric))
 
 -- |
 -- Decoder of the @CHAR@ values.
@@ -330,7 +329,7 @@ numeric =
 {-# INLINABLE char #-}
 char :: Value Char
 char =
-  Value (Value.decoder (const Decoder.char))
+  Value (Value.decoder (const A.char))
 
 -- |
 -- Decoder of the @TEXT@ values.
@@ -338,7 +337,7 @@ char =
 {-# INLINABLE text #-}
 text :: Value Text
 text =
-  Value (Value.decoder (const Decoder.text_strict))
+  Value (Value.decoder (const A.text_strict))
 
 -- |
 -- Decoder of the @BYTEA@ values.
@@ -346,23 +345,23 @@ text =
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
 bytea =
-  Value (Value.decoder (const Decoder.bytea_strict))
+  Value (Value.decoder (const A.bytea_strict))
 
 -- |
 -- Decoder of the @DATE@ values.
 -- 
 {-# INLINABLE date #-}
-date :: Value Day
+date :: Value B.Day
 date =
-  Value (Value.decoder (const Decoder.date))
+  Value (Value.decoder (const A.date))
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 -- 
 {-# INLINABLE timestamp #-}
-timestamp :: Value LocalTime
+timestamp :: Value B.LocalTime
 timestamp =
-  Value (Value.decoder (Prelude.bool Decoder.timestamp_float Decoder.timestamp_int))
+  Value (Value.decoder (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
@@ -375,17 +374,17 @@ timestamp =
 -- However this library bypasses the silent conversions
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINABLE timestamptz #-}
-timestamptz :: Value UTCTime
+timestamptz :: Value B.UTCTime
 timestamptz =
-  Value (Value.decoder (Prelude.bool Decoder.timestamptz_float Decoder.timestamptz_int))
+  Value (Value.decoder (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
 -- Decoder of the @TIME@ values.
 -- 
 {-# INLINABLE time #-}
-time :: Value TimeOfDay
+time :: Value B.TimeOfDay
 time =
-  Value (Value.decoder (Prelude.bool Decoder.time_float Decoder.time_int))
+  Value (Value.decoder (Prelude.bool A.time_float A.time_int))
 
 -- |
 -- Decoder of the @TIMETZ@ values.
@@ -396,41 +395,41 @@ time =
 -- that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
 -- to represent a value on the Haskell's side.
 {-# INLINABLE timetz #-}
-timetz :: Value (TimeOfDay, TimeZone)
+timetz :: Value (B.TimeOfDay, B.TimeZone)
 timetz =
-  Value (Value.decoder (Prelude.bool Decoder.timetz_float Decoder.timetz_int))
+  Value (Value.decoder (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 -- 
 {-# INLINABLE interval #-}
-interval :: Value DiffTime
+interval :: Value B.DiffTime
 interval =
-  Value (Value.decoder (Prelude.bool Decoder.interval_float Decoder.interval_int))
+  Value (Value.decoder (Prelude.bool A.interval_float A.interval_int))
 
 -- |
 -- Decoder of the @UUID@ values.
 -- 
 {-# INLINABLE uuid #-}
-uuid :: Value UUID
+uuid :: Value B.UUID
 uuid =
-  Value (Value.decoder (const Decoder.uuid))
+  Value (Value.decoder (const A.uuid))
 
 -- |
 -- Decoder of the @INET@ values.
 --
 {-# INLINABLE inet #-}
-inet :: Value (IPAddr.NetAddr IPAddr.IP)
+inet :: Value (B.NetAddr B.IP)
 inet =
-  Value (Value.decoder (const Decoder.inet))
+  Value (Value.decoder (const A.inet))
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 -- 
 {-# INLINABLE json #-}
-json :: Value Aeson.Value
+json :: Value B.Value
 json =
-  Value (Value.decoder (const Decoder.json_ast))
+  Value (Value.decoder (const A.json_ast))
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
@@ -438,15 +437,15 @@ json =
 {-# INLINABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
 jsonBytes fn =
-  Value (Value.decoder (const (Decoder.json_bytes fn)))
+  Value (Value.decoder (const (A.json_bytes fn)))
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
 -- 
 {-# INLINABLE jsonb #-}
-jsonb :: Value Aeson.Value
+jsonb :: Value B.Value
 jsonb =
-  Value (Value.decoder (const Decoder.jsonb_ast))
+  Value (Value.decoder (const A.jsonb_ast))
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
@@ -454,7 +453,7 @@ jsonb =
 {-# INLINABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
 jsonbBytes fn =
-  Value (Value.decoder (const (Decoder.jsonb_bytes fn)))
+  Value (Value.decoder (const (A.jsonb_bytes fn)))
 
 -- |
 -- Lifts a custom value decoder function to a 'Value' decoder.
@@ -498,14 +497,14 @@ composite (Composite imp) =
 {-# INLINABLE hstore #-}
 hstore :: (forall m. Monad m => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
-  Value (Value.decoder (const (Decoder.hstore replicateM Decoder.text_strict Decoder.text_strict)))
+  Value (Value.decoder (const (A.hstore replicateM A.text_strict A.text_strict)))
 
 -- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
 enum :: (Text -> Maybe a) -> Value a
 enum mapping =
-  Value (Value.decoder (const (Decoder.enum mapping)))
+  Value (Value.decoder (const (A.enum mapping)))
 
 
 -- ** Instances
@@ -555,7 +554,7 @@ instance Default (Value Double) where
 
 -- |
 -- Maps to 'numeric'.
-instance Default (Value Scientific) where
+instance Default (Value B.Scientific) where
   {-# INLINE def #-}
   def =
     numeric
@@ -583,56 +582,56 @@ instance Default (Value ByteString) where
 
 -- |
 -- Maps to 'date'.
-instance Default (Value Day) where
+instance Default (Value B.Day) where
   {-# INLINE def #-}
   def =
     date
 
 -- |
 -- Maps to 'timestamp'.
-instance Default (Value LocalTime) where
+instance Default (Value B.LocalTime) where
   {-# INLINE def #-}
   def =
     timestamp
 
 -- |
 -- Maps to 'timestamptz'.
-instance Default (Value UTCTime) where
+instance Default (Value B.UTCTime) where
   {-# INLINE def #-}
   def =
     timestamptz
 
 -- |
 -- Maps to 'time'.
-instance Default (Value TimeOfDay) where
+instance Default (Value B.TimeOfDay) where
   {-# INLINE def #-}
   def =
     time
 
 -- |
 -- Maps to 'timetz'.
-instance Default (Value (TimeOfDay, TimeZone)) where
+instance Default (Value (B.TimeOfDay, B.TimeZone)) where
   {-# INLINE def #-}
   def =
     timetz
 
 -- |
 -- Maps to 'interval'.
-instance Default (Value DiffTime) where
+instance Default (Value B.DiffTime) where
   {-# INLINE def #-}
   def =
     interval
 
 -- |
 -- Maps to 'uuid'.
-instance Default (Value UUID) where
+instance Default (Value B.UUID) where
   {-# INLINE def #-}
   def =
     uuid
 
 -- |
 -- Maps to 'json'.
-instance Default (Value Aeson.Value) where
+instance Default (Value B.Value) where
   {-# INLINE def #-}
   def =
     json

@@ -2,7 +2,7 @@ module Hasql.Private.Decoders.Row where
 
 import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified PostgreSQL.Binary.Decoder as Decoder
+import qualified PostgreSQL.Binary.Decoding as A
 import qualified Hasql.Private.Decoders.Value as Value
 
 
@@ -53,7 +53,7 @@ value valueDec =
               Right Nothing
             Just value ->
               fmap Just $ mapLeft ValueError $
-              {-# SCC "decode" #-} Decoder.run (Value.run valueDec integerDatetimes) value
+              {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
       else pure (Left EndOfInput)
 
 -- |

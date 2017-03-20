@@ -43,14 +43,13 @@ module Hasql.Encoders
 where
 
 import Hasql.Private.Prelude hiding (bool)
-import qualified PostgreSQL.Binary.Encoder as Encoder
-import qualified Data.Aeson as Aeson
+import qualified PostgreSQL.Binary.Encoding as A
+import qualified PostgreSQL.Binary.Data as B
 import qualified Hasql.Private.Encoders.Params as Params
 import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.PTI as PTI
 import qualified Hasql.Private.Prelude as Prelude
-import qualified Network.IP.Addr as IPAddr
 
 -- * Parameters Product Encoder
 -------------------------
@@ -186,49 +185,49 @@ newtype Value a =
 {-# INLINABLE bool #-}
 bool :: Value Bool
 bool =
-  Value (Value.unsafePTI PTI.bool (const Encoder.bool))
+  Value (Value.unsafePTI PTI.bool (const A.bool))
 
 -- |
 -- Encoder of @INT2@ values.
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
 int2 =
-  Value (Value.unsafePTI PTI.int2 (const Encoder.int2_int16))
+  Value (Value.unsafePTI PTI.int2 (const A.int2_int16))
 
 -- |
 -- Encoder of @INT4@ values.
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
 int4 =
-  Value (Value.unsafePTI PTI.int4 (const Encoder.int4_int32))
+  Value (Value.unsafePTI PTI.int4 (const A.int4_int32))
 
 -- |
 -- Encoder of @INT8@ values.
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
 int8 =
-  Value (Value.unsafePTI PTI.int8 (const Encoder.int8_int64))
+  Value (Value.unsafePTI PTI.int8 (const A.int8_int64))
 
 -- |
 -- Encoder of @FLOAT4@ values.
 {-# INLINABLE float4 #-}
 float4 :: Value Float
 float4 =
-  Value (Value.unsafePTI PTI.float4 (const Encoder.float4))
+  Value (Value.unsafePTI PTI.float4 (const A.float4))
 
 -- |
 -- Encoder of @FLOAT8@ values.
 {-# INLINABLE float8 #-}
 float8 :: Value Double
 float8 =
-  Value (Value.unsafePTI PTI.float8 (const Encoder.float8))
+  Value (Value.unsafePTI PTI.float8 (const A.float8))
 
 -- |
 -- Encoder of @NUMERIC@ values.
 {-# INLINABLE numeric #-}
-numeric :: Value Scientific
+numeric :: Value B.Scientific
 numeric =
-  Value (Value.unsafePTI PTI.numeric (const Encoder.numeric))
+  Value (Value.unsafePTI PTI.numeric (const A.numeric))
 
 -- |
 -- Encoder of @CHAR@ values.
@@ -237,105 +236,105 @@ numeric =
 {-# INLINABLE char #-}
 char :: Value Char
 char =
-  Value (Value.unsafePTI PTI.text (const Encoder.char))
+  Value (Value.unsafePTI PTI.text (const A.char_utf8))
 
 -- |
 -- Encoder of @TEXT@ values.
 {-# INLINABLE text #-}
 text :: Value Text
 text =
-  Value (Value.unsafePTI PTI.text (const Encoder.text_strict))
+  Value (Value.unsafePTI PTI.text (const A.text_strict))
 
 -- |
 -- Encoder of @BYTEA@ values.
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
 bytea =
-  Value (Value.unsafePTI PTI.bytea (const Encoder.bytea_strict))
+  Value (Value.unsafePTI PTI.bytea (const A.bytea_strict))
 
 -- |
 -- Encoder of @DATE@ values.
 {-# INLINABLE date #-}
-date :: Value Day
+date :: Value B.Day
 date =
-  Value (Value.unsafePTI PTI.date (const Encoder.date))
+  Value (Value.unsafePTI PTI.date (const A.date))
 
 -- |
 -- Encoder of @TIMESTAMP@ values.
 {-# INLINABLE timestamp #-}
-timestamp :: Value LocalTime
+timestamp :: Value B.LocalTime
 timestamp =
-  Value (Value.unsafePTI PTI.timestamp (Prelude.bool Encoder.timestamp_float Encoder.timestamp_int))
+  Value (Value.unsafePTI PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINABLE timestamptz #-}
-timestamptz :: Value UTCTime
+timestamptz :: Value B.UTCTime
 timestamptz =
-  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool Encoder.timestamptz_float Encoder.timestamptz_int))
+  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINABLE time #-}
-time :: Value TimeOfDay
+time :: Value B.TimeOfDay
 time =
-  Value (Value.unsafePTI PTI.time (Prelude.bool Encoder.time_float Encoder.time_int))
+  Value (Value.unsafePTI PTI.time (Prelude.bool A.time_float A.time_int))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINABLE timetz #-}
-timetz :: Value (TimeOfDay, TimeZone)
+timetz :: Value (B.TimeOfDay, B.TimeZone)
 timetz =
-  Value (Value.unsafePTI PTI.timetz (Prelude.bool Encoder.timetz_float Encoder.timetz_int))
+  Value (Value.unsafePTI PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINABLE interval #-}
-interval :: Value DiffTime
+interval :: Value B.DiffTime
 interval =
-  Value (Value.unsafePTI PTI.interval (Prelude.bool Encoder.interval_float Encoder.interval_int))
+  Value (Value.unsafePTI PTI.interval (Prelude.bool A.interval_float A.interval_int))
 
 -- |
 -- Encoder of @UUID@ values.
 {-# INLINABLE uuid #-}
-uuid :: Value UUID
+uuid :: Value B.UUID
 uuid =
-  Value (Value.unsafePTI PTI.uuid (const Encoder.uuid))
+  Value (Value.unsafePTI PTI.uuid (const A.uuid))
 
 -- |
 -- Encoder of @INET@ values.
 {-# INLINABLE inet #-}
-inet :: Value (IPAddr.NetAddr IPAddr.IP)
+inet :: Value (B.NetAddr B.IP)
 inet =
-  Value (Value.unsafePTI PTI.inet (const Encoder.inet))
+  Value (Value.unsafePTI PTI.inet (const A.inet))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
 {-# INLINABLE json #-}
-json :: Value Aeson.Value
+json :: Value B.Value
 json =
-  Value (Value.unsafePTI PTI.json (const Encoder.json_ast))
+  Value (Value.unsafePTI PTI.json (const A.json_ast))
 
 -- |
 -- Encoder of @JSON@ values from raw JSON.
 {-# INLINABLE jsonBytes #-}
 jsonBytes :: Value ByteString
 jsonBytes =
-  Value (Value.unsafePTI PTI.json (const Encoder.json_bytes))
+  Value (Value.unsafePTI PTI.json (const A.json_bytes))
 
 -- |
 -- Encoder of @JSONB@ values from JSON AST.
 {-# INLINABLE jsonb #-}
-jsonb :: Value Aeson.Value
+jsonb :: Value B.Value
 jsonb =
-  Value (Value.unsafePTI PTI.jsonb (const Encoder.jsonb_ast))
+  Value (Value.unsafePTI PTI.jsonb (const A.jsonb_ast))
 
 -- |
 -- Encoder of @JSONB@ values from raw JSON.
 {-# INLINABLE jsonbBytes #-}
 jsonbBytes :: Value ByteString
 jsonbBytes =
-  Value (Value.unsafePTI PTI.jsonb (const Encoder.jsonb_bytes))
+  Value (Value.unsafePTI PTI.jsonb (const A.jsonb_bytes))
 
 -- |
 -- Unlifts the 'Array' encoder to the plain 'Value' encoder.
@@ -352,7 +351,7 @@ array (Array imp) =
 {-# INLINABLE enum #-}
 enum :: (a -> Text) -> Value a
 enum mapping =
-  Value (Value.unsafePTI PTI.text (const (Encoder.enum mapping)))
+  Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)))
 
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
@@ -369,7 +368,7 @@ enum mapping =
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
 unknown =
-  Value (Value.unsafePTI PTI.unknown (const Encoder.bytea_strict))
+  Value (Value.unsafePTI PTI.unknown (const A.bytea_strict))
 
 
 -- ** Instances
@@ -412,7 +411,7 @@ instance Default (Value Double) where
     float8
 
 -- | Maps to 'numeric'.
-instance Default (Value Scientific) where
+instance Default (Value B.Scientific) where
   {-# INLINE def #-}
   def =
     numeric
@@ -436,49 +435,49 @@ instance Default (Value ByteString) where
     bytea
 
 -- | Maps to 'date'.
-instance Default (Value Day) where
+instance Default (Value B.Day) where
   {-# INLINE def #-}
   def =
     date
 
 -- | Maps to 'timestamp'.
-instance Default (Value LocalTime) where
+instance Default (Value B.LocalTime) where
   {-# INLINE def #-}
   def =
     timestamp
 
 -- | Maps to 'timestamptz'.
-instance Default (Value UTCTime) where
+instance Default (Value B.UTCTime) where
   {-# INLINE def #-}
   def =
     timestamptz
 
 -- | Maps to 'time'.
-instance Default (Value TimeOfDay) where
+instance Default (Value B.TimeOfDay) where
   {-# INLINE def #-}
   def =
     time
 
 -- | Maps to 'timetz'.
-instance Default (Value (TimeOfDay, TimeZone)) where
+instance Default (Value (B.TimeOfDay, B.TimeZone)) where
   {-# INLINE def #-}
   def =
     timetz
 
 -- | Maps to 'interval'.
-instance Default (Value DiffTime) where
+instance Default (Value B.DiffTime) where
   {-# INLINE def #-}
   def =
     interval
 
 -- | Maps to 'uuid'.
-instance Default (Value UUID) where
+instance Default (Value B.UUID) where
   {-# INLINE def #-}
   def =
     uuid
 
 -- | Maps to 'json'.
-instance Default (Value Aeson.Value) where
+instance Default (Value B.Value) where
   {-# INLINE def #-}
   def =
     json

@@ -1,26 +1,25 @@
 module Hasql.Private.Decoders.Composite where
 
 import Hasql.Private.Prelude
-import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified PostgreSQL.Binary.Decoder as Decoder
+import qualified PostgreSQL.Binary.Decoding as A
 
 
 newtype Composite a =
-  Composite (ReaderT Bool Decoder.CompositeDecoder a)
+  Composite (ReaderT Bool A.Composite a)
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Composite a -> Bool -> Decoder.Decoder a
+run :: Composite a -> Bool -> A.Value a
 run (Composite imp) env =
-  Decoder.composite (runReaderT imp env)
+  A.composite (runReaderT imp env)
 
 {-# INLINE value #-}
-value :: (Bool -> Decoder.Decoder a) -> Composite (Maybe a)
+value :: (Bool -> A.Value a) -> Composite (Maybe a)
 value decoder' =
-  Composite $ ReaderT $ Decoder.compositeValue . decoder'
+  Composite $ ReaderT $ A.nullableValueComposite . decoder'
 
 {-# INLINE nonNullValue #-}
-nonNullValue :: (Bool -> Decoder.Decoder a) -> Composite a
+nonNullValue :: (Bool -> A.Value a) -> Composite a
 nonNullValue decoder' =
-  Composite $ ReaderT $ Decoder.compositeNonNullValue . decoder'
+  Composite $ ReaderT $ A.valueComposite . decoder'
 
