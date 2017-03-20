@@ -77,7 +77,7 @@ library
     postgresql-binary >= 0.12.1 && < 0.13,
     postgresql-libpq == 0.9.*,
     -- builders:
-    bytestring-tree-builder >= 0.2.5 && < 0.3,
+    bytestring-strict-builder >= 0.4 && < 0.5,
     -- data:
     dlist >= 0.7 && < 0.9,
     vector >= 0.10 && < 0.13,

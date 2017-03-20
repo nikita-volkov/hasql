@@ -9,7 +9,7 @@ where
 
 import Hasql.Private.Prelude hiding (lookup)
 import qualified Data.HashTable.IO as A
-import qualified ByteString.TreeBuilder as B
+import qualified ByteString.StrictBuilder as B
 
 
 data PreparedStatementRegistry =
@@ -39,7 +39,7 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table c
             return result
           where
             remoteKey =
-              B.toByteString . B.asciiIntegral $ n
+              B.builderBytes . B.asciiIntegral $ n
     old =
       onOldRemoteKey
 
