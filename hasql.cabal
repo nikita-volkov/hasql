@@ -158,25 +158,18 @@ test-suite threads-test
     rebase
 
 
-benchmark benchmark
+benchmark benchmarks
   type: 
     exitcode-stdio-1.0
   hs-source-dirs:
-    benchmark
+    benchmarks
   main-is:
     Main.hs
-  other-modules:
-    Main.Queries
-    Main.Prelude
   ghc-options:
     -O2
     -threaded
     "-with-rtsopts=-N"
-  ghc-prof-options:
-    -O2
-    -threaded
-    -fprof-auto
-    "-with-rtsopts=-N -p -s -h -i0.1"
+    -funbox-strict-fields
   default-extensions:
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
@@ -184,24 +177,7 @@ benchmark benchmark
   build-depends:
     hasql,
     -- benchmarking:
-    criterion == 1.1.*,
-    -- data:
-    uuid,
-    time,
-    scientific,
-    bytestring,
-    text,
-    vector,
-    hashable,
-    dlist,
+    criterion >= 1.1 && < 2,
     -- general:
-    deepseq >= 1 && < 2,
-    data-default-class,
-    profunctors,
-    contravariant,
-    contravariant-extras,
-    either,
-    transformers,
-    base-prelude,
-    base
-
+    bug == 1.*,
+    rerebase < 2
