@@ -22,8 +22,10 @@ actor socket interpreter =
       loop ""
       where
         loop remainder =
+          {-# SCC "actor/loop" #-} 
           do
             either <-
+              {-# SCC "actor/loop/scan" #-} 
               let
                 resupply =
                   ExceptT (F.use socket (F.receive 8192))

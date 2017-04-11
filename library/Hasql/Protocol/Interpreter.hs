@@ -49,7 +49,7 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
           case messageType of
             DataRowBackendMessageType ->
               do
-                case A.run (rowParser <* A.endOfInput) messageBytes of
+                case {-# SCC "rowsReduction/rowParser" #-} A.run (rowParser <* A.endOfInput) messageBytes of
                   Right parsedRow ->
                     do
                       accumulator <- readIORef accumulatorRef

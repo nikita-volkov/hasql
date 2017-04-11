@@ -65,10 +65,10 @@ actor sender =
           H.Interpreter interpret <- readIORef interpreterRef
           interpret messageType messageBytes
       in
-        A.graceful $ \case
-          BackendMessageMessage messageType messagePayloadBytes ->
+        A.graceful $ {-# SCC "interpreter/dispatch" #-} \case
+          BackendMessageMessage messageType messageBytes ->
             do
-              keep <- interpret messageType messageBytes
+              keep <- {-# SCC "interpreter/dispatch/interpret" #-} interpret messageType messageBytes
               unless keep activateNextHandler
           SendAndAggregateMessage messageBytes interpreter failer ->
             do

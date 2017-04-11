@@ -20,6 +20,7 @@ rowsReduction rowParser (FoldM progress enter exit) =
     (eventInChan, eventOutChan) <- E.newChan
     let
       interpretNextEvent accumulator =
+        {-# SCC "rowsReduction/interpretNextEvent" #-} 
         E.readChan eventOutChan >>= \case
           DataRowEvent bytes ->
             case A.run (rowParser <* A.endOfInput) bytes of

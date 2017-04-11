@@ -102,7 +102,7 @@ rowsReductionOnTheBlockedThread rowParser rowFold =
       protocolErrorHandler =
         errorHandler . ProtocolError
       interpreter =
-        H.Interpreter $ \case
+        H.Interpreter $ {-# SCC "rowsReductionOnTheBlockedThread/interpreter" #-} \case
           J.DataRowBackendMessageType ->
             \bytes -> sendEvent (C.DataRowEvent bytes) $> True
           J.CommandCompleteBackendMessageType ->
