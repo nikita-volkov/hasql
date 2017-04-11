@@ -5,43 +5,33 @@ import Bug
 import Criterion
 import Criterion.Main
 import qualified Hasql.Connection as A
-import qualified Hasql.Session as B
-import qualified Hasql.Query as C
-import qualified Hasql.Decoders as D
-import qualified Hasql.Encoders as E
+import qualified Hasql.Connection.Session as B
+import qualified Hasql.Connection.Session.Statement as C
+import qualified Hasql.Connection.Session.Statement.Decoding as D
+import qualified Hasql.Connection.Session.Statement.Encoding as E
 import qualified Data.Vector as F
 
 
 main =
   do
-    Right connection <- acquireConnection
-    useConnection connection
-  where
-    acquireConnection =
-      A.acquire settings
-      where
-        settings =
-          A.settings host port user password database
-          where
-            host = "localhost"
-            port = 5432
-            user = "postgres"
-            password = ""
-            database = "postgres"
-    useConnection connection =
-      defaultMain
-      [
-        sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector
-        ,
-        sessionBench "largeResultInList" sessionWithSingleLargeResultInList
-        ,
-        sessionBench "manySmallResults" sessionWithManySmallResults
-      ]
-      where
-        sessionBench :: NFData a => String -> B.Session a -> Benchmark
-        sessionBench name session =
-          bench name (nfIO (fmap (either ($bug "") id) (B.run session connection)))
-
+    Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
+    let
+      sessionBench :: NFData a => String -> B.Session a -> Benchmark
+      sessionBench name session =
+        bench name (nfIO (runSession session))
+        where
+          runSession session =
+            do
+              Right result <- A.use connection session
+              return result
+      in
+        defaultMain
+        [
+          sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
+          sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
+          sessionBench "largeResultInRevList" sessionWithSingleLargeResultInRevList,
+          sessionBench "manySmallResults" sessionWithManySmallResults
+        ]
 
 -- * Sessions
 -------------------------
@@ -52,26 +42,30 @@ sessionWithManySmallParameters =
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
-  B.query () queryWithManyRowsInVector
+  B.batch (B.statement () statementWithManyRowsInVector)
 
 sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInList =
-  B.query () queryWithManyRowsInList
+  B.batch (B.statement () statementWithManyRowsInList)
+
+sessionWithSingleLargeResultInRevList :: B.Session (List (Int64, Int64))
+sessionWithSingleLargeResultInRevList =
+  B.batch (B.statement () statementWithManyRowsInRevList)
 
 sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
 sessionWithManySmallResults =
-  F.replicateM 1000 (B.query () queryWithSingleRow)
+  F.replicateM 1000 (B.batch (B.statement () statementWithSingleRow))
 
 
 -- * Statements
 -------------------------
 
-queryWithManyParameters :: C.Query (Vector (Int64, Int64)) ()
-queryWithManyParameters =
+statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
+statementWithManyParameters =
   $(todo "statementWithManyParameters")
 
-queryWithSingleRow :: C.Query () (Int64, Int64)
-queryWithSingleRow =
+statementWithSingleRow :: C.Statement () (Int64, Int64)
+statementWithSingleRow =
   C.statement template encoder decoder True
   where
     template =
@@ -79,16 +73,16 @@ queryWithSingleRow =
     encoder =
       conquer
     decoder =
-      D.singleRow row
+      C.row row
       where
         row =
-          tuple <$> D.value D.int8 <*> D.value D.int8
+          tuple <$> C.column D.int8 <*> C.column D.int8
           where
             tuple !a !b =
               (a, b)
 
-queryWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Query () result
-queryWithManyRows decoder =
+statementWithManyRows :: (C.RowDecoder (Int64, Int64) -> C.Decoder result) -> C.Statement () result
+statementWithManyRows decoder =
   C.statement template encoder (decoder rowDecoder) True
   where
     template =
@@ -96,15 +90,19 @@ queryWithManyRows decoder =
     encoder =
       conquer
     rowDecoder =
-      tuple <$> D.value D.int8 <*> D.value D.int8
+      tuple <$> C.column D.int8 <*> C.column D.int8
       where
         tuple !a !b =
           (a, b)
 
-queryWithManyRowsInVector :: C.Query () (Vector (Int64, Int64))
-queryWithManyRowsInVector =
-  queryWithManyRows D.rowsVector
+statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
+statementWithManyRowsInVector =
+  statementWithManyRows C.rowVector
 
-queryWithManyRowsInList :: C.Query () (List (Int64, Int64))
-queryWithManyRowsInList =
-  queryWithManyRows D.rowsList
+statementWithManyRowsInRevList :: C.Statement () (List (Int64, Int64))
+statementWithManyRowsInRevList =
+  statementWithManyRows C.rowRevList
+
+statementWithManyRowsInList :: C.Statement () (List (Int64, Int64))
+statementWithManyRowsInList =
+  statementWithManyRows C.rowList
