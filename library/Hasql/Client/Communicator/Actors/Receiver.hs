@@ -28,7 +28,7 @@ actor socket interpreter =
               {-# SCC "actor/loop/scan" #-} 
               let
                 resupply =
-                  ExceptT (F.use socket (F.receive 8192))
+                  ExceptT (F.receive socket 8192)
                 scanner =
                   G.backendMessageTypeAndPayload (,)
                 in runExceptT (H.scanWith resupply scanner remainder)

@@ -13,10 +13,6 @@ import qualified Network.Socket.ByteString as C
 newtype Socket =
   Socket B.Socket
 
-newtype Session result =
-  Session (ReaderT Socket (ExceptT Text IO) result)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadError Text)
-
 {-# INLINE trySocketIO #-}
 trySocketIO :: IO a -> IO (Either Text a)
 trySocketIO io =
@@ -64,29 +60,14 @@ close :: Socket -> IO ()
 close (Socket def) =
   B.close def
 
-{-# INLINE use #-}
-use :: Socket -> Session result -> IO (Either Text result)
-use socket (Session (ReaderT def)) =
-  runExceptT (def socket)
-
-{-# INLINE io #-}
-io :: (Socket -> IO (Either Text result)) -> Session result
-io cont =
-  Session (ReaderT (\socket -> ExceptT (cont socket)))
-
-{-# INLINE socketIO #-}
-socketIO :: (Socket -> IO result) -> Session result
-socketIO cont =
-  io (trySocketIO . cont)
-
 {-# INLINE receive #-}
-receive :: Int -> Session ByteString
-receive amount =
+receive :: Socket -> Int -> IO (Either Text ByteString)
+receive (Socket socket) amount =
   {-# SCC "receive" #-} 
-  socketIO (\(Socket socket) -> C.recv socket amount)
+  trySocketIO (C.recv socket amount)
 
 {-# INLINE send #-}
-send :: ByteString -> Session ()
-send bytes =
+send :: Socket -> ByteString -> IO (Either Text ())
+send (Socket socket) bytes =
   {-# SCC "send" #-} 
-  socketIO (\(Socket socket) -> C.sendAll socket bytes)
+  trySocketIO (C.sendAll socket bytes)

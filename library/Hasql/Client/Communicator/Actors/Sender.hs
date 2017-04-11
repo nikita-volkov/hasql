@@ -13,4 +13,4 @@ actor :: F.Socket -> IO (A.Actor Message)
 actor socket =
   A.graceful $ {-# SCC "actor/interpret" #-} \case
     SendMessage encodedMessage handleError ->
-      F.use socket (F.send encodedMessage) >>= either handleError (const (return ()))
+      F.send socket encodedMessage >>= either handleError (const (return ()))
