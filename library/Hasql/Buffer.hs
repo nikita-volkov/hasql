@@ -45,7 +45,7 @@ Aligns or grows the buffer if required.
 It is the user's responsibility that the pointer action
 does not exceed the limits.
 -}
-put :: Buffer -> Int {-^ Amount of bytes to be written -} -> (Ptr Word8 -> IO ()) {-^ Poker -} -> IO ()
+put :: Buffer -> Int {-^ Amount of bytes to be written -} -> (Ptr Word8 -> IO (result, Int {-^ Amount actually added -})) {-^ Poker -} -> IO result
 put (Buffer stateMVar) space ptrIO =
   do
     State fptr start end boundary <- takeMVar stateMVar
@@ -55,34 +55,38 @@ put (Buffer stateMVar) space ptrIO =
       occupiedSpace = end - start
       in if delta <= 0 -- Needs more space?
         then do
-          withForeignPtr fptr $ \ptr -> do
-            ptrIO (plusPtr ptr end)
-          putMVar stateMVar (State fptr start (end + space) boundary)
+          (result, addedSpace) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
+          putMVar stateMVar (State fptr start (end + addedSpace) boundary)
+          return result
         else if delta > start -- Needs growing?
           then do
             -- Grow
-            let
-              newOccupiedSpace = occupiedSpace + space
             traceEventIO ("START Buffer/Grow")
-            newFPtr <- mallocForeignPtrBytes newOccupiedSpace
-            withForeignPtr newFPtr $ \newPtr -> do
-              withForeignPtr fptr $ \ptr -> do
-                memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
-              traceEventIO ("STOP Buffer/Grow")
-              ptrIO (plusPtr newPtr occupiedSpace)
+            newFPtr <- mallocForeignPtrBytes (occupiedSpace + space)
+            (result, addedSpace) <-
+              withForeignPtr newFPtr $ \newPtr -> do
+                withForeignPtr fptr $ \ptr -> do
+                  memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                traceEventIO ("STOP Buffer/Grow")
+                ptrIO (plusPtr newPtr occupiedSpace)
+            let newOccupiedSpace = occupiedSpace + addedSpace
             putMVar stateMVar (State newFPtr 0 newOccupiedSpace newOccupiedSpace)
+            return result
           else if occupiedSpace > 0 -- Needs aligning?
             then do
               -- Align
-              withForeignPtr fptr $ \ptr -> do
-                traceEventIO ("START Buffer/Align")
-                memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                traceEventIO ("STOP Buffer/Align")
-                ptrIO (plusPtr ptr occupiedSpace)
-              putMVar stateMVar (State fptr 0 (occupiedSpace + space) boundary)
+              (result, addedSpace) <-
+                withForeignPtr fptr $ \ptr -> do
+                  traceEventIO ("START Buffer/Align")
+                  memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                  traceEventIO ("STOP Buffer/Align")
+                  ptrIO (plusPtr ptr occupiedSpace)
+              putMVar stateMVar (State fptr 0 (occupiedSpace + addedSpace) boundary)
+              return result
             else do
-              withForeignPtr fptr ptrIO
-              putMVar stateMVar (State fptr 0 space boundary)
+              (result, addedSpace) <- withForeignPtr fptr ptrIO
+              putMVar stateMVar (State fptr 0 addedSpace boundary)
+              return result
 
 take :: Buffer -> (Ptr Word8 -> Int {-^ Available amount -} -> IO (result, Int {-^ Taken amount -})) -> IO result
 take (Buffer stateMVar) ptrIO =
