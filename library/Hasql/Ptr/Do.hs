@@ -20,27 +20,27 @@ import qualified Data.ByteString.Internal as A
 
 
 run :: Do result -> Ptr Word8 -> IO result
-run (Do (ReaderT def)) =
-  def
+run (Do state) ptr =
+  evalStateT state ptr
 
 {-|
 Act on a pointer.
 -}
 newtype Do result =
-  Do (ReaderT (Ptr Word8) IO result)
+  Do (StateT (Ptr Word8) IO result)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-{-# INLINE io #-}
-io :: (Ptr Word8 -> IO result) -> Do result
-io def =
-  Do (ReaderT (\receiver -> def receiver))
+{-# INLINE primitiveDo #-}
+primitiveDo :: (Ptr Word8 -> IO (result, Ptr Word8)) -> Do result
+primitiveDo def =
+  Do (StateT (\receiver -> def receiver))
 
--- |
--- Storable value of the given amount of bytes.
 {-# INLINE peekStorable #-}
 peekStorable :: Storable storable => Do storable
 peekStorable =
-  io $ \ptr -> peek (castPtr ptr)
+  primitiveDo $ \ptr -> do
+    storable <- peek (castPtr ptr)
+    return (storable, plusPtr ptr (sizeOf storable))
 
 {-# INLINE peekWord8 #-}
 peekWord8 :: Do Word8
@@ -119,4 +119,6 @@ Allocate a new byte array with @memcpy@.
 {-# INLINE peekBytes #-}
 peekBytes :: Int -> Do ByteString
 peekBytes amount =
-  io $ \ptr -> A.create amount $ \destPtr -> A.memcpy destPtr ptr amount
+  primitiveDo $ \ptr -> do
+    bytes <- A.create amount $ \destPtr -> A.memcpy destPtr ptr amount
+    return (bytes, plusPtr ptr amount)

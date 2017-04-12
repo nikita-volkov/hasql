@@ -4,6 +4,7 @@ module Hasql.Ptr.Peek
   Peek,
   word8,
   beWord32,
+  leWord32,
   bytes,
 )
 where
@@ -48,6 +49,11 @@ word8 =
 beWord32 :: Peek Word32
 beWord32 =
   Peek 4 A.peekBEWord32
+
+{-# INLINE leWord32 #-}
+leWord32 :: Peek Word32
+leWord32 =
+  Peek 4 A.peekLEWord32
 
 {-# INLINE bytes #-}
 bytes :: Int -> Peek ByteString
