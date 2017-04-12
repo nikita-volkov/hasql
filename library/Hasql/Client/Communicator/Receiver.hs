@@ -62,7 +62,11 @@ Initiates the socket fetching if need be.
 -}
 arrangeData :: Int -> Do ()
 arrangeData amount =
-  $(todo "")
+  do
+    availableAmount <- primitiveDo $ \socket buffer -> Right <$> E.getOccupiedSpace buffer
+    if availableAmount >= amount
+      then return ()
+      else fetchFromSocket (amount - availableAmount)
 
 peek :: C.Peek peeked -> Do peeked
 peek peek =

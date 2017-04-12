@@ -4,6 +4,7 @@ module Hasql.Buffer
   new,
   put,
   take,
+  getOccupiedSpace,
 )
 where
 
@@ -26,7 +27,7 @@ data State =
   * Buffer pointer
   * Start offset
   * End offset
-  * Size
+  * Max amount
   -}
   State !(ForeignPtr Word8) !Int !Int !Int
 
@@ -96,3 +97,10 @@ take (Buffer stateIORef) ptrIO =
       (result, amountTaken) <- ptrIO (plusPtr ptr start) (end - start)
       writeIORef stateIORef (State fptr (start + amountTaken) end boundary)
       return result
+
+getOccupiedSpace :: Buffer -> IO Int
+getOccupiedSpace (Buffer stateIORef) =
+  do
+    State fptr start end boundary <- readIORef stateIORef
+    return (end - start)
+
