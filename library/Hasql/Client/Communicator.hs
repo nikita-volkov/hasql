@@ -33,6 +33,7 @@ acquire socket =
 sendAndConsume :: Communicator -> L.Builder -> H.MessagesConsumer result -> IO (IO (Either Error result))
 sendAndConsume (Communicator interpreter sender receiver) messageBuilder (H.MessagesConsumer createConsumer) =
   do
+    traceEventIO ("sendAndConsume")
     (messageInterpreter, failer, blocker) <- createConsumer
     A.tell interpreter (E.SendAndAggregateMessage (L.builderBytes messageBuilder) messageInterpreter failer)
     return blocker
@@ -46,7 +47,9 @@ send (Communicator interpreter sender receiver) messageBuilder transportErrorHan
 
 startUp :: Communicator -> ByteString -> Maybe ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> IO (IO (Either Error BackendSettings))
 startUp communicator username passwordMaybe databaseMaybe runtimeParameters =
-  sendAndConsume communicator message consumer
+  do
+    traceEventIO ("startUp")
+    sendAndConsume communicator message consumer
   where
     message =
       K.startUpMessage 3 0 username databaseMaybe runtimeParameters

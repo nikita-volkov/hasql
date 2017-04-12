@@ -23,12 +23,14 @@ trySocketIO io =
 
 connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
 connectToHostAndPort host port =
-  runExceptT $ do
-    addrList <- getAddressInfo
-    addr <- headFailing "Invalid host or port" addrList
-    socket <- initSocket (B.addrFamily addr) (B.addrSocketType addr) (B.addrProtocol addr)
-    connect socket (B.addrAddress addr)
-    return (Socket socket)
+  do
+    traceEventIO ("connectToHostAndPort")
+    runExceptT $ do
+      addrList <- getAddressInfo
+      addr <- headFailing "Invalid host or port" addrList
+      socket <- initSocket (B.addrFamily addr) (B.addrSocketType addr) (B.addrProtocol addr)
+      connect socket (B.addrAddress addr)
+      return (Socket socket)
   where
     io =
       ExceptT . trySocketIO

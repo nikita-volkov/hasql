@@ -24,21 +24,23 @@ data Connection =
   }
 
 acquire host portMaybe username passwordMaybe databaseMaybe =
-  runExceptT $ do
-    socket <-
+  do
+    traceMarkerIO ("acquire")
+    runExceptT $ do
+      socket <-
+        let
+          port =
+            fromMaybe 5432 portMaybe
+          in ExceptT $ fmap (first D.TransportError) $ B.connectToHostAndPort host port
+      communicator <- lift (A.acquire socket)
+      backendSettings <- ExceptT $ join $ A.startUp communicator username passwordMaybe databaseMaybe []
+      preparedStatementRegistry <- lift E.new
       let
-        port =
-          fromMaybe 5432 portMaybe
-        in ExceptT $ fmap (first D.TransportError) $ B.connectToHostAndPort host port
-    communicator <- lift (A.acquire socket)
-    backendSettings <- ExceptT $ join $ A.startUp communicator username passwordMaybe databaseMaybe []
-    preparedStatementRegistry <- lift E.new
-    let
-      use :: forall result. C.Session result -> IO (Either D.Error result)
-      use (C.Session io) =
-        io (C.Env communicator backendSettings preparedStatementRegistry)
-      release =
-        do
-          A.release communicator
-          B.close socket
-      in return (Connection use release)
+        use :: forall result. C.Session result -> IO (Either D.Error result)
+        use (C.Session io) =
+          io (C.Env communicator backendSettings preparedStatementRegistry)
+        release =
+          do
+            A.release communicator
+            B.close socket
+        in return (Connection use release)
