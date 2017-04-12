@@ -63,7 +63,8 @@ put (Buffer stateIORef) space ptrIO =
           then do
             -- Grow
             traceEventIO ("START Buffer/Grow")
-            newFPtr <- mallocForeignPtrBytes (occupiedSpace + space)
+            let newSize = occupiedSpace + space
+            newFPtr <- mallocForeignPtrBytes newSize
             (result, addedSpace) <-
               withForeignPtr newFPtr $ \newPtr -> do
                 withForeignPtr fptr $ \ptr -> do
@@ -71,7 +72,7 @@ put (Buffer stateIORef) space ptrIO =
                 traceEventIO ("STOP Buffer/Grow")
                 ptrIO (plusPtr newPtr occupiedSpace)
             let newOccupiedSpace = occupiedSpace + addedSpace
-            writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newOccupiedSpace)
+            writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newSize)
             return result
           else if occupiedSpace > 0 -- Needs aligning?
             then do
