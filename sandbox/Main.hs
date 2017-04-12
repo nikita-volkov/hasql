@@ -19,7 +19,7 @@ main =
       J.batch batch1
       where
         batch1 =
-          (,) <$> J.statement "ABC" stmt1 <*> J.statement "abc" stmt1
+          (,) <$> J.statement stmt1 "ABC" <*> J.statement stmt1 "abc"
           where
             stmt1 =
               K.statement "select unnest(array[$1,'b','c','d'])" encoder decoder True

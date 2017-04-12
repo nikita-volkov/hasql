@@ -24,7 +24,7 @@ session :: B.Session (List (List (Int64, Int64)))
 session =
   B.batch $
   replicateM 3 $
-  B.statement () statementWithManyRowsInRevList
+  B.statement statementWithManyRowsInRevList ()
 
 
 -- * Statements

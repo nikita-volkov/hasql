@@ -42,19 +42,19 @@ sessionWithManySmallParameters =
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
-  B.batch (B.statement () statementWithManyRowsInVector)
+  B.batch (B.statement statementWithManyRowsInVector ())
 
 sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInList =
-  B.batch (B.statement () statementWithManyRowsInList)
+  B.batch (B.statement statementWithManyRowsInList ())
 
 sessionWithSingleLargeResultInRevList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInRevList =
-  B.batch (B.statement () statementWithManyRowsInRevList)
+  B.batch (B.statement statementWithManyRowsInRevList ())
 
 sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
 sessionWithManySmallResults =
-  F.replicateM 1000 (B.batch (B.statement () statementWithSingleRow))
+  F.replicateM 1000 (B.batch (B.statement statementWithSingleRow ()))
 
 
 -- * Statements

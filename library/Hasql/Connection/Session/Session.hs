@@ -85,8 +85,8 @@ instance Applicative Batch where
           rightResult <- rightEither
           return (leftResult rightResult)
 
-statement :: params -> B.Statement params result -> Batch result
-statement params (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 resultColumnsAmount resultOIDsValidator resultCollector1 resultCollector2 prepared) =
+statement :: B.Statement params result -> params -> Batch result
+statement (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 resultColumnsAmount resultOIDsValidator resultCollector1 resultCollector2 prepared) params =
   Batch io
   where
     io (Env communicator (C.BackendSettings integerDateTimes) preparedStatementRegistry) =
