@@ -16,106 +16,106 @@ pattern BinaryDataFormat =
 {-|
 An encoded representation of the backend message type
 -}
-newtype BackendMessageType =
-  BackendMessageType Word8
+newtype MessageType =
+  MessageType Word8
   deriving (Eq, Ord)
 
-instance Show BackendMessageType where
+instance Show MessageType where
   show =
     \case
-      AuthenticationBackendMessageType -> "AuthenticationBackendMessageType"
-      KeyDataBackendMessageType -> "KeyDataBackendMessageType"
-      BindCompleteBackendMessageType -> "BindCompleteBackendMessageType"
-      CloseCompleteBackendMessageType -> "CloseCompleteBackendMessageType"
-      CommandCompleteBackendMessageType -> "CommandCompleteBackendMessageType"
-      CopyOutDataBackendMessageType -> "CopyOutDataBackendMessageType"
-      CopyOutDoneBackendMessageType -> "CopyOutDoneBackendMessageType"
-      CopyInResponseBackendMessageType -> "CopyInResponseBackendMessageType"
-      CopyOutBackendMessageType -> "CopyOutBackendMessageType"
-      CopyBothBackendMessageType -> "CopyBothBackendMessageType"
-      DataRowBackendMessageType -> "DataRowBackendMessageType"
-      EmptyQueryBackendMessageType -> "EmptyQueryBackendMessageType"
-      ErrorBackendMessageType -> "ErrorBackendMessageType"
-      FunctionCallBackendMessageType -> "FunctionCallBackendMessageType"
-      NoDataBackendMessageType -> "NoDataBackendMessageType"
-      NoticeBackendMessageType -> "NoticeBackendMessageType"
-      NotificationBackendMessageType -> "NotificationBackendMessageType"
-      ParameterDescriptionBackendMessageType -> "ParameterDescriptionBackendMessageType"
-      ParameterStatusBackendMessageType -> "ParameterStatusBackendMessageType"
-      ParseCompleteBackendMessageType -> "ParseCompleteBackendMessageType"
-      PortalSuspendedBackendMessageType -> "PortalSuspendedBackendMessageType"
-      ReadyForQueryBackendMessageType -> "ReadyForQueryBackendMessageType"
-      RowDescriptionBackendMessageType -> "RowDescriptionBackendMessageType"
-      BackendMessageType x -> "BackendMessageType " <> show x
+      AuthenticationMessageType -> "AuthenticationMessageType"
+      KeyDataMessageType -> "KeyDataMessageType"
+      BindCompleteMessageType -> "BindCompleteMessageType"
+      CloseCompleteMessageType -> "CloseCompleteMessageType"
+      CommandCompleteMessageType -> "CommandCompleteMessageType"
+      CopyOutDataMessageType -> "CopyOutDataMessageType"
+      CopyOutDoneMessageType -> "CopyOutDoneMessageType"
+      CopyInResponseMessageType -> "CopyInResponseMessageType"
+      CopyOutMessageType -> "CopyOutMessageType"
+      CopyBothMessageType -> "CopyBothMessageType"
+      DataRowMessageType -> "DataRowMessageType"
+      EmptyQueryMessageType -> "EmptyQueryMessageType"
+      ErrorMessageType -> "ErrorMessageType"
+      FunctionCallMessageType -> "FunctionCallMessageType"
+      NoDataMessageType -> "NoDataMessageType"
+      NoticeMessageType -> "NoticeMessageType"
+      NotificationMessageType -> "NotificationMessageType"
+      ParameterDescriptionMessageType -> "ParameterDescriptionMessageType"
+      ParameterStatusMessageType -> "ParameterStatusMessageType"
+      ParseCompleteMessageType -> "ParseCompleteMessageType"
+      PortalSuspendedMessageType -> "PortalSuspendedMessageType"
+      ReadyForQueryMessageType -> "ReadyForQueryMessageType"
+      RowDescriptionMessageType -> "RowDescriptionMessageType"
+      MessageType x -> "MessageType " <> show x
 
-pattern AuthenticationBackendMessageType =
-  BackendMessageType 82
+pattern AuthenticationMessageType =
+  MessageType 82
 
-pattern KeyDataBackendMessageType =
-  BackendMessageType 75
+pattern KeyDataMessageType =
+  MessageType 75
 
-pattern BindCompleteBackendMessageType =
-  BackendMessageType 50
+pattern BindCompleteMessageType =
+  MessageType 50
 
-pattern CloseCompleteBackendMessageType =
-  BackendMessageType 51
+pattern CloseCompleteMessageType =
+  MessageType 51
 
-pattern CommandCompleteBackendMessageType =
-  BackendMessageType 67
+pattern CommandCompleteMessageType =
+  MessageType 67
 
-pattern CopyOutDataBackendMessageType =
-  BackendMessageType 100
+pattern CopyOutDataMessageType =
+  MessageType 100
 
-pattern CopyOutDoneBackendMessageType =
-  BackendMessageType 99
+pattern CopyOutDoneMessageType =
+  MessageType 99
 
-pattern CopyInResponseBackendMessageType =
-  BackendMessageType 71
+pattern CopyInResponseMessageType =
+  MessageType 71
 
-pattern CopyOutBackendMessageType =
-  BackendMessageType 72
+pattern CopyOutMessageType =
+  MessageType 72
 
-pattern CopyBothBackendMessageType =
-  BackendMessageType 87
+pattern CopyBothMessageType =
+  MessageType 87
 
-pattern DataRowBackendMessageType =
-  BackendMessageType 68
+pattern DataRowMessageType =
+  MessageType 68
 
-pattern EmptyQueryBackendMessageType =
-  BackendMessageType 73
+pattern EmptyQueryMessageType =
+  MessageType 73
 
-pattern ErrorBackendMessageType =
-  BackendMessageType 69
+pattern ErrorMessageType =
+  MessageType 69
 
-pattern FunctionCallBackendMessageType =
-  BackendMessageType 86
+pattern FunctionCallMessageType =
+  MessageType 86
 
-pattern NoDataBackendMessageType =
-  BackendMessageType 110
+pattern NoDataMessageType =
+  MessageType 110
 
-pattern NoticeBackendMessageType =
-  BackendMessageType 78
+pattern NoticeMessageType =
+  MessageType 78
 
-pattern NotificationBackendMessageType =
-  BackendMessageType 65
+pattern NotificationMessageType =
+  MessageType 65
 
-pattern ParameterDescriptionBackendMessageType =
-  BackendMessageType 116
+pattern ParameterDescriptionMessageType =
+  MessageType 116
 
-pattern ParameterStatusBackendMessageType =
-  BackendMessageType 83
+pattern ParameterStatusMessageType =
+  MessageType 83
 
-pattern ParseCompleteBackendMessageType =
-  BackendMessageType 49
+pattern ParseCompleteMessageType =
+  MessageType 49
 
-pattern PortalSuspendedBackendMessageType =
-  BackendMessageType 115
+pattern PortalSuspendedMessageType =
+  MessageType 115
 
-pattern ReadyForQueryBackendMessageType =
-  BackendMessageType 90
+pattern ReadyForQueryMessageType =
+  MessageType 90
 
-pattern RowDescriptionBackendMessageType =
-  BackendMessageType 84
+pattern RowDescriptionMessageType =
+  MessageType 84
 
 
 newtype PayloadLength =

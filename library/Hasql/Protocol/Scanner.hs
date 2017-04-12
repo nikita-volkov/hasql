@@ -37,22 +37,22 @@ int32 :: Scanner Int32
 int32 =
   fromIntegral <$> word32
 
-{-# INLINE backendMessageTypeAndLength #-}
-backendMessageTypeAndLength :: (BackendMessageType -> Word32 -> a) -> Scanner a
-backendMessageTypeAndLength cont =
-  cont <$> backendMessageType <*> payloadLength
+{-# INLINE messageTypeAndLength #-}
+messageTypeAndLength :: (MessageType -> Word32 -> a) -> Scanner a
+messageTypeAndLength cont =
+  cont <$> messageType <*> payloadLength
 
-{-# INLINE backendMessageType #-}
-backendMessageType :: Scanner BackendMessageType
-backendMessageType =
-  BackendMessageType <$> word8
+{-# INLINE messageType #-}
+messageType :: Scanner MessageType
+messageType =
+  MessageType <$> word8
 
 {-# INLINE payloadLength #-}
 payloadLength :: (Integral a, Bits a) => Scanner a
 payloadLength =
   subtract 4 <$> numOfSize 4
 
-{-# INLINE backendMessageTypeAndPayload #-}
-backendMessageTypeAndPayload :: (BackendMessageType -> ByteString -> a) -> Scanner a
-backendMessageTypeAndPayload cont =
-  cont <$> backendMessageType <*> (payloadLength >>= A.take)
+{-# INLINE messageTypeAndPayload #-}
+messageTypeAndPayload :: (MessageType -> ByteString -> a) -> Scanner a
+messageTypeAndPayload cont =
+  cont <$> messageType <*> (payloadLength >>= A.take)

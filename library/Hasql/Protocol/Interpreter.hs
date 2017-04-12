@@ -15,7 +15,7 @@ newtype Interpreter =
   * A function, which processes the backend message type and
     its payload, signaling whether it expects more messages with 'True'.
   -}
-  Interpreter (BackendMessageType -> ByteString -> IO Bool)
+  Interpreter (MessageType -> ByteString -> IO Bool)
 
 instance Semigroup Interpreter where
   {-# INLINE (<>) #-}
@@ -47,7 +47,7 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
       where
         def messageType messageBytes =
           case messageType of
-            DataRowBackendMessageType ->
+            DataRowMessageType ->
               do
                 case {-# SCC "rowsReduction/rowParser" #-} A.run (rowParser <* A.endOfInput) messageBytes of
                   Right parsedRow ->
@@ -58,13 +58,13 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
                   Left rowParsingError ->
                     rowParsingErrorHandler rowParsingError
                 return True
-            CommandCompleteBackendMessageType ->
+            CommandCompleteMessageType ->
               do
                 accumulator <- readIORef accumulatorRef
                 result <- exit accumulator
                 resultHandler result
                 return False
-            ErrorBackendMessageType ->
+            ErrorMessageType ->
               do
                 case A.run D.errorMessage messageBytes of
                   Right (Error code message) ->
@@ -72,9 +72,9 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
                   Left parsingError ->
                     protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
                 return False
-            EmptyQueryBackendMessageType ->
+            EmptyQueryMessageType ->
               return False
-            PortalSuspendedBackendMessageType ->
+            PortalSuspendedMessageType ->
               return False
             _ ->
               return True
@@ -86,7 +86,7 @@ rowsAffected ::
   Interpreter
 rowsAffected resultHandler backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
-    CommandCompleteBackendMessageType -> \messageBytes ->
+    CommandCompleteMessageType -> \messageBytes ->
       do
         case A.run D.commandCompleteMessageAffectedRows messageBytes of
           Right rowsAffected ->
@@ -94,7 +94,7 @@ rowsAffected resultHandler backendErrorHandler protocolErrorHandler =
           Left parsingError ->
             protocolErrorHandler ("CommandComplete parsing error: " <> parsingError)
         return False
-    ErrorBackendMessageType -> \messageBytes ->
+    ErrorMessageType -> \messageBytes ->
       do
         case A.run D.errorMessage messageBytes of
           Right (Error code message) ->
@@ -102,9 +102,9 @@ rowsAffected resultHandler backendErrorHandler protocolErrorHandler =
           Left parsingError ->
             protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
         return False
-    EmptyQueryBackendMessageType ->
+    EmptyQueryMessageType ->
       const (return False)
-    PortalSuspendedBackendMessageType ->
+    PortalSuspendedMessageType ->
       const (return False)
     _ ->
       const (return True)
@@ -115,7 +115,7 @@ error ::
   Interpreter
 error backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
-    ErrorBackendMessageType ->
+    ErrorMessageType ->
       \messageBytes ->
       B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
@@ -128,9 +128,9 @@ bindComplete ::
   Interpreter
 bindComplete bindCompleteHandler backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
-    BindCompleteBackendMessageType ->
+    BindCompleteMessageType ->
       const (bindCompleteHandler $> False)
-    ErrorBackendMessageType ->
+    ErrorMessageType ->
       \messageBytes ->
       B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
@@ -143,9 +143,9 @@ parseComplete ::
   Interpreter
 parseComplete parseCompleteHandler backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
-    ParseCompleteBackendMessageType ->
+    ParseCompleteMessageType ->
       const (parseCompleteHandler $> False)
-    ErrorBackendMessageType ->
+    ErrorMessageType ->
       \messageBytes ->
       B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
@@ -158,9 +158,9 @@ readyForQuery ::
   Interpreter
 readyForQuery readyForQueryHandler backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
-    ReadyForQueryBackendMessageType ->
+    ReadyForQueryMessageType ->
       const (readyForQueryHandler $> False)
-    ErrorBackendMessageType ->
+    ErrorMessageType ->
       \messageBytes ->
       B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->

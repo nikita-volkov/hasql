@@ -15,7 +15,7 @@ import qualified Litsedey as A
 
 data Message =
   {-| A message from server -}
-  BackendMessageMessage !J.BackendMessageType !ByteString |
+  BackendMessageMessage !J.MessageType !ByteString |
   {-| Combines both sending and aggregation for atomicity -}
   SendAndAggregateMessage !ByteString !H.Interpreter !(Error -> IO ()) |
   TransportErrorMessage !Text |

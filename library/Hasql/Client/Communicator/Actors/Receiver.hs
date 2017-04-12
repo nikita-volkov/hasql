@@ -30,7 +30,7 @@ actor socket interpreter =
                 resupply =
                   ExceptT (F.receive socket 8192)
                 scanner =
-                  G.backendMessageTypeAndPayload (,)
+                  G.messageTypeAndPayload (,)
                 in runExceptT (H.scanWith resupply scanner remainder)
             case either of
               Right scannerResult ->

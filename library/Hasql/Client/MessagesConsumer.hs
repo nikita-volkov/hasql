@@ -103,15 +103,15 @@ rowsReductionOnTheBlockedThread rowParser rowFold =
         errorHandler . ProtocolError
       interpreter =
         H.Interpreter $ {-# SCC "rowsReductionOnTheBlockedThread/interpreter" #-} \case
-          J.DataRowBackendMessageType ->
+          J.DataRowMessageType ->
             \bytes -> sendEvent (C.DataRowEvent bytes) $> True
-          J.CommandCompleteBackendMessageType ->
+          J.CommandCompleteMessageType ->
             const (sendEvent C.FinishEvent $> False)
-          J.ErrorBackendMessageType ->
+          J.ErrorMessageType ->
             fmap (const False) . B.errorResponse backendErrorHandler protocolErrorHandler
-          J.EmptyQueryBackendMessageType ->
+          J.EmptyQueryMessageType ->
             const (sendEvent C.FinishEvent $> False)
-          J.PortalSuspendedBackendMessageType ->
+          J.PortalSuspendedMessageType ->
             const (protocolErrorHandler "Portal unexpectedly suspended" $> False)
           _ ->
             const (return True)
@@ -179,7 +179,7 @@ startUp clearTextPasswordHandler md5PasswordHandler =
   where
     interpreter integerDateTimesMaybeRef unblock =
       H.Interpreter $ \case
-        J.AuthenticationBackendMessageType ->
+        J.AuthenticationMessageType ->
           \messageBytes ->
           do
             B.authentication
@@ -189,10 +189,10 @@ startUp clearTextPasswordHandler md5PasswordHandler =
               (\error -> protocolErrorHandler error)
               messageBytes
             return True
-        J.ParameterStatusBackendMessageType ->
+        J.ParameterStatusMessageType ->
           \messageBytes ->
           B.parameterStatus parameterHandler protocolErrorHandler messageBytes $> True
-        J.ReadyForQueryBackendMessageType ->
+        J.ReadyForQueryMessageType ->
           const $ do
             integerDateTimesMaybe <- readIORef integerDateTimesMaybeRef
             case BackendSettings <$> integerDateTimesMaybe of
@@ -201,7 +201,7 @@ startUp clearTextPasswordHandler md5PasswordHandler =
               Nothing ->
                 unblock (Left (ProtocolError ("Missing required backend settings")))
             return False
-        J.ErrorBackendMessageType ->
+        J.ErrorMessageType ->
           \messageBytes ->
           B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
         _ ->
