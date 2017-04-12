@@ -30,19 +30,25 @@ newtype Do result =
   Do (ReaderT Receiver (ExceptT Error IO) result)
   deriving (Functor, Applicative, Monad, MonadIO, MonadError Error)
 
-io :: (Receiver -> IO (Either Error result)) -> Do result
+io :: (F.Socket -> E.Buffer Word8 -> IO (Either Error result)) -> Do result
 io def =
-  Do (ReaderT (\receiver -> ExceptT (def receiver)))
+  Do (ReaderT (\(Receiver socket buffer) -> ExceptT (def socket buffer)))
 
 {-|
 Populate the buffer by fetching the data from socket.
 -}
 fetchFromSocket :: Int -> Do ()
 fetchFromSocket amount =
-  io $ \(Receiver socket buffer) -> do
-    traceEventIO ("fetchFromSocket " <> show amount)
-    $(todo "")
+  io def
   where
+    def socket buffer =
+      do
+        traceEventIO ("START fetchFromSocket " <> show amount)
+        $(todo "")
+        traceEventIO ("STOP fetchFromSocket " <> show amount)
+        $(todo "")
+      where
+        
     actualAmount =
       max amount (shiftL 1 13)
 
@@ -62,7 +68,7 @@ peek peek =
     (amount, ptrIO) ->
       do
         demandAmount amount
-        io $ \(Receiver _ buffer) -> fmap Right $ E.withBuffer buffer ptrIO
+        io $ \_ buffer -> fmap Right $ E.withBuffer buffer ptrIO
 
 getMessageHeader :: (J.MessageType -> Int -> result) -> Do result
 getMessageHeader cont =
