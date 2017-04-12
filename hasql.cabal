@@ -58,6 +58,7 @@ library
     Hasql.Client.Communicator.Actors.Interpreter
     Hasql.Client.Communicator.Actors.Receiver
     Hasql.Client.Communicator.Actors.Sender
+    Hasql.Client.Communicator.Receiver
     Hasql.Client.EventBasedResultAggregation
     Hasql.Client.MessagesConsumer
     Hasql.Client.Model
