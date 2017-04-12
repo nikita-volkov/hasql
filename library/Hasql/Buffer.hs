@@ -19,7 +19,7 @@ foreign import ccall unsafe "memcpy"
 
 
 newtype Buffer =
-  Buffer (MVar State)
+  Buffer (IORef State)
 
 data State =
   {-|
@@ -34,8 +34,8 @@ new :: Int -> IO Buffer
 new space =
   do
     fptr <- mallocForeignPtrBytes space
-    stateMVar <- newMVar (State fptr 0 0 space)
-    return (Buffer stateMVar)
+    stateIORef <- newIORef (State fptr 0 0 space)
+    return (Buffer stateIORef)
 
 {-|
 Fill the buffer with the specified amount of bytes.
@@ -46,9 +46,9 @@ It is the user's responsibility that the pointer action
 does not exceed the limits.
 -}
 put :: Buffer -> Int {-^ Amount of bytes to be written -} -> (Ptr Word8 -> IO (result, Int {-^ Amount actually added -})) {-^ Poker -} -> IO result
-put (Buffer stateMVar) space ptrIO =
+put (Buffer stateIORef) space ptrIO =
   do
-    State fptr start end boundary <- takeMVar stateMVar
+    State fptr start end boundary <- readIORef stateIORef
     let
       remainingSpace = boundary - end
       delta = space - remainingSpace
@@ -56,7 +56,7 @@ put (Buffer stateMVar) space ptrIO =
       in if delta <= 0 -- Doesn't need more space?
         then do
           (result, addedSpace) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
-          putMVar stateMVar (State fptr start (end + addedSpace) boundary)
+          writeIORef stateIORef (State fptr start (end + addedSpace) boundary)
           return result
         else if delta > start -- Needs growing?
           then do
@@ -70,7 +70,7 @@ put (Buffer stateMVar) space ptrIO =
                 traceEventIO ("STOP Buffer/Grow")
                 ptrIO (plusPtr newPtr occupiedSpace)
             let newOccupiedSpace = occupiedSpace + addedSpace
-            putMVar stateMVar (State newFPtr 0 newOccupiedSpace newOccupiedSpace)
+            writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newOccupiedSpace)
             return result
           else if occupiedSpace > 0 -- Needs aligning?
             then do
@@ -81,18 +81,18 @@ put (Buffer stateMVar) space ptrIO =
                   memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
                   traceEventIO ("STOP Buffer/Align")
                   ptrIO (plusPtr ptr occupiedSpace)
-              putMVar stateMVar (State fptr 0 (occupiedSpace + addedSpace) boundary)
+              writeIORef stateIORef (State fptr 0 (occupiedSpace + addedSpace) boundary)
               return result
             else do
               (result, addedSpace) <- withForeignPtr fptr ptrIO
-              putMVar stateMVar (State fptr 0 addedSpace boundary)
+              writeIORef stateIORef (State fptr 0 addedSpace boundary)
               return result
 
 take :: Buffer -> (Ptr Word8 -> Int {-^ Available amount -} -> IO (result, Int {-^ Taken amount -})) -> IO result
-take (Buffer stateMVar) ptrIO =
+take (Buffer stateIORef) ptrIO =
   do
-    State fptr start end boundary <- takeMVar stateMVar
+    State fptr start end boundary <- readIORef stateIORef
     withForeignPtr fptr $ \ptr -> do
       (result, amountTaken) <- ptrIO (plusPtr ptr start) (end - start)
-      putMVar stateMVar (State fptr (start + amountTaken) end boundary)
+      writeIORef stateIORef (State fptr (start + amountTaken) end boundary)
       return result
