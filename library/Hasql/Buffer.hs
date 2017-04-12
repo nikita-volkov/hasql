@@ -1,6 +1,13 @@
-module Hasql.Buffer where
+module Hasql.Buffer
+(
+  Buffer,
+  new,
+  put,
+  take,
+)
+where
 
-import Hasql.Prelude hiding (State, Buffer)
+import Hasql.Prelude hiding (State, Buffer, put, take)
 import Foreign.C
 
 
@@ -46,12 +53,12 @@ put (Buffer stateMVar) space ptrIO =
       remainingSpace = boundary - end
       delta = space - remainingSpace
       occupiedSpace = end - start
-      in if delta <= 0
+      in if delta <= 0 -- Needs more space?
         then do
           withForeignPtr fptr $ \ptr -> do
             ptrIO (plusPtr ptr end)
           putMVar stateMVar (State fptr start (end + space) boundary)
-        else if delta > start
+        else if delta > start -- Needs growing?
           then do
             -- Grow
             let
@@ -64,16 +71,20 @@ put (Buffer stateMVar) space ptrIO =
               traceEventIO ("STOP Buffer/Grow")
               ptrIO (plusPtr newPtr occupiedSpace)
             putMVar stateMVar (State newFPtr 0 newOccupiedSpace newOccupiedSpace)
-          else do
-            -- Align
-            withForeignPtr fptr $ \ptr -> do
-              traceEventIO ("START Buffer/Align")
-              memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
-              traceEventIO ("STOP Buffer/Align")
-              ptrIO (plusPtr ptr occupiedSpace)
-            putMVar stateMVar (State fptr 0 (occupiedSpace + space) boundary)
+          else if occupiedSpace > 0 -- Needs aligning?
+            then do
+              -- Align
+              withForeignPtr fptr $ \ptr -> do
+                traceEventIO ("START Buffer/Align")
+                memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
+                traceEventIO ("STOP Buffer/Align")
+                ptrIO (plusPtr ptr occupiedSpace)
+              putMVar stateMVar (State fptr 0 (occupiedSpace + space) boundary)
+            else do
+              withForeignPtr fptr ptrIO
+              putMVar stateMVar (State fptr 0 space boundary)
 
-take :: Buffer -> (Ptr Word8 -> Int -> IO (result, Int)) -> IO result
+take :: Buffer -> (Ptr Word8 -> Int {-^ Available amount -} -> IO (result, Int {-^ Taken amount -})) -> IO result
 take (Buffer stateMVar) ptrIO =
   do
     State fptr start end boundary <- takeMVar stateMVar
