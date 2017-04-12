@@ -176,7 +176,6 @@ test-suite profiling
     -O2
     -threaded
     "-with-rtsopts=-N"
-    -- "-with-rtsopts=-N -ls -lf"
   ghc-prof-options:
     -fno-prof-auto
     -fno-prof-cafs
