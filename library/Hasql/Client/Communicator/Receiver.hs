@@ -3,7 +3,7 @@ module Hasql.Client.Communicator.Receiver where
 import Hasql.Prelude hiding (peek)
 import qualified Hasql.Protocol.Model as J
 import qualified Hasql.Client.Socket as F
-import qualified GHC.IO.Buffer as E
+import qualified Hasql.Buffer as E
 import qualified Hasql.Ptr.Peek as C
 
 
@@ -16,22 +16,22 @@ data Error =
 A specialized buffered socket reader.
 -}
 data Receiver =
-  Receiver F.Socket (E.Buffer Word8)
+  Receiver F.Socket E.Buffer
 
 acquire :: F.Socket -> IO Receiver
 acquire socket =
   Receiver socket <$> acquireBuffer
   where
     acquireBuffer =
-      E.newByteBuffer (shiftL 1 14) E.WriteBuffer
+      E.new (shiftL 1 14)
 
 
 newtype Do result =
   Do (ReaderT Receiver (ExceptT Error IO) result)
   deriving (Functor, Applicative, Monad, MonadIO, MonadError Error)
 
-io :: (F.Socket -> E.Buffer Word8 -> IO (Either Error result)) -> Do result
-io def =
+primitiveDo :: (F.Socket -> E.Buffer -> IO (Either Error result)) -> Do result
+primitiveDo def =
   Do (ReaderT (\(Receiver socket buffer) -> ExceptT (def socket buffer)))
 
 {-|
@@ -39,16 +39,18 @@ Populate the buffer by fetching the data from socket.
 -}
 fetchFromSocket :: Int -> Do ()
 fetchFromSocket amount =
-  io def
+  primitiveDo def
   where
     def socket buffer =
       do
         traceEventIO ("START fetchFromSocket " <> show amount)
-        $(todo "")
+        socketEither <- E.put buffer actualAmount $ \ptr -> do
+          either <- F.receiveToPtr socket ptr actualAmount
+          case either of
+            Left x -> return (Left (TransportError x), 0)
+            Right x -> return (Right (), x)
         traceEventIO ("STOP fetchFromSocket " <> show amount)
-        $(todo "")
-      where
-        
+        return socketEither
     actualAmount =
       max amount (shiftL 1 13)
 
@@ -58,8 +60,8 @@ blocking until that.
 
 Initiates the socket fetching if need be.
 -}
-demandAmount :: Int -> Do ()
-demandAmount amount =
+arrangeData :: Int -> Do ()
+arrangeData amount =
   $(todo "")
 
 peek :: C.Peek peeked -> Do peeked
@@ -67,8 +69,10 @@ peek peek =
   case C.run peek of
     (amount, ptrIO) ->
       do
-        demandAmount amount
-        io $ \_ buffer -> fmap Right $ E.withBuffer buffer ptrIO
+        arrangeData amount
+        primitiveDo $ \_ buffer -> E.take buffer $ \ptr _ -> do
+          result <- ptrIO ptr
+          return (Right result, amount)
 
 getMessageHeader :: (J.MessageType -> Int -> result) -> Do result
 getMessageHeader cont =
