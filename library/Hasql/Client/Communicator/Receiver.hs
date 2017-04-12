@@ -87,7 +87,7 @@ getMessageHeader cont =
   peek peeker
   where
     peeker =
-      cont <$> (J.MessageType <$> C.word8) <*> (fromIntegral <$> C.beWord32)
+      cont <$> (J.MessageType <$> C.word8) <*> (subtract 4 . fromIntegral <$> C.beWord32)
 
 getMessageBytes :: Int -> Do ByteString
 getMessageBytes amount =
