@@ -68,6 +68,12 @@ receive (Socket socket) amount =
   {-# SCC "receive" #-} 
   trySocketIO (C.recv socket amount)
 
+{-# INLINE receiveToPtr #-}
+receiveToPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
+receiveToPtr (Socket socket) ptr amount =
+  {-# SCC "receiveToPtr" #-} 
+  trySocketIO (B.recvBuf socket ptr amount)
+
 {-# INLINE send #-}
 send :: Socket -> ByteString -> IO (Either Text ())
 send (Socket socket) bytes =
