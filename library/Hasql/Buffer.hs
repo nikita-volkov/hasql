@@ -53,7 +53,7 @@ put (Buffer stateMVar) space ptrIO =
       remainingSpace = boundary - end
       delta = space - remainingSpace
       occupiedSpace = end - start
-      in if delta <= 0 -- Needs more space?
+      in if delta <= 0 -- Doesn't need more space?
         then do
           (result, addedSpace) <- withForeignPtr fptr $ \ptr -> ptrIO (plusPtr ptr end)
           putMVar stateMVar (State fptr start (end + addedSpace) boundary)
