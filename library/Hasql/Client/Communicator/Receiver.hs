@@ -9,7 +9,7 @@ import qualified Hasql.Ptr.Peek as C
 
 data Error =
   TransportError Text |
-  ParsingError Text
+  PeekingError Text
 
 
 {-|
@@ -24,6 +24,10 @@ acquire socket =
   where
     acquireBuffer =
       E.new (shiftL 1 14)
+
+use :: Receiver -> Do result -> IO (Either Error result)
+use receiver (Do reader) =
+  runExceptT (runReaderT reader receiver)
 
 
 newtype Do result =
