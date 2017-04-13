@@ -86,7 +86,7 @@ statementWithManyRows decoder =
   C.statement template encoder (decoder rowDecoder) True
   where
     template =
-      "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
+      "SELECT generate_series(0,10000) as a, generate_series(10000,20000) as b"
     encoder =
       conquer
     rowDecoder =
