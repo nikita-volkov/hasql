@@ -13,7 +13,9 @@ import qualified Data.Vector as F
 main =
   do
     Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
+    traceEventIO "START Session"
     Right result <- A.use connection session
+    traceEventIO "STOP Session"
     return ()
 
 
