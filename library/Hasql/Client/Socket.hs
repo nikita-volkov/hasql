@@ -24,7 +24,6 @@ trySocketIO io =
 connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
 connectToHostAndPort host port =
   do
-    traceEventIO ("connectToHostAndPort")
     runExceptT $ do
       addrList <- getAddressInfo
       addr <- headFailing "Invalid host or port" addrList
