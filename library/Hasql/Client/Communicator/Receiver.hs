@@ -24,7 +24,7 @@ acquire socket =
   Receiver socket <$> acquireBuffer
   where
     acquireBuffer =
-      E.new (shiftL 1 14)
+      E.new (shiftL 1 15)
 
 {-# INLINE use #-}
 use :: Receiver -> Do result -> IO (Either Error result)
