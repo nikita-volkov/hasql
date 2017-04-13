@@ -14,7 +14,7 @@ main =
   do
     Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
     traceEventIO "START Session"
-    Right result <- A.use connection sessionWithManySmallResults
+    Right result <- A.use connection sessionWithAverageResults
     traceEventIO "STOP Session"
     return ()
 
@@ -26,9 +26,10 @@ sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInList =
   B.batch (B.statement statementWithManyRowsInList ())
 
-sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
-sessionWithManySmallResults =
-  F.replicateM 20 (B.batch (B.statement statementWithSingleRow ()))
+sessionWithAverageResults :: B.Session (List (List (List (Int64, Int64))))
+sessionWithAverageResults =
+  replicateM 3 (B.batch (replicateM 3 (B.statement (statementWithAverageRows C.rowList) ())))
+
 
 -- * Statements
 -------------------------
@@ -61,6 +62,21 @@ statementWithManyRows decoder =
       conquer
     rowDecoder =
       {-# SCC "statementWithManyRows/rowDecoder" #-} 
+      tuple <$> C.column D.int8 <*> C.column D.int8
+      where
+        tuple !a !b =
+          (a, b)
+
+statementWithAverageRows :: (C.RowDecoder (Int64, Int64) -> C.Decoder result) -> C.Statement () result
+statementWithAverageRows decoder =
+  C.statement template encoder ({-# SCC "statementWithAverageRows/decoder" #-} decoder rowDecoder) True
+  where
+    template =
+      "SELECT generate_series(0,100) as a, generate_series(100,200) as b"
+    encoder =
+      conquer
+    rowDecoder =
+      {-# SCC "statementWithAverageRows/rowDecoder" #-} 
       tuple <$> C.column D.int8 <*> C.column D.int8
       where
         tuple !a !b =
