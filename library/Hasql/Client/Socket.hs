@@ -71,22 +71,16 @@ receive (Socket socket) amount =
 receiveToPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
 receiveToPtr (Socket socket) ptr amount =
   {-# SCC "receiveToPtr" #-} 
-  traceEventIO "START Socket/receiveToPtr" *>
   trySocketIO (B.recvBuf socket ptr amount)
-  <* traceEventIO "STOP Socket/receiveToPtr"
 
 {-# INLINE send #-}
 send :: Socket -> ByteString -> IO (Either Text ())
 send (Socket socket) bytes =
   {-# SCC "send" #-} 
-  traceEventIO "START Socket/send" *>
   trySocketIO (C.sendAll socket bytes)
-  <* traceEventIO "STOP Socket/send"
 
 {-# INLINE sendFromPtr #-}
 sendFromPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
 sendFromPtr (Socket socket) ptr amount =
   {-# SCC "sendFromPtr" #-} 
-  traceEventIO "START Socket/sendFromPtr" *>
   trySocketIO (B.sendBuf socket ptr amount)
-  <* traceEventIO "STOP Socket/sendFromPtr"

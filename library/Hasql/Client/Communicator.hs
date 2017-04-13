@@ -67,7 +67,6 @@ acquire socket =
 sendAndConsume :: Communicator -> L.Builder -> H.MessagesConsumer result -> IO (IO (Either Error result))
 sendAndConsume communicator messageBuilder (H.MessagesConsumer createConsumer) =
   do
-    traceMarkerIO ("sendAndConsume")
     (messageInterpreter, failer, blocker) <- createConsumer
     scheduleMessage communicator messageBuilder
     scheduleReceiver communicator messageInterpreter failer

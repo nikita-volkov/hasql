@@ -22,10 +22,16 @@ schedule (Sender _ buffer) builder =
 
 flush :: Sender -> IO (Either Text ())
 flush (Sender socket buffer) =
-  E.take buffer $ \ptr amount -> do
-    sendResult <- F.sendFromPtr socket ptr amount
-    case sendResult of
-      Right takenAmount ->
-        return (Right (), takenAmount)
-      Left error -> 
-        return (Left error, 0)
+  do
+    traceMarkerIO ("Sender/flush")
+    traceEventIO "START Sender/flush"
+    result <-
+      E.take buffer $ \ptr amount -> do
+        sendResult <- F.sendFromPtr socket ptr amount
+        case sendResult of
+          Right takenAmount ->
+            return (Right (), takenAmount)
+          Left error -> 
+            return (Left error, 0)
+    traceEventIO "STOP Sender/flush"
+    return result
