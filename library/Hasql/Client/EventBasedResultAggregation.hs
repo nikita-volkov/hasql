@@ -14,6 +14,7 @@ data Event =
 {-|
 Produces a result-computing action and an event enqueing action.
 -}
+{-# INLINE rowsReduction #-}
 rowsReduction :: A.BinaryParser row -> FoldM IO row reduction -> IO (IO (Either Error reduction), Event -> IO ())
 rowsReduction rowParser (FoldM progress enter exit) =
   do
