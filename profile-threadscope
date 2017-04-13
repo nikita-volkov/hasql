@@ -3,5 +3,5 @@ set -eo pipefail
 
 cabal build profiling --ghc-options="-eventlog"
 cd dist
-build/profiling/profiling +RTS -N4 -ls -RTS
+build/profiling/profiling +RTS -N4 -ls -A256m -H512m -RTS
 threadscope profiling.eventlog
