@@ -74,13 +74,12 @@ arrangeData amount =
 
 peek :: C.Peek peeked -> Do peeked
 peek peek =
-  case C.run peek of
-    (amount, ptrIO) ->
-      do
-        arrangeData amount
-        primitiveDo $ \_ buffer -> E.take buffer $ \ptr _ -> do
-          result <- ptrIO ptr
-          return (Right result, amount)
+  C.run peek $ \amount ptrIO ->
+  do
+    arrangeData amount
+    primitiveDo $ \_ buffer -> E.take buffer $ \ptr _ -> do
+      result <- ptrIO ptr
+      return (Right result, amount)
 
 getMessageHeader :: (J.MessageType -> Int -> result) -> Do result
 getMessageHeader cont =

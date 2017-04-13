@@ -65,6 +65,7 @@ library
     Hasql.Client.Socket
     Hasql.Ptr.Peek
     Hasql.Ptr.Do
+    Hasql.Ptr.IO
     Hasql.Buffer
     Hasql.Connection.Session.Session
     Hasql.Connection.Session.Statement.Decoding.Decoding
