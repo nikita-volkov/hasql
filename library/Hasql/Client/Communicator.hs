@@ -81,7 +81,6 @@ sendAndFlush communicator messageBuilder =
 startUp :: Communicator -> ByteString -> Maybe ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> IO (IO (Either Error BackendSettings))
 startUp communicator username passwordMaybe databaseMaybe runtimeParameters =
   do
-    traceMarkerIO ("startUp")
     (<*) <$> sendAndConsume communicator message consumer <*> flush communicator
   where
     message =

@@ -24,16 +24,13 @@ rowsReduction rowParser (FoldM progress enter exit) =
         atomically (readTQueue eventQueue) >>= \case
           DataRowEvent bytes ->
             do
-              traceEventIO "START EventBasedResultAggregation/rowsReduction/DataRow"
               case A.run (rowParser <* A.endOfInput) bytes of
                 Right parsedRow ->
                   do
                     newAccumulator <- progress accumulator parsedRow
-                    traceEventIO "STOP EventBasedResultAggregation/rowsReduction/DataRow"
                     interpretNextEvent newAccumulator
                 Left rowParsingError ->
                   do
-                    traceEventIO "STOP EventBasedResultAggregation/rowsReduction/DataRow"
                     return (Left (DecodingError ("Row: " <> rowParsingError)))
           FinishEvent ->
             fmap Right (exit accumulator)

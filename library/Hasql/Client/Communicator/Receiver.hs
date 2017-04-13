@@ -51,14 +51,11 @@ fetchFromSocket amount =
   where
     def socket buffer =
       do
-        traceMarkerIO "fetchFromSocket"
-        traceEventIO "START Receiver/fetchFromSocket"
         socketEither <- E.put buffer actualAmount $ \ptr -> do
           either <- F.receiveToPtr socket ptr actualAmount
           case either of
             Left x -> return (Left (TransportError x), 0)
             Right x -> return (Right (), x)
-        traceEventIO "STOP Receiver/fetchFromSocket"
         return socketEither
     actualAmount =
       max amount (shiftL 1 13)

@@ -23,8 +23,6 @@ schedule (Sender _ buffer) builder =
 flush :: Sender -> IO (Either Text ())
 flush (Sender socket buffer) =
   do
-    traceMarkerIO ("Sender/flush")
-    traceEventIO "START Sender/flush"
     result <-
       E.take buffer $ \ptr amount -> do
         sendResult <- F.sendFromPtr socket ptr amount
@@ -33,5 +31,4 @@ flush (Sender socket buffer) =
             return (Right (), takenAmount)
           Left error -> 
             return (Left error, 0)
-    traceEventIO "STOP Sender/flush"
     return result

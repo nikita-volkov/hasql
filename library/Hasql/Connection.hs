@@ -25,7 +25,6 @@ data Connection =
 
 acquire host portMaybe username passwordMaybe databaseMaybe =
   do
-    traceMarkerIO ("acquire")
     runExceptT $ do
       socket <-
         let

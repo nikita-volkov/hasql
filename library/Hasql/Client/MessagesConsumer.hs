@@ -55,13 +55,10 @@ unblockingInterpreter interpreter =
 unblockingInterpreterIO :: ((Either Error result -> IO ()) -> IO H.Interpreter) -> MessagesConsumer result
 unblockingInterpreterIO interpreterIO =
   MessagesConsumer $ do
-    traceEventIO "START MessagesConsumer/unblockingInterpreterIO"
     outputMVar <- newEmptyMVar
     let
       output output =
-        do
-          tryPutMVar outputMVar output
-          traceEventIO "STOP MessagesConsumer/unblockingInterpreterIO"
+        tryPutMVar outputMVar output $> ()
     interpreter <- interpreterIO output
     return (interpreter, output . Left, takeMVar outputMVar)
 
