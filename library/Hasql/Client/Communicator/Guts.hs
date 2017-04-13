@@ -23,7 +23,7 @@ runReceivingLoop socket handlerChan =
     fix $ \processNextInterpreter -> do
       readChanResult <- C.readChan handlerChan
       forM_ readChanResult $ \(B.Interpreter sendMessage, sendError) -> do
-        fix $ \processNextMessage -> do
+        fix $ \processNextMessage -> {-# SCC "runReceivingLoop/processNextMessage" #-} do
           getMessageResult <- A.use receiver (A.getMessage sendMessage)
           case getMessageResult of
             Right sendMessage ->
@@ -48,7 +48,7 @@ runSendingLoop :: F.Socket -> C.OutChan SenderMessage -> IO ()
 runSendingLoop socket messageChan =
   do
     sender <- G.acquire socket
-    fix $ \processNextMessage -> do
+    fix $ \processNextMessage -> {-# SCC "runSendingLoop/processNextMessage" #-} do
       message <- C.readChan messageChan
       case message of
         ScheduleSenderMessage builder ->
