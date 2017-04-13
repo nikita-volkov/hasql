@@ -3,5 +3,6 @@ set -eo pipefail
 
 cabal build profiling --ghc-options="-eventlog"
 cd dist
-build/profiling/profiling +RTS -N4 -RTS
+build/profiling/profiling +RTS -N4 -ls -RTS
 ghc-events-analyze profiling.eventlog
+open profiling.timed.svg
