@@ -18,6 +18,7 @@ A specialized buffered socket reader.
 data Receiver =
   Receiver F.Socket E.Buffer
 
+{-# INLINE acquire #-}
 acquire :: F.Socket -> IO Receiver
 acquire socket =
   Receiver socket <$> acquireBuffer
@@ -25,6 +26,7 @@ acquire socket =
     acquireBuffer =
       E.new (shiftL 1 14)
 
+{-# INLINE use #-}
 use :: Receiver -> Do result -> IO (Either Error result)
 use receiver (Do reader) =
   runExceptT (runReaderT reader receiver)
@@ -34,6 +36,7 @@ newtype Do result =
   Do (ReaderT Receiver (ExceptT Error IO) result)
   deriving (Functor, Applicative, Monad, MonadIO, MonadError Error)
 
+{-# INLINE primitiveDo #-}
 primitiveDo :: (F.Socket -> E.Buffer -> IO (Either Error result)) -> Do result
 primitiveDo def =
   Do (ReaderT (\(Receiver socket buffer) -> ExceptT (def socket buffer)))
@@ -41,6 +44,7 @@ primitiveDo def =
 {-|
 Populate the buffer by fetching the data from socket.
 -}
+{-# INLINABLE fetchFromSocket #-}
 fetchFromSocket :: Int -> Do ()
 fetchFromSocket amount =
   primitiveDo def
@@ -64,6 +68,7 @@ blocking until that.
 
 Initiates the socket fetching if need be.
 -}
+{-# INLINE arrangeData #-}
 arrangeData :: Int -> Do ()
 arrangeData amount =
   do
@@ -72,6 +77,7 @@ arrangeData amount =
       then return ()
       else fetchFromSocket (amount - availableAmount)
 
+{-# INLINABLE peek #-}
 peek :: C.Peek peeked -> Do peeked
 peek peek =
   case C.run peek of
@@ -82,6 +88,7 @@ peek peek =
           result <- ptrIO ptr
           return (Right result, amount)
 
+{-# INLINE getMessageHeader #-}
 getMessageHeader :: (J.MessageType -> Int -> result) -> Do result
 getMessageHeader cont =
   peek peeker
@@ -89,10 +96,12 @@ getMessageHeader cont =
     peeker =
       cont <$> (J.MessageType <$> C.word8) <*> (subtract 4 . fromIntegral <$> C.beWord32)
 
+{-# INLINE getMessageBytes #-}
 getMessageBytes :: Int -> Do ByteString
 getMessageBytes amount =
   peek (C.bytes amount)
 
+{-# INLINE getMessage #-}
 getMessage :: (J.MessageType -> ByteString -> result) -> Do result
 getMessage cont =
   join $ getMessageHeader $ \messageType messageLength ->
