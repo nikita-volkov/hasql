@@ -97,7 +97,7 @@ library
     -- database:
     postgresql-binary == 0.12.*,
     -- data:
-    bytestring-strict-builder >= 0.4.4 && < 0.5,
+    bytestring-strict-builder >= 0.4.5 && < 0.5,
     vector-builder == 0.3.*,
     deque == 0.2.*,
     cryptonite == 0.22.*,
