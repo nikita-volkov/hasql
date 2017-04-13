@@ -14,7 +14,7 @@ main =
   do
     Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
     traceEventIO "START Session"
-    Right result <- A.use connection session
+    Right result <- A.use connection sessionWithManySmallResults
     traceEventIO "STOP Session"
     return ()
 
@@ -22,11 +22,13 @@ main =
 -- * Sessions
 -------------------------
 
-session :: B.Session (List (Int64, Int64))
-session =
-  B.batch $
-  B.statement statementWithManyRowsInRevList ()
+sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
+sessionWithSingleLargeResultInList =
+  B.batch (B.statement statementWithManyRowsInList ())
 
+sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
+sessionWithManySmallResults =
+  F.replicateM 20 (B.batch (B.statement statementWithSingleRow ()))
 
 -- * Statements
 -------------------------
@@ -54,7 +56,7 @@ statementWithManyRows decoder =
   C.statement template encoder ({-# SCC "statementWithManyRows/decoder" #-} decoder rowDecoder) True
   where
     template =
-      "SELECT generate_series(0,10000) as a, generate_series(10000,20000) as b"
+      "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
     encoder =
       conquer
     rowDecoder =
