@@ -51,6 +51,7 @@ fetchFromSocket amount =
   where
     def socket buffer =
       do
+        traceMarkerIO "fetchFromSocket"
         traceEventIO ("START fetchFromSocket " <> show amount)
         socketEither <- E.put buffer actualAmount $ \ptr -> do
           either <- F.receiveToPtr socket ptr actualAmount
