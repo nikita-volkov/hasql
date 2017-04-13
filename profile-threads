@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
-cabal build profiling --ghc-options="-O2 -j -threaded -eventlog"
+cabal build profiling --ghc-options="-eventlog"
 cd dist
-build/profiling/profiling +RTS -N4 -ls -lf -RTS
+build/profiling/profiling +RTS -N4 -RTS
 ghc-events-analyze profiling.eventlog
 threadscope profiling.eventlog
