@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eo pipefail
+
+cabal build profiling --ghc-options="-fno-prof-auto -fno-prof-cafs"
+cd dist
+build/profiling/profiling +RTS -N -p -s -RTS
+open profiling.prof
