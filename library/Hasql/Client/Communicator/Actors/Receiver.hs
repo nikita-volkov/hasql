@@ -18,17 +18,16 @@ actor socket interpreter =
     receiver <- K.acquire socket
     B.disgraceful $ \case
       ReceiveForeverMessage ->
-        loop ""
+        loop
         where
-          loop remainder =
-            {-# SCC "actor/loop" #-} 
+          loop =
             do
               eitherMessage <- K.use receiver (K.getMessage E.BackendMessageMessage)
               case eitherMessage of
                 Right message ->
                   do
                     B.tell interpreter message
-                    loop remainder
+                    loop
                 Left error ->
                   case error of
                     K.TransportError x ->
