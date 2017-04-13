@@ -50,9 +50,12 @@ batch (Batch batchFuture) =
   Session $ \env@(Env communicator _ _) -> do
     batchIO <- batchFuture env
     syncIO <- A.sync communicator
+    flushEitherRef <- newIORef (Right ())
+    flushIO <- A.flush communicator (writeIORef flushEitherRef . Left . C.TransportError)
     batchEither <- batchIO
     syncEither <- syncIO
-    return (batchEither <* syncEither)
+    flushEither <- readIORef flushEitherRef
+    return (batchEither <* syncEither <* flushEither)
 
 {-|
 One peculiarity of the batch execution is that it does not allow for one statement

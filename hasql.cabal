@@ -55,10 +55,9 @@ library
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
     Hasql.Client.Communicator
-    Hasql.Client.Communicator.Actors.Interpreter
-    Hasql.Client.Communicator.Actors.Receiver
-    Hasql.Client.Communicator.Actors.Sender
     Hasql.Client.Communicator.Receiver
+    Hasql.Client.Communicator.Sender
+    Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation
     Hasql.Client.MessagesConsumer
     Hasql.Client.Model
@@ -87,7 +86,6 @@ library
     unagi-chan == 0.4.*,
     stm >= 2.4 && < 3,
     slave-thread == 1.*,
-    litsedey == 1.*,
     -- networking:
     network == 2.*,
     -- template-haskell:
@@ -99,7 +97,7 @@ library
     -- database:
     postgresql-binary == 0.12.*,
     -- data:
-    bytestring-strict-builder >= 0.4 && < 0.5,
+    bytestring-strict-builder >= 0.4.4 && < 0.5,
     vector-builder == 0.3.*,
     deque == 0.2.*,
     cryptonite == 0.22.*,
