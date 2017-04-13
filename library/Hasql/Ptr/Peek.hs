@@ -10,12 +10,13 @@ module Hasql.Ptr.Peek
 where
 
 import Hasql.Prelude
-import qualified Hasql.Ptr.Do as A
+import qualified Hasql.Ptr.IO as A
 
 
-run :: Peek peeked -> (Int, Ptr Word8 -> IO peeked)
-run (Peek amount ptrDo) =
-  (amount, A.run ptrDo)
+{-# INLINE run #-}
+run :: Peek peeked -> (Int -> (Ptr Word8 -> IO peeked) -> result) -> result
+run (Peek amount ptrIO) cont =
+  cont amount ptrIO
 
 {-|
 A parser with a statically known required input size.
@@ -28,17 +29,21 @@ data Peek result =
   * Size of the input to be consumed
   * Action on the input pointer
   -}
-  Peek !Int !(A.Do result)
+  Peek !Int !(Ptr Word8 -> IO result)
 
 deriving instance Functor Peek
 
 instance Applicative Peek where
   {-# INLINE pure #-}
   pure x =
-    Peek 0 (pure x)
+    Peek 0 (const (pure x))
   {-# INLINE (<*>) #-}
-  (<*>) (Peek leftSize leftPeek) (Peek rightSize rightPeek) =
-    Peek (leftSize + rightSize) (leftPeek <*> rightPeek)
+  (<*>) (Peek leftSize leftIO) (Peek rightSize rightIO) =
+    Peek (leftSize + rightSize) io
+    where
+      io ptr =
+        leftIO ptr <*> rightIO (plusPtr ptr leftSize)
+
 
 {-# INLINE word8 #-}
 word8 :: Peek Word8
