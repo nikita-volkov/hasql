@@ -10,7 +10,7 @@ import qualified Data.Vector as E
 
 
 data Env =
-  Env A.Communicator {-# UNPACK #-} !C.BackendSettings D.PreparedStatementRegistry
+  Env A.Communicator {-# UNPACK #-} !C.BackendSettings (IORef D.Registry)
 
 newtype Session result =
   Session (Env -> IO (Either C.Error result))
@@ -91,7 +91,7 @@ statement :: B.Statement params result -> params -> Batch result
 statement (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 resultColumnsAmount resultOIDsValidator resultCollector1 resultCollector2 prepared) params =
   Batch io
   where
-    io (Env communicator (C.BackendSettings integerDateTimes) preparedStatementRegistry) =
+    io (Env communicator (C.BackendSettings integerDateTimes) preparedStatementRegistryRef) =
       do
         (key, syncParse) <- parseAndResolveStatementName
         syncBind <- A.bindEncoded communicator "" key ((fromIntegral . E.length) paramOIDs) (paramBytesBuilder params)
@@ -105,14 +105,15 @@ statement (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 
         parseAndResolveStatementName =
           case prepared of
             True ->
-              D.update preparedStatementRegistry (D.LocalKey template paramOIDs) prepare existingKeyCont
-              where
-                prepare newKey =
-                  do
-                    sync <- A.parse communicator newKey template paramOIDs
-                    return (True, (newKey, sync))
-                existingKeyCont key =
-                  return (key, return (Right ()))
+              do
+                eitherName <- atomicModifyIORef' preparedStatementRegistryRef (swap . D.lookupOrRegister template paramOIDs)
+                case eitherName of
+                  Left newName ->
+                    do
+                      sync <- A.parse communicator newName template paramOIDs
+                      return (newName, sync)
+                  Right existingName ->
+                    return (existingName, return (Right ()))
             False ->
               do
                 sync <- A.parse communicator "" template paramOIDs

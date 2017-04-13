@@ -33,11 +33,11 @@ acquire host portMaybe username passwordMaybe databaseMaybe =
           in ExceptT $ fmap (first D.TransportError) $ B.connectToHostAndPort host port
       communicator <- lift (A.acquire socket)
       backendSettings <- ExceptT $ join $ A.startUp communicator username passwordMaybe databaseMaybe []
-      preparedStatementRegistry <- lift E.new
+      preparedStatementRegistryRef <- lift (newIORef E.nil)
       let
         use :: forall result. C.Session result -> IO (Either D.Error result)
         use (C.Session io) =
-          io (C.Env communicator backendSettings preparedStatementRegistry)
+          io (C.Env communicator backendSettings preparedStatementRegistryRef)
         release =
           do
             A.release communicator

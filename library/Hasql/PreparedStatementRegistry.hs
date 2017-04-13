@@ -1,47 +1,14 @@
 module Hasql.PreparedStatementRegistry
 (
-  PreparedStatementRegistry,
-  new,
-  update,
-  LocalKey(..),
+  Registry,
+  nil,
+  lookupOrRegister,
 )
 where
 
 import Hasql.Prelude hiding (lookup)
-import qualified Data.HashTable.IO as A
+import qualified Data.HashMap.Strict as A
 import qualified ByteString.StrictBuilder as B
-
-
-data PreparedStatementRegistry =
-  PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
-
-{-# INLINE new #-}
-new :: IO PreparedStatementRegistry
-new =
-  PreparedStatementRegistry <$> A.new <*> newIORef 0
-
-{-# INLINABLE update #-}
-update :: PreparedStatementRegistry -> LocalKey -> (ByteString -> IO (Bool, a)) -> (ByteString -> IO a) -> IO a
-update (PreparedStatementRegistry table counter) localKey onNewRemoteKey onOldRemoteKey =
-  lookup >>= maybe new old
-  where
-    lookup =
-      A.lookup table localKey
-    new =
-      readIORef counter >>= onN
-      where
-        onN n =
-          do
-            (save, result) <- onNewRemoteKey remoteKey
-            when save $ do
-              A.insert table localKey remoteKey
-              writeIORef counter (succ n)
-            return result
-          where
-            remoteKey =
-              B.builderBytes . B.asciiIntegral $ n
-    old =
-      onOldRemoteKey
 
 
 -- |
@@ -54,3 +21,29 @@ instance Hashable LocalKey where
   {-# INLINE hashWithSalt #-}
   hashWithSalt salt (LocalKey template types) =
     hashWithSalt salt template
+
+
+data Registry =
+  Registry !(A.HashMap LocalKey ByteString) !Word
+
+{-# INLINE nil #-}
+nil :: Registry
+nil =
+  Registry A.empty 0
+
+{-# INLINABLE lookupOrRegister #-}
+lookupOrRegister :: ByteString -> Vector Word32 -> Registry -> (Either ByteString ByteString, Registry)
+lookupOrRegister template oids (Registry hashMap counter) =
+  case A.lookup localKey hashMap of
+    Just remoteKey ->
+      (Right remoteKey, Registry hashMap counter)
+    Nothing ->
+      (Left remoteKey, Registry newHashMap (succ counter))
+      where
+        remoteKey =
+          B.builderBytes (B.asciiIntegral counter)
+        newHashMap =
+          A.insert localKey remoteKey hashMap
+  where
+    localKey =
+      LocalKey template oids
