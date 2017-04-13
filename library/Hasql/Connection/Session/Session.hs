@@ -92,7 +92,6 @@ statement (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 
     io (Env communicator (C.BackendSettings integerDateTimes) preparedStatementRegistry) =
       do
         traceMarkerIO ("statement " <> show template)
-        traceEventIO ("START statement")
         (key, syncParse) <- parseAndResolveStatementName
         syncBind <- A.bindEncoded communicator "" key ((fromIntegral . E.length) paramOIDs) (paramBytesBuilder params)
         syncExecute <- A.execute communicator "" resultCollector
@@ -100,7 +99,6 @@ statement (B.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 
           parseEither <- syncParse
           bindEither <- syncBind
           executeEither <- syncExecute
-          traceEventIO ("STOP statement")
           return (parseEither *> bindEither *> executeEither)
       where
         parseAndResolveStatementName =
