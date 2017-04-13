@@ -1,68 +1,103 @@
-module Hasql.Client.Communicator where
+module Hasql.Client.Communicator
+(
+  Communicator,
+  acquire,
+  release,
+  flush,
+  startUp,
+  sendAndConsume,
+  parse,
+  bind,
+  bindEncoded,
+  executeReducing,
+  executeCounting,
+  execute,
+  sync,
+)
+where
 
 import Hasql.Prelude
 import Hasql.Client.Model
-import qualified Litsedey as A
 import qualified BinaryParser as B
 import qualified ByteString.StrictBuilder as L
 import qualified Hasql.Protocol.Model as J
 import qualified Hasql.Protocol.Encoding as K
+import qualified Hasql.Protocol.Interpreter as A
 import qualified Hasql.Client.Socket as F
-import qualified Hasql.Client.Communicator.Actors.Interpreter as E
-import qualified Hasql.Client.Communicator.Actors.Sender as F
-import qualified Hasql.Client.Communicator.Actors.Receiver as G
 import qualified Hasql.Client.MessagesConsumer as H
+import qualified Hasql.Client.Communicator.Guts as I
+import qualified SlaveThread as C
+import qualified Control.Concurrent.Chan.Unagi as D
 
 
 data Communicator =
   Communicator {
-    interpreter :: A.Actor E.Message,
-    sender :: A.Actor F.Message,
-    receiver :: A.Actor G.Message
+    scheduleReceiver :: A.Interpreter -> (Error -> IO ()) -> IO (),
+    scheduleMessage :: L.Builder -> IO (),
+    flush :: IO (IO (Either Error ())),
+    release :: IO ()
   }
 
 acquire :: F.Socket -> IO Communicator
 acquire socket =
   do
-    sender <- F.actor socket
-    interpreter <- E.actor sender
-    receiver <- G.actor socket interpreter
-    A.tell receiver G.ReceiveForeverMessage
-    return (Communicator interpreter sender receiver)
+    (receiverInChan, receiverOutChan) <- D.newChan
+    receiverThreadID <- C.fork (I.runReceivingLoop socket receiverOutChan)
+    labelThread receiverThreadID "Receiver"
+    (senderInChan, senderOutChan) <- D.newChan
+    senderThreadID <- C.fork (I.runSendingLoop socket senderOutChan)
+    labelThread senderThreadID "Sender"
+    let
+      scheduleReceiver interpreter errorHandler =
+        D.writeChan receiverInChan (Just (interpreter, errorHandler))
+      scheduleMessage builder =
+        D.writeChan senderInChan (I.ScheduleSenderMessage builder)
+      flush =
+        do
+          resultMVar <- newEmptyMVar
+          D.writeChan senderInChan (I.FlushSenderMessage (putMVar resultMVar . first TransportError))
+          return (takeMVar resultMVar)
+      release =
+        do
+          D.writeChan receiverInChan Nothing
+          D.writeChan senderInChan (I.ScheduleSenderMessage K.terminateMessage)
+          D.writeChan senderInChan (I.FlushSenderMessage (const (return ())))
+          D.writeChan senderInChan (I.TerminateSenderMessage)
+      in return (Communicator scheduleReceiver scheduleMessage flush release)
 
 sendAndConsume :: Communicator -> L.Builder -> H.MessagesConsumer result -> IO (IO (Either Error result))
-sendAndConsume (Communicator interpreter sender receiver) messageBuilder (H.MessagesConsumer createConsumer) =
+sendAndConsume communicator messageBuilder (H.MessagesConsumer createConsumer) =
   do
     traceMarkerIO ("sendAndConsume")
     (messageInterpreter, failer, blocker) <- createConsumer
-    A.tell interpreter (E.SendAndAggregateMessage (L.builderBytes messageBuilder) messageInterpreter failer)
+    scheduleMessage communicator messageBuilder
+    scheduleReceiver communicator messageInterpreter failer
     return blocker
 
-send :: Communicator -> L.Builder -> (Text -> IO ()) -> IO ()
-send (Communicator interpreter sender receiver) messageBuilder transportErrorHandler =
-  A.tell sender (F.SendMessage messageBytes transportErrorHandler)
-  where
-    messageBytes =
-      L.builderBytes messageBuilder
+sendAndFlush :: Communicator -> L.Builder -> IO (IO (Either Error ()))
+sendAndFlush communicator messageBuilder =
+  do
+    scheduleMessage communicator messageBuilder
+    flush communicator
 
 startUp :: Communicator -> ByteString -> Maybe ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> IO (IO (Either Error BackendSettings))
 startUp communicator username passwordMaybe databaseMaybe runtimeParameters =
   do
     traceMarkerIO ("startUp")
-    sendAndConsume communicator message consumer
+    (<*) <$> sendAndConsume communicator message consumer <*> flush communicator
   where
     message =
       K.startUpMessage 3 0 username databaseMaybe runtimeParameters
     consumer =
       H.startUp clearTextPasswordHandler md5PasswordHandler
       where
-        clearTextPasswordHandler transportErrorHandler =
-          send communicator message transportErrorHandler
+        clearTextPasswordHandler =
+          join (sendAndFlush communicator message)
           where
             message =
               K.clearTextPasswordMessage (fold passwordMaybe)
-        md5PasswordHandler transportErrorHandler salt =
-          send communicator message transportErrorHandler
+        md5PasswordHandler salt =
+          join (sendAndFlush communicator message)
           where
             message =
               K.md5PasswordMessage username (fold passwordMaybe) salt
@@ -103,11 +138,3 @@ execute communicator portalName =
 sync :: Communicator -> IO (IO (Either Error ()))
 sync communicator =
   sendAndConsume communicator K.syncMessage H.sync
-
-release :: Communicator -> IO ()
-release (Communicator interpreter sender receiver) =
-  do
-    A.tell sender (F.SendMessage (L.builderBytes K.terminateMessage) (const (return ())))
-    A.kill sender
-    A.kill interpreter
-    A.kill receiver
