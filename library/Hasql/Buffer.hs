@@ -4,12 +4,14 @@ module Hasql.Buffer
   new,
   put,
   take,
+  peekBytes,
   getOccupiedSpace,
 )
 where
 
 import Hasql.Prelude hiding (State, Buffer, put, take)
 import Foreign.C
+import qualified Hasql.Ptr.IO as A
 
 
 foreign import ccall unsafe "memmove"
@@ -101,3 +103,9 @@ getOccupiedSpace (Buffer stateIORef) =
     State fptr start end boundary <- readIORef stateIORef
     return (end - start)
 
+{-|
+Create a bytestring representation without modifying the buffer.
+-}
+peekBytes :: Buffer -> IO ByteString
+peekBytes buffer =
+  take buffer (\ptr size -> A.peekBytes size ptr >>= \bytes -> return (bytes, 0))
