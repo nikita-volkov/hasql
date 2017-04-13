@@ -18,6 +18,7 @@ rowsReduction :: A.BinaryParser row -> FoldM IO row reduction -> IO (IO (Either 
 rowsReduction rowParser (FoldM progress enter exit) =
   do
     (eventInChan, eventOutChan) <- E.newChan
+    traceEventIO "START rowsReduction"
     let
       interpretNextEvent accumulator =
         {-# SCC "rowsReduction/interpretNextEvent" #-} 
@@ -31,7 +32,9 @@ rowsReduction rowParser (FoldM progress enter exit) =
               Left rowParsingError ->
                 return (Left (DecodingError ("Row: " <> rowParsingError)))
           FinishEvent ->
-            fmap Right (exit accumulator)
+            do
+              traceEventIO "STOP rowsReduction"
+              fmap Right (exit accumulator)
           ErrorEvent error ->
             return (Left error)
       enqueueEvent =
