@@ -58,7 +58,8 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
                       writeIORef accumulatorRef newAccumulator
                   Left rowParsingError ->
                     rowParsingErrorHandler rowParsingError
-                return True <* traceEventIO "STOP Interpreter/rowsReduction/DataRow"
+                traceEventIO "STOP Interpreter/rowsReduction/DataRow"
+                return True
             CommandCompleteMessageType ->
               do
                 accumulator <- readIORef accumulatorRef
