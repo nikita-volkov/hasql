@@ -83,7 +83,6 @@ library
     Hasql.Protocol.Scanner
   build-depends:
     -- concurrency:
-    unagi-chan == 0.4.*,
     stm >= 2.4 && < 3,
     slave-thread == 1.*,
     -- networking:

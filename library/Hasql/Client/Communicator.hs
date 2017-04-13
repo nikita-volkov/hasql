@@ -27,7 +27,6 @@ import qualified Hasql.Client.Socket as F
 import qualified Hasql.Client.MessagesConsumer as H
 import qualified Hasql.Client.Communicator.Guts as I
 import qualified SlaveThread as C
-import qualified Control.Concurrent.Chan.Unagi as D
 
 
 data Communicator =
@@ -41,28 +40,28 @@ data Communicator =
 acquire :: F.Socket -> IO Communicator
 acquire socket =
   do
-    (receiverInChan, receiverOutChan) <- D.newChan
-    receiverThreadID <- C.fork (I.runReceivingLoop socket receiverOutChan)
+    receiverQueue <- newTQueueIO
+    receiverThreadID <- C.fork (I.runReceivingLoop socket receiverQueue)
     labelThread receiverThreadID "Receiver"
-    (senderInChan, senderOutChan) <- D.newChan
-    senderThreadID <- C.fork (I.runSendingLoop socket senderOutChan)
+    senderQueue <- newTQueueIO
+    senderThreadID <- C.fork (I.runSendingLoop socket senderQueue)
     labelThread senderThreadID "Sender"
     let
       scheduleReceiver interpreter errorHandler =
-        D.writeChan receiverInChan (Just (interpreter, errorHandler))
+        atomically (writeTQueue receiverQueue (Just (interpreter, errorHandler)))
       scheduleMessage builder =
-        D.writeChan senderInChan (I.ScheduleSenderMessage builder)
+        atomically (writeTQueue senderQueue (I.ScheduleSenderMessage builder))
       flush =
         do
           resultMVar <- newEmptyMVar
-          D.writeChan senderInChan (I.FlushSenderMessage (putMVar resultMVar . first TransportError))
+          atomically (writeTQueue senderQueue (I.FlushSenderMessage (putMVar resultMVar . first TransportError)))
           return (takeMVar resultMVar)
       release =
         do
-          D.writeChan receiverInChan Nothing
-          D.writeChan senderInChan (I.ScheduleSenderMessage K.terminateMessage)
-          D.writeChan senderInChan (I.FlushSenderMessage (const (return ())))
-          D.writeChan senderInChan (I.TerminateSenderMessage)
+          atomically (writeTQueue receiverQueue Nothing)
+          atomically (writeTQueue senderQueue (I.ScheduleSenderMessage K.terminateMessage))
+          atomically (writeTQueue senderQueue (I.FlushSenderMessage (const (return ()))))
+          atomically (writeTQueue senderQueue (I.TerminateSenderMessage))
       in return (Communicator scheduleReceiver scheduleMessage flush release)
 
 sendAndConsume :: Communicator -> L.Builder -> H.MessagesConsumer result -> IO (IO (Either Error result))

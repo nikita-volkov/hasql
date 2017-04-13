@@ -3,7 +3,6 @@ module Hasql.Client.EventBasedResultAggregation where
 import Hasql.Prelude
 import Hasql.Client.Model
 import qualified BinaryParser as A
-import qualified Control.Concurrent.Chan.Unagi as E
 
 
 data Event =
@@ -18,11 +17,11 @@ Produces a result-computing action and an event enqueing action.
 rowsReduction :: A.BinaryParser row -> FoldM IO row reduction -> IO (IO (Either Error reduction), Event -> IO ())
 rowsReduction rowParser (FoldM progress enter exit) =
   do
-    (eventInChan, eventOutChan) <- E.newChan
+    eventQueue <- newTQueueIO
     let
       interpretNextEvent accumulator =
         {-# SCC "rowsReduction/interpretNextEvent" #-} 
-        E.readChan eventOutChan >>= \case
+        atomically (readTQueue eventQueue) >>= \case
           DataRowEvent bytes ->
             do
               traceEventIO "START EventBasedResultAggregation/rowsReduction/DataRow"
@@ -40,6 +39,6 @@ rowsReduction rowParser (FoldM progress enter exit) =
             fmap Right (exit accumulator)
           ErrorEvent error ->
             return (Left error)
-      enqueueEvent =
-        E.writeChan eventInChan
+      enqueueEvent event =
+        atomically (writeTQueue eventQueue event)
       in return (interpretNextEvent =<< enter, enqueueEvent)
