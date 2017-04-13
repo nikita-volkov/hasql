@@ -41,7 +41,7 @@ runReceivingLoop socket handlerChan =
 
 data SenderMessage =
   ScheduleSenderMessage D.Builder |
-  FlushSenderMessage (Text -> IO ()) |
+  FlushSenderMessage (Either Text () -> IO ()) |
   TerminateSenderMessage
 
 runSendingLoop :: F.Socket -> C.OutChan SenderMessage -> IO ()
@@ -53,7 +53,7 @@ runSendingLoop socket messageChan =
       case message of
         ScheduleSenderMessage builder ->
           G.schedule sender builder >> processNextMessage
-        FlushSenderMessage errorHandler ->
-          G.flush sender >>= either errorHandler return >> processNextMessage
+        FlushSenderMessage handler ->
+          G.flush sender >>= handler >> processNextMessage
         TerminateSenderMessage ->
           return ()

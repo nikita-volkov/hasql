@@ -34,7 +34,7 @@ data Communicator =
   Communicator {
     scheduleReceiver :: A.Interpreter -> (Error -> IO ()) -> IO (),
     scheduleMessage :: L.Builder -> IO (),
-    flush :: (Text -> IO ()) -> IO (),
+    flush :: IO (IO (Either Error ())),
     release :: IO ()
   }
 
@@ -52,8 +52,11 @@ acquire socket =
         D.writeChan receiverInChan (Just (interpreter, errorHandler))
       scheduleMessage builder =
         D.writeChan senderInChan (I.ScheduleSenderMessage builder)
-      flush transportErrorHandler =
-        D.writeChan senderInChan (I.FlushSenderMessage (transportErrorHandler))
+      flush =
+        do
+          resultMVar <- newEmptyMVar
+          D.writeChan senderInChan (I.FlushSenderMessage (putMVar resultMVar . first TransportError))
+          return (takeMVar resultMVar)
       release =
         do
           D.writeChan receiverInChan Nothing
@@ -71,11 +74,11 @@ sendAndConsume communicator messageBuilder (H.MessagesConsumer createConsumer) =
     scheduleReceiver communicator messageInterpreter failer
     return blocker
 
-sendAndFlush :: Communicator -> L.Builder -> (Text -> IO ()) -> IO ()
-sendAndFlush communicator messageBuilder transportErrorHandler =
+sendAndFlush :: Communicator -> L.Builder -> IO (IO (Either Error ()))
+sendAndFlush communicator messageBuilder =
   do
     scheduleMessage communicator messageBuilder
-    flush communicator transportErrorHandler
+    flush communicator
 
 startUp :: Communicator -> ByteString -> Maybe ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> IO (IO (Either Error BackendSettings))
 startUp communicator username passwordMaybe databaseMaybe runtimeParameters =
@@ -88,13 +91,13 @@ startUp communicator username passwordMaybe databaseMaybe runtimeParameters =
     consumer =
       H.startUp clearTextPasswordHandler md5PasswordHandler
       where
-        clearTextPasswordHandler transportErrorHandler =
-          sendAndFlush communicator message transportErrorHandler
+        clearTextPasswordHandler =
+          join (sendAndFlush communicator message)
           where
             message =
               K.clearTextPasswordMessage (fold passwordMaybe)
-        md5PasswordHandler transportErrorHandler salt =
-          sendAndFlush communicator message transportErrorHandler
+        md5PasswordHandler salt =
+          join (sendAndFlush communicator message)
           where
             message =
               K.md5PasswordMessage username (fold passwordMaybe) salt

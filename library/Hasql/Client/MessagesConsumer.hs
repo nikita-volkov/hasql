@@ -170,8 +170,8 @@ sync =
         (unblock . Left . ProtocolError)
 
 startUp ::
-  ((Text -> IO ()) -> IO ()) {-^ ClearTextPassword handler -} ->
-  ((Text -> IO ()) -> ByteString -> IO ()) {-^ MD5 with salt handler -} ->
+  (IO (Either Error ())) {-^ ClearTextPassword handler -} ->
+  (ByteString -> IO (Either Error ())) {-^ MD5 with salt handler -} ->
   MessagesConsumer BackendSettings
 startUp clearTextPasswordHandler md5PasswordHandler =
   unblockingInterpreterIO $
@@ -184,8 +184,8 @@ startUp clearTextPasswordHandler md5PasswordHandler =
           do
             B.authentication
               (return ())
-              (clearTextPasswordHandler transportErrorHandler)
-              (\salt -> md5PasswordHandler transportErrorHandler salt)
+              (clearTextPasswordHandler >>= either errorHandler return)
+              (\salt -> md5PasswordHandler salt >>= either errorHandler return)
               (\error -> protocolErrorHandler error)
               messageBytes
             return True
@@ -219,6 +219,8 @@ startUp clearTextPasswordHandler md5PasswordHandler =
                   unblock (Left (ProtocolError ("Unexpected \"integer_datetimes\" value: " <> (fromString . show) x)))
             _ ->
               const (return ())
+        errorHandler =
+          unblock . Left
         backendErrorHandler code message =
           unblock (Left (BackendError code message))
         protocolErrorHandler message =

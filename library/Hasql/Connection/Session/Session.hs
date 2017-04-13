@@ -50,11 +50,10 @@ batch (Batch batchFuture) =
   Session $ \env@(Env communicator _ _) -> do
     batchIO <- batchFuture env
     syncIO <- A.sync communicator
-    flushEitherRef <- newIORef (Right ())
-    flushIO <- A.flush communicator (writeIORef flushEitherRef . Left . C.TransportError)
+    flushIO <- A.flush communicator
     batchEither <- batchIO
     syncEither <- syncIO
-    flushEither <- readIORef flushEitherRef
+    flushEither <- flushIO
     return (batchEither <* syncEither <* flushEither)
 
 {-|
