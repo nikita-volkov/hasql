@@ -4,12 +4,14 @@ module Hasql.Buffer
   new,
   put,
   take,
+  peekBytes,
   getOccupiedSpace,
 )
 where
 
 import Hasql.Prelude hiding (State, Buffer, put, take)
 import Foreign.C
+import qualified Hasql.Ptr.IO as A
 
 
 foreign import ccall unsafe "memmove"
@@ -62,26 +64,22 @@ put (Buffer stateIORef) space ptrIO =
         else if delta > start -- Needs growing?
           then do
             -- Grow
-            traceEventIO ("START Buffer/Grow")
-            let newSize = occupiedSpace + space
-            newFPtr <- mallocForeignPtrBytes newSize
+            let newBoundary = occupiedSpace + space
+            newFPtr <- mallocForeignPtrBytes newBoundary
             (result, addedSpace) <-
               withForeignPtr newFPtr $ \newPtr -> do
                 withForeignPtr fptr $ \ptr -> do
                   memcpy newPtr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                traceEventIO ("STOP Buffer/Grow")
                 ptrIO (plusPtr newPtr occupiedSpace)
             let newOccupiedSpace = occupiedSpace + addedSpace
-            writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newSize)
+            writeIORef stateIORef (State newFPtr 0 newOccupiedSpace newBoundary)
             return result
           else if occupiedSpace > 0 -- Needs aligning?
             then do
               -- Align
               (result, addedSpace) <-
                 withForeignPtr fptr $ \ptr -> do
-                  traceEventIO ("START Buffer/Align")
                   memmove ptr (plusPtr ptr start) (fromIntegral occupiedSpace)
-                  traceEventIO ("STOP Buffer/Align")
                   ptrIO (plusPtr ptr occupiedSpace)
               writeIORef stateIORef (State fptr 0 (occupiedSpace + addedSpace) boundary)
               return result
@@ -105,3 +103,9 @@ getOccupiedSpace (Buffer stateIORef) =
     State fptr start end boundary <- readIORef stateIORef
     return (end - start)
 
+{-|
+Create a bytestring representation without modifying the buffer.
+-}
+peekBytes :: Buffer -> IO ByteString
+peekBytes buffer =
+  take buffer (\ptr size -> A.peekBytes size ptr >>= \bytes -> return (bytes, 0))

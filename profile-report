@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eo pipefail
+
+cabal build profiling
+cd dist
+build/profiling/profiling +RTS -N -p -s -i0.0001 -RTS
+open profiling.prof

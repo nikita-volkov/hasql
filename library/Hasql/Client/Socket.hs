@@ -24,7 +24,6 @@ trySocketIO io =
 connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
 connectToHostAndPort host port =
   do
-    traceEventIO ("connectToHostAndPort")
     runExceptT $ do
       addrList <- getAddressInfo
       addr <- headFailing "Invalid host or port" addrList
@@ -79,3 +78,9 @@ send :: Socket -> ByteString -> IO (Either Text ())
 send (Socket socket) bytes =
   {-# SCC "send" #-} 
   trySocketIO (C.sendAll socket bytes)
+
+{-# INLINE sendFromPtr #-}
+sendFromPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
+sendFromPtr (Socket socket) ptr amount =
+  {-# SCC "sendFromPtr" #-} 
+  trySocketIO (B.sendBuf socket ptr amount)

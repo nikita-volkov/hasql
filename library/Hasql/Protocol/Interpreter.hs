@@ -49,6 +49,7 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
           case messageType of
             DataRowMessageType ->
               do
+                traceEventIO "START Interpreter/rowsReduction/DataRow"
                 case {-# SCC "rowsReduction/rowParser" #-} A.run (rowParser <* A.endOfInput) messageBytes of
                   Right parsedRow ->
                     do
@@ -57,6 +58,7 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
                       writeIORef accumulatorRef newAccumulator
                   Left rowParsingError ->
                     rowParsingErrorHandler rowParsingError
+                traceEventIO "STOP Interpreter/rowsReduction/DataRow"
                 return True
             CommandCompleteMessageType ->
               do

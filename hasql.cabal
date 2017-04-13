@@ -55,10 +55,9 @@ library
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
     Hasql.Client.Communicator
-    Hasql.Client.Communicator.Actors.Interpreter
-    Hasql.Client.Communicator.Actors.Receiver
-    Hasql.Client.Communicator.Actors.Sender
     Hasql.Client.Communicator.Receiver
+    Hasql.Client.Communicator.Sender
+    Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation
     Hasql.Client.MessagesConsumer
     Hasql.Client.Model
@@ -84,10 +83,8 @@ library
     Hasql.Protocol.Scanner
   build-depends:
     -- concurrency:
-    unagi-chan == 0.4.*,
     stm >= 2.4 && < 3,
     slave-thread == 1.*,
-    litsedey == 1.*,
     -- networking:
     network == 2.*,
     -- template-haskell:
@@ -99,7 +96,7 @@ library
     -- database:
     postgresql-binary == 0.12.*,
     -- data:
-    bytestring-strict-builder >= 0.4 && < 0.5,
+    bytestring-strict-builder >= 0.4.5 && < 0.5,
     vector-builder == 0.3.*,
     deque == 0.2.*,
     cryptonite == 0.22.*,
@@ -157,6 +154,7 @@ benchmark benchmarks
   ghc-options:
     -O2
     -threaded
+    -rtsopts
     "-with-rtsopts=-N"
   default-extensions:
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
@@ -180,11 +178,7 @@ test-suite profiling
   ghc-options:
     -O2
     -threaded
-    "-with-rtsopts=-N"
-  ghc-prof-options:
-    -fno-prof-auto
-    -fno-prof-cafs
-    "-with-rtsopts=-N -p -s -h -i0.01"
+    -rtsopts
   default-extensions:
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:

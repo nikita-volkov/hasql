@@ -241,9 +241,9 @@ rowReduction fold (RowDecoder amount oidsValidatorBuilder rowParser1 rowParser2)
     oidsValidator =
       R.build oidsValidatorBuilder
     messagesConsumer1 =
-      I.rowsReductionOnTheBlockedThread (S.dataRowMessage (const rowParser1)) fold
+      I.rowsReduction (S.dataRowMessage (const rowParser1)) fold
     messagesConsumer2 =
-      I.rowsReductionOnTheBlockedThread (S.dataRowMessage (const rowParser2)) fold
+      I.rowsReduction (S.dataRowMessage (const rowParser2)) fold
 
 {-|
 First row of a possibly empty result set.

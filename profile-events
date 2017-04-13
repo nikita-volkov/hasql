@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eo pipefail
+
+cabal build profiling --ghc-options="-eventlog"
+cd dist
+build/profiling/profiling large-interesting +RTS -N2 -ls -RTS
+ghc-events-analyze --timed --bucket-width 0.5 --bucket-height 14 --border-width 0 --ms --tick-every 20 --buckets 2400 --window Session profiling.eventlog
+open profiling.0.timed.svg
+threadscope profiling.eventlog
