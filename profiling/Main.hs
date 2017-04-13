@@ -23,17 +23,27 @@ main =
       do
         args <- getArgs
         case args of
+          "large-interesting" : _ -> return largeInterestingSession
           "interesting" : _ -> return interestingSession
           "simple" : _ -> return simpleSession
+          "many-single-row" : _ -> return sessionWithManySingleRowResults
           _ -> fail "Unknown session"
 
 
 -- * Sessions
 -------------------------
 
+sessionWithManySingleRowResults :: B.Session ()
+sessionWithManySingleRowResults =
+  F.replicateM 100 (B.batch (B.statement statementWithSingleRow ())) $> ()
+
 sessionWithSingleLargeResultInList :: B.Session ()
 sessionWithSingleLargeResultInList =
   B.batch (B.statement statementWithManyRowsInList ()) $> ()
+
+largeInterestingSession :: B.Session ()
+largeInterestingSession =
+  replicateM 100 (B.batch (replicateM 10 (B.statement (statementWithAFewRows C.rowList) ()))) $> ()
 
 interestingSession :: B.Session ()
 interestingSession =
@@ -86,6 +96,21 @@ statementWithAverageRows decoder =
   where
     template =
       "SELECT generate_series(0,100) as a, generate_series(100,200) as b"
+    encoder =
+      conquer
+    rowDecoder =
+      {-# SCC "statementWithAverageRows/rowDecoder" #-} 
+      tuple <$> C.column D.int8 <*> C.column D.int8
+      where
+        tuple !a !b =
+          (a, b)
+
+statementWithAFewRows :: (C.RowDecoder (Int64, Int64) -> C.Decoder result) -> C.Statement () result
+statementWithAFewRows decoder =
+  C.statement template encoder ({-# SCC "statementWithAverageRows/decoder" #-} decoder rowDecoder) True
+  where
+    template =
+      "SELECT generate_series(0,10) as a, generate_series(10,20) as b"
     encoder =
       conquer
     rowDecoder =
