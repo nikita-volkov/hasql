@@ -13,22 +13,35 @@ import qualified Data.Vector as F
 main =
   do
     Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
+    session <- parseArgs
     traceEventIO "START Session"
-    Right result <- A.use connection sessionWithAverageResults
+    Right result <- A.use connection session
     traceEventIO "STOP Session"
     return ()
+  where
+    parseArgs =
+      do
+        args <- getArgs
+        case args of
+          "interesting" : _ -> return interestingSession
+          "simple" : _ -> return simpleSession
+          _ -> fail "Unknown session"
 
 
 -- * Sessions
 -------------------------
 
-sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
+sessionWithSingleLargeResultInList :: B.Session ()
 sessionWithSingleLargeResultInList =
-  B.batch (B.statement statementWithManyRowsInList ())
+  B.batch (B.statement statementWithManyRowsInList ()) $> ()
 
-sessionWithAverageResults :: B.Session (List (List (List (Int64, Int64))))
-sessionWithAverageResults =
-  replicateM 3 (B.batch (replicateM 3 (B.statement (statementWithAverageRows C.rowList) ())))
+interestingSession :: B.Session ()
+interestingSession =
+  replicateM 3 (B.batch (replicateM 3 (B.statement (statementWithAverageRows C.rowList) ()))) $> ()
+
+simpleSession :: B.Session ()
+simpleSession =
+  B.batch (B.statement (statementWithAverageRows C.rowList) ()) $> ()
 
 
 -- * Statements
