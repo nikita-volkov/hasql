@@ -25,15 +25,15 @@ int32 :: BinaryParser Int32
 int32 =
   fromIntegral <$> beWord32
 
-{-# INLINE backendMessageTypeAndLength #-}
-backendMessageTypeAndLength :: (BackendMessageType -> PayloadLength -> a) -> BinaryParser a
-backendMessageTypeAndLength cont =
-  cont <$> backendMessageType <*> payloadLength
+{-# INLINE messageTypeAndLength #-}
+messageTypeAndLength :: (MessageType -> PayloadLength -> a) -> BinaryParser a
+messageTypeAndLength cont =
+  cont <$> messageType <*> payloadLength
 
-{-# INLINE backendMessageType #-}
-backendMessageType :: BinaryParser BackendMessageType
-backendMessageType =
-  BackendMessageType <$> word8
+{-# INLINE messageType #-}
+messageType :: BinaryParser MessageType
+messageType =
+  MessageType <$> word8
 
 {-# INLINE payloadLength #-}
 payloadLength :: BinaryParser PayloadLength

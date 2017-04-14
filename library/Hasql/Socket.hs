@@ -1,4 +1,4 @@
-module Hasql.Client.Socket where
+module Hasql.Socket where
 
 import Hasql.Prelude
 import Hasql.Protocol.Model
@@ -23,12 +23,13 @@ trySocketIO io =
 
 connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
 connectToHostAndPort host port =
-  runExceptT $ do
-    addrList <- getAddressInfo
-    addr <- headFailing "Invalid host or port" addrList
-    socket <- initSocket (B.addrFamily addr) (B.addrSocketType addr) (B.addrProtocol addr)
-    connect socket (B.addrAddress addr)
-    return (Socket socket)
+  do
+    runExceptT $ do
+      addrList <- getAddressInfo
+      addr <- headFailing "Invalid host or port" addrList
+      socket <- initSocket (B.addrFamily addr) (B.addrSocketType addr) (B.addrProtocol addr)
+      connect socket (B.addrAddress addr)
+      return (Socket socket)
   where
     io =
       ExceptT . trySocketIO
@@ -66,8 +67,20 @@ receive (Socket socket) amount =
   {-# SCC "receive" #-} 
   trySocketIO (C.recv socket amount)
 
+{-# INLINE receiveToPtr #-}
+receiveToPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
+receiveToPtr (Socket socket) ptr amount =
+  {-# SCC "receiveToPtr" #-} 
+  trySocketIO (B.recvBuf socket ptr amount)
+
 {-# INLINE send #-}
 send :: Socket -> ByteString -> IO (Either Text ())
 send (Socket socket) bytes =
   {-# SCC "send" #-} 
   trySocketIO (C.sendAll socket bytes)
+
+{-# INLINE sendFromPtr #-}
+sendFromPtr :: Socket -> Ptr Word8 -> Int -> IO (Either Text Int)
+sendFromPtr (Socket socket) ptr amount =
+  {-# SCC "sendFromPtr" #-} 
+  trySocketIO (B.sendBuf socket ptr amount)

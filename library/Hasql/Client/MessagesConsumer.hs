@@ -56,7 +56,9 @@ unblockingInterpreterIO :: ((Either Error result -> IO ()) -> IO H.Interpreter) 
 unblockingInterpreterIO interpreterIO =
   MessagesConsumer $ do
     outputMVar <- newEmptyMVar
-    let output = void . tryPutMVar outputMVar
+    let
+      output output =
+        tryPutMVar outputMVar output $> ()
     interpreter <- interpreterIO output
     return (interpreter, output . Left, takeMVar outputMVar)
 
@@ -103,15 +105,15 @@ rowsReductionOnTheBlockedThread rowParser rowFold =
         errorHandler . ProtocolError
       interpreter =
         H.Interpreter $ {-# SCC "rowsReductionOnTheBlockedThread/interpreter" #-} \case
-          J.DataRowBackendMessageType ->
+          J.DataRowMessageType ->
             \bytes -> sendEvent (C.DataRowEvent bytes) $> True
-          J.CommandCompleteBackendMessageType ->
+          J.CommandCompleteMessageType ->
             const (sendEvent C.FinishEvent $> False)
-          J.ErrorBackendMessageType ->
+          J.ErrorMessageType ->
             fmap (const False) . B.errorResponse backendErrorHandler protocolErrorHandler
-          J.EmptyQueryBackendMessageType ->
+          J.EmptyQueryMessageType ->
             const (sendEvent C.FinishEvent $> False)
-          J.PortalSuspendedBackendMessageType ->
+          J.PortalSuspendedMessageType ->
             const (protocolErrorHandler "Portal unexpectedly suspended" $> False)
           _ ->
             const (return True)
@@ -170,8 +172,8 @@ sync =
         (unblock . Left . ProtocolError)
 
 startUp ::
-  ((Text -> IO ()) -> IO ()) {-^ ClearTextPassword handler -} ->
-  ((Text -> IO ()) -> ByteString -> IO ()) {-^ MD5 with salt handler -} ->
+  (IO (Either Error ())) {-^ ClearTextPassword handler -} ->
+  (ByteString -> IO (Either Error ())) {-^ MD5 with salt handler -} ->
   MessagesConsumer BackendSettings
 startUp clearTextPasswordHandler md5PasswordHandler =
   unblockingInterpreterIO $
@@ -179,20 +181,20 @@ startUp clearTextPasswordHandler md5PasswordHandler =
   where
     interpreter integerDateTimesMaybeRef unblock =
       H.Interpreter $ \case
-        J.AuthenticationBackendMessageType ->
+        J.AuthenticationMessageType ->
           \messageBytes ->
           do
             B.authentication
               (return ())
-              (clearTextPasswordHandler transportErrorHandler)
-              (\salt -> md5PasswordHandler transportErrorHandler salt)
+              (clearTextPasswordHandler >>= either errorHandler return)
+              (\salt -> md5PasswordHandler salt >>= either errorHandler return)
               (\error -> protocolErrorHandler error)
               messageBytes
             return True
-        J.ParameterStatusBackendMessageType ->
+        J.ParameterStatusMessageType ->
           \messageBytes ->
           B.parameterStatus parameterHandler protocolErrorHandler messageBytes $> True
-        J.ReadyForQueryBackendMessageType ->
+        J.ReadyForQueryMessageType ->
           const $ do
             integerDateTimesMaybe <- readIORef integerDateTimesMaybeRef
             case BackendSettings <$> integerDateTimesMaybe of
@@ -201,7 +203,7 @@ startUp clearTextPasswordHandler md5PasswordHandler =
               Nothing ->
                 unblock (Left (ProtocolError ("Missing required backend settings")))
             return False
-        J.ErrorBackendMessageType ->
+        J.ErrorMessageType ->
           \messageBytes ->
           B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
         _ ->
@@ -219,6 +221,8 @@ startUp clearTextPasswordHandler md5PasswordHandler =
                   unblock (Left (ProtocolError ("Unexpected \"integer_datetimes\" value: " <> (fromString . show) x)))
             _ ->
               const (return ())
+        errorHandler =
+          unblock . Left
         backendErrorHandler code message =
           unblock (Left (BackendError code message))
         protocolErrorHandler message =
