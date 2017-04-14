@@ -6,6 +6,7 @@ import qualified BinaryParser as A
 import qualified Hasql.Protocol.Decoding as D
 
 
+{-# INLINE dataRow #-}
 dataRow ::
   A.BinaryParser row ->
   (row -> result) {-^ Row handler -} ->
@@ -13,17 +14,21 @@ dataRow ::
   (Text -> result) {-^ Protocol error handler -} ->
   ByteString -> result
 dataRow rowParser rowHandler rowParsingErrorHandler protocolErrorHandler messageBytes =
+  {-# SCC "dataRow" #-} 
   either rowParsingErrorHandler rowHandler $
   A.run (rowParser <* A.endOfInput) messageBytes
 
+{-# INLINE commandComplete #-}
 commandComplete ::
   (Int -> result) {-^ Rows affected handler -} ->
   (Text -> result) {-^ Protocol error handler -} ->
   ByteString -> result
 commandComplete resultHandler protocolErrorHandler messageBytes =
+  {-# SCC "commandComplete" #-} 
   either (protocolErrorHandler . mappend "CommandComplete parsing error: ") resultHandler $
   A.run D.commandCompleteMessageAffectedRows messageBytes
 
+{-# INLINE errorResponse #-}
 errorResponse ::
   (ByteString -> ByteString -> result) {-^ Backend error handler -} ->
   (Text -> result) {-^ Protocol error handler -} ->
@@ -35,6 +40,7 @@ errorResponse backendErrorHandler protocolErrorHandler messageBytes =
     Left parsingError ->
       protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
 
+{-# INLINE parameterStatus #-}
 parameterStatus ::
   (ByteString -> ByteString -> result) {-^ Parameter key-value handler -} ->
   (Text -> result) {-^ Protocol error handler -} ->
@@ -43,6 +49,7 @@ parameterStatus parameterStatusHandler protocolErrorHandler =
   either (protocolErrorHandler . mappend "ParameterStatus parsing error: ") id .
   A.run (D.parameterStatusMessagePayloadKeyValue parameterStatusHandler)
 
+{-# INLINE authentication #-}
 authentication ::
   result {-^ Ok handler -} ->
   result {-^ ClearTextPassword handler -} ->
