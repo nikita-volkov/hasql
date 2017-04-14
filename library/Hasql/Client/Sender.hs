@@ -7,12 +7,14 @@ import qualified ByteString.StrictBuilder as D
 
 
 data Sender =
-  Sender F.Socket E.Buffer
+  Sender !F.Socket !E.Buffer
 
+{-# INLINE acquire #-}
 acquire :: F.Socket -> IO Sender
 acquire socket =
   Sender socket <$> E.new (shiftL 1 15)
 
+{-# INLINE schedule #-}
 schedule :: Sender -> D.Builder -> IO ()
 schedule (Sender _ buffer) builder =
   D.builderPtrFiller builder $ \size ptrFiller -> do
@@ -20,6 +22,7 @@ schedule (Sender _ buffer) builder =
       ptrFiller ptr
       return ((), size)
 
+{-# INLINE flush #-}
 flush :: Sender -> IO (Either Text ())
 flush (Sender socket buffer) =
   do
