@@ -1,4 +1,4 @@
-module Hasql.Client.Communicator.Sender where
+module Hasql.Client.Sender where
 
 import Hasql.Prelude
 import qualified Hasql.Client.Socket as F

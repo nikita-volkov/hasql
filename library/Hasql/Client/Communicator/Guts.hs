@@ -2,8 +2,8 @@ module Hasql.Client.Communicator.Guts where
 
 import Hasql.Prelude
 import Hasql.Client.Model
-import qualified Hasql.Client.Communicator.Receiver as A
-import qualified Hasql.Client.Communicator.Sender as G
+import qualified Hasql.Client.Receiver as A
+import qualified Hasql.Client.Sender as G
 import qualified Hasql.Client.Socket as F
 import qualified Hasql.Buffer as E
 import qualified Hasql.Protocol.Model as J

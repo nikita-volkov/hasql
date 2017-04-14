@@ -55,9 +55,9 @@ library
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
     Hasql.Client.Communicator
-    Hasql.Client.Communicator.Receiver
-    Hasql.Client.Communicator.Sender
     Hasql.Client.Communicator.Guts
+    Hasql.Client.Receiver
+    Hasql.Client.Sender
     Hasql.Client.EventBasedResultAggregation
     Hasql.Client.MessagesConsumer
     Hasql.Client.Model
