@@ -56,12 +56,12 @@ library
   other-modules:
     Hasql.Client.Communicator
     Hasql.Client.Communicator.Guts
-    Hasql.Client.Receiver
-    Hasql.Client.Sender
     Hasql.Client.EventBasedResultAggregation
     Hasql.Client.MessagesConsumer
     Hasql.Client.Model
-    Hasql.Client.Socket
+    Hasql.Receiver
+    Hasql.Sender
+    Hasql.Socket
     Hasql.Ptr.Peek
     Hasql.Ptr.Do
     Hasql.Ptr.IO

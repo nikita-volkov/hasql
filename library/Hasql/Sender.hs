@@ -1,7 +1,7 @@
-module Hasql.Client.Sender where
+module Hasql.Sender where
 
 import Hasql.Prelude
-import qualified Hasql.Client.Socket as F
+import qualified Hasql.Socket as F
 import qualified Hasql.Buffer as E
 import qualified ByteString.StrictBuilder as D
 

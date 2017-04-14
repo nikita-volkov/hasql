@@ -10,7 +10,7 @@ where
 
 import Hasql.Prelude
 import qualified Hasql.Client.Communicator as A
-import qualified Hasql.Client.Socket as B
+import qualified Hasql.Socket as B
 import qualified Hasql.Client.Model as D
 import qualified Hasql.Connection.Session.Session as C
 import qualified Hasql.PreparedStatementRegistry as E

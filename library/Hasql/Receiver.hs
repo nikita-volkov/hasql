@@ -1,8 +1,8 @@
-module Hasql.Client.Receiver where
+module Hasql.Receiver where
 
 import Hasql.Prelude hiding (peek)
 import qualified Hasql.Protocol.Model as J
-import qualified Hasql.Client.Socket as F
+import qualified Hasql.Socket as F
 import qualified Hasql.Buffer as E
 import qualified Hasql.Ptr.Peek as C
 

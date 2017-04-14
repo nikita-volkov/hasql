@@ -1,4 +1,4 @@
-module Hasql.Client.Socket where
+module Hasql.Socket where
 
 import Hasql.Prelude
 import Hasql.Protocol.Model

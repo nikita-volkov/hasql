@@ -21,7 +21,7 @@ import qualified ByteString.StrictBuilder as L
 import qualified Hasql.Protocol.Model as J
 import qualified Hasql.Protocol.Encoding as K
 import qualified Hasql.Protocol.Interpreter as A
-import qualified Hasql.Client.Socket as F
+import qualified Hasql.Socket as F
 import qualified Hasql.Client.MessagesConsumer as H
 import qualified Hasql.Client.Communicator.Guts as I
 import qualified SlaveThread as C
