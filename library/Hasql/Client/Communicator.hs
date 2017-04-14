@@ -9,8 +9,6 @@ module Hasql.Client.Communicator
   parse,
   bind,
   bindEncoded,
-  executeReducing,
-  executeCounting,
   execute,
   sync,
 )
@@ -119,14 +117,6 @@ bindEncoded communicator portalName preparedStatementName paramsAmount encodedPa
   where
     message =
       K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName paramsAmount encodedParams
-
-executeReducing :: Communicator -> ByteString -> B.BinaryParser row -> FoldM IO row reduction -> IO (IO (Either Error reduction))
-executeReducing communicator portalName rowParser rowReducer =
-  sendAndConsume communicator (K.unlimitedExecuteMessage portalName) (H.rowsReduction rowParser rowReducer)
-
-executeCounting :: Communicator -> ByteString -> IO (IO (Either Error Int))
-executeCounting communicator portalName =
-  sendAndConsume communicator (K.unlimitedExecuteMessage portalName) H.rowsAffected
 
 execute :: Communicator -> ByteString -> H.MessagesConsumer result -> IO (IO (Either Error result))
 execute communicator portalName =
