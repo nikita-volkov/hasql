@@ -28,10 +28,13 @@ flush (Sender socket buffer) =
   do
     result <-
       E.take buffer $ \ptr amount -> do
-        sendResult <- F.sendFromPtr socket ptr amount
-        case sendResult of
-          Right takenAmount ->
-            return (Right (), takenAmount)
-          Left error -> 
-            return (Left error, 0)
+        if amount > 0
+          then do
+            sendResult <- F.sendFromPtr socket ptr amount
+            case sendResult of
+              Right takenAmount ->
+                return (Right (), takenAmount)
+              Left error -> 
+                return (Left error, 0)
+          else return (Right (), 0)
     return result
