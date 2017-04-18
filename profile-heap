@@ -3,6 +3,6 @@ set -eo pipefail
 
 cabal build profiling
 cd dist
-build/profiling/profiling +RTS -N -hc -i0.0001 -RTS
+build/profiling/profiling many-single-row +RTS -N -hc -i0.0001 -RTS
 hp2ps -e8in -c profiling.hp
 open profiling.ps
