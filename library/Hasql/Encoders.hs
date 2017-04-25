@@ -39,6 +39,8 @@ module Hasql.Encoders
   arrayValue,
   arrayNullableValue,
   arrayDimension,
+  -- ** Insert Many
+  -- $insertMany
 )
 where
 
@@ -533,3 +535,26 @@ arrayDimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
 arrayDimension foldl (Array imp) =
   Array (Array.dimension foldl imp)
 
+-- $insertMany
+-- It is not currently possible to pass in an array of encodable values
+-- to use in an 'insert many' query using Hasql. Instead, PostgreSQL's
+--  (9.4 or later) `unnest` function can be used to in an analogous way
+-- to haskell's `zip` function by passing in multiple arrays of values
+-- to be zipped into the rows we want to insert:
+--
+-- @
+--   insertMultipleLocations :: Query (Vector (UUID, Double, Double)) ()
+--   insertMultipleLocations =
+--     statement sql encoder decoder True
+--     where
+--       sql =
+--         "insert into location (id, x, y) select * from unnest ($1, $2, $3)"
+--       encoder =
+--         contramap Vector.unzip3 $
+--         contrazip3 (vector Encoders.uuid) (vector Encoders.float8) (vector Encoders.float8)
+--         where
+--           vector value =
+--             Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue value)))
+--       decoder =
+--         Decoders.unit
+-- @
