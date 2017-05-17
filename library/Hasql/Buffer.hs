@@ -48,7 +48,7 @@ Aligns or grows the buffer if required.
 It is the user's responsibility that the pointer action
 does not exceed the limits.
 -}
-put :: Buffer -> Int {-^ Amount of bytes to be written -} -> (Ptr Word8 -> IO (result, Int {-^ Amount actually added -})) {-^ Poker -} -> IO result
+put :: Buffer -> Int {-^ Amount of bytes to be written -} -> (Ptr Word8 -> IO (result, Int)) {-^ Poker -} -> IO result
 put (Buffer stateIORef) space ptrIO =
   do
     State fptr start end boundary <- readIORef stateIORef
@@ -88,7 +88,7 @@ put (Buffer stateIORef) space ptrIO =
               writeIORef stateIORef (State fptr 0 addedSpace boundary)
               return result
 
-take :: Buffer -> (Ptr Word8 -> Int {-^ Available amount -} -> IO (result, Int {-^ Taken amount -})) -> IO result
+take :: Buffer -> (Ptr Word8 -> Int -> IO (result, Int)) -> IO result
 take (Buffer stateIORef) ptrIO =
   do
     State fptr start end boundary <- readIORef stateIORef
