@@ -111,7 +111,7 @@ library
     unordered-containers == 0.2.*,
     -- control:
     managed == 1.*,
-    foldl >= 1.2.3 && < 2,
+    foldl >= 1.3 && < 2,
     semigroups >= 0.18 && < 0.20,
     profunctors >= 5.1 && < 6,
     contravariant >= 1.3 && < 2,
@@ -140,7 +140,7 @@ test-suite sandbox
     Haskell2010
   build-depends:
     hasql,
-    foldl == 1.2.*,
+    foldl,
     rerebase == 1.*
 
 benchmark benchmarks

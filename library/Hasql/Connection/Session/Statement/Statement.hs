@@ -226,7 +226,7 @@ rowMaybe =
 
 rowVector :: RowDecoder row -> Decoder (Vector row)
 rowVector =
-  rowReduction 'K.vector'
+  rowReduction ('K.generalize' 'K.vector')
 
 rowList :: RowDecoder row -> Decoder [row]
 rowList =
@@ -256,7 +256,7 @@ rowMaybe =
 {-# INLINE rowVector #-}
 rowVector :: RowDecoder row -> Decoder (Vector row)
 rowVector =
-  rowReduction K.vector
+  rowReduction (K.generalize K.vector)
 
 {-|
 List of rows. Slower than 'rowRevList'.
@@ -277,14 +277,7 @@ rowRevList =
 {-# INLINE rowHashMap #-}
 rowHashMap :: (Eq key, Hashable key) => RowDecoder (key, value) -> Decoder (HashMap key value)
 rowHashMap =
-  rowReduction (K.FoldM step init exit)
-  where
-    init =
-      return (L.empty)
-    step m (k, v) =
-      return (L.insert k v m)
-    exit =
-      return
+  rowReduction (K.generalize K.hashMap)
 
 {-|
 Parser of a row.
