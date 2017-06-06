@@ -18,16 +18,7 @@ main =
     useConnection connection
   where
     acquireConnection =
-      A.acquire settings
-      where
-        settings =
-          A.settings host port user password database
-          where
-            host = "localhost"
-            port = 5432
-            user = "postgres"
-            password = ""
-            database = "postgres"
+      A.acquire ""
     useConnection connection =
       defaultMain
       [
