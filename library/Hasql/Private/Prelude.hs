@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 module Hasql.Private.Prelude
 (
   module Exports,
@@ -51,7 +53,12 @@ import Contravariant.Extras as Exports
 -- either
 -------------------------
 import Control.Monad.Trans.Either as Exports
+-- prefer implementations in base (via base-prelude) over the ones in either
+#if MIN_VERSION_base(4,10,0)
+import Data.Either.Combinators as Exports hiding (fromLeft, fromRight)
+#else
 import Data.Either.Combinators as Exports
+#endif
 
 -- semigroups
 -------------------------
