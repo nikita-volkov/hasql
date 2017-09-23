@@ -85,7 +85,7 @@ dropRemainders =
         getResultMaybe =
           lift $ LibPQ.getResult connection
         onResult result =
-          checkErrors *> loop integerDatetimes connection
+          loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
               EitherT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)
