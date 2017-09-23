@@ -1,7 +1,5 @@
 env:
-  - ghc=7.6.1  cabal=1.18 lower_bound_dependencies=1
-  - ghc=7.8.1  cabal=1.18 lower_bound_dependencies=1
-  - ghc=7.10.1 cabal=1.22
+  - ghc=7.10.1 cabal=1.22 lower_bound_dependencies=1
   - ghc=8.0.2  cabal=1.24
   - ghc=8.2.1  cabal=1.24 benchmarks=1 tests=1
 
@@ -30,7 +28,6 @@ install:
       constraint_options=(
         "--constraint=transformers==0.3.*"
         "--constraint=time==1.4.*"
-        "--constraint=hashtables==1.1.0.0"
       );
     fi;
   # Install the "haskell-src-exts" implicit dependency
