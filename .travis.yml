@@ -1,6 +1,6 @@
 env:
   - ghc=7.6.1  cabal=1.18 lower_bound_dependencies=1
-  - ghc=7.8.1  cabal=1.18
+  - ghc=7.8.1  cabal=1.18 lower_bound_dependencies=1
   - ghc=7.10.1 cabal=1.22
   - ghc=8.0.2  cabal=1.24
   - ghc=8.2.1  cabal=1.24 benchmarks=1 tests=1
@@ -10,8 +10,6 @@ install:
   - set -o pipefail && set -e
   # Install GHC and Cabal
   -
-    ghc=${ghc=7.10.1}; 
-    cabal=${cabal=1.22};
     travis_retry sudo add-apt-repository -y ppa:hvr/ghc;
     travis_retry sudo apt-get update;
     travis_retry sudo apt-get install cabal-install-$cabal ghc-$ghc;
@@ -32,6 +30,7 @@ install:
       constraint_options=(
         "--constraint=transformers==0.3.*"
         "--constraint=time==1.4.*"
+        "--constraint=hashtables==1.1.0.0"
       );
     fi;
   # Install the "haskell-src-exts" implicit dependency
