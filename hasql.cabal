@@ -54,6 +54,7 @@ library
     Hasql.Connection.Session.Statement.Encoding
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
+    Hasql.Core.IO
     Hasql.Client.Communicator
     Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation
