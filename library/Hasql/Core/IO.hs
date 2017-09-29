@@ -6,6 +6,13 @@ import qualified Data.ByteString as B
 
 
 {-|
+An internal request to the dispatcher.
+-}
+data Request
+
+data Notification = Notification !Int32 !ByteString !ByteString
+
+{-|
 Fork off a thread, which will be fetching chunks of data from the socket, feeding them to the handler action.
 -}
 startReceiving :: A.Socket -> (Either Text ByteString -> IO ()) -> IO (IO ())
@@ -29,16 +36,20 @@ startSending socket getNextChunk sendError =
       Right () -> loop
       Left msg -> sendError msg
 
-startInteracting :: IO (Either Text ByteString) -> (ByteString -> IO ()) -> IO (IO ())
-startInteracting receive send =
+startDispatching :: IO (Either Text ByteString) -> (ByteString -> IO ()) -> IO (Maybe Request) -> (Either Text Notification -> IO ()) -> IO (IO ())
+startDispatching receive send fetchRequest sendNotification =
   $(todo "")
 
-startMaintainingConnection :: A.Socket -> IO (IO ())
-startMaintainingConnection socket =
+startMaintainingConnection :: A.Socket -> (Either Text Notification -> IO ()) -> IO (IO (), Request -> IO ())
+startMaintainingConnection socket sendNotification =
   do
     inputQueue <- newTQueueIO
     outputQueue <- newTQueueIO
+    requestQueue <- newTQueueIO
     stopSending <- startSending socket (atomically (readTQueue outputQueue)) (atomically . writeTQueue inputQueue . Left)
     stopReceiving <- startReceiving socket (atomically . writeTQueue inputQueue)
-    stopInteracting <- startInteracting (atomically (readTQueue inputQueue)) (atomically . writeTQueue outputQueue)
-    return (stopInteracting >> stopSending >> stopReceiving)
+    stopDispatching <- startDispatching (atomically (readTQueue inputQueue)) (atomically . writeTQueue outputQueue) (atomically (tryReadTQueue requestQueue)) sendNotification
+    let
+      stopMaintaining = stopDispatching >> stopSending >> stopReceiving
+      sendRequest = atomically . writeTQueue requestQueue
+      in return (stopMaintaining, sendRequest)
