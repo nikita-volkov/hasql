@@ -1,4 +1,4 @@
-module Hasql.Core.IO where
+module Hasql.Core.Threads where
 
 import Hasql.Prelude
 import qualified Hasql.Socket as A
