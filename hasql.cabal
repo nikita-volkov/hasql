@@ -57,6 +57,7 @@ library
     Hasql.Core.Threads
     Hasql.Core.Model
     Hasql.Core.StreamReader
+    Hasql.Core.MessageTypePredicates
     Hasql.Client.Communicator
     Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation
