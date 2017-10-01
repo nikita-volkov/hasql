@@ -9,41 +9,42 @@ import qualified Data.ByteString as B
 {-|
 Fork off a thread, which will be fetching chunks of data from the socket, feeding them to the handler action.
 -}
-startReceiving :: A.Socket -> (Either Text ByteString -> IO ()) -> IO (IO ())
-startReceiving socket sendResult =
+startReceiving :: A.Socket -> (ByteString -> IO ()) -> (Text -> IO ()) -> IO (IO ())
+startReceiving socket sendResult reportError =
   fmap killThread $ forkIO $ fix $ \loop -> do
     resultOfReceiving <- A.receive socket (shiftL 2 12)
     case resultOfReceiving of
       Right bytes ->
         if B.null bytes
-          then sendResult (Left "Connection interrupted")
-          else sendResult (Right bytes) >> loop
+          then reportError "Connection interrupted"
+          else sendResult bytes >> loop
       Left msg ->
-        sendResult (Left msg)
+        reportError msg
 
 startSending :: A.Socket -> IO ByteString -> (Text -> IO ()) -> IO (IO ())
-startSending socket getNextChunk sendError =
+startSending socket getNextChunk reportError =
   fmap killThread $ forkIO $ fix $ \loop -> do
     bytes <- getNextChunk
     resultOfSending <- A.send socket bytes
     case resultOfSending of
       Right () -> loop
-      Left msg -> sendError msg
+      Left msg -> reportError msg
 
-startDispatching :: IO (Either Text ByteString) -> (ByteString -> IO ()) -> IO (Maybe Request) -> (Either Text Notification -> IO ()) -> IO (IO ())
-startDispatching receive send fetchRequest sendNotification =
+startSlicing :: IO ByteString -> (Message -> IO ()) -> IO (IO ())
+startSlicing getNextChunk sendMessage =
+  fmap killThread $ forkIO $
   $(todo "")
 
-startMaintainingConnection :: A.Socket -> (Either Text Notification -> IO ()) -> IO (IO (), Request -> IO ())
-startMaintainingConnection socket sendNotification =
+startMaintainingConnection :: A.Socket -> IO (IO ())
+startMaintainingConnection socket =
   do
     inputQueue <- newTQueueIO
     outputQueue <- newTQueueIO
-    requestQueue <- newTQueueIO
-    stopSending <- startSending socket (atomically (readTQueue outputQueue)) (atomically . writeTQueue inputQueue . Left)
-    stopReceiving <- startReceiving socket (atomically . writeTQueue inputQueue)
-    stopDispatching <- startDispatching (atomically (readTQueue inputQueue)) (atomically . writeTQueue outputQueue) (atomically (tryReadTQueue requestQueue)) sendNotification
+    messageQueue <- newTQueueIO
+    errorVar <- newEmptyTMVarIO
+    stopSending <- startSending socket (atomically (readTQueue outputQueue)) (atomically . putTMVar errorVar . TransportError)
+    stopReceiving <- startReceiving socket (atomically . writeTQueue inputQueue) (atomically . putTMVar errorVar . TransportError)
+    stopSlicing <- startSlicing (atomically (readTQueue inputQueue)) (atomically . writeTQueue messageQueue)
     let
-      stopMaintaining = stopDispatching >> stopSending >> stopReceiving
-      sendRequest = atomically . writeTQueue requestQueue
-      in return (stopMaintaining, sendRequest)
+      stopMaintaining = stopSlicing >> stopReceiving >> stopSending
+      in return (stopMaintaining)
