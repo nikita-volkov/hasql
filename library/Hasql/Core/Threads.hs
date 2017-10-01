@@ -1,16 +1,10 @@
 module Hasql.Core.Threads where
 
 import Hasql.Prelude
+import Hasql.Core.Model
 import qualified Hasql.Socket as A
 import qualified Data.ByteString as B
 
-
-{-|
-An internal request to the dispatcher.
--}
-data Request
-
-data Notification = Notification !Int32 !ByteString !ByteString
 
 {-|
 Fork off a thread, which will be fetching chunks of data from the socket, feeding them to the handler action.
