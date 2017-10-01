@@ -4,6 +4,7 @@ import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Socket as A
 import qualified Data.ByteString as B
+import qualified Hasql.Core.StreamReader as C
 
 
 {-|
@@ -32,8 +33,13 @@ startSending socket getNextChunk reportError =
 
 startSlicing :: IO ByteString -> (Message -> IO ()) -> IO (IO ())
 startSlicing getNextChunk sendMessage =
-  fmap killThread $ forkIO $
-  $(todo "")
+  fmap killThread (forkIO (C.run read getNextChunk $> ()))
+  where
+    read =
+      do
+        message <- C.fetchMessage Message
+        liftIO (sendMessage message)
+        read
 
 startMaintainingConnection :: A.Socket -> IO (IO ())
 startMaintainingConnection socket =

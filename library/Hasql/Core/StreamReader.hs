@@ -13,6 +13,10 @@ newtype StreamReader output =
   StreamReader (ReaderT (IO ByteString) (StateT ByteString IO) output)
   deriving (Functor, Applicative, Monad, MonadIO)
 
+run :: StreamReader output -> IO ByteString -> IO (output, ByteString)
+run (StreamReader stack) fetchChunk =
+  runStateT (runReaderT stack fetchChunk) ""
+
 streamReader :: (IO ByteString -> ByteString -> IO (output, ByteString)) -> StreamReader output
 streamReader fn =
   StreamReader (ReaderT (\fetchChunk -> StateT (\cached -> fn fetchChunk cached)))
