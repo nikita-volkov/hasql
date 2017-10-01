@@ -5,6 +5,7 @@ module Hasql.Prelude
   forMFromZero_,
   strictCons,
   regions,
+  match,
   traceEventIO,
   traceEvent,
   traceMarkerIO,
@@ -170,3 +171,11 @@ regions maxRegions space =
                 !regionStart =
                   spaceState - regionSize
 
+match :: output -> [(input -> Bool, output)] -> input -> output
+match defaultOutput cases =
+  case cases of
+    (predicate, output) : casesTail -> \input ->
+      if predicate input
+        then output
+        else match defaultOutput casesTail input
+    _ -> const defaultOutput
