@@ -110,7 +110,7 @@ rowsReductionOnTheBlockedThread rowParser rowFold =
           J.CommandCompleteMessageType ->
             const (sendEvent C.FinishEvent $> False)
           J.ErrorMessageType ->
-            fmap (const False) . B.errorResponse backendErrorHandler protocolErrorHandler
+            fmap (const False) . B.error backendErrorHandler protocolErrorHandler
           J.EmptyQueryMessageType ->
             const (sendEvent C.FinishEvent $> False)
           J.PortalSuspendedMessageType ->
@@ -205,7 +205,7 @@ startUp clearTextPasswordHandler md5PasswordHandler =
             return False
         J.ErrorMessageType ->
           \messageBytes ->
-          B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
+          B.error backendErrorHandler protocolErrorHandler messageBytes $> False
         _ ->
           const (return True)
       where
