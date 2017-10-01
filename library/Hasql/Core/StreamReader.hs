@@ -10,31 +10,28 @@ import qualified PtrMagic.ByteString as E
 
 
 newtype StreamReader output =
-  StreamReader (ReaderT (IO (Either Text ByteString)) (StateT ByteString (ExceptT Text IO)) output)
-  deriving (Functor, Applicative, Monad, MonadIO, MonadError Text)
+  StreamReader (ReaderT (IO ByteString) (StateT ByteString IO) output)
+  deriving (Functor, Applicative, Monad, MonadIO)
 
-streamReader :: (IO (Either Text ByteString) -> ByteString -> IO (Either Text (output, ByteString))) -> StreamReader output
+streamReader :: (IO ByteString -> ByteString -> IO (output, ByteString)) -> StreamReader output
 streamReader fn =
-  StreamReader (ReaderT (\fetchChunk -> StateT (\cached -> ExceptT (fn fetchChunk cached))))
+  StreamReader (ReaderT (\fetchChunk -> StateT (\cached -> fn fetchChunk cached)))
 
 fetchBytes :: Int -> StreamReader ByteString
 fetchBytes amount =
   streamReader $ \fetchChunk cached ->
   if B.length cached < amount
     then fetchAccumulating fetchChunk (D.bytes cached)
-    else return (Right (B.splitAt amount cached))
+    else return (B.splitAt amount cached)
   where
     fetchAccumulating fetchChunk encoding =
       do
-        resultOfFetching <- fetchChunk
-        case resultOfFetching of
-          Left error -> return (Left error)
-          Right bytes ->
-            if requiredAmount > B.length bytes
-              then fetchAccumulating fetchChunk (encoding <> D.bytes bytes)
-              else case B.splitAt requiredAmount bytes of
-                (consumedBytes, remainingBytes) ->
-                  return (Right (E.encoding (encoding <> D.bytes consumedBytes), remainingBytes))
+        bytes <- fetchChunk
+        if requiredAmount > B.length bytes
+          then fetchAccumulating fetchChunk (encoding <> D.bytes bytes)
+          else case B.splitAt requiredAmount bytes of
+            (consumedBytes, remainingBytes) ->
+              return (E.encoding (encoding <> D.bytes consumedBytes), remainingBytes)
       where
         requiredAmount =
           case encoding of
