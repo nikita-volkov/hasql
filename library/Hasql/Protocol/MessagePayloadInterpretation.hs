@@ -28,12 +28,12 @@ commandComplete resultHandler protocolErrorHandler messageBytes =
   either (protocolErrorHandler . mappend "CommandComplete parsing error: ") resultHandler $
   A.run D.commandCompleteMessageAffectedRows messageBytes
 
-{-# INLINE errorResponse #-}
-errorResponse ::
+{-# INLINE error #-}
+error ::
   (ByteString -> ByteString -> result) {-^ Backend error handler -} ->
   (Text -> result) {-^ Protocol error handler -} ->
   ByteString -> result
-errorResponse backendErrorHandler protocolErrorHandler messageBytes =
+error backendErrorHandler protocolErrorHandler messageBytes =
   case A.run D.errorMessage messageBytes of
     Right (Error code message) ->
       backendErrorHandler code message

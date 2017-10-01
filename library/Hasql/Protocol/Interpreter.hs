@@ -117,7 +117,7 @@ error backendErrorHandler protocolErrorHandler =
   Interpreter $ \case
     ErrorMessageType ->
       \messageBytes ->
-      B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
+      B.error backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
       const (return True)
 
@@ -132,7 +132,7 @@ bindComplete bindCompleteHandler backendErrorHandler protocolErrorHandler =
       const (bindCompleteHandler $> False)
     ErrorMessageType ->
       \messageBytes ->
-      B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
+      B.error backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
       const (return True)
 
@@ -147,7 +147,7 @@ parseComplete parseCompleteHandler backendErrorHandler protocolErrorHandler =
       const (parseCompleteHandler $> False)
     ErrorMessageType ->
       \messageBytes ->
-      B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
+      B.error backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
       const (return True)
 
@@ -162,6 +162,6 @@ readyForQuery readyForQueryHandler backendErrorHandler protocolErrorHandler =
       const (readyForQueryHandler $> False)
     ErrorMessageType ->
       \messageBytes ->
-      B.errorResponse backendErrorHandler protocolErrorHandler messageBytes $> False
+      B.error backendErrorHandler protocolErrorHandler messageBytes $> False
     _ ->
       const (return True)
