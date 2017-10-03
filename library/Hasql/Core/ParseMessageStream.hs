@@ -39,6 +39,18 @@ instance Alternative ParseMessageStream where
       right' =
         fmap (fmap (ParseMessageStream left <|>)) right
 
+instance Monad ParseMessageStream where
+  return = pure
+  {-# INLINE (>>=) #-}
+  (>>=) (ParseMessageStream left) rightK =
+    ParseMessageStream (fmap mapping left)
+    where
+      mapping =
+        \case
+          Left leftOutput -> Right (rightK leftOutput)
+          Right (ParseMessageStream nextLeft) -> Right (ParseMessageStream (fmap mapping nextLeft))
+
+
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
   ParseMessageStream (fmap Left parseMessage)
