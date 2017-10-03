@@ -41,8 +41,8 @@ startSlicing getNextChunk sendMessage =
         liftIO (sendMessage message)
         read
 
-startMaintainingConnection :: A.Socket -> IO (IO ())
-startMaintainingConnection socket =
+startDispatching :: A.Socket -> IO (IO ())
+startDispatching socket =
   do
     inputQueue <- newTQueueIO
     outputQueue <- newTQueueIO
