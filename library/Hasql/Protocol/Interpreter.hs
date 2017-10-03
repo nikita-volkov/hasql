@@ -66,9 +66,9 @@ rowsReduction rowParser (FoldM progress enter exit) resultHandler rowParsingErro
                 return False
             ErrorMessageType ->
               do
-                case A.run D.errorMessage messageBytes of
-                  Right (Error code message) ->
-                    backendErrorHandler code message
+                case A.run (D.errorMessage backendErrorHandler) messageBytes of
+                  Right x ->
+                    x
                   Left parsingError ->
                     protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
                 return False
@@ -96,9 +96,9 @@ rowsAffected resultHandler backendErrorHandler protocolErrorHandler =
         return False
     ErrorMessageType -> \messageBytes ->
       do
-        case A.run D.errorMessage messageBytes of
-          Right (Error code message) ->
-            backendErrorHandler code message
+        case A.run (D.errorMessage backendErrorHandler) messageBytes of
+          Right x ->
+            x
           Left parsingError ->
             protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
         return False

@@ -80,12 +80,12 @@ commandCompleteMessageAffectedRows =
 The essential components of the error (or notice) message.
 -}
 {-# INLINE errorMessage #-}
-errorMessage :: BinaryParser Error
-errorMessage =
+errorMessage :: (ByteString -> ByteString -> errorMessage) -> BinaryParser errorMessage
+errorMessage errorMessage =
   do
     tupleFn <- loop id
     case tupleFn (Nothing, Nothing) of
-      (Just v1, Just v2) -> return (Error v1 v2)
+      (Just v1, Just v2) -> return (errorMessage v1 v2)
       _ -> failure "Some of the error fields are missing"
   where
     loop state =
@@ -129,9 +129,9 @@ authenticationMessage =
       _ -> failure ("Unsupported authentication method: " <> (fromString . show) method)
 
 {-# INLINE notificationMessage #-}
-notificationMessage :: BinaryParser NotificationMessage
-notificationMessage =
-  NotificationMessage <$> word32 <*> nullTerminatedString <*> nullTerminatedString
+notificationMessage :: (Word32 -> ByteString -> ByteString -> result) -> BinaryParser result
+notificationMessage cont =
+  cont <$> word32 <*> nullTerminatedString <*> nullTerminatedString
 
 {-# INLINE dataRowMessage #-}
 dataRowMessage :: (Word16 -> BinaryParser a) -> BinaryParser a

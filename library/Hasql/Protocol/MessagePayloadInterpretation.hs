@@ -34,9 +34,9 @@ error ::
   (Text -> result) {-^ Protocol error handler -} ->
   ByteString -> result
 error backendErrorHandler protocolErrorHandler messageBytes =
-  case A.run D.errorMessage messageBytes of
-    Right (Error code message) ->
-      backendErrorHandler code message
+  case A.run (D.errorMessage backendErrorHandler) messageBytes of
+    Right handler ->
+      handler
     Left parsingError ->
       protocolErrorHandler ("ErrorResponse parsing error: " <> parsingError)
 
