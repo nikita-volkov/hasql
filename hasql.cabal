@@ -61,6 +61,10 @@ library
     Hasql.Core.StreamReader
     Hasql.Core.MessageTypePredicates
     Hasql.Core.Loops.Serializer
+    Hasql.Core.Loops.Receiver
+    Hasql.Core.Loops.Sender
+    Hasql.Core.Loops.IncomingMessagesSlicer
+    Hasql.Core.Loops.Interpreter
     Hasql.Client.Communicator
     Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation
