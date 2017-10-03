@@ -3,19 +3,9 @@ module Hasql.Core.Model where
 import Hasql.Prelude hiding (State, peek)
 
 
-{-|
-An internal request to the dispatcher.
--}
-data Request
-  -- ParseRequest !ByteString !ByteString !(Vector Word32) !(Either Error () -> IO ()) |
-  -- BindRequest !ByteString !ByteString !D.Encoding !(Either Error () -> IO ()) |
-  -- ExecuteRequest 
-
 data ResultProcessor =
   RowsResultProcessor !(ByteString -> IO ()) !(IO ()) |
   RowsAffectedResultProcessor !(Int -> IO ())
-
-data OutgoingMessage
 
 data Message = Message !Word8 !ByteString
 
