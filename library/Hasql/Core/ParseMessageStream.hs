@@ -1,6 +1,6 @@
 module Hasql.Core.ParseMessageStream where
 
-import Hasql.Prelude
+import Hasql.Prelude hiding (error)
 import Hasql.Core.Model
 import qualified Hasql.Core.ParseMessage as A
 import qualified Hasql.Core.MessageTypePredicates as G
@@ -22,11 +22,7 @@ instance Functor ParseMessageStream where
 instance Applicative ParseMessageStream where
   pure x =
     ParseMessageStream (pure (Left x))
-  (<*>) (ParseMessageStream left) (ParseMessageStream right) =
-    ParseMessageStream merged
-    where
-      merged =
-        $(todo "<*>")
+  (<*>) = ap
 
 instance Alternative ParseMessageStream where
   empty =
@@ -49,6 +45,10 @@ instance Monad ParseMessageStream where
         \case
           Left leftOutput -> Right (rightK leftOutput)
           Right (ParseMessageStream nextLeft) -> Right (ParseMessageStream (fmap mapping nextLeft))
+
+instance MonadPlus ParseMessageStream where
+  mzero = empty
+  mplus = (<|>)
 
 
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
@@ -91,3 +91,15 @@ rowsAffected =
       Right rowsAffected <$ A.dataRowWithoutData
     emptyQuery =
       Left (Right 0) <$ A.emptyQuery
+
+parseComplete :: ParseMessageStream ()
+parseComplete =
+  parseMessage A.parseComplete
+
+bindComplete :: ParseMessageStream ()
+bindComplete =
+  parseMessage A.bindComplete
+
+readyForQuery :: ParseMessageStream ()
+readyForQuery =
+  parseMessage A.readyForQuery
