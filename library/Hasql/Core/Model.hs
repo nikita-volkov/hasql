@@ -15,6 +15,8 @@ data ResultProcessor =
   RowsResultProcessor !(ByteString -> IO ()) !(IO ()) |
   RowsAffectedResultProcessor !(Int -> IO ())
 
+data OutgoingMessage
+
 data Message = Message !Word8 !ByteString
 
 data Notification = Notification !Word32 !ByteString !ByteString

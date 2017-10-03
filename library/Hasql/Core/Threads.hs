@@ -34,8 +34,8 @@ startSending socket getNextChunk reportError =
       Right () -> loop
       Left msg -> reportError msg
 
-startSlicing :: IO ByteString -> (Message -> IO ()) -> IO (IO ())
-startSlicing getNextChunk sendMessage =
+startSlicingIncomingMessages :: IO ByteString -> (Message -> IO ()) -> IO (IO ())
+startSlicingIncomingMessages getNextChunk sendMessage =
   fmap killThread (forkIO (C.run read getNextChunk $> ()))
   where
     read =
@@ -43,6 +43,10 @@ startSlicing getNextChunk sendMessage =
         message <- C.fetchMessage Message
         liftIO (sendMessage message)
         read
+
+startSerializingOutgoingMessages :: IO OutgoingMessage -> (ByteString -> IO ()) -> IO (IO ())
+startSerializingOutgoingMessages getOutgoingMessage sendBytes =
+  $(todo "")
 
 startInterpreting :: IO Message -> IO (Maybe ResultProcessor) -> (Notification -> IO ()) -> (Text -> IO ()) -> (ErrorMessage -> IO ()) -> IO (IO ())
 startInterpreting fetchMessage fetchResultProcessor sendNotification sendProtocolError sendErrorMessage =
@@ -109,7 +113,7 @@ startDispatching socket =
     errorVar <- newEmptyTMVarIO
     stopSending <- startSending socket (atomically (readTQueue outputQueue)) (atomically . putTMVar errorVar . TransportError)
     stopReceiving <- startReceiving socket (atomically . writeTQueue inputQueue) (atomically . putTMVar errorVar . TransportError)
-    stopSlicing <- startSlicing (atomically (readTQueue inputQueue)) (atomically . writeTQueue messageQueue)
+    stopSlicing <- startSlicingIncomingMessages (atomically (readTQueue inputQueue)) (atomically . writeTQueue messageQueue)
     let
       stopMaintaining = stopSlicing >> stopReceiving >> stopSending
       in return (stopMaintaining)
