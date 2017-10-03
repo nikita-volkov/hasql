@@ -54,6 +54,7 @@ library
     Hasql.Connection.Session.Statement.Encoding
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
+    Hasql.Core.MessageInterpreter
     Hasql.Core.Threads
     Hasql.Core.Model
     Hasql.Core.StreamReader
