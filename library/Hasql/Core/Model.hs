@@ -5,7 +5,10 @@ import Hasql.Prelude hiding (State, peek)
 
 data ResultProcessor =
   RowsResultProcessor !(ByteString -> IO ()) !(IO ()) |
-  RowsAffectedResultProcessor !(Int -> IO ())
+  RowsAffectedResultProcessor !(Int -> IO ()) |
+  ParseCompleteResultProcessor !(IO ()) |
+  BindCompleteResultProcessor !(IO ()) |
+  ReadyForQueryResultProcessor !(IO ())
 
 data Message = Message !Word8 !ByteString
 

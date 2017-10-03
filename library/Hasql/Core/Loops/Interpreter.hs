@@ -26,6 +26,7 @@ loop fetchMessage fetchResultProcessor sendNotification sendProtocolError sendEr
                 interpretCollectingRows sendRow sendEnd type_ payload
               RowsAffectedResultProcessor sendAmount ->
                 interpretAffectedRows sendAmount type_ payload
+              _ -> $(todo "")
         | True -> interpretNonResult interpretNeutrally type_ payload
     interpretCollectingRows sendRow sendEnd type_ payload =
       if
