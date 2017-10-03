@@ -9,6 +9,8 @@ module Hasql.Prelude
   traceEvent,
   traceMarkerIO,
   traceMarker,
+  startThread,
+  startThreads,
 )
 where
 
@@ -170,3 +172,12 @@ regions maxRegions space =
                 !regionStart =
                   spaceState - regionSize
 
+{-# INLINE startThread #-}
+startThread :: IO () -> IO (IO ())
+startThread action =
+  fmap killThread (forkIO action)
+
+{-# INLINE startThreads #-}
+startThreads :: [IO ()] -> IO (IO ())
+startThreads =
+  fmap sequence_ . traverse startThread

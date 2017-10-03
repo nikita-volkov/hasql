@@ -54,9 +54,9 @@ library
     Hasql.Connection.Session.Statement.Encoding
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
+    Hasql.Core.Dispatcher
     Hasql.Core.ParseMessage
     Hasql.Core.ParseMessageStream
-    Hasql.Core.Threads
     Hasql.Core.Model
     Hasql.Core.StreamReader
     Hasql.Core.MessageTypePredicates
