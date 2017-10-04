@@ -20,13 +20,17 @@ instance Functor ParseMessageStream where
     ParseMessageStream (fmap (either (Left . mapping) (Right . fmap mapping)) parseMessage)
 
 instance Applicative ParseMessageStream where
+  {-# INLINE pure #-}
   pure x =
     ParseMessageStream (pure (Left x))
+  {-# INLINE (<*>) #-}
   (<*>) = ap
 
 instance Alternative ParseMessageStream where
+  {-# INLINE empty #-}
   empty =
     ParseMessageStream empty
+  {-# INLINE (<|>) #-}
   (<|>) (ParseMessageStream left) (ParseMessageStream right) =
     ParseMessageStream (left' <|> right')
     where
@@ -36,6 +40,7 @@ instance Alternative ParseMessageStream where
         fmap (fmap (ParseMessageStream left <|>)) right
 
 instance Monad ParseMessageStream where
+  {-# INLINE return #-}
   return = pure
   {-# INLINE (>>=) #-}
   (>>=) (ParseMessageStream left) rightK =
