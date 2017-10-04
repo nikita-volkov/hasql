@@ -1,4 +1,4 @@
-module Hasql.Core.Request where
+module Hasql.Core.Pipeline where
 
 import Hasql.Prelude
 import Hasql.Core.Model
@@ -12,46 +12,46 @@ import qualified Hasql.Protocol.Encoding as K
 A builder of concatenated outgoing messages and
 a parser of the stream of incoming messages.
 -}
-data Request result =
-  Request !B.Builder !(A.ParseMessageStream result)
+data Pipeline result =
+  Pipeline !B.Builder !(A.ParseMessageStream result)
 
-instance Functor Request where
+instance Functor Pipeline where
   {-# INLINE fmap #-}
-  fmap mapping (Request builder parse) =
-    Request builder (fmap mapping parse)
+  fmap mapping (Pipeline builder parse) =
+    Pipeline builder (fmap mapping parse)
 
-instance Applicative Request where
+instance Applicative Pipeline where
   {-# INLINE pure #-}
   pure =
-    Request mempty . return
+    Pipeline mempty . return
   {-# INLINE (<*>) #-}
-  (<*>) (Request leftBuilder leftParse) (Request rightBuilder rightParse) =
-    Request (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
+  (<*>) (Pipeline leftBuilder leftParse) (Pipeline rightBuilder rightParse) =
+    Pipeline (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
 
 {-# INLINE parse #-}
-parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
+parse :: ByteString -> ByteString -> Vector Word32 -> Pipeline ()
 parse preparedStatementName query oids =
-  Request builder parse
+  Pipeline builder parse
   where
     builder = K.parseMessage preparedStatementName query oids
     parse = A.parseComplete
 
 {-# INLINE bind #-}
-bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Request ()
+bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Pipeline ()
 bind portalName preparedStatementName parameters =
-  Request builder parse
+  Pipeline builder parse
   where
     builder = K.binaryFormatBindMessage portalName preparedStatementName parameters
     parse = A.bindComplete
 
 {-# INLINE execute #-}
-execute :: ByteString -> A.ParseMessageStream result -> Request result
+execute :: ByteString -> A.ParseMessageStream result -> Pipeline result
 execute portalName parse =
-  Request builder parse
+  Pipeline builder parse
   where
     builder = K.unlimitedExecuteMessage portalName
 
 {-# INLINE sync #-}
-sync :: Request ()
+sync :: Pipeline ()
 sync =
-  Request K.syncMessage A.readyForQuery
+  Pipeline K.syncMessage A.readyForQuery

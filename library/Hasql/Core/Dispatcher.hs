@@ -7,7 +7,7 @@ import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified PtrMagic.Encoding as F
 import qualified Hasql.Core.ParseMessageStream as E
-import qualified Hasql.Core.Request as C
+import qualified Hasql.Core.Pipeline as C
 import qualified Hasql.Core.Loops.Serializer as SerializerLoop
 import qualified Hasql.Core.Loops.Receiver as ReceiverLoop
 import qualified Hasql.Core.Loops.Sender as SenderLoop
@@ -15,7 +15,7 @@ import qualified Hasql.Core.Loops.IncomingMessagesSlicer as IncomingMessagesSlic
 import qualified Hasql.Core.Loops.Interpreter as InterpreterLoop
 
 
-startDispatching :: A.Socket -> (Either Error Notification -> IO ()) -> IO (IO (), C.Request result -> IO (Either Error result))
+startDispatching :: A.Socket -> (Either Error Notification -> IO ()) -> IO (IO (), C.Pipeline result -> IO (Either Error result))
 startDispatching socket sendErrorOrNotification =
   do
     outgoingBytesQueue <- newTQueueIO
@@ -25,7 +25,7 @@ startDispatching socket sendErrorOrNotification =
     resultProcessorQueue <- newTQueueIO
     transportErrorVar <- newEmptyTMVarIO
     let
-      performRequest (C.Request builder parse) =
+      performRequest (C.Pipeline builder parse) =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
