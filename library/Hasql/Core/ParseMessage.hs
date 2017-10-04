@@ -4,6 +4,7 @@ import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
+import qualified Hasql.Protocol.Model as A
 import qualified BinaryParser as D
 
 
@@ -113,3 +114,13 @@ emptyQuery =
 portalSuspended :: ParseMessage ()
 portalSuspended =
   withoutPayload G.portalSuspended
+
+{-# INLINE authentication #-}
+authentication :: ParseMessage (Either Text A.AuthenticationMessage)
+authentication =
+  payloadParser G.authentication E.authenticationMessage
+
+{-# INLINE parameterStatus #-}
+parameterStatus :: ParseMessage (Either Text (ByteString, ByteString))
+parameterStatus =
+  payloadParser G.parameterStatus (E.parameterStatusMessagePayloadKeyValue (,))

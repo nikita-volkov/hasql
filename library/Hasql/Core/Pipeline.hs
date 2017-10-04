@@ -5,7 +5,9 @@ import Hasql.Core.Model
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified Hasql.Core.ParseMessageStream as A
+import qualified Hasql.Core.ParseMessage as E
 import qualified Hasql.Protocol.Encoding as K
+import qualified Hasql.Protocol.Model as C
 
 
 {-|
@@ -55,3 +57,24 @@ execute portalName parse =
 sync :: Pipeline ()
 sync =
   Pipeline K.syncMessage (lift A.readyForQuery)
+
+{-# INLINE startUp #-}
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Pipeline C.AuthenticationMessage
+startUp username databaseMaybe runtimeParameters =
+  Pipeline 
+    (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
+    (ExceptT (A.parseMessage (E.authentication)))
+
+{-# INLINE clearTextPassword #-}
+clearTextPassword :: ByteString -> Pipeline C.AuthenticationMessage
+clearTextPassword password =
+  Pipeline
+    (K.clearTextPasswordMessage password)
+    (ExceptT (A.parseMessage E.authentication))
+
+{-# INLINE md5Password #-}
+md5Password :: ByteString -> ByteString -> ByteString -> Pipeline C.AuthenticationMessage
+md5Password username password salt =
+  Pipeline
+    (K.md5PasswordMessage username password salt)
+    (ExceptT (A.parseMessage E.authentication))
