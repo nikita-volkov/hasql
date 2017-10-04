@@ -36,7 +36,7 @@ startDispatching socket sendErrorOrNotification =
           encoding =
             B.builderPtrFiller builder F.Encoding
           parseWithError =
-            fmap Right parse <|>
+            fmap (either (Left . ProtocolError) Right) (runExceptT parse) <|>
             fmap (Left . either ProtocolError backendError) E.error
             where
               backendError (ErrorMessage state details) = BackendError state details

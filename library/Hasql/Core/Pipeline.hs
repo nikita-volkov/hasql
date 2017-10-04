@@ -13,7 +13,7 @@ A builder of concatenated outgoing messages and
 a parser of the stream of incoming messages.
 -}
 data Pipeline result =
-  Pipeline !B.Builder !(A.ParseMessageStream result)
+  Pipeline !B.Builder !(ExceptT Text A.ParseMessageStream result)
 
 instance Functor Pipeline where
   {-# INLINE fmap #-}
@@ -34,7 +34,7 @@ parse preparedStatementName query oids =
   Pipeline builder parse
   where
     builder = K.parseMessage preparedStatementName query oids
-    parse = A.parseComplete
+    parse = lift A.parseComplete
 
 {-# INLINE bind #-}
 bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Pipeline ()
@@ -42,16 +42,16 @@ bind portalName preparedStatementName parameters =
   Pipeline builder parse
   where
     builder = K.binaryFormatBindMessage portalName preparedStatementName parameters
-    parse = A.bindComplete
+    parse = lift A.bindComplete
 
 {-# INLINE execute #-}
-execute :: ByteString -> A.ParseMessageStream result -> Pipeline result
+execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Pipeline result
 execute portalName parse =
-  Pipeline builder parse
+  Pipeline builder (ExceptT parse)
   where
     builder = K.unlimitedExecuteMessage portalName
 
 {-# INLINE sync #-}
 sync :: Pipeline ()
 sync =
-  Pipeline K.syncMessage A.readyForQuery
+  Pipeline K.syncMessage (lift A.readyForQuery)
