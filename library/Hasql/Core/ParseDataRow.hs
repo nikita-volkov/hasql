@@ -1,42 +1,30 @@
 module Hasql.Core.ParseDataRow where
 
 import Hasql.Prelude
-import qualified Hasql.Core.ParseDataRowColumn as A
 import qualified BinaryParser as D
-import qualified VectorBuilder.Builder as N
-import qualified VectorBuilder.Vector as O
+import qualified Data.Vector as A
 
 
 {-|
-A specification for processing of DataRow and RowDescription messages.
+A specification for processing of DataRow messages.
+
+It is assumed that the size of the input vector is checked externally.
 -}
 data ParseDataRow result =
-  {-|
-  * Amount of columns
-  * Builder of column OID vector (for composition)
-  * Thunk of the materialized OID vector (for reuse)
-  * Parser with integer datetimes on
-  * Parser with integer datetimes off
-  -}
-  ParseDataRow !Int (N.Builder Word32) (Vector Word32) (D.BinaryParser result) (D.BinaryParser result)
+  ParseDataRow !Int !(Vector (Maybe ByteString) -> Int -> Either Text result)
 
 deriving instance Functor ParseDataRow
 
 instance Applicative ParseDataRow where
   pure x =
-    ParseDataRow 0 mempty empty (pure x) (pure x)
-  (<*>) (ParseDataRow leftCols leftOidBuilder leftOidVec leftParser1 leftParser2)
-        (ParseDataRow rightCols rightOidBuilder rightOidVec rightParser1 rightParser2) =
+    ParseDataRow 0 (\_ _ -> Right x)
+  (<*>) (ParseDataRow leftSize leftInterpreter) (ParseDataRow rightSize rightInterpreter) =
     ParseDataRow
-      (leftCols + rightCols)
-      (oidBuilder)
-      (O.build oidBuilder)
-      (leftParser1 <*> rightParser1)
-      (leftParser2 <*> rightParser2)
-    where
-      oidBuilder =
-        leftOidBuilder <> rightOidBuilder
+      (leftSize + rightSize)
+      (\vec !index -> leftInterpreter vec index <*> rightInterpreter vec (index + leftSize))
 
-column :: A.ParseDataRowColumn column -> ParseDataRow column
-column (A.ParseDataRowColumn oid parser1 parser2) =
-  ParseDataRow 1 (N.singleton oid) (pure oid) parser1 parser2
+column :: D.BinaryParser column -> ParseDataRow (Maybe column)
+column parser =
+  ParseDataRow 1 $ \vec index ->
+  either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
+  traverse (D.run parser) (A.unsafeIndex vec index)

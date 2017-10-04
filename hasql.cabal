@@ -59,7 +59,6 @@ library
     Hasql.Core.ParseMessage
     Hasql.Core.ParseMessageStream
     Hasql.Core.ParseDataRow
-    Hasql.Core.ParseDataRowColumn
     Hasql.Core.Model
     Hasql.Core.StreamReader
     Hasql.Core.MessageTypePredicates
