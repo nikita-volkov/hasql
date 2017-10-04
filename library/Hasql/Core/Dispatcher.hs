@@ -5,7 +5,9 @@ import Hasql.Core.Model
 import qualified Hasql.Socket as A
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
+import qualified PtrMagic.Encoding as F
 import qualified Hasql.Core.ParseMessageStream as E
+import qualified Hasql.Core.Request as C
 import qualified Hasql.Core.Loops.Serializer as SerializerLoop
 import qualified Hasql.Core.Loops.Receiver as ReceiverLoop
 import qualified Hasql.Core.Loops.Sender as SenderLoop
@@ -13,7 +15,7 @@ import qualified Hasql.Core.Loops.IncomingMessagesSlicer as IncomingMessagesSlic
 import qualified Hasql.Core.Loops.Interpreter as InterpreterLoop
 
 
-startDispatching :: A.Socket -> (Either Error Notification -> IO ()) -> IO (IO ())
+startDispatching :: A.Socket -> (Either Error Notification -> IO ()) -> IO (IO (), C.Request result -> IO (Either Error result))
 startDispatching socket sendErrorOrNotification =
   do
     outgoingBytesQueue <- newTQueueIO
@@ -21,16 +23,35 @@ startDispatching socket sendErrorOrNotification =
     serializerMessageQueue <- newTQueueIO
     incomingMessageQueue <- newTQueueIO
     resultProcessorQueue <- newTQueueIO
-    errorVar <- newEmptyTMVarIO
+    transportErrorVar <- newEmptyTMVarIO
     let
+      performRequest (C.Request builder parse) =
+        do
+          resultVar <- newEmptyTMVarIO
+          atomically $ do
+            writeTQueue serializerMessageQueue (SerializerLoop.SerializeMessage encoding)
+            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor parseWithError (sendResult resultVar))
+          atomically (takeTMVar resultVar)
+        where
+          encoding =
+            B.builderPtrFiller builder F.Encoding
+          parseWithError =
+            fmap Right parse <|>
+            fmap (Left . either ProtocolError backendError) E.error
+            where
+              backendError (ErrorMessage state details) = BackendError state details
+          sendResult resultVar resultWithError =
+            do
+              result <- atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure resultWithError)
+              atomically (putTMVar resultVar result)
       loopSending =
         SenderLoop.loop socket
           (atomically (readTQueue outgoingBytesQueue))
-          (atomically . putTMVar errorVar . TransportError)
+          (atomically . putTMVar transportErrorVar)
       loopReceiving =
         ReceiverLoop.loop socket
           (atomically . writeTQueue incomingBytesQueue)
-          (atomically . putTMVar errorVar . TransportError)
+          (atomically . putTMVar transportErrorVar)
       loopSerializing =
         SerializerLoop.loop
           (atomically (readTQueue serializerMessageQueue))
@@ -50,4 +71,6 @@ startDispatching socket sendErrorOrNotification =
               sendErrorOrNotification (Left (BackendError state details))
             InterpreterLoop.ProtocolErrorUnaffiliatedResult details ->
               sendErrorOrNotification (Left (ProtocolError details)))
-      in startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
+      in do
+        kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
+        return (kill, performRequest)
