@@ -43,7 +43,11 @@ startDispatching socket sendErrorOrNotification =
         InterpreterLoop.loop
           (atomically (readTQueue incomingMessageQueue))
           (atomically (tryReadTQueue resultProcessorQueue))
-          (sendErrorOrNotification . Right)
-          ($(todo ""))
-          $(todo "")
+          (\case
+            InterpreterLoop.NotificationUnaffiliatedResult notification ->
+              sendErrorOrNotification (Right notification)
+            InterpreterLoop.ErrorMessageUnaffiliatedResult (ErrorMessage state details) ->
+              sendErrorOrNotification (Left (BackendError state details))
+            InterpreterLoop.ProtocolErrorUnaffiliatedResult details ->
+              sendErrorOrNotification (Left (ProtocolError details)))
       in startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]

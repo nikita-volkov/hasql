@@ -3,13 +3,6 @@ module Hasql.Core.Model where
 import Hasql.Prelude hiding (State, peek)
 
 
-data ResultProcessor =
-  RowsResultProcessor !(ByteString -> IO ()) !(IO ()) |
-  RowsAffectedResultProcessor !(Int -> IO ()) |
-  ParseCompleteResultProcessor !(IO ()) |
-  BindCompleteResultProcessor !(IO ()) |
-  ReadyForQueryResultProcessor !(IO ())
-
 data Message = Message !Word8 !ByteString
 
 data Notification = Notification !Word32 !ByteString !ByteString

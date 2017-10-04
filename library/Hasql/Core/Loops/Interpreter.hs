@@ -3,63 +3,54 @@ module Hasql.Core.Loops.Interpreter where
 import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.MessageTypePredicates as G
+import qualified Hasql.Core.ParseMessageStream as A
+import qualified Hasql.Core.ParseMessage as B
 import qualified Hasql.Protocol.Decoding as E
 import qualified BinaryParser as D
 
 
-loop :: IO Message -> IO (Maybe ResultProcessor) -> (Notification -> IO ()) -> (Text -> IO ()) -> (ErrorMessage -> IO ()) -> IO ()
-loop fetchMessage fetchResultProcessor sendNotification sendProtocolError sendErrorMessage =
-  fetchingMessage interpretNeutrally
+data ResultProcessor =
+  forall result. ResultProcessor !(A.ParseMessageStream result) !(result -> IO ())
+
+data UnaffiliatedResult =
+  NotificationUnaffiliatedResult !Notification |
+  ErrorMessageUnaffiliatedResult !ErrorMessage |
+  ProtocolErrorUnaffiliatedResult !Text
+
+loop :: IO Message -> IO (Maybe ResultProcessor) -> (UnaffiliatedResult -> IO ()) -> IO ()
+loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
+  fetchingMessage tryToFetchResultProcessor
   where
     fetchingMessage handler =
       do
         Message type_ payload <- fetchMessage
         handler type_ payload
-    interpretNeutrally type_ payload =
-      if
-        | G.dataRow type_ || G.commandComplete type_ || G.emptyQuery type_ -> do
-          fetchResult <- fetchResultProcessor
-          case fetchResult of
-            Nothing -> fetchingMessage interpretNeutrally
-            Just resultProcessor -> case resultProcessor of
-              RowsResultProcessor sendRow sendEnd ->
-                interpretCollectingRows sendRow sendEnd type_ payload
-              RowsAffectedResultProcessor sendAmount ->
-                interpretAffectedRows sendAmount type_ payload
-              _ -> $(todo "")
-        | True -> interpretNonResult interpretNeutrally type_ payload
-    interpretCollectingRows sendRow sendEnd type_ payload =
-      if
-        | G.dataRow type_ -> sendRow payload >> fetchingMessage (interpretCollectingRows sendRow sendEnd)
-        | G.commandComplete type_ -> sendEnd >> fetchingMessage interpretNeutrally
-        | G.emptyQuery type_ -> sendEnd >> fetchingMessage interpretNeutrally
-        | True -> interpretNonResult (interpretCollectingRows sendRow sendEnd) type_ payload
-    interpretAffectedRows sendAmount type_ payload =
-      if
-        | G.commandComplete type_ -> case D.run E.commandCompleteMessageAffectedRows payload of
-          Right amount -> do
-            sendAmount amount
-            fetchingMessage interpretNeutrally
-          Left parsingError -> do
-            sendProtocolError ("CommandComplete parsing error: " <> parsingError)
-            fetchingMessage interpretNeutrally
-        | G.dataRow type_ -> fetchingMessage (interpretAffectedRows sendAmount)
-        | G.emptyQuery type_ -> sendAmount 0 >> fetchingMessage interpretNeutrally
-        | True -> interpretNonResult (interpretAffectedRows sendAmount) type_ payload
-    interpretNonResult interpretNext type_ payload =
-      if
-        | G.notification type_ -> case D.run (E.notificationMessage Notification) payload of
-          Right notification -> do
-            sendNotification notification
-            fetchingMessage interpretNext
-          Left parsingError -> do
-            sendProtocolError ("Notification parsing error: " <> parsingError)
-            fetchingMessage interpretNext
-        | G.error type_ -> case D.run (E.errorMessage ErrorMessage) payload of
-          Right errorMessage -> do
-            sendErrorMessage errorMessage
-            fetchingMessage interpretNext
-          Left parsingError -> do
-            sendProtocolError ("ErrorResponse parsing error: " <> parsingError)
-            fetchingMessage interpretNext
-        | True -> fetchingMessage interpretNext
+    tryToFetchResultProcessor type_ payload =
+      do
+        fetchResult <- fetchResultProcessor
+        case fetchResult of
+          Just resultProcessor ->
+            interpretWithResultProcessor resultProcessor type_ payload
+          Nothing ->
+            interpretUnaffiliatedMessage tryToFetchResultProcessor type_ payload
+    interpretWithResultProcessor (ResultProcessor parse sendResult) =
+      parseMessageStream parse
+      where
+        parseMessageStream (A.ParseMessageStream (B.ParseMessage typeFn)) type_ payload =
+          case typeFn type_ of
+            Just payloadFn ->
+              case payloadFn payload of
+                Left result -> sendResult result >> fetchingMessage tryToFetchResultProcessor
+                Right parse -> fetchingMessage (parseMessageStream parse)
+            Nothing ->
+              interpretUnaffiliatedMessage
+                (parseMessageStream (A.ParseMessageStream (B.ParseMessage typeFn)))
+                type_ payload
+    interpretUnaffiliatedMessage interpretNext type_ payload =
+      case unaffiliatedResultTypeFn type_ of
+        Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
+        Nothing -> fetchingMessage interpretNext
+      where
+        B.ParseMessage unaffiliatedResultTypeFn =
+          fmap (either ProtocolErrorUnaffiliatedResult NotificationUnaffiliatedResult) B.notification <|>
+          fmap (either ProtocolErrorUnaffiliatedResult ErrorMessageUnaffiliatedResult) B.error
