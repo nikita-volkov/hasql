@@ -64,6 +64,11 @@ error :: ParseMessage (Either Text ErrorMessage)
 error =
   payloadParser G.error (E.errorMessage ErrorMessage)
 
+{-# INLINE notification #-}
+notification :: ParseMessage (Either Text Notification)
+notification =
+  payloadParser G.notification (E.notificationMessage Notification)
+
 {-# INLINE dataRow #-}
 dataRow :: D.BinaryParser row -> ParseMessage (Either Text row)
 dataRow =
