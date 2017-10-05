@@ -40,5 +40,5 @@ loop getMessage sendBytes =
                 loop newFP (offset + spaceRequired) newSize
           FlushMessage ->
             do
-              sendBytes (C.PS fp 0 size)
+              sendBytes (C.PS fp 0 offset)
               startAnew
