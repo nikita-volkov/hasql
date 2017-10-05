@@ -56,6 +56,10 @@ import Data.Semigroup as Exports
 -------------------------
 import Control.Foldl as Exports (Fold(..), FoldM(..))
 
+-- free
+-------------------------
+import Control.Monad.Free as Exports
+
 -- stm
 -------------------------
 import Control.Concurrent.STM as Exports

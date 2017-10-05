@@ -2,7 +2,6 @@ module Hasql.Core.Session where
 
 import Hasql.Prelude
 import Hasql.Core.Model
-import Control.Monad.Free
 import qualified Hasql.Core.Request as A
 
 
@@ -43,3 +42,7 @@ handshake username password databaseMaybe runtimeParameters =
         Right authenticationResult -> case authenticationResult of
           OkAuthenticationResult idt -> return (Right (Right idt))
           _ -> return (Left "Can't authenticate")
+
+{-# INLINE request #-}
+request :: A.Request result -> Session result
+request = Session . liftF

@@ -8,6 +8,7 @@ import qualified BinaryParser as D
 import qualified PtrMagic.Encoding as F
 import qualified Hasql.Core.ParseMessageStream as E
 import qualified Hasql.Core.Request as C
+import qualified Hasql.Core.Session as G
 import qualified Hasql.Core.Loops.Serializer as SerializerLoop
 import qualified Hasql.Core.Loops.Receiver as ReceiverLoop
 import qualified Hasql.Core.Loops.Sender as SenderLoop
@@ -82,4 +83,11 @@ start socket sendErrorOrNotification =
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
         return (Dispatcher kill performRequest)
 
-
+session :: Dispatcher -> G.Session result -> IO (Either Error result)
+session dispatcher (G.Session freeRequest) =
+  interpretFreeRequest freeRequest
+  where
+    interpretFreeRequest =
+      \case
+        Free request -> performRequest dispatcher request >>= either (return . Left) interpretFreeRequest
+        Pure a -> return (Right a)
