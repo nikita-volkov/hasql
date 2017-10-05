@@ -1,4 +1,4 @@
-module Hasql.Core.Pipeline where
+module Hasql.Core.Request where
 
 import Hasql.Prelude
 import Hasql.Core.Model
@@ -14,67 +14,67 @@ import qualified Hasql.Protocol.Model as C
 A builder of concatenated outgoing messages and
 a parser of the stream of incoming messages.
 -}
-data Pipeline result =
-  Pipeline !B.Builder !(ExceptT Text A.ParseMessageStream result)
+data Request result =
+  Request !B.Builder !(ExceptT Text A.ParseMessageStream result)
 
-instance Functor Pipeline where
+instance Functor Request where
   {-# INLINE fmap #-}
-  fmap mapping (Pipeline builder parse) =
-    Pipeline builder (fmap mapping parse)
+  fmap mapping (Request builder parse) =
+    Request builder (fmap mapping parse)
 
-instance Applicative Pipeline where
+instance Applicative Request where
   {-# INLINE pure #-}
   pure =
-    Pipeline mempty . return
+    Request mempty . return
   {-# INLINE (<*>) #-}
-  (<*>) (Pipeline leftBuilder leftParse) (Pipeline rightBuilder rightParse) =
-    Pipeline (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
+  (<*>) (Request leftBuilder leftParse) (Request rightBuilder rightParse) =
+    Request (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
 
 {-# INLINE parse #-}
-parse :: ByteString -> ByteString -> Vector Word32 -> Pipeline ()
+parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
 parse preparedStatementName query oids =
-  Pipeline builder parse
+  Request builder parse
   where
     builder = K.parseMessage preparedStatementName query oids
     parse = lift A.parseComplete
 
 {-# INLINE bind #-}
-bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Pipeline ()
+bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Request ()
 bind portalName preparedStatementName parameters =
-  Pipeline builder parse
+  Request builder parse
   where
     builder = K.binaryFormatBindMessage portalName preparedStatementName parameters
     parse = lift A.bindComplete
 
 {-# INLINE execute #-}
-execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Pipeline result
+execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Request result
 execute portalName parse =
-  Pipeline builder (ExceptT parse)
+  Request builder (ExceptT parse)
   where
     builder = K.unlimitedExecuteMessage portalName
 
 {-# INLINE sync #-}
-sync :: Pipeline ()
+sync :: Request ()
 sync =
-  Pipeline K.syncMessage (lift A.readyForQuery)
+  Request K.syncMessage (lift A.readyForQuery)
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Pipeline C.AuthenticationMessage
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request C.AuthenticationMessage
 startUp username databaseMaybe runtimeParameters =
-  Pipeline 
+  Request 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
     (ExceptT (A.parseMessage (E.authentication)))
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Pipeline C.AuthenticationMessage
+clearTextPassword :: ByteString -> Request C.AuthenticationMessage
 clearTextPassword password =
-  Pipeline
+  Request
     (K.clearTextPasswordMessage password)
     (ExceptT (A.parseMessage E.authentication))
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Pipeline C.AuthenticationMessage
+md5Password :: ByteString -> ByteString -> ByteString -> Request C.AuthenticationMessage
 md5Password username password salt =
-  Pipeline
+  Request
     (K.md5PasswordMessage username password salt)
     (ExceptT (A.parseMessage E.authentication))
