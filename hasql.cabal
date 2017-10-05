@@ -54,6 +54,7 @@ library
     Hasql.Connection.Session.Statement.Encoding
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
+    Hasql.Core.Session
     Hasql.Core.EncodedParams
     Hasql.Core.DecodeResult
     Hasql.Core.InBatch
@@ -128,6 +129,7 @@ library
     unordered-containers == 0.2.*,
     ptr-magic >= 0.6.2 && < 0.7,
     -- control:
+    free >= 4.12.4 && < 5,
     managed == 1.*,
     foldl >= 1.3 && < 2,
     semigroups >= 0.18 && < 0.20,
