@@ -14,31 +14,37 @@ loop :: IO Message -> (ByteString -> IO ()) -> IO ()
 loop getMessage sendBytes =
   startAnew
   where
+    size =
+      shiftL 2 12
     startAnew =
       do
         fp <- mallocForeignPtrBytes size
-        loop fp 0 size
-      where
-        size = shiftL 2 13
-    loop !fp !offset !size =
+        processNextMessage fp 0
+    processNextMessage !fp !offset =
       do
         message <- getMessage
         case message of
           SerializeMessage (A.Encoding spaceRequired write) ->
-            if size - offset >= spaceRequired
-              then do
-                withForeignPtr fp (\p -> write (plusPtr p offset))
-                loop fp (offset + spaceRequired) size
-              else do
-                let
-                  newMinSize = offset + spaceRequired
-                  newSize = head $ dropWhile (< newMinSize) $ map (shiftL 2) $ enumFrom 0
-                newFP <- mallocForeignPtrBytes newSize
-                withForeignPtr newFP $ \newP -> do
-                  withForeignPtr fp (\p -> C.memcpy newP p offset)
-                  write (plusPtr newP offset)
-                loop newFP (offset + spaceRequired) newSize
+            serialize fp offset spaceRequired write
           FlushMessage ->
             do
               sendBytes (C.PS fp 0 offset)
               startAnew
+    serialize !fp !offset !spaceRequired !write =
+      if size - offset >= spaceRequired
+        then do
+          withForeignPtr fp (\p -> write (plusPtr p offset))
+          processNextMessage fp (offset + spaceRequired)
+        else do
+          when (offset >= 0) (sendBytes (C.PS fp 0 offset))
+          if spaceRequired >= size
+            then do
+              newFP <- mallocForeignPtrBytes spaceRequired
+              withForeignPtr newFP write
+              sendBytes (C.PS newFP 0 spaceRequired)
+              startAnew
+            else do
+              newFP <- mallocForeignPtrBytes size
+              withForeignPtr newFP write
+              processNextMessage newFP spaceRequired
+        
