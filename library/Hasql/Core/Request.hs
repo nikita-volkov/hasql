@@ -8,6 +8,7 @@ import qualified Hasql.Core.ParseMessageStream as A
 import qualified Hasql.Core.ParseMessage as E
 import qualified Hasql.Protocol.Encoding as K
 import qualified Hasql.Protocol.Model as C
+import qualified Data.Vector as G
 
 
 {-|
@@ -46,6 +47,14 @@ bind portalName preparedStatementName parameters =
     builder = K.binaryFormatBindMessage portalName preparedStatementName parameters
     parse = lift A.bindComplete
 
+{-# INLINE bindEncoded #-}
+bindEncoded :: ByteString -> ByteString -> Int -> B.Builder -> Request ()
+bindEncoded portalName preparedStatementName paramsAmount paramsBuilder =
+  Request builder parse
+  where
+    builder = K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName (fromIntegral paramsAmount) paramsBuilder
+    parse = lift A.bindComplete
+
 {-# INLINE execute #-}
 execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Request result
 execute portalName parse =
@@ -78,3 +87,15 @@ md5Password username password salt =
   Request
     (K.md5PasswordMessage username password salt)
     (ExceptT (A.parseMessage E.authentication))
+
+{-# INLINE unparsedStatement #-}
+unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
+unparsedStatement name template oidVec bytesBuilder parseMessageStream =
+  parse name template oidVec *>
+  parsedStatement name template (G.length oidVec) bytesBuilder parseMessageStream
+
+{-# INLINE parsedStatement #-}
+parsedStatement :: ByteString -> ByteString -> Int -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
+parsedStatement name template paramsAmount bytesBuilder parseMessageStream =
+  bindEncoded "" name paramsAmount bytesBuilder *>
+  execute "" parseMessageStream
