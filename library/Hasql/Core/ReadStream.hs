@@ -1,4 +1,4 @@
-module Hasql.Core.StreamReader where
+module Hasql.Core.ReadStream where
 
 import Hasql.Prelude
 import qualified Hasql.Socket as A
@@ -9,19 +9,19 @@ import qualified PtrMagic.Encoding as D
 import qualified PtrMagic.ByteString as E
 
 
-newtype StreamReader output =
-  StreamReader (ReaderT (IO ByteString) (StateT ByteString IO) output)
+newtype ReadStream output =
+  ReadStream (ReaderT (IO ByteString) (StateT ByteString IO) output)
   deriving (Functor, Applicative, Monad, MonadIO)
 
-run :: StreamReader output -> IO ByteString -> IO (output, ByteString)
-run (StreamReader stack) fetchChunk =
+run :: ReadStream output -> IO ByteString -> IO (output, ByteString)
+run (ReadStream stack) fetchChunk =
   runStateT (runReaderT stack fetchChunk) ""
 
-streamReader :: (IO ByteString -> ByteString -> IO (output, ByteString)) -> StreamReader output
+streamReader :: (IO ByteString -> ByteString -> IO (output, ByteString)) -> ReadStream output
 streamReader fn =
-  StreamReader (ReaderT (\fetchChunk -> StateT (\cached -> fn fetchChunk cached)))
+  ReadStream (ReaderT (\fetchChunk -> StateT (\cached -> fn fetchChunk cached)))
 
-fetchBytes :: Int -> StreamReader ByteString
+fetchBytes :: Int -> ReadStream ByteString
 fetchBytes amount =
   streamReader $ \fetchChunk cached ->
   if B.length cached < amount
@@ -41,13 +41,13 @@ fetchBytes amount =
           case encoding of
             D.Encoding length _ -> amount - length
 
-decode :: C.Decoder decoded -> StreamReader decoded
+decode :: C.Decoder decoded -> ReadStream decoded
 decode (C.Decoder amount action) =
   do
     B.PS fp offset _ <- fetchBytes amount
     liftIO (withForeignPtr fp (\p -> action (plusPtr p offset)))
 
-fetchMessage :: (Word8 -> ByteString -> message) -> StreamReader message
+fetchMessage :: (Word8 -> ByteString -> message) -> ReadStream message
 fetchMessage message =
   join (decode headerDecoder)
   where

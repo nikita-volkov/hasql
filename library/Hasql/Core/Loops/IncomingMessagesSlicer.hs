@@ -2,7 +2,7 @@ module Hasql.Core.Loops.IncomingMessagesSlicer where
 
 import Hasql.Prelude
 import Hasql.Core.Model
-import qualified Hasql.Core.StreamReader as C
+import qualified Hasql.Core.ReadStream as C
 
 
 {-# INLINABLE loop #-}

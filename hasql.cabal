@@ -60,7 +60,7 @@ library
     Hasql.Core.ParseMessageStream
     Hasql.Core.ParseDataRow
     Hasql.Core.Model
-    Hasql.Core.StreamReader
+    Hasql.Core.ReadStream
     Hasql.Core.MessageTypePredicates
     Hasql.Core.Loops.Serializer
     Hasql.Core.Loops.Receiver
