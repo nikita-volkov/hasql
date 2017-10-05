@@ -12,9 +12,20 @@ import qualified Hasql.Core.InBatch as E
 data Connection =
   Connection !B.Socket !(IO ()) !(forall what. C.Request what -> IO (Either Error what)) !(IORef D.Registry) !Bool
 
-open :: IO Connection
-open =
+openThruSocket :: IO Connection
+openThruSocket =
   $(todo "")
+
+openThruTCP :: ByteString -> Int -> ByteString -> Maybe ByteString -> Maybe ByteString -> (Either Error Notification -> IO ()) -> IO (Either Text Connection)
+openThruTCP host port username passwordMaybe databaseMaybe sendErrorOrNotification =
+  do
+    connectionResult <- B.connectToHostAndPort host port
+    case connectionResult of
+      Left message -> return (Left message)
+      Right socket -> do
+        dispatcher <- A.start socket sendErrorOrNotification
+        $(todo "")
+
 
 inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
 inBatch (Connection _ _ performRequest psrRef idt) (E.InBatch inBatchFn) =

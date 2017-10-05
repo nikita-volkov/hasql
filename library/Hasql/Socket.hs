@@ -21,7 +21,7 @@ trySocketIO io =
     socketExceptionText e =
       (fromString . show) e
 
-connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
+connectToHostAndPort :: ByteString -> Int -> IO (Either Text Socket)
 connectToHostAndPort host port =
   do
     runExceptT $ do

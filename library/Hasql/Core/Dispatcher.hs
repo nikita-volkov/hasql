@@ -15,8 +15,14 @@ import qualified Hasql.Core.Loops.IncomingMessagesSlicer as IncomingMessagesSlic
 import qualified Hasql.Core.Loops.Interpreter as InterpreterLoop
 
 
-startDispatching :: A.Socket -> (Either Error Notification -> IO ()) -> IO (IO (), C.Request result -> IO (Either Error result))
-startDispatching socket sendErrorOrNotification =
+data Dispatcher =
+  Dispatcher {
+    stop :: IO (),
+    performRequest :: forall result. C.Request result -> IO (Either Error result)
+  }
+
+start :: A.Socket -> (Either Error Notification -> IO ()) -> IO Dispatcher
+start socket sendErrorOrNotification =
   do
     outgoingBytesQueue <- newTQueueIO
     incomingBytesQueue <- newTQueueIO
@@ -25,6 +31,7 @@ startDispatching socket sendErrorOrNotification =
     resultProcessorQueue <- newTQueueIO
     transportErrorVar <- newEmptyTMVarIO
     let
+      performRequest :: forall result. C.Request result -> IO (Either Error result)
       performRequest (C.Request builder parse) =
         do
           resultVar <- newEmptyTMVarIO
@@ -73,4 +80,6 @@ startDispatching socket sendErrorOrNotification =
               sendErrorOrNotification (Left (ProtocolError details)))
       in do
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
-        return (kill, performRequest)
+        return (Dispatcher kill performRequest)
+
+
