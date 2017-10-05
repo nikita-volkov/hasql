@@ -11,6 +11,7 @@ module Hasql.Prelude
   traceMarker,
   startThread,
   startThreads,
+  ErrorWithContext(..),
 )
 where
 
@@ -181,3 +182,7 @@ startThread action =
 startThreads :: [IO ()] -> IO (IO ())
 startThreads =
   fmap sequence_ . traverse startThread
+
+data ErrorWithContext =
+  ContextErrorWithContext !Text !ErrorWithContext |
+  MessageErrorWithContext !Text
