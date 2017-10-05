@@ -3,6 +3,7 @@ module Hasql.Core.ParseMessageStream where
 import Hasql.Prelude hiding (error)
 import Hasql.Core.Model
 import qualified Hasql.Core.ParseMessage as A
+import qualified Hasql.Core.ParseDataRow as F
 import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified BinaryParser as D
@@ -68,15 +69,15 @@ commandComplete :: ParseMessageStream (Either Text Int)
 commandComplete =
   parseMessage A.commandComplete
 
-rows :: D.BinaryParser row -> Fold row result -> ParseMessageStream (Either Text result)
-rows rowParser (Fold foldStep foldStart foldEnd) =
+rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream (Either Text result)
+rows parseDataRow (Fold foldStep foldStart foldEnd) =
   fold foldStart
   where
     fold state =
       ParseMessageStream (step <|> end)
       where
         step =
-          fmap fromParsingResult (A.dataRow rowParser)
+          fmap fromParsingResult (A.dataRow (E.parseDataRow parseDataRow))
           where
             fromParsingResult =
               \case
