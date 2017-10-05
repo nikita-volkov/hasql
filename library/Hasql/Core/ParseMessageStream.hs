@@ -6,6 +6,7 @@ import qualified Hasql.Core.ParseMessage as A
 import qualified Hasql.Core.ParseDataRow as F
 import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
+import qualified Hasql.Protocol.Model as C
 import qualified BinaryParser as D
 
 
@@ -109,3 +110,55 @@ bindComplete =
 readyForQuery :: ParseMessageStream ()
 readyForQuery =
   parseMessage A.readyForQuery
+
+authenticationWithConts :: x -> (ByteString -> x) -> Fold (ByteString, ByteString) x -> ParseMessageStream (Either Text x)
+authenticationWithConts clearTextPassword md5Password (Fold paramsFoldStep paramsFoldStart paramsFoldEnd) =
+  iterate paramsFoldStart
+  where
+    iterate state =
+      ParseMessageStream (param <|> authentication)
+      where
+        param =
+          either (Left . Left) (Right . iterate . paramsFoldStep state) <$> A.parameterStatus
+        authentication =
+          fromParsingResult <$> A.authentication
+          where
+            fromParsingResult =
+              \case
+                Left error -> Left (Left error)
+                Right authentication -> case authentication of
+                  C.OkAuthenticationMessage -> Left (Right (paramsFoldEnd state))
+                  C.ClearTextPasswordAuthenticationMessage -> Left (Right clearTextPassword)
+                  C.MD5PasswordAuthenticationMessage salt -> Left (Right (md5Password salt))
+
+authentication :: ParseMessageStream (Either Text (Either ErrorMessage AuthenticationResult))
+authentication =
+  iterate (Left "Missing the \"integer_datetimes\" setting")
+  where
+    iterate state =
+      ParseMessageStream (param <|> authentication <|> error)
+      where
+        param =
+          fromParsingResult <$> A.parameterStatus
+          where
+            fromParsingResult = 
+              \case
+                Left error -> Left (Left error)
+                Right (name, value) -> case name of
+                  "integer_datetimes" -> case value of
+                    "on" -> Right (iterate (Right True))
+                    "off" -> Right (iterate (Right False))
+                    _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
+                  _ -> Right (iterate state)
+        authentication =
+          fromParsingResult <$> A.authentication
+          where
+            fromParsingResult =
+              \case
+                Left error -> Left (Left error)
+                Right authentication -> case authentication of
+                  C.OkAuthenticationMessage -> Left (Right . OkAuthenticationResult <$> state)
+                  C.ClearTextPasswordAuthenticationMessage -> Left (Right (Right NeedClearTextPasswordAuthenticationResult))
+                  C.MD5PasswordAuthenticationMessage salt -> Left (Right (Right (NeedMD5PasswordAuthenticationResult salt)))
+        error =
+          fmap (Left . either Left (Right . Left)) A.error

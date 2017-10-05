@@ -3,6 +3,11 @@ module Hasql.Core.Model where
 import Hasql.Prelude hiding (State, peek)
 
 
+data AuthenticationResult =
+  NeedClearTextPasswordAuthenticationResult |
+  NeedMD5PasswordAuthenticationResult !ByteString |
+  OkAuthenticationResult !Bool
+
 data Message = Message !Word8 !ByteString
 
 data Notification = Notification !Word32 !ByteString !ByteString
