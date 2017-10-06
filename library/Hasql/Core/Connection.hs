@@ -6,7 +6,7 @@ import qualified Hasql.Core.Dispatcher as A
 import qualified Hasql.Socket as B
 import qualified Hasql.Core.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
-import qualified Hasql.Core.InBatch as E
+import qualified Hasql.Core.Query as E
 import qualified Hasql.Core.Interact as G
 
 
@@ -36,11 +36,11 @@ open transportSettings username password databaseMaybe sendErrorOrNotification =
               psrVar <- newMVar D.nil
               return (Right (Connection socket dispatcher psrVar idt))
 
-inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
-inBatch (Connection _ dispatcher psrVar idt) (E.InBatch inBatchFn) =
+query :: Connection -> E.Query result -> IO (Either Error result)
+query (Connection _ dispatcher psrVar idt) (E.Query queryFn) =
   do
     psr <- takeMVar psrVar
-    case inBatchFn idt psr of
+    case queryFn idt psr of
       (request, newPsr) -> do
         result <- A.performRequest dispatcher (request <* C.sync)
         putMVar psrVar newPsr
