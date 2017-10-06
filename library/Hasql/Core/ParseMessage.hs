@@ -1,8 +1,10 @@
 module Hasql.Core.ParseMessage where
 
 import Hasql.Prelude
-import Hasql.Core.Model
+import Hasql.Core.Model hiding (Error(..))
+import qualified Hasql.Core.ChooseMessage as B
 import qualified Hasql.Core.MessageTypePredicates as G
+import qualified Hasql.Core.ParseDataRow as F
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as A
 import qualified BinaryParser as D
@@ -11,79 +13,52 @@ import qualified BinaryParser as D
 {-|
 Interpreter of a single message.
 -}
-newtype ParseMessage result = ParseMessage (Word8 -> Maybe (ByteString -> result))
+newtype ParseMessage result =
+  ParseMessage (Compose B.ChooseMessage (Either Error) result)
+  deriving (Functor, Applicative, Alternative)
 
-instance Functor ParseMessage where
-  {-# INLINE fmap #-}
-  fmap mapping (ParseMessage parse) =
-    ParseMessage (fmap (mapping .) . parse)
+data Error =
+  ParsingError !Text !Text
 
-instance Applicative ParseMessage where
-  {-# INLINE pure #-}
-  pure x =
-    ParseMessage (const (Just (const x)))
-  {-# INLINE (<*>) #-}
-  (<*>) (ParseMessage left) (ParseMessage right) =
-    ParseMessage $ \type_ ->
-    case left type_ of
-      Just leftPayloadFn -> case right type_ of
-        Just rightPayloadFn -> Just $ \payload ->
-          (leftPayloadFn payload) (rightPayloadFn payload)
-        Nothing -> Nothing
-      Nothing -> Nothing
-
-instance Alternative ParseMessage where
-  {-# INLINE empty #-}
-  empty =
-    ParseMessage (const Nothing)
-  {-# INLINE (<|>) #-}
-  (<|>) (ParseMessage left) (ParseMessage right) =
-    ParseMessage $ \type_ ->
-    case left type_ of
-      Just leftPayloadFn -> Just leftPayloadFn
-      Nothing -> case right type_ of
-        Just rightPayloadFn -> Just rightPayloadFn
-        Nothing -> Nothing
+{-# INLINE chooseMessage #-}
+chooseMessage :: B.ChooseMessage (Either Error result) -> ParseMessage result
+chooseMessage =
+  ParseMessage . Compose
 
 {-# INLINE payloadFn #-}
-payloadFn :: (Word8 -> Bool) -> (ByteString -> result) -> ParseMessage result
+payloadFn :: (Word8 -> Bool) -> (ByteString -> Either Error result) -> ParseMessage result
 payloadFn predicate payloadFn =
-  ParseMessage (\type_ -> if predicate type_ then Just payloadFn else Nothing)
+  chooseMessage (B.payloadFn predicate payloadFn)
 
 {-# INLINE payloadParser #-}
-payloadParser :: (Word8 -> Bool) -> D.BinaryParser parsed -> ParseMessage (Either Text parsed)
-payloadParser predicate parser =
-  payloadFn predicate (D.run parser)
-
-{-# INLINE payloadParserCont #-}
-payloadParserCont :: (Word8 -> Bool) -> D.BinaryParser result -> (Text -> result) -> ParseMessage result
-payloadParserCont predicate parser parsingError =
-  payloadFn predicate (either parsingError id . D.run parser)
+payloadParser :: (Word8 -> Bool) -> Text -> D.BinaryParser parsed -> ParseMessage parsed
+payloadParser predicate context parser =
+  payloadFn predicate (either (Left . ParsingError context) Right . D.run parser)
 
 {-# INLINE withoutPayload #-}
 withoutPayload :: (Word8 -> Bool) -> ParseMessage ()
 withoutPayload predicate =
-  payloadFn predicate (const ())
+  payloadFn predicate (const (Right ()))
 
 {-# INLINE error #-}
-error :: ParseMessage (Either Text ErrorMessage)
+error :: ParseMessage ErrorMessage
 error =
-  payloadParser G.error (E.errorMessage ErrorMessage)
+  payloadParser G.error "ErrorResponse" (E.errorMessage ErrorMessage)
 
 {-# INLINE errorCont #-}
-errorCont :: (ByteString -> ByteString -> result) -> (ErrorWithContext -> result) -> ParseMessage result
-errorCont message error =
-  payloadParserCont G.error (E.errorMessage message) (error . ContextErrorWithContext "ErrorResponse" . MessageErrorWithContext)
+errorCont :: (ByteString -> ByteString -> result) -> ParseMessage result
+errorCont message =
+  payloadParser G.error "ErrorResponse" (E.errorMessage message)
 
 {-# INLINE notification #-}
-notification :: ParseMessage (Either Text Notification)
+notification :: ParseMessage Notification
 notification =
-  payloadParser G.notification (E.notificationMessage Notification)
+  payloadParser G.notification "NotificationResponse" (E.notificationMessage Notification)
 
 {-# INLINE dataRow #-}
-dataRow :: D.BinaryParser row -> ParseMessage (Either Text row)
+dataRow :: F.ParseDataRow row -> ParseMessage row
 dataRow =
-  payloadParser G.dataRow
+  payloadParser G.dataRow "DataRow" . E.parseDataRow
 
 {-# INLINE dataRowWithoutData #-}
 dataRowWithoutData :: ParseMessage ()
@@ -91,9 +66,9 @@ dataRowWithoutData =
   withoutPayload G.dataRow
 
 {-# INLINE commandComplete #-}
-commandComplete :: ParseMessage (Either Text Int)
+commandComplete :: ParseMessage Int
 commandComplete =
-  payloadParser G.commandComplete E.commandCompleteMessageAffectedRows
+  payloadParser G.commandComplete "CommandComplete" E.commandCompleteMessageAffectedRows
 
 {-# INLINE commandCompleteWithoutAmount #-}
 commandCompleteWithoutAmount :: ParseMessage ()
@@ -126,11 +101,11 @@ portalSuspended =
   withoutPayload G.portalSuspended
 
 {-# INLINE authentication #-}
-authentication :: ParseMessage (Either Text A.AuthenticationMessage)
+authentication :: ParseMessage A.AuthenticationMessage
 authentication =
-  payloadParser G.authentication E.authenticationMessage
+  payloadParser G.authentication "AuthenticationMessage" E.authenticationMessage
 
 {-# INLINE parameterStatus #-}
-parameterStatus :: ParseMessage (Either Text (ByteString, ByteString))
+parameterStatus :: ParseMessage (ByteString, ByteString)
 parameterStatus =
-  payloadParser G.parameterStatus (E.parameterStatusMessagePayloadKeyValue (,))
+  payloadParser G.parameterStatus "ParameterStatus" (E.parameterStatusMessagePayloadKeyValue (,))

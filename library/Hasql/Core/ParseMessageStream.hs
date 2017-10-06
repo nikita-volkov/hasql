@@ -1,7 +1,8 @@
 module Hasql.Core.ParseMessageStream where
 
 import Hasql.Prelude hiding (error)
-import Hasql.Core.Model
+import Hasql.Core.Model hiding (Error(..))
+import qualified Hasql.Looping as B
 import qualified Hasql.Core.ParseMessage as A
 import qualified Hasql.Core.ParseDataRow as F
 import qualified Hasql.Core.MessageTypePredicates as G
@@ -14,94 +15,52 @@ import qualified BinaryParser as D
 A specification of how to parse a stream of messages.
 -}
 newtype ParseMessageStream result =
-  ParseMessageStream (A.ParseMessage (Either result (ParseMessageStream result)))
-
-instance Functor ParseMessageStream where
-  {-# INLINE fmap #-}
-  fmap mapping (ParseMessageStream parseMessage) =
-    ParseMessageStream (fmap (either (Left . mapping) (Right . fmap mapping)) parseMessage)
-
-instance Applicative ParseMessageStream where
-  {-# INLINE pure #-}
-  pure x =
-    ParseMessageStream (pure (Left x))
-  {-# INLINE (<*>) #-}
-  (<*>) = ap
-
-instance Alternative ParseMessageStream where
-  {-# INLINE empty #-}
-  empty =
-    ParseMessageStream empty
-  {-# INLINE (<|>) #-}
-  (<|>) (ParseMessageStream left) (ParseMessageStream right) =
-    ParseMessageStream (left' <|> right')
-    where
-      left' =
-        fmap (fmap (<|> ParseMessageStream right)) left
-      right' =
-        fmap (fmap (ParseMessageStream left <|>)) right
-
-instance Monad ParseMessageStream where
-  {-# INLINE return #-}
-  return = pure
-  {-# INLINE (>>=) #-}
-  (>>=) (ParseMessageStream left) rightK =
-    ParseMessageStream (fmap mapping left)
-    where
-      mapping =
-        \case
-          Left leftOutput -> Right (rightK leftOutput)
-          Right (ParseMessageStream nextLeft) -> Right (ParseMessageStream (fmap mapping nextLeft))
-
-instance MonadPlus ParseMessageStream where
-  mzero = empty
-  mplus = (<|>)
+  ParseMessageStream (B.Looping A.ParseMessage result)
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
 
 
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
-  ParseMessageStream (fmap Left parseMessage)
+  ParseMessageStream (B.Looping (fmap Left parseMessage))
 
-error :: ParseMessageStream (Either Text ErrorMessage)
+error :: ParseMessageStream ErrorMessage
 error =
   parseMessage A.error
 
-errorCont :: (ByteString -> ByteString -> result) -> (ErrorWithContext -> result) -> ParseMessageStream result
-errorCont message parsingError =
-  parseMessage (A.errorCont message parsingError)
+errorCont :: (ByteString -> ByteString -> result) -> ParseMessageStream result
+errorCont message =
+  parseMessage (A.errorCont message)
 
-commandComplete :: ParseMessageStream (Either Text Int)
+commandComplete :: ParseMessageStream Int
 commandComplete =
   parseMessage A.commandComplete
 
-rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream (Either Text result)
+rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =
-  fold foldStart
+  ParseMessageStream (fold foldStart)
   where
-    fold state =
-      ParseMessageStream (step <|> end)
+    fold !state =
+      B.Looping (step <|> end)
       where
         step =
-          fmap fromParsingResult (A.dataRow (E.parseDataRow parseDataRow))
-          where
-            fromParsingResult =
-              \case
-                Left error -> Left (Left error)
-                Right row -> Right (fold (foldStep state row))
+          fmap (Right . fold . foldStep state) (A.dataRow parseDataRow)
         end =
           (A.commandCompleteWithoutAmount <|> A.emptyQuery) $>
-          Left (Right (foldEnd state))
+          Left (foldEnd state)
 
-rowsAffected :: ParseMessageStream (Either Text Int)
+rowsAffected :: ParseMessageStream Int
 rowsAffected =
-  ParseMessageStream (commandComplete <|> dataRow <|> emptyQuery)
+  ParseMessageStream looping
   where
-    commandComplete =
-      Left <$> A.commandComplete
-    dataRow =
-      Right rowsAffected <$ A.dataRowWithoutData
-    emptyQuery =
-      Left (Right 0) <$ A.emptyQuery
+    looping =
+      B.Looping (commandComplete <|> dataRow <|> emptyQuery)
+      where
+        commandComplete =
+          Left <$> A.commandComplete
+        dataRow =
+          Right looping <$ A.dataRowWithoutData
+        emptyQuery =
+          Left 0 <$ A.emptyQuery
 
 parseComplete :: ParseMessageStream ()
 parseComplete =
@@ -115,36 +74,28 @@ readyForQuery :: ParseMessageStream ()
 readyForQuery =
   parseMessage A.readyForQuery
 
-authentication :: ParseMessageStream (Either Text (Either ErrorMessage AuthenticationResult))
+authentication :: ParseMessageStream (Either Text AuthenticationResult)
 authentication =
-  iterate (Left "Missing the \"integer_datetimes\" setting")
+  ParseMessageStream (iterate (Left "Missing the \"integer_datetimes\" setting"))
   where
-    iterate state =
-      ParseMessageStream (param <|> authentication <|> error)
+    iterate !state =
+      B.Looping (param <|> authentication)
       where
         param =
           fromParsingResult <$> A.parameterStatus
           where
-            fromParsingResult = 
-              \case
-                Left error -> Left (Left error)
-                Right (name, value) -> case name of
-                  "integer_datetimes" -> case value of
-                    "on" -> Right (iterate (Right True))
-                    "off" -> Right (iterate (Right False))
-                    _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
-                  _ -> Right (iterate state)
+            fromParsingResult (name, value) =
+              case name of
+                "integer_datetimes" -> case value of
+                  "on" -> Right (iterate (Right True))
+                  "off" -> Right (iterate (Right False))
+                  _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
+                _ -> Right (iterate state)
         authentication =
           fromParsingResult <$> A.authentication
           where
             fromParsingResult =
               \case
-                Left error -> Left (Left error)
-                Right authentication -> case authentication of
-                  C.OkAuthenticationMessage -> Right (ParseMessageStream readyForQuery)
-                  C.ClearTextPasswordAuthenticationMessage -> Left (Right (Right NeedClearTextPasswordAuthenticationResult))
-                  C.MD5PasswordAuthenticationMessage salt -> Left (Right (Right (NeedMD5PasswordAuthenticationResult salt)))
-        error =
-          fmap (Left . either Left (Right . Left)) A.error
-        readyForQuery =
-          Left (Right . OkAuthenticationResult <$> state) <$ A.readyForQuery
+                C.OkAuthenticationMessage -> Left (fmap OkAuthenticationResult state)
+                C.ClearTextPasswordAuthenticationMessage -> Left (Right NeedClearTextPasswordAuthenticationResult)
+                C.MD5PasswordAuthenticationMessage salt -> Left (Right (NeedMD5PasswordAuthenticationResult salt))

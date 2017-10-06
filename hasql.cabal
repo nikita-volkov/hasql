@@ -55,13 +55,14 @@ library
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
     Hasql.Looping
-    Hasql.Core.Interact
+    -- Hasql.Core.Interact
     Hasql.Core.EncodedParams
     Hasql.Core.DecodeResult
-    Hasql.Core.InBatch
-    Hasql.Core.Connection
+    -- Hasql.Core.InBatch
+    -- Hasql.Core.Connection
     Hasql.Core.Request
-    Hasql.Core.Dispatcher
+    -- Hasql.Core.Dispatcher
+    Hasql.Core.ChooseMessage
     Hasql.Core.ParseMessage
     Hasql.Core.ParseMessageStream
     Hasql.Core.ParseDataRow
@@ -72,7 +73,7 @@ library
     Hasql.Core.Loops.Receiver
     Hasql.Core.Loops.Sender
     Hasql.Core.Loops.IncomingMessagesSlicer
-    Hasql.Core.Loops.Interpreter
+    -- Hasql.Core.Loops.Interpreter
     Hasql.Client.Communicator
     Hasql.Client.Communicator.Guts
     Hasql.Client.EventBasedResultAggregation

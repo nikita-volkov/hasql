@@ -1,6 +1,7 @@
 module Hasql.Core.Request where
 
 import Hasql.Prelude
+import Hasql.Core.Model hiding (Error(..))
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified Hasql.Core.ParseMessageStream as A
@@ -18,7 +19,6 @@ data Request result =
   Request !B.Builder !(ExceptT Error A.ParseMessageStream result)
 
 data Error =
-  ParsingError !ErrorWithContext |
   BackendError !ByteString !ByteString
 
 instance Functor Request where
@@ -34,65 +34,44 @@ instance Applicative Request where
   (<*>) (Request leftBuilder leftParse) (Request rightBuilder rightParse) =
     Request (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
 
+{-# INLINE simple #-}
+simple :: B.Builder -> A.ParseMessageStream result -> Request result
+simple builder pms =
+  Request builder (ExceptT (fmap Right pms <|> fmap Left (A.errorCont BackendError)))
+
 {-# INLINE parse #-}
 parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
 parse preparedStatementName query oids =
-  Request builder parse
-  where
-    builder =
-      K.parseMessage preparedStatementName query oids
-    parse = 
-      ExceptT $
-      fmap Right A.parseComplete <|>
-      fmap Left (A.errorCont BackendError (ParsingError . ContextErrorWithContext "Parse request"))
+  simple (K.parseMessage preparedStatementName query oids) A.parseComplete
 
 {-# INLINE bind #-}
 bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Request ()
 bind portalName preparedStatementName parameters =
-  Request builder parse
-  where
-    builder =
-      K.binaryFormatBindMessage portalName preparedStatementName parameters
-    parse =
-      ExceptT $
-      fmap Right A.bindComplete <|>
-      fmap Left (A.errorCont BackendError (ParsingError . ContextErrorWithContext "Bind request"))
+  simple (K.binaryFormatBindMessage portalName preparedStatementName parameters) A.bindComplete
 
 {-# INLINE bindEncoded #-}
 bindEncoded :: ByteString -> ByteString -> Int -> B.Builder -> Request ()
 bindEncoded portalName preparedStatementName paramsAmount paramsBuilder =
-  Request builder parse
-  where
-    builder =
-      K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName (fromIntegral paramsAmount) paramsBuilder
-    parse =
-      ExceptT $
-      fmap Right A.bindComplete <|>
-      fmap Left (A.errorCont BackendError (ParsingError . ContextErrorWithContext "Bind request"))
+  simple
+    (K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName (fromIntegral paramsAmount) paramsBuilder)
+    A.bindComplete
 
 {-# INLINE execute #-}
-execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Request result
+execute :: ByteString -> A.ParseMessageStream result -> Request result
 execute portalName pms =
-  Request builder parse
-  where
-    builder =
-      K.unlimitedExecuteMessage portalName
-    parse =
-      ExceptT $
-      fmap Right A.bindComplete <|>
-      fmap Left (A.errorCont BackendError (ParsingError . ContextErrorWithContext "Bind request"))
+  simple (K.unlimitedExecuteMessage portalName) pms
 
--- {-# INLINE sync #-}
--- sync :: Request ()
--- sync =
---   Request K.syncMessage (lift A.readyForQuery)
+{-# INLINE sync #-}
+sync :: Request ()
+sync =
+  simple K.syncMessage A.readyForQuery
 
--- {-# INLINE startUp #-}
--- startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either ErrorMessage AuthenticationResult)
--- startUp username databaseMaybe runtimeParameters =
---   Request 
---     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
---     (ExceptT A.authentication)
+{-# INLINE startUp #-}
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either Text AuthenticationResult)
+startUp username databaseMaybe runtimeParameters =
+  simple 
+    (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
+    (A.authentication)
 
 -- {-# INLINE clearTextPassword #-}
 -- clearTextPassword :: ByteString -> Request (Either ErrorMessage AuthenticationResult)
