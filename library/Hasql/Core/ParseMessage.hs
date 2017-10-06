@@ -55,6 +55,11 @@ payloadParser :: (Word8 -> Bool) -> D.BinaryParser parsed -> ParseMessage (Eithe
 payloadParser predicate parser =
   payloadFn predicate (D.run parser)
 
+{-# INLINE payloadParserCont #-}
+payloadParserCont :: (Word8 -> Bool) -> D.BinaryParser result -> (Text -> result) -> ParseMessage result
+payloadParserCont predicate parser parsingError =
+  payloadFn predicate (either parsingError id . D.run parser)
+
 {-# INLINE withoutPayload #-}
 withoutPayload :: (Word8 -> Bool) -> ParseMessage ()
 withoutPayload predicate =
@@ -64,6 +69,11 @@ withoutPayload predicate =
 error :: ParseMessage (Either Text ErrorMessage)
 error =
   payloadParser G.error (E.errorMessage ErrorMessage)
+
+{-# INLINE errorCont #-}
+errorCont :: (ByteString -> ByteString -> result) -> (ErrorWithContext -> result) -> ParseMessage result
+errorCont message error =
+  payloadParserCont G.error (E.errorMessage message) (error . ContextErrorWithContext "ErrorResponse" . MessageErrorWithContext)
 
 {-# INLINE notification #-}
 notification :: ParseMessage (Either Text Notification)

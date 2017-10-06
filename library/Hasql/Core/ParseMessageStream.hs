@@ -66,6 +66,10 @@ error :: ParseMessageStream (Either Text ErrorMessage)
 error =
   parseMessage A.error
 
+errorCont :: (ByteString -> ByteString -> result) -> (ErrorWithContext -> result) -> ParseMessageStream result
+errorCont message parsingError =
+  parseMessage (A.errorCont message parsingError)
+
 commandComplete :: ParseMessageStream (Either Text Int)
 commandComplete =
   parseMessage A.commandComplete
