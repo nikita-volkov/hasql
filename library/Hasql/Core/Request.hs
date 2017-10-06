@@ -67,34 +67,34 @@ sync =
   simple K.syncMessage A.readyForQuery
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either Text AuthenticationResult)
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request C.AuthenticationMessage
 startUp username databaseMaybe runtimeParameters =
   simple 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
     (A.authentication)
 
--- {-# INLINE clearTextPassword #-}
--- clearTextPassword :: ByteString -> Request (Either ErrorMessage AuthenticationResult)
--- clearTextPassword password =
---   Request
---     (K.clearTextPasswordMessage password)
---     (ExceptT A.authentication)
+{-# INLINE clearTextPassword #-}
+clearTextPassword :: ByteString -> Request C.AuthenticationMessage
+clearTextPassword password =
+  simple
+    (K.clearTextPasswordMessage password)
+    (A.authentication)
 
--- {-# INLINE md5Password #-}
--- md5Password :: ByteString -> ByteString -> ByteString -> Request (Either ErrorMessage AuthenticationResult)
--- md5Password username password salt =
---   Request
---     (K.md5PasswordMessage username password salt)
---     (ExceptT A.authentication)
+{-# INLINE md5Password #-}
+md5Password :: ByteString -> ByteString -> ByteString -> Request C.AuthenticationMessage
+md5Password username password salt =
+  simple
+    (K.md5PasswordMessage username password salt)
+    (A.authentication)
 
--- {-# INLINE unparsedStatement #-}
--- unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
--- unparsedStatement name template oidVec bytesBuilder parseMessageStream =
---   parse name template oidVec *>
---   parsedStatement name template (G.length oidVec) bytesBuilder parseMessageStream
+{-# INLINE unparsedStatement #-}
+unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseMessageStream result -> Request result
+unparsedStatement name template oidVec bytesBuilder parseMessageStream =
+  parse name template oidVec *>
+  parsedStatement name template (G.length oidVec) bytesBuilder parseMessageStream
 
--- {-# INLINE parsedStatement #-}
--- parsedStatement :: ByteString -> ByteString -> Int -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
--- parsedStatement name template paramsAmount bytesBuilder parseMessageStream =
---   bindEncoded "" name paramsAmount bytesBuilder *>
---   execute "" parseMessageStream
+{-# INLINE parsedStatement #-}
+parsedStatement :: ByteString -> ByteString -> Int -> B.Builder -> A.ParseMessageStream result -> Request result
+parsedStatement name template paramsAmount bytesBuilder parseMessageStream =
+  bindEncoded "" name paramsAmount bytesBuilder *>
+  execute "" parseMessageStream

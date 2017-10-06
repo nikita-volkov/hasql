@@ -74,12 +74,16 @@ readyForQuery :: ParseMessageStream ()
 readyForQuery =
   parseMessage A.readyForQuery
 
-authentication :: ParseMessageStream (Either Text AuthenticationResult)
+authentication :: ParseMessageStream C.AuthenticationMessage
 authentication =
+  parseMessage A.authentication
+
+params :: ParseMessageStream (Either Text Bool)
+params =
   ParseMessageStream (iterate (Left "Missing the \"integer_datetimes\" setting"))
   where
     iterate !state =
-      B.Looping (param <|> authentication)
+      B.Looping (param <|> readyForQuery)
       where
         param =
           fromParsingResult <$> A.parameterStatus
@@ -91,11 +95,5 @@ authentication =
                   "off" -> Right (iterate (Right False))
                   _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
                 _ -> Right (iterate state)
-        authentication =
-          fromParsingResult <$> A.authentication
-          where
-            fromParsingResult =
-              \case
-                C.OkAuthenticationMessage -> Left (fmap OkAuthenticationResult state)
-                C.ClearTextPasswordAuthenticationMessage -> Left (Right NeedClearTextPasswordAuthenticationResult)
-                C.MD5PasswordAuthenticationMessage salt -> Left (Right (NeedMD5PasswordAuthenticationResult salt))
+        readyForQuery =
+          Left state <$ readyForQuery
