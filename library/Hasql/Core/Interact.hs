@@ -1,35 +1,35 @@
-module Hasql.Core.Session where
+module Hasql.Core.Interact where
 
 import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.Request as A
 
 
-newtype Session result =
-  Session (ExceptT ErrorMessage (Free A.Request) result)
+newtype Interact result =
+  Interact (ExceptT ErrorMessage (Free A.Request) result)
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE liftRequest #-}
-liftRequest :: A.Request (Either ErrorMessage result) -> Session result
-liftRequest = Session . ExceptT . liftF
+liftRequest :: A.Request (Either ErrorMessage result) -> Interact result
+liftRequest = Interact . ExceptT . liftF
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session AuthenticationResult
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Interact AuthenticationResult
 startUp username databaseMaybe runtimeParameters =
   liftRequest (A.startUp username databaseMaybe runtimeParameters)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Session AuthenticationResult
+clearTextPassword :: ByteString -> Interact AuthenticationResult
 clearTextPassword password =
   liftRequest (A.clearTextPassword password)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Session AuthenticationResult
+md5Password :: ByteString -> ByteString -> ByteString -> Interact AuthenticationResult
 md5Password username password salt =
   liftRequest (A.md5Password username password salt)
 
 {-# INLINE handshake #-}
-handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either Text Bool)
+handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Interact (Either Text Bool)
 handshake username password databaseMaybe runtimeParameters =
   startUp username databaseMaybe runtimeParameters >>= handleFirstAuthenticationResult
   where

@@ -7,6 +7,7 @@ import qualified Hasql.Socket as B
 import qualified Hasql.Core.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
 import qualified Hasql.Core.InBatch as E
+import qualified Hasql.Core.Interact as G
 
 
 data Connection =
