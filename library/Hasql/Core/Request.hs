@@ -1,7 +1,7 @@
 module Hasql.Core.Request where
 
 import Hasql.Prelude
-import Hasql.Core.Model
+import Hasql.Core.Model hiding (Error(..))
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified Hasql.Core.ParseMessageStream as A
@@ -16,7 +16,10 @@ A builder of concatenated outgoing messages and
 a parser of the stream of incoming messages.
 -}
 data Request result =
-  Request !B.Builder !(ExceptT Text A.ParseMessageStream result)
+  Request !B.Builder !(ExceptT Error A.ParseMessageStream result)
+
+data Error =
+  BackendError !ByteString !ByteString
 
 instance Functor Request where
   {-# INLINE fmap #-}
@@ -31,71 +34,67 @@ instance Applicative Request where
   (<*>) (Request leftBuilder leftParse) (Request rightBuilder rightParse) =
     Request (leftBuilder <> rightBuilder) (leftParse <*> rightParse)
 
+{-# INLINE simple #-}
+simple :: B.Builder -> A.ParseMessageStream result -> Request result
+simple builder pms =
+  Request builder (ExceptT (fmap Right pms <|> fmap Left (A.errorCont BackendError)))
+
 {-# INLINE parse #-}
 parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
 parse preparedStatementName query oids =
-  Request builder parse
-  where
-    builder = K.parseMessage preparedStatementName query oids
-    parse = lift A.parseComplete
+  simple (K.parseMessage preparedStatementName query oids) A.parseComplete
 
 {-# INLINE bind #-}
 bind :: ByteString -> ByteString -> Vector (Maybe B.Builder) -> Request ()
 bind portalName preparedStatementName parameters =
-  Request builder parse
-  where
-    builder = K.binaryFormatBindMessage portalName preparedStatementName parameters
-    parse = lift A.bindComplete
+  simple (K.binaryFormatBindMessage portalName preparedStatementName parameters) A.bindComplete
 
 {-# INLINE bindEncoded #-}
 bindEncoded :: ByteString -> ByteString -> Int -> B.Builder -> Request ()
 bindEncoded portalName preparedStatementName paramsAmount paramsBuilder =
-  Request builder parse
-  where
-    builder = K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName (fromIntegral paramsAmount) paramsBuilder
-    parse = lift A.bindComplete
+  simple
+    (K.binaryFormatBindMessageWithEncodedParams portalName preparedStatementName (fromIntegral paramsAmount) paramsBuilder)
+    A.bindComplete
 
 {-# INLINE execute #-}
-execute :: ByteString -> A.ParseMessageStream (Either Text result) -> Request result
-execute portalName parse =
-  Request builder (ExceptT parse)
-  where
-    builder = K.unlimitedExecuteMessage portalName
+execute :: ByteString -> A.ParseMessageStream result -> Request result
+execute portalName pms =
+  simple (K.unlimitedExecuteMessage portalName) pms
 
 {-# INLINE sync #-}
 sync :: Request ()
 sync =
-  Request K.syncMessage (lift A.readyForQuery)
+  simple K.syncMessage A.readyForQuery
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either ErrorMessage AuthenticationResult)
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either Text AuthenticationResult)
 startUp username databaseMaybe runtimeParameters =
-  Request 
+  simple 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
-    (ExceptT A.authentication)
+    (A.authentication)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Request (Either ErrorMessage AuthenticationResult)
+clearTextPassword :: ByteString -> Request (Either Text AuthenticationResult)
 clearTextPassword password =
-  Request
+  simple
     (K.clearTextPasswordMessage password)
-    (ExceptT A.authentication)
+    (A.authentication)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Request (Either ErrorMessage AuthenticationResult)
+md5Password :: ByteString -> ByteString -> ByteString -> Request (Either Text AuthenticationResult)
 md5Password username password salt =
-  Request
+  simple
     (K.md5PasswordMessage username password salt)
-    (ExceptT A.authentication)
+    (A.authentication)
 
 {-# INLINE unparsedStatement #-}
-unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
+unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseMessageStream result -> Request result
 unparsedStatement name template oidVec bytesBuilder parseMessageStream =
   parse name template oidVec *>
   parsedStatement name template (G.length oidVec) bytesBuilder parseMessageStream
 
 {-# INLINE parsedStatement #-}
-parsedStatement :: ByteString -> ByteString -> Int -> B.Builder -> A.ParseMessageStream (Either Text result) -> Request result
+parsedStatement :: ByteString -> ByteString -> Int -> B.Builder -> A.ParseMessageStream result -> Request result
 parsedStatement name template paramsAmount bytesBuilder parseMessageStream =
   bindEncoded "" name paramsAmount bytesBuilder *>
   execute "" parseMessageStream

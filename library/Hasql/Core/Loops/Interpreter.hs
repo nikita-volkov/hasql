@@ -5,12 +5,14 @@ import Hasql.Core.Model
 import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Core.ParseMessageStream as A
 import qualified Hasql.Core.ParseMessage as B
+import qualified Hasql.Core.ChooseMessage as F
 import qualified Hasql.Protocol.Decoding as E
+import qualified Hasql.Looping as C
 import qualified BinaryParser as D
 
 
 data ResultProcessor =
-  forall result. ResultProcessor !(A.ParseMessageStream result) !(result -> IO ())
+  forall result. ResultProcessor !(A.ParseMessageStream result) !(Either B.Error result -> IO ())
 
 data UnaffiliatedResult =
   NotificationUnaffiliatedResult !Notification |
@@ -33,24 +35,26 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
             interpretWithResultProcessor resultProcessor type_ payload
           Nothing ->
             interpretUnaffiliatedMessage tryToFetchResultProcessor type_ payload
-    interpretWithResultProcessor (ResultProcessor parse sendResult) =
-      parseMessageStream parse
+    interpretWithResultProcessor (ResultProcessor (A.ParseMessageStream (C.Looping (B.ParseMessage (Compose (F.ChooseMessage typeFn))))) sendResult) =
+      parseMessageStream typeFn
       where
-        parseMessageStream (A.ParseMessageStream (B.ParseMessage typeFn)) type_ payload =
+        parseMessageStream typeFn type_ payload =
           case typeFn type_ of
             Just payloadFn ->
               case payloadFn payload of
-                Left result -> sendResult result >> fetchingMessage tryToFetchResultProcessor
-                Right parse -> fetchingMessage (parseMessageStream parse)
+                Left parsingError -> sendResult (Left parsingError)
+                Right loopingDecision -> case loopingDecision of
+                  Left result -> sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
+                  Right (C.Looping (B.ParseMessage (Compose (F.ChooseMessage typeFn)))) -> fetchingMessage (parseMessageStream typeFn)
             Nothing ->
               interpretUnaffiliatedMessage
-                (parseMessageStream (A.ParseMessageStream (B.ParseMessage typeFn)))
+                (parseMessageStream typeFn)
                 type_ payload
     interpretUnaffiliatedMessage interpretNext type_ payload =
       case unaffiliatedResultTypeFn type_ of
         Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
         Nothing -> fetchingMessage interpretNext
       where
-        B.ParseMessage unaffiliatedResultTypeFn =
-          fmap (either ProtocolErrorUnaffiliatedResult NotificationUnaffiliatedResult) B.notification <|>
-          fmap (either ProtocolErrorUnaffiliatedResult ErrorMessageUnaffiliatedResult) B.error
+        F.ChooseMessage unaffiliatedResultTypeFn =
+          fmap (either ProtocolErrorUnaffiliatedResult NotificationUnaffiliatedResult) F.notification <|>
+          fmap (either ProtocolErrorUnaffiliatedResult ErrorMessageUnaffiliatedResult) F.error

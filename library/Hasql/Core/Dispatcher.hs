@@ -7,6 +7,7 @@ import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified PtrMagic.Encoding as F
 import qualified Hasql.Core.ParseMessageStream as E
+import qualified Hasql.Core.ParseMessage as H
 import qualified Hasql.Core.Request as C
 import qualified Hasql.Core.Interact as G
 import qualified Hasql.Core.Loops.Serializer as SerializerLoop
@@ -23,7 +24,7 @@ data Dispatcher =
   }
 
 type PerformRequest =
-  forall result. C.Request result -> (Text -> result) -> (Text -> result) -> IO result
+  forall result. C.Request result -> IO (Either Error result)
 
 start :: A.Socket -> (Either Error Notification -> IO ()) -> IO Dispatcher
 start socket sendErrorOrNotification =
@@ -36,7 +37,7 @@ start socket sendErrorOrNotification =
     transportErrorVar <- newEmptyTMVarIO
     let
       performRequest :: PerformRequest
-      performRequest (C.Request builder parseExcept) transportError protocolError =
+      performRequest (C.Request builder parseExcept) =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
@@ -47,10 +48,12 @@ start socket sendErrorOrNotification =
           encoding =
             B.builderPtrFiller builder F.Encoding
           parse =
-            fmap (either protocolError id) (runExceptT parseExcept)
-          sendResult resultVar resultWithError =
+            fmap (either (\(C.BackendError state details) -> Left (BackendError state details)) Right) (runExceptT parseExcept)
+          sendResult resultVar resultOrError =
             do
-              result <- atomically (fmap transportError (readTMVar transportErrorVar) <|> pure resultWithError)
+              result <- case resultOrError of
+                Left (H.ParsingError context message) -> return (Left (DecodingError ((fromString . show) context <> ": " <> message)))
+                Right result -> atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure result)
               atomically (putTMVar resultVar result)
       loopSending =
         SenderLoop.loop socket
@@ -84,15 +87,13 @@ start socket sendErrorOrNotification =
         return (Dispatcher kill performRequest)
 
 interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
-interact dispatcher (G.Interact exceptRequest) =
-  interpretFreeRequest (runExceptT exceptRequest)
+interact dispatcher (G.Interact free) =
+  interpretFreeRequest free
   where
     interpretFreeRequest =
       \case
         Free request ->
-          join (performRequest dispatcher 
-            (fmap interpretFreeRequest request)
-            (return . Left . TransportError)
-            (return . Left . ProtocolError))
-        Pure a -> return (either (Left . errorMessageBackendError) Right a)
-    errorMessageBackendError (ErrorMessage state details) = BackendError state details
+          performRequest dispatcher request >>= \case
+            Left error -> return (Left error)
+            Right free -> interpretFreeRequest free
+        Pure a -> return (Right a)
