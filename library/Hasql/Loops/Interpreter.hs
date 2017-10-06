@@ -1,11 +1,11 @@
-module Hasql.Core.Loops.Interpreter where
+module Hasql.Loops.Interpreter where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.MessageTypePredicates as G
-import qualified Hasql.Core.ParseMessageStream as A
-import qualified Hasql.Core.ParseMessage as B
-import qualified Hasql.Core.ChooseMessage as F
+import Hasql.Model
+import qualified Hasql.MessageTypePredicates as G
+import qualified Hasql.ParseMessageStream as A
+import qualified Hasql.ParseMessage as B
+import qualified Hasql.ChooseMessage as F
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Looping as C
 import qualified BinaryParser as D

@@ -50,25 +50,25 @@ library
   exposed-modules:
   other-modules:
     Hasql.Looping
-    Hasql.Core.Interact
-    Hasql.Core.EncodedParams
-    Hasql.Core.DecodeResult
-    Hasql.Core.Query
-    Hasql.Core.Connection
-    Hasql.Core.Request
-    Hasql.Core.Dispatcher
-    Hasql.Core.ChooseMessage
-    Hasql.Core.ParseMessage
-    Hasql.Core.ParseMessageStream
-    Hasql.Core.ParseDataRow
-    Hasql.Core.Model
-    Hasql.Core.ReadStream
-    Hasql.Core.MessageTypePredicates
-    Hasql.Core.Loops.Serializer
-    Hasql.Core.Loops.Receiver
-    Hasql.Core.Loops.Sender
-    Hasql.Core.Loops.IncomingMessagesSlicer
-    Hasql.Core.Loops.Interpreter
+    Hasql.Interact
+    Hasql.EncodedParams
+    Hasql.DecodeResult
+    Hasql.Query
+    Hasql.Connection
+    Hasql.Request
+    Hasql.Dispatcher
+    Hasql.ChooseMessage
+    Hasql.ParseMessage
+    Hasql.ParseMessageStream
+    Hasql.ParseDataRow
+    Hasql.Model
+    Hasql.ReadStream
+    Hasql.MessageTypePredicates
+    Hasql.Loops.Serializer
+    Hasql.Loops.Receiver
+    Hasql.Loops.Sender
+    Hasql.Loops.IncomingMessagesSlicer
+    Hasql.Loops.Interpreter
     Hasql.Socket
     Hasql.Connection.Session.Statement.Decoding.Decoding
     Hasql.Connection.Session.Statement.Encoding.Encoding

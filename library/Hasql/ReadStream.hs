@@ -1,4 +1,4 @@
-module Hasql.Core.ReadStream where
+module Hasql.ReadStream where
 
 import Hasql.Prelude
 import qualified Hasql.Socket as A

@@ -4,7 +4,7 @@ import Hasql.Prelude
 import Hasql.Protocol.Model
 import BinaryParser
 import qualified Data.Vector as A
-import qualified Hasql.Core.ParseDataRow as F
+import qualified Hasql.ParseDataRow as F
 
 
 {-# INLINE word8 #-}

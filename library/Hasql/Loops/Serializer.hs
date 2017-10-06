@@ -1,4 +1,4 @@
-module Hasql.Core.Loops.Serializer where
+module Hasql.Loops.Serializer where
 
 import Hasql.Prelude
 import qualified PtrMagic.Encoding as A

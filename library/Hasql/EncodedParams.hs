@@ -1,7 +1,7 @@
-module Hasql.Core.EncodedParams where
+module Hasql.EncodedParams where
 
 import Hasql.Prelude
-import Hasql.Core.Model
+import Hasql.Model
 import qualified ByteString.StrictBuilder as E
 import qualified VectorBuilder.Builder as N
 

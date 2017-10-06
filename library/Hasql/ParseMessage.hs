@@ -1,10 +1,10 @@
-module Hasql.Core.ParseMessage where
+module Hasql.ParseMessage where
 
 import Hasql.Prelude
-import Hasql.Core.Model hiding (Error(..))
-import qualified Hasql.Core.ChooseMessage as B
-import qualified Hasql.Core.MessageTypePredicates as G
-import qualified Hasql.Core.ParseDataRow as F
+import Hasql.Model hiding (Error(..))
+import qualified Hasql.ChooseMessage as B
+import qualified Hasql.MessageTypePredicates as G
+import qualified Hasql.ParseDataRow as F
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as A
 import qualified BinaryParser as D

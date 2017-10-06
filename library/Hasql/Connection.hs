@@ -1,13 +1,13 @@
-module Hasql.Core.Connection where
+module Hasql.Connection where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.Dispatcher as A
+import Hasql.Model
+import qualified Hasql.Dispatcher as A
 import qualified Hasql.Socket as B
-import qualified Hasql.Core.Request as C
+import qualified Hasql.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
-import qualified Hasql.Core.Query as E
-import qualified Hasql.Core.Interact as G
+import qualified Hasql.Query as E
+import qualified Hasql.Interact as G
 
 
 data Connection =

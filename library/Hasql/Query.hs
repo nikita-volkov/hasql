@@ -1,13 +1,13 @@
-module Hasql.Core.Query where
+module Hasql.Query where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.Request as C
+import Hasql.Model
+import qualified Hasql.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
-import qualified Hasql.Core.ParseMessageStream as A
+import qualified Hasql.ParseMessageStream as A
 import qualified ByteString.StrictBuilder as E
-import qualified Hasql.Core.EncodedParams as B
-import qualified Hasql.Core.DecodeResult as F
+import qualified Hasql.EncodedParams as B
+import qualified Hasql.DecodeResult as F
 import qualified VectorBuilder.Vector as O
 import qualified Data.Vector as G
 

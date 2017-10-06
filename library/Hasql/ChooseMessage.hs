@@ -1,8 +1,8 @@
-module Hasql.Core.ChooseMessage where
+module Hasql.ChooseMessage where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.MessageTypePredicates as G
+import Hasql.Model
+import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as A
 import qualified BinaryParser as D
