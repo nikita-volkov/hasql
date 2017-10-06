@@ -54,6 +54,7 @@ library
     Hasql.Connection.Session.Statement.Encoding
     Hasql.Connection.Session.Statement.Decoding
   other-modules:
+    Hasql.Looping
     Hasql.Core.Interact
     Hasql.Core.EncodedParams
     Hasql.Core.DecodeResult
