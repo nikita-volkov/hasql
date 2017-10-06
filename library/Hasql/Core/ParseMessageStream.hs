@@ -74,9 +74,14 @@ readyForQuery :: ParseMessageStream ()
 readyForQuery =
   parseMessage A.readyForQuery
 
-authentication :: ParseMessageStream C.AuthenticationMessage
+authentication :: ParseMessageStream (Either Text AuthenticationResult)
 authentication =
-  parseMessage A.authentication
+  do
+    response <- parseMessage A.authentication
+    case response of
+      C.OkAuthenticationMessage -> (fmap . fmap) OkAuthenticationResult params
+      C.ClearTextPasswordAuthenticationMessage -> return (Right NeedClearTextPasswordAuthenticationResult)
+      C.MD5PasswordAuthenticationMessage salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
 
 params :: ParseMessageStream (Either Text Bool)
 params =

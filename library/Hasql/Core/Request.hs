@@ -67,21 +67,21 @@ sync =
   simple K.syncMessage A.readyForQuery
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request C.AuthenticationMessage
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either Text AuthenticationResult)
 startUp username databaseMaybe runtimeParameters =
   simple 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
     (A.authentication)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Request C.AuthenticationMessage
+clearTextPassword :: ByteString -> Request (Either Text AuthenticationResult)
 clearTextPassword password =
   simple
     (K.clearTextPasswordMessage password)
     (A.authentication)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Request C.AuthenticationMessage
+md5Password :: ByteString -> ByteString -> ByteString -> Request (Either Text AuthenticationResult)
 md5Password username password salt =
   simple
     (K.md5PasswordMessage username password salt)

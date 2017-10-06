@@ -6,39 +6,40 @@ import qualified Hasql.Core.Request as A
 
 
 newtype Interact result =
-  Interact (ExceptT ErrorMessage (Free A.Request) result)
+  Interact (Free A.Request result)
   deriving (Functor, Applicative, Monad)
 
-{-# INLINE liftRequest #-}
-liftRequest :: A.Request (Either ErrorMessage result) -> Interact result
-liftRequest = Interact . ExceptT . liftF
+{-# INLINE request #-}
+request :: A.Request result -> Interact result
+request = Interact . liftF
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Interact AuthenticationResult
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Interact (Either Text AuthenticationResult)
 startUp username databaseMaybe runtimeParameters =
-  liftRequest (A.startUp username databaseMaybe runtimeParameters)
+  request (A.startUp username databaseMaybe runtimeParameters)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Interact AuthenticationResult
+clearTextPassword :: ByteString -> Interact (Either Text AuthenticationResult)
 clearTextPassword password =
-  liftRequest (A.clearTextPassword password)
+  request (A.clearTextPassword password)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Interact AuthenticationResult
+md5Password :: ByteString -> ByteString -> ByteString -> Interact (Either Text AuthenticationResult)
 md5Password username password salt =
-  liftRequest (A.md5Password username password salt)
+  request (A.md5Password username password salt)
 
 {-# INLINE handshake #-}
 handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Interact (Either Text Bool)
 handshake username password databaseMaybe runtimeParameters =
-  startUp username databaseMaybe runtimeParameters >>= handleFirstAuthenticationResult
+  runExceptT $
+  ExceptT (startUp username databaseMaybe runtimeParameters) >>= handleFirstAuthenticationResult
   where
     handleFirstAuthenticationResult =
       \case
-        OkAuthenticationResult idt -> return (Right idt)
-        NeedClearTextPasswordAuthenticationResult -> clearTextPassword password >>= handleSecondAuthenticationResult
-        NeedMD5PasswordAuthenticationResult salt -> md5Password username password salt >>= handleSecondAuthenticationResult
+        OkAuthenticationResult idt -> ExceptT (return (Right idt))
+        NeedClearTextPasswordAuthenticationResult -> ExceptT (clearTextPassword password) >>= handleSecondAuthenticationResult
+        NeedMD5PasswordAuthenticationResult salt -> ExceptT (md5Password username password salt) >>= handleSecondAuthenticationResult
     handleSecondAuthenticationResult =
       \case
-        OkAuthenticationResult idt -> return (Right idt)
-        _ -> return (Left "Can't authenticate")
+        OkAuthenticationResult idt -> ExceptT (return (Right idt))
+        _ -> ExceptT (return (Left "Can't authenticate"))
