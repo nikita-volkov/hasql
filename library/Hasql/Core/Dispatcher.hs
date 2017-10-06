@@ -86,16 +86,17 @@ start socket sendErrorOrNotification =
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
         return (Dispatcher kill performRequest)
 
--- interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
--- interact dispatcher (G.Interact exceptRequest) =
---   interpretFreeRequest (runExceptT exceptRequest)
---   where
---     interpretFreeRequest =
---       \case
---         Free request ->
---           join (performRequest dispatcher 
---             (fmap interpretFreeRequest request)
---             (return . Left . TransportError)
---             (return . Left . ProtocolError))
---         Pure a -> return (either (Left . errorMessageBackendError) Right a)
---     errorMessageBackendError (ErrorMessage state details) = BackendError state details
+interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
+interact dispatcher (G.Interact free) =
+  interpretFreeRequest free
+  where
+    interpretFreeRequest =
+      \case
+        Free request ->
+          join (performRequest dispatcher 
+            (fmap interpretFreeRequest request)
+            (return . Left . TransportError)
+            (\case
+              H.ParsingError context message -> return (Left (DecodingError ((fromString . show) context <> ": " <> message))))
+            (\state details -> return (Left (BackendError state details))))
+        Pure a -> return (Right a)
