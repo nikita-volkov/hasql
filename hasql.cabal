@@ -59,7 +59,7 @@ library
     Hasql.Core.EncodedParams
     Hasql.Core.DecodeResult
     Hasql.Core.InBatch
-    Hasql.Core.Connection
+    -- Hasql.Core.Connection
     Hasql.Core.Request
     Hasql.Core.Dispatcher
     Hasql.Core.ChooseMessage

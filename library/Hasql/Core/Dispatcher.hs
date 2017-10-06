@@ -24,7 +24,7 @@ data Dispatcher =
   }
 
 type PerformRequest =
-  forall result. C.Request result -> (Text -> result) -> (H.Error -> result) -> (ByteString -> ByteString -> result) -> IO result
+  forall result. C.Request result -> IO (Either Error result)
 
 start :: A.Socket -> (Either Error Notification -> IO ()) -> IO Dispatcher
 start socket sendErrorOrNotification =
@@ -37,7 +37,7 @@ start socket sendErrorOrNotification =
     transportErrorVar <- newEmptyTMVarIO
     let
       performRequest :: PerformRequest
-      performRequest (C.Request builder parseExcept) transportError parsingError backendError =
+      performRequest (C.Request builder parseExcept) =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
@@ -48,12 +48,12 @@ start socket sendErrorOrNotification =
           encoding =
             B.builderPtrFiller builder F.Encoding
           parse =
-            fmap (either (\(C.BackendError state details) -> backendError state details) id) (runExceptT parseExcept)
+            fmap (either (\(C.BackendError state details) -> Left (BackendError state details)) Right) (runExceptT parseExcept)
           sendResult resultVar resultOrError =
             do
               result <- case resultOrError of
-                Left error -> return (parsingError error)
-                Right result -> atomically (fmap transportError (readTMVar transportErrorVar) <|> pure result)
+                Left (H.ParsingError context message) -> return (Left (DecodingError ((fromString . show) context <> ": " <> message)))
+                Right result -> atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure result)
               atomically (putTMVar resultVar result)
       loopSending =
         SenderLoop.loop socket
@@ -86,17 +86,17 @@ start socket sendErrorOrNotification =
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
         return (Dispatcher kill performRequest)
 
-interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
-interact dispatcher (G.Interact free) =
-  interpretFreeRequest free
-  where
-    interpretFreeRequest =
-      \case
-        Free request ->
-          join (performRequest dispatcher 
-            (fmap interpretFreeRequest request)
-            (return . Left . TransportError)
-            (\case
-              H.ParsingError context message -> return (Left (DecodingError ((fromString . show) context <> ": " <> message))))
-            (\state details -> return (Left (BackendError state details))))
-        Pure a -> return (Right a)
+-- interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
+-- interact dispatcher (G.Interact free) =
+--   interpretFreeRequest free
+--   where
+--     interpretFreeRequest =
+--       \case
+--         Free request ->
+--           join (performRequest dispatcher 
+--             (fmap interpretFreeRequest request)
+--             (return . Left . TransportError)
+--             (\case
+--               H.ParsingError context message -> return (Left (DecodingError ((fromString . show) context <> ": " <> message))))
+--             (\state details -> return (Left (BackendError state details))))
+--         Pure a -> return (Right a)
