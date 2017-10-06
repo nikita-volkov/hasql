@@ -33,14 +33,18 @@ open transportSettings username password databaseMaybe sendErrorOrNotification =
           Right errorOrIdt -> case errorOrIdt of
             Left error -> return (Left (TransportError error))
             Right idt -> do
-              psrRef <- newMVar D.nil
-              return (Right (Connection socket dispatcher psrRef idt))
+              psrVar <- newMVar D.nil
+              return (Right (Connection socket dispatcher psrVar idt))
 
--- inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
--- inBatch (Connection _ dispatcher psrRef idt) (E.InBatch inBatchFn) =
---   do
---     request <- atomicModifyIORef' psrRef (swap . inBatchFn idt)
---     A.performRequest dispatcher (request <* C.sync)
+inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
+inBatch (Connection _ dispatcher psrVar idt) (E.InBatch inBatchFn) =
+  do
+    psr <- takeMVar psrVar
+    case inBatchFn idt psr of
+      (request, newPsr) -> do
+        result <- A.performRequest dispatcher (request <* C.sync)
+        putMVar psrVar newPsr
+        return result
 
 close :: Connection -> IO ()
 close (Connection socket dispatcher _ _) =
