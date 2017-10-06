@@ -61,7 +61,7 @@ library
     Hasql.Core.InBatch
     -- Hasql.Core.Connection
     Hasql.Core.Request
-    -- Hasql.Core.Dispatcher
+    Hasql.Core.Dispatcher
     Hasql.Core.ChooseMessage
     Hasql.Core.ParseMessage
     Hasql.Core.ParseMessageStream
