@@ -1,11 +1,11 @@
-module Hasql.Core.Request where
+module Hasql.Request where
 
 import Hasql.Prelude
-import Hasql.Core.Model hiding (Error(..))
+import Hasql.Model hiding (Error(..))
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
-import qualified Hasql.Core.ParseMessageStream as A
-import qualified Hasql.Core.ParseMessage as E
+import qualified Hasql.ParseMessageStream as A
+import qualified Hasql.ParseMessage as E
 import qualified Hasql.Protocol.Encoding as K
 import qualified Hasql.Protocol.Model as C
 import qualified Data.Vector as G

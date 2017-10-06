@@ -1,4 +1,4 @@
-module Hasql.Core.Loops.Sender where
+module Hasql.Loops.Sender where
 
 import Hasql.Prelude
 import qualified Hasql.Socket as A

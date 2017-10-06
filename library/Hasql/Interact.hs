@@ -1,8 +1,8 @@
-module Hasql.Core.Interact where
+module Hasql.Interact where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.Request as A
+import Hasql.Model
+import qualified Hasql.Request as A
 
 
 newtype Interact result =

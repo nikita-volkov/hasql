@@ -1,4 +1,4 @@
-module Hasql.Core.ParseDataRow where
+module Hasql.ParseDataRow where
 
 import Hasql.Prelude
 import qualified BinaryParser as D

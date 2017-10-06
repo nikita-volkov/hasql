@@ -1,11 +1,11 @@
-module Hasql.Core.ParseMessageStream where
+module Hasql.ParseMessageStream where
 
 import Hasql.Prelude hiding (error)
-import Hasql.Core.Model hiding (Error(..))
+import Hasql.Model hiding (Error(..))
 import qualified Hasql.Looping as B
-import qualified Hasql.Core.ParseMessage as A
-import qualified Hasql.Core.ParseDataRow as F
-import qualified Hasql.Core.MessageTypePredicates as G
+import qualified Hasql.ParseMessage as A
+import qualified Hasql.ParseDataRow as F
+import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as C
 import qualified BinaryParser as D

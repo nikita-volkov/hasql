@@ -1,8 +1,8 @@
-module Hasql.Core.Loops.IncomingMessagesSlicer where
+module Hasql.Loops.IncomingMessagesSlicer where
 
 import Hasql.Prelude
-import Hasql.Core.Model
-import qualified Hasql.Core.ReadStream as C
+import Hasql.Model
+import qualified Hasql.ReadStream as C
 
 
 {-# INLINABLE loop #-}

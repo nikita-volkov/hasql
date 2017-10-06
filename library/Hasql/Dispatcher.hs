@@ -1,20 +1,20 @@
-module Hasql.Core.Dispatcher where
+module Hasql.Dispatcher where
 
 import Hasql.Prelude
-import Hasql.Core.Model
+import Hasql.Model
 import qualified Hasql.Socket as A
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified PtrMagic.Encoding as F
-import qualified Hasql.Core.ParseMessageStream as E
-import qualified Hasql.Core.ParseMessage as H
-import qualified Hasql.Core.Request as C
-import qualified Hasql.Core.Interact as G
-import qualified Hasql.Core.Loops.Serializer as SerializerLoop
-import qualified Hasql.Core.Loops.Receiver as ReceiverLoop
-import qualified Hasql.Core.Loops.Sender as SenderLoop
-import qualified Hasql.Core.Loops.IncomingMessagesSlicer as IncomingMessagesSlicerLoop
-import qualified Hasql.Core.Loops.Interpreter as InterpreterLoop
+import qualified Hasql.ParseMessageStream as E
+import qualified Hasql.ParseMessage as H
+import qualified Hasql.Request as C
+import qualified Hasql.Interact as G
+import qualified Hasql.Loops.Serializer as SerializerLoop
+import qualified Hasql.Loops.Receiver as ReceiverLoop
+import qualified Hasql.Loops.Sender as SenderLoop
+import qualified Hasql.Loops.IncomingMessagesSlicer as IncomingMessagesSlicerLoop
+import qualified Hasql.Loops.Interpreter as InterpreterLoop
 
 
 data Dispatcher =
