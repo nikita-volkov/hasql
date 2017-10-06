@@ -11,29 +11,31 @@ import qualified Hasql.Core.Interact as G
 
 
 data Connection =
-  Connection !B.Socket !(IO ()) !(forall what. C.Request what -> IO (Either Error what)) !(IORef D.Registry) !Bool
+  Connection !B.Socket !A.Dispatcher !(IORef D.Registry) !Bool
 
-openThruSocket :: IO Connection
-openThruSocket =
-  $(todo "")
-
-openThruTCP :: ByteString -> Int -> ByteString -> Maybe ByteString -> Maybe ByteString -> (Either Error Notification -> IO ()) -> IO (Either Text Connection)
-openThruTCP host port username passwordMaybe databaseMaybe sendErrorOrNotification =
+open :: B.ConnectionSettings -> ByteString -> ByteString -> Maybe ByteString -> (Either Error Notification -> IO ()) -> IO (Either Error Connection)
+open transportSettings username password databaseMaybe sendErrorOrNotification =
   do
-    connectionResult <- B.connectToHostAndPort host port
+    connectionResult <- B.connect transportSettings
     case connectionResult of
-      Left message -> return (Left message)
+      Left message -> return (Left (TransportError message))
       Right socket -> do
         dispatcher <- A.start socket sendErrorOrNotification
-        $(todo "")
+        handshakeResult <- A.interact dispatcher (G.handshake username password databaseMaybe [])
+        case handshakeResult of
+          Left error -> return (Left error)
+          Right errorOrIdt -> case errorOrIdt of
+            Left error -> return (Left (TransportError error))
+            Right idt -> do
+              psrRef <- newIORef (D.nil)
+              return (Right (Connection socket dispatcher psrRef idt))
 
-
-inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
-inBatch (Connection _ _ performRequest psrRef idt) (E.InBatch inBatchFn) =
-  do
-    request <- atomicModifyIORef' psrRef (swap . inBatchFn idt)
-    performRequest (request <* C.sync)
+-- inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
+-- inBatch (Connection _ dispatcher psrRef idt) (E.InBatch inBatchFn) =
+--   do
+--     request <- atomicModifyIORef' psrRef (swap . inBatchFn idt)
+--     A.performRequest dispatcher (request <* C.sync)
 
 close :: Connection -> IO ()
-close (Connection socket stopDispatch _ _ _) =
-  stopDispatch >> B.close socket
+close (Connection socket dispatcher _ _) =
+  A.stop dispatcher >> B.close socket
