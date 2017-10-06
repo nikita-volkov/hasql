@@ -25,23 +25,23 @@ md5Password username password salt =
   Session (liftF (A.md5Password username password salt))
 
 {-# INLINE handshake #-}
-handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either Text (Either ErrorMessage Bool))
+handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either ErrorMessage (Either Text Bool))
 handshake username password databaseMaybe runtimeParameters =
   startUp username databaseMaybe runtimeParameters >>= handleFirstErrorOrAuthenticationResult
   where
     handleFirstErrorOrAuthenticationResult =
       \case
-        Left error -> return (Right (Left error))
+        Left error -> return (Left error)
         Right authenticationResult -> case authenticationResult of
           OkAuthenticationResult idt -> return (Right (Right idt))
           NeedClearTextPasswordAuthenticationResult -> clearTextPassword password >>= handleSecondErrorOrAuthenticationResult
           NeedMD5PasswordAuthenticationResult salt -> md5Password username password salt >>= handleSecondErrorOrAuthenticationResult
     handleSecondErrorOrAuthenticationResult =
       \case
-        Left error -> return (Right (Left error))
+        Left error -> return (Left error)
         Right authenticationResult -> case authenticationResult of
           OkAuthenticationResult idt -> return (Right (Right idt))
-          _ -> return (Left "Can't authenticate")
+          _ -> return (Right (Left "Can't authenticate"))
 
 {-# INLINE request #-}
 request :: A.Request result -> Session result
