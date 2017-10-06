@@ -11,7 +11,13 @@ import qualified Hasql.Core.Interact as G
 
 
 data Connection =
-  Connection !B.Socket !A.Dispatcher !(IORef D.Registry) !Bool
+  {-
+  We use 'MVar' over registry insteadOf 'atomicModifyIORef' to protect
+  from race conditions, when one thread might initiate a query over a prepared statement,
+  which hasn't yet been committed by another thread, when that other thread has already updated
+  the registry.
+  -}
+  Connection !B.Socket !A.Dispatcher !(MVar D.Registry) !Bool
 
 open :: B.ConnectionSettings -> ByteString -> ByteString -> Maybe ByteString -> (Either Error Notification -> IO ()) -> IO (Either Error Connection)
 open transportSettings username password databaseMaybe sendErrorOrNotification =
@@ -27,7 +33,7 @@ open transportSettings username password databaseMaybe sendErrorOrNotification =
           Right errorOrIdt -> case errorOrIdt of
             Left error -> return (Left (TransportError error))
             Right idt -> do
-              psrRef <- newIORef (D.nil)
+              psrRef <- newMVar D.nil
               return (Right (Connection socket dispatcher psrRef idt))
 
 -- inBatch :: Connection -> E.InBatch result -> IO (Either Error result)
