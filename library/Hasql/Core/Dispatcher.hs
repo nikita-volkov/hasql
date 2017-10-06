@@ -19,8 +19,11 @@ import qualified Hasql.Core.Loops.Interpreter as InterpreterLoop
 data Dispatcher =
   Dispatcher {
     stop :: IO (),
-    performRequest :: forall result. C.Request result -> IO (Either Error result)
+    performRequest :: PerformRequest
   }
+
+type PerformRequest =
+  forall result. C.Request result -> (Text -> result) -> (Text -> result) -> IO result
 
 start :: A.Socket -> (Either Error Notification -> IO ()) -> IO Dispatcher
 start socket sendErrorOrNotification =
@@ -32,25 +35,22 @@ start socket sendErrorOrNotification =
     resultProcessorQueue <- newTQueueIO
     transportErrorVar <- newEmptyTMVarIO
     let
-      performRequest :: forall result. C.Request result -> IO (Either Error result)
-      performRequest (C.Request builder parse) =
+      performRequest :: PerformRequest
+      performRequest (C.Request builder parseExcept) transportError protocolError =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
             writeTQueue serializerMessageQueue (SerializerLoop.SerializeMessage encoding)
-            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor parseWithError (sendResult resultVar))
+            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor parse (sendResult resultVar))
           atomically (takeTMVar resultVar)
         where
           encoding =
             B.builderPtrFiller builder F.Encoding
-          parseWithError =
-            fmap (either (Left . ProtocolError) Right) (runExceptT parse) <|>
-            fmap (Left . either ProtocolError backendError) E.error
-            where
-              backendError (ErrorMessage state details) = BackendError state details
+          parse =
+            fmap (either protocolError id) (runExceptT parseExcept)
           sendResult resultVar resultWithError =
             do
-              result <- atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure resultWithError)
+              result <- atomically (fmap transportError (readTMVar transportErrorVar) <|> pure resultWithError)
               atomically (putTMVar resultVar result)
       loopSending =
         SenderLoop.loop socket
@@ -83,11 +83,16 @@ start socket sendErrorOrNotification =
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
         return (Dispatcher kill performRequest)
 
-session :: Dispatcher -> G.Session result -> IO (Either Error result)
+session :: Dispatcher -> G.Session (Either ErrorMessage result) -> IO (Either Error result)
 session dispatcher (G.Session freeRequest) =
   interpretFreeRequest freeRequest
   where
     interpretFreeRequest =
       \case
-        Free request -> performRequest dispatcher request >>= either (return . Left) interpretFreeRequest
-        Pure a -> return (Right a)
+        Free request ->
+          join (performRequest dispatcher 
+            (fmap interpretFreeRequest request)
+            (return . Left . TransportError)
+            (return . Left . ProtocolError))
+        Pure a -> return (either (Left . errorMessageBackendError) Right a)
+    errorMessageBackendError (ErrorMessage state details) = BackendError state details
