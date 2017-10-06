@@ -83,9 +83,9 @@ start socket sendErrorOrNotification =
         kill <- startThreads [loopInterpreting, loopSerializing, loopSlicing, loopSending, loopReceiving]
         return (Dispatcher kill performRequest)
 
-session :: Dispatcher -> G.Session (Either ErrorMessage result) -> IO (Either Error result)
-session dispatcher (G.Session freeRequest) =
-  interpretFreeRequest freeRequest
+session :: Dispatcher -> G.Session result -> IO (Either Error result)
+session dispatcher (G.Session exceptRequest) =
+  interpretFreeRequest (runExceptT exceptRequest)
   where
     interpretFreeRequest =
       \case

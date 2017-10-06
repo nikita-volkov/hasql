@@ -6,43 +6,39 @@ import qualified Hasql.Core.Request as A
 
 
 newtype Session result =
-  Session (Free A.Request result)
+  Session (ExceptT ErrorMessage (Free A.Request) result)
   deriving (Functor, Applicative, Monad)
 
+{-# INLINE liftRequest #-}
+liftRequest :: A.Request (Either ErrorMessage result) -> Session result
+liftRequest = Session . ExceptT . liftF
+
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either ErrorMessage AuthenticationResult)
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session AuthenticationResult
 startUp username databaseMaybe runtimeParameters =
-  Session (liftF (A.startUp username databaseMaybe runtimeParameters))
+  liftRequest (A.startUp username databaseMaybe runtimeParameters)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Session (Either ErrorMessage AuthenticationResult)
+clearTextPassword :: ByteString -> Session AuthenticationResult
 clearTextPassword password =
-  Session (liftF (A.clearTextPassword password))
+  liftRequest (A.clearTextPassword password)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Session (Either ErrorMessage AuthenticationResult)
+md5Password :: ByteString -> ByteString -> ByteString -> Session AuthenticationResult
 md5Password username password salt =
-  Session (liftF (A.md5Password username password salt))
+  liftRequest (A.md5Password username password salt)
 
 {-# INLINE handshake #-}
-handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either ErrorMessage (Either Text Bool))
+handshake :: ByteString -> ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Session (Either Text Bool)
 handshake username password databaseMaybe runtimeParameters =
-  startUp username databaseMaybe runtimeParameters >>= handleFirstErrorOrAuthenticationResult
+  startUp username databaseMaybe runtimeParameters >>= handleFirstAuthenticationResult
   where
-    handleFirstErrorOrAuthenticationResult =
+    handleFirstAuthenticationResult =
       \case
-        Left error -> return (Left error)
-        Right authenticationResult -> case authenticationResult of
-          OkAuthenticationResult idt -> return (Right (Right idt))
-          NeedClearTextPasswordAuthenticationResult -> clearTextPassword password >>= handleSecondErrorOrAuthenticationResult
-          NeedMD5PasswordAuthenticationResult salt -> md5Password username password salt >>= handleSecondErrorOrAuthenticationResult
-    handleSecondErrorOrAuthenticationResult =
+        OkAuthenticationResult idt -> return (Right idt)
+        NeedClearTextPasswordAuthenticationResult -> clearTextPassword password >>= handleSecondAuthenticationResult
+        NeedMD5PasswordAuthenticationResult salt -> md5Password username password salt >>= handleSecondAuthenticationResult
+    handleSecondAuthenticationResult =
       \case
-        Left error -> return (Left error)
-        Right authenticationResult -> case authenticationResult of
-          OkAuthenticationResult idt -> return (Right (Right idt))
-          _ -> return (Right (Left "Can't authenticate"))
-
-{-# INLINE request #-}
-request :: A.Request result -> Session result
-request = Session . liftF
+        OkAuthenticationResult idt -> return (Right idt)
+        _ -> return (Left "Can't authenticate")
