@@ -41,9 +41,9 @@ start socket sendErrorOrNotification =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
+            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor parse (sendResult resultVar))
             writeTQueue serializerMessageQueue (SerializerLoop.SerializeMessage encoding)
             writeTQueue serializerMessageQueue (SerializerLoop.FlushMessage)
-            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor parse (sendResult resultVar))
           atomically (takeTMVar resultVar)
         where
           encoding =
