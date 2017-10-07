@@ -15,7 +15,10 @@ instance (Applicative m) => Applicative (Looping m) where
   pure x =
     Looping (pure (Left x))
   {-# INLINE (<*>) #-}
-  (<*>) = ap
+  (<*>) (Looping left) rightLooping =
+    Looping $ flip fmap left $ \case
+      Left leftOutput -> Right (fmap leftOutput rightLooping)
+      Right leftLooping -> Right (leftLooping <*> rightLooping)
 
 instance (Alternative m) => Alternative (Looping m) where
   {-# INLINE empty #-}
