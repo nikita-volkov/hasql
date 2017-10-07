@@ -18,10 +18,10 @@ data Error =
   ParsingError !Text !Text
   deriving (Show, Eq)
 
-run :: ParseMessage result -> Word8 -> ByteString -> Maybe (Either Error result)
-run (ParseMessage (C.Choosing typeFn)) type_ payload =
+run :: ParseMessage result -> Word8 -> Maybe (ByteString -> Either Error result)
+run (ParseMessage (C.Choosing typeFn)) type_ =
   case typeFn type_ of
-    Just (ReaderT payloadFn) -> Just (payloadFn payload)
+    Just (ReaderT payloadFn) -> Just (payloadFn)
     Nothing -> Nothing
 
 {-# INLINE payloadFn #-}
