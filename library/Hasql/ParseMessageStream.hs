@@ -105,4 +105,4 @@ params =
                   _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
                 _ -> Right (iterate state)
         readyForQuery =
-          Left state <$ readyForQuery
+          Left state <$ A.readyForQuery
