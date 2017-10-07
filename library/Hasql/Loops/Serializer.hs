@@ -25,6 +25,7 @@ loop getMessage sendBytes =
         message <- getMessage
         case message of
           SerializeMessage (A.Encoding spaceRequired write) ->
+            trace ("Serializing " <> show spaceRequired <> " bytes") $
             serialize fp offset spaceRequired write
           FlushMessage ->
             do

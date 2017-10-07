@@ -7,6 +7,7 @@ import qualified Hasql.ParseMessageStream as A
 import qualified Hasql.ParseMessage as B
 import qualified Hasql.ChooseMessage as F
 import qualified Hasql.Protocol.Decoding as E
+import qualified Hasql.Protocol.Model as H
 import qualified Hasql.Looping as C
 import qualified BinaryParser as D
 
@@ -26,6 +27,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
     fetchingMessage handler =
       do
         Message type_ payload <- fetchMessage
+        traceM ("Interpreting message of type " <> show (H.MessageType type_))
         handler type_ payload
     tryToFetchResultProcessor type_ payload =
       do
