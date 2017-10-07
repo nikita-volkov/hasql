@@ -28,3 +28,11 @@ column parser =
   ParseDataRow 1 $ \vec index ->
   either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
   traverse (D.run parser) (A.unsafeIndex vec index)
+
+nonNullColumn :: D.BinaryParser column -> ParseDataRow column
+nonNullColumn parser =
+  ParseDataRow 1 $ \vec index ->
+  either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
+  case A.unsafeIndex vec index of
+    Just bytes -> D.run parser bytes
+    Nothing -> Left "Unexpected NULL"

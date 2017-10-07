@@ -51,6 +51,8 @@ library
     Hasql.Connection
     Hasql.EncodedParams
     Hasql.DecodeResult
+    Hasql.DecodeRow
+    Hasql.DecodePrimitive
     Hasql.Query
     Hasql.Model
   other-modules:
@@ -108,6 +110,7 @@ library
     containers == 0.5.*,
     unordered-containers == 0.2.*,
     ptr-magic >= 0.6.2 && < 0.7,
+    time == 1.*,
     -- control:
     free >= 4.12.4 && < 5,
     managed == 1.*,
