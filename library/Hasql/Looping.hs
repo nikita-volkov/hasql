@@ -38,12 +38,9 @@ instance (Applicative m) => Monad (Looping m) where
   return = pure
   {-# INLINE (>>=) #-}
   (>>=) (Looping left) rightK =
-    Looping (fmap mapping left)
-    where
-      mapping =
-        \case
-          Left leftOutput -> Right (rightK leftOutput)
-          Right (Looping nextLeft) -> Right (Looping (fmap mapping nextLeft))
+    Looping $ flip fmap left $ \case
+      Left leftOutput -> Right (rightK leftOutput)
+      Right nextLeftLooping -> Right (nextLeftLooping >>= rightK)
 
 instance (Alternative m) => MonadPlus (Looping m) where
   mzero = empty
