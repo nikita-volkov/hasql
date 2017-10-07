@@ -60,6 +60,7 @@ library
     Hasql.Interact
     Hasql.Request
     Hasql.Dispatcher
+    Hasql.Choosing
     Hasql.ChooseMessage
     Hasql.ParseMessage
     Hasql.ParseMessageStream
