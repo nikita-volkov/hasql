@@ -1,4 +1,12 @@
-module Hasql.Connection where
+module Hasql.Connection
+(
+  Connection,
+  B.ConnectionSettings(..),
+  open,
+  query,
+  close,
+)
+where
 
 import Hasql.Prelude
 import Hasql.Model
