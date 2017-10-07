@@ -18,6 +18,16 @@ newtype ParseMessageStream result =
   ParseMessageStream (B.Looping A.ParseMessage result)
   deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
 
+run :: ParseMessageStream result -> Word8 -> Maybe (ByteString -> Either (Either A.Error result) (ParseMessageStream result))
+run (ParseMessageStream (B.Looping pm)) type_ =
+  case A.run pm type_ of
+    Just payloadFn -> 
+      Just $ \payload ->
+        case payloadFn payload of 
+          Left error -> Left (Left error)
+          Right (Left result) -> Left (Right result)
+          Right (Right looping) -> Right (ParseMessageStream looping)
+    Nothing -> Nothing
 
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
