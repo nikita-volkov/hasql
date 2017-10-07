@@ -2,7 +2,7 @@ module Hasql.ParseMessage where
 
 import Hasql.Prelude
 import Hasql.Model hiding (Error(..))
-import qualified Hasql.ChooseMessage as B
+import qualified Hasql.Choosing as C
 import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.ParseDataRow as F
 import qualified Hasql.Protocol.Decoding as E
@@ -10,26 +10,24 @@ import qualified Hasql.Protocol.Model as A
 import qualified BinaryParser as D
 
 
-{-|
-Interpreter of a single message.
--}
 newtype ParseMessage result =
-  ParseMessage (Compose B.ChooseMessage (Either Error) result)
+  ParseMessage (C.Choosing Word8 (ReaderT ByteString (Either Error)) result)
   deriving (Functor, Applicative, Alternative)
 
 data Error =
   ParsingError !Text !Text
   deriving (Show, Eq)
 
-{-# INLINE chooseMessage #-}
-chooseMessage :: B.ChooseMessage (Either Error result) -> ParseMessage result
-chooseMessage =
-  ParseMessage . Compose
+run :: ParseMessage result -> Word8 -> ByteString -> Maybe (Either Error result)
+run (ParseMessage (C.Choosing typeFn)) type_ payload =
+  case typeFn type_ of
+    Just (ReaderT payloadFn) -> Just (payloadFn payload)
+    Nothing -> Nothing
 
 {-# INLINE payloadFn #-}
 payloadFn :: (Word8 -> Bool) -> (ByteString -> Either Error result) -> ParseMessage result
 payloadFn predicate payloadFn =
-  chooseMessage (B.payloadFn predicate payloadFn)
+  ParseMessage (C.Choosing (bool Nothing (Just (ReaderT payloadFn)) . predicate))
 
 {-# INLINE payloadParser #-}
 payloadParser :: (Word8 -> Bool) -> Text -> D.BinaryParser parsed -> ParseMessage parsed
