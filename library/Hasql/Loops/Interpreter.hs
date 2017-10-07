@@ -46,11 +46,16 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
               trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m with a result processor") $
               case payloadFn payload of
                 Left parsingError -> 
+                  trace ("Parsing error: " <> show parsingError) $
                   sendResult (Left parsingError)
                 Right loopingDecision -> 
                   case loopingDecision of
-                    Left result -> sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
-                    Right (C.Looping (B.ParseMessage (I.Choosing typeFn))) -> fetchingMessage (parseMessageStream typeFn)
+                    Left result ->
+                      trace ("Sending the result") $
+                      sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
+                    Right (C.Looping (B.ParseMessage (I.Choosing typeFn))) ->
+                      trace ("Looping") $
+                      fetchingMessage (parseMessageStream typeFn)
             Nothing ->
               interpretUnaffiliatedMessage
                 (parseMessageStream typeFn)
