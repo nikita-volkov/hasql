@@ -19,6 +19,7 @@ newtype ParseMessage result =
 
 data Error =
   ParsingError !Text !Text
+  deriving (Show, Eq)
 
 {-# INLINE chooseMessage #-}
 chooseMessage :: B.ChooseMessage (Either Error result) -> ParseMessage result
