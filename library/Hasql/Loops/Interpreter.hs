@@ -3,11 +3,11 @@ module Hasql.Loops.Interpreter where
 import Hasql.Prelude
 import Hasql.Model
 import qualified Hasql.MessageTypePredicates as G
+import qualified Hasql.MessageTypeNames as H
 import qualified Hasql.ParseMessageStream as A
 import qualified Hasql.ParseMessage as B
 import qualified Hasql.ChooseMessage as F
 import qualified Hasql.Protocol.Decoding as E
-import qualified Hasql.Protocol.Model as H
 import qualified Hasql.Looping as C
 import qualified BinaryParser as D
 
@@ -27,7 +27,6 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
     fetchingMessage handler =
       do
         Message type_ payload <- fetchMessage
-        traceM ("Interpreting message of type " <> show (H.MessageType type_))
         handler type_ payload
     tryToFetchResultProcessor type_ payload =
       do
@@ -43,6 +42,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
         parseMessageStream typeFn type_ payload =
           case typeFn type_ of
             Just payloadFn ->
+              trace ("Interpreting message stream with a message of type " <> H.string type_) $
               case payloadFn payload of
                 Left parsingError -> sendResult (Left parsingError)
                 Right loopingDecision -> case loopingDecision of
@@ -53,6 +53,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
                 (parseMessageStream typeFn)
                 type_ payload
     interpretUnaffiliatedMessage interpretNext type_ payload =
+      trace ("Interpreting unaffiliated message of type " <> H.string type_) $
       case unaffiliatedResultTypeFn type_ of
         Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
         Nothing -> fetchingMessage interpretNext
