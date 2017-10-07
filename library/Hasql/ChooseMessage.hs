@@ -5,50 +5,20 @@ import Hasql.Model
 import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as A
+import qualified Hasql.Choosing as C
 import qualified BinaryParser as D
 
 
 {-|
 Interpreter of a single message.
 -}
-newtype ChooseMessage result = ChooseMessage (Word8 -> Maybe (ByteString -> result))
-
-instance Functor ChooseMessage where
-  {-# INLINE fmap #-}
-  fmap mapping (ChooseMessage parse) =
-    ChooseMessage (fmap (mapping .) . parse)
-
-instance Applicative ChooseMessage where
-  {-# INLINE pure #-}
-  pure x =
-    ChooseMessage (const (Just (const x)))
-  {-# INLINE (<*>) #-}
-  (<*>) (ChooseMessage left) (ChooseMessage right) =
-    ChooseMessage $ \type_ ->
-    case left type_ of
-      Just leftPayloadFn -> case right type_ of
-        Just rightPayloadFn -> Just $ \payload ->
-          (leftPayloadFn payload) (rightPayloadFn payload)
-        Nothing -> Nothing
-      Nothing -> Nothing
-
-instance Alternative ChooseMessage where
-  {-# INLINE empty #-}
-  empty =
-    ChooseMessage (const Nothing)
-  {-# INLINE (<|>) #-}
-  (<|>) (ChooseMessage left) (ChooseMessage right) =
-    ChooseMessage $ \type_ ->
-    case left type_ of
-      Just leftPayloadFn -> Just leftPayloadFn
-      Nothing -> case right type_ of
-        Just rightPayloadFn -> Just rightPayloadFn
-        Nothing -> Nothing
+newtype ChooseMessage result = ChooseMessage (C.Choosing Word8 ((->) ByteString) result)
+  deriving (Functor, Applicative, Alternative)
 
 {-# INLINE payloadFn #-}
 payloadFn :: (Word8 -> Bool) -> (ByteString -> result) -> ChooseMessage result
 payloadFn predicate payloadFn =
-  ChooseMessage (\type_ -> if predicate type_ then Just payloadFn else Nothing)
+  ChooseMessage (C.Choosing (\type_ -> if predicate type_ then Just payloadFn else Nothing))
 
 {-# INLINE payloadParser #-}
 payloadParser :: (Word8 -> Bool) -> D.BinaryParser parsed -> ChooseMessage (Either Text parsed)
