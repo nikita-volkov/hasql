@@ -48,10 +48,8 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
               trace ("Interpreting message stream with a message of type " <> H.string type_) $
               case payloadFn payload of
                 Left parsingError -> 
-                  trace ("Got a parsing error: " <> show parsingError) $
                   sendResult (Left parsingError)
                 Right loopingDecision -> 
-                  trace ("Interpreting a looping decision, which is " <> either (const "Left") (const "Right") loopingDecision) $
                   case loopingDecision of
                     Left result -> sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
                     Right (C.Looping (B.ParseMessage (I.Choosing typeFn))) -> fetchingMessage (parseMessageStream typeFn)
