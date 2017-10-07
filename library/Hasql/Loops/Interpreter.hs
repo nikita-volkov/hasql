@@ -43,7 +43,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
         parseMessageStream typeFn type_ payload =
           case typeFn type_ of
             Just (ReaderT payloadFn) ->
-              trace ("Interpreting a message of type " <> H.string type_ <> " with a result processor") $
+              trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m with a result processor") $
               case payloadFn payload of
                 Left parsingError -> 
                   sendResult (Left parsingError)
@@ -56,7 +56,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
                 (parseMessageStream typeFn)
                 type_ payload
     interpretUnaffiliatedMessage interpretNext type_ payload =
-      trace ("Interpreting a message of type " <> H.string type_ <> " without a result processor") $
+      trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m without a result processor") $
       case unaffiliatedResultTypeFn type_ of
         Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
         Nothing -> fetchingMessage interpretNext
