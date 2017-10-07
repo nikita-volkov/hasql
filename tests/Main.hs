@@ -9,6 +9,7 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import qualified Hasql.Connection as A
 import qualified Hasql.Query as J
+import qualified Hasql.Model as E
 import qualified Data.Vector as H
 import qualified Control.Foldl as I
 import qualified Hasql.DecodeResult as B
@@ -35,18 +36,23 @@ runTests connection =
   defaultMain $
   testGroup "Tests with connection" $
   [
-    testCase "Combined query of select '1' and select 'true'" $ 
     let
-      query :: J.Query (Int64, Bool)
-      query = (,) <$> selectOne <*> selectTrue
-        where
-          selectOne = J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8))
-          selectTrue = J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
-      in do
-        result <- A.query connection query
-        assertEqual "" (Right (1, True)) result
-    ,
-    testCase "Simultaneous result decoding and counting" $
-    return ()
+      test :: (Eq result, Show result) => String -> Either E.Error result -> J.Query result -> TestTree
+      test name expectedResult query =
+        testCase name $ do
+          result <- A.query connection query
+          assertEqual "" expectedResult result 
+      in
+        testGroup "Query" $
+        [
+          test "select 1" (Right 1) $
+          J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8))
+          ,
+          test "select '1' and select 'true'" (Right (1, True)) $
+          (,) <$>
+          J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
+          J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
+          ,
+          testCase "Simultaneous result decoding and counting" $ pure ()
+        ]
   ]
-
