@@ -29,6 +29,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
         Message type_ payload <- fetchMessage
         handler type_ payload
     tryToFetchResultProcessor type_ payload =
+      trace ("Trying to fetch a result processor on a message of type " <> H.string type_) $
       do
         fetchResult <- fetchResultProcessor
         case fetchResult of
@@ -40,14 +41,19 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
       parseMessageStream typeFn
       where
         parseMessageStream typeFn type_ payload =
+          trace ("Interpreting a message of type " <> H.string type_) $
           case typeFn type_ of
             Just payloadFn ->
               trace ("Interpreting message stream with a message of type " <> H.string type_) $
               case payloadFn payload of
-                Left parsingError -> sendResult (Left parsingError)
-                Right loopingDecision -> case loopingDecision of
-                  Left result -> sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
-                  Right (C.Looping (B.ParseMessage (Compose (F.ChooseMessage typeFn)))) -> fetchingMessage (parseMessageStream typeFn)
+                Left parsingError -> 
+                  trace ("Got a parsing error: " <> show parsingError) $
+                  sendResult (Left parsingError)
+                Right loopingDecision -> 
+                  trace ("Interpreting a looping decision, which is " <> either (const "Left") (const "Right") loopingDecision) $
+                  case loopingDecision of
+                    Left result -> sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
+                    Right (C.Looping (B.ParseMessage (Compose (F.ChooseMessage typeFn)))) -> fetchingMessage (parseMessageStream typeFn)
             Nothing ->
               interpretUnaffiliatedMessage
                 (parseMessageStream typeFn)
