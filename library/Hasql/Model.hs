@@ -10,7 +10,7 @@ data AuthenticationResult =
 
 data Message = Message !Word8 !ByteString
 
-data Notification = Notification !Word32 !ByteString !ByteString
+data Notification = Notification !Word32 !ByteString !ByteString deriving (Show)
 
 {-| 
 An erroneous result received from the DB.
@@ -57,4 +57,4 @@ data Error =
   This error type is highly unlikely.
   -}
   ProtocolError !Text
-  deriving (Show)
+  deriving (Show, Eq)

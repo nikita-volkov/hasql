@@ -35,6 +35,10 @@ commandComplete :: ParseMessageStream Int
 commandComplete =
   parseMessage A.commandComplete
 
+row :: F.ParseDataRow row -> ParseMessageStream row
+row pdr =
+  parseMessage (A.dataRow pdr) <* parseMessage A.commandCompleteWithoutAmount
+
 rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =
   ParseMessageStream (fold foldStart)

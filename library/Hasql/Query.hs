@@ -28,7 +28,7 @@ instance Applicative Query where
         (rightRequest, rightPsr) -> (leftRequest <*> rightRequest, rightPsr))
 
 preparedStatement :: ByteString -> B.EncodedParams -> F.DecodeResult result -> Query result
-preparedStatement template (B.EncodedParams oidVecBuilder bytesBuilder) (F.DecodeResult parseMessageStream) =
+preparedStatement template (B.EncodedParams oidVecBuilder bytesBuilder) (F.DecodeResult (ReaderT parseMessageStream)) =
   Query $ \idt psr ->
   case D.lookupOrRegister template oidVec psr of
     (newOrOldName, newPsr) -> 
@@ -42,7 +42,7 @@ preparedStatement template (B.EncodedParams oidVecBuilder bytesBuilder) (F.Decod
     oidVec = O.build oidVecBuilder
 
 unpreparedStatement :: ByteString -> B.EncodedParams -> F.DecodeResult result -> Query result
-unpreparedStatement template (B.EncodedParams oidVecBuilder bytesBuilder) (F.DecodeResult parseMessageStream) =
+unpreparedStatement template (B.EncodedParams oidVecBuilder bytesBuilder) (F.DecodeResult (ReaderT parseMessageStream)) =
   Query $ \idt psr ->
   case C.unparsedStatement "" template oidVec (bytesBuilder idt) (parseMessageStream idt) of
     request -> (request, psr)

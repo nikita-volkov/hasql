@@ -98,6 +98,10 @@ import Data.HashMap.Strict as Exports (HashMap)
 -------------------------
 import Data.DList as Exports (DList)
 
+-- time
+-------------------------
+import Data.Time as Exports
+
 -- bug
 -------------------------
 import Bug as Exports
