@@ -30,7 +30,6 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
         Message type_ payload <- fetchMessage
         handler type_ payload
     tryToFetchResultProcessor type_ payload =
-      trace ("Trying to fetch a result processor on a message of type " <> H.string type_) $
       do
         fetchResult <- fetchResultProcessor
         case fetchResult of
@@ -42,10 +41,9 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
       parseMessageStream typeFn
       where
         parseMessageStream typeFn type_ payload =
-          trace ("Interpreting a message of type " <> H.string type_) $
           case typeFn type_ of
             Just (ReaderT payloadFn) ->
-              trace ("Interpreting message stream with a message of type " <> H.string type_) $
+              trace ("Interpreting a message of type " <> H.string type_ <> " with a result processor") $
               case payloadFn payload of
                 Left parsingError -> 
                   sendResult (Left parsingError)
@@ -58,7 +56,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
                 (parseMessageStream typeFn)
                 type_ payload
     interpretUnaffiliatedMessage interpretNext type_ payload =
-      trace ("Interpreting unaffiliated message of type " <> H.string type_) $
+      trace ("Interpreting a message of type " <> H.string type_ <> " without a result processor") $
       case unaffiliatedResultTypeFn type_ of
         Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
         Nothing -> fetchingMessage interpretNext
