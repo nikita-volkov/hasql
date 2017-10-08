@@ -14,7 +14,7 @@ import qualified BinaryParser as D
 
 
 data ResultProcessor =
-  forall result. ResultProcessor !(A.ParseMessageStream result) !(Either B.Error result -> IO ())
+  forall result. ResultProcessor !(A.ParseMessageStream result) !(Either Text result -> IO ())
 
 data UnaffiliatedResult =
   NotificationUnaffiliatedResult !Notification |
@@ -37,7 +37,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
             interpretWithResultProcessor resultProcessor type_ payload
           Nothing ->
             interpretUnaffiliatedMessage tryToFetchResultProcessor type_ payload
-    interpretWithResultProcessor (ResultProcessor (A.ParseMessageStream (C.Looping (B.ParseMessage (I.Choosing typeFn)))) sendResult) =
+    interpretWithResultProcessor (ResultProcessor (A.ParseMessageStream (B.ParseMessage (I.Choosing typeFn))) sendResult) =
       parseMessageStream typeFn
       where
         parseMessageStream typeFn type_ payload =
@@ -45,15 +45,22 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
             Just (ReaderT payloadFn) ->
               trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m with a result processor") $
               case payloadFn payload of
-                Left parsingError -> 
-                  trace ("Parsing error: " <> show parsingError) $
-                  sendResult (Left parsingError)
-                Right loopingDecision -> 
-                  case loopingDecision of
-                    Left result ->
-                      trace ("Sending the result") $
-                      sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
-                    Right (C.Looping (B.ParseMessage (I.Choosing typeFn))) ->
+                Left (B.ParsingError context message) -> 
+                  trace ("Parsing error: " <> show renderedError) $
+                  sendResult (Left renderedError) >>
+                  fetchingMessage tryToFetchResultProcessor
+                  where
+                    renderedError =
+                      (fromString . show) context <> ": " <> message
+                Right terminationDecision -> 
+                  case terminationDecision of
+                    Left termination ->
+                      case termination of
+                        Left error -> sendResult (Left error) >> fetchingMessage tryToFetchResultProcessor
+                        Right result ->
+                          trace ("Sending the result") $
+                          sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
+                    Right (A.ParseMessageStream (B.ParseMessage (I.Choosing typeFn))) ->
                       trace ("Looping") $
                       fetchingMessage (parseMessageStream typeFn)
             Nothing ->
