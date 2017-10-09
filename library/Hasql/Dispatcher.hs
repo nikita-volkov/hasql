@@ -89,12 +89,7 @@ start socket sendErrorOrNotification =
 
 interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
 interact dispatcher (G.Interact free) =
-  interpretFreeRequest free
+  runExceptT $ iterM interpretFreeRequest free
   where
-    interpretFreeRequest =
-      \case
-        Free request ->
-          performRequest dispatcher request >>= \case
-            Left error -> return (Left error)
-            Right free -> interpretFreeRequest free
-        Pure a -> return (Right a)
+    interpretFreeRequest request =
+      join (ExceptT (performRequest dispatcher request))

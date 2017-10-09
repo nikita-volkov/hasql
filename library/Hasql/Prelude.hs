@@ -59,7 +59,7 @@ import Control.Foldl as Exports (Fold(..), FoldM(..))
 
 -- free
 -------------------------
-import Control.Monad.Free as Exports
+import Control.Monad.Free.Church as Exports
 
 -- stm
 -------------------------

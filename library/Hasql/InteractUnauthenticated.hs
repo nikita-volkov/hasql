@@ -6,7 +6,7 @@ import qualified Hasql.Request as A
 
 
 newtype Interact result =
-  Interact (Free A.Request result)
+  Interact (F A.Request result)
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE request #-}
