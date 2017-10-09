@@ -74,8 +74,6 @@ library
     Hasql.Loops.IncomingMessagesSlicer
     Hasql.Loops.Interpreter
     Hasql.Socket
-    Hasql.Connection.Session.Statement.Decoding.Decoding
-    Hasql.Connection.Session.Statement.Encoding.Encoding
     Hasql.OID.Array
     Hasql.OID.Primitive
     Hasql.Prelude
