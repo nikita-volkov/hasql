@@ -5,104 +5,92 @@ import Bug
 import Criterion
 import Criterion.Main
 import qualified Hasql.Connection as A
-import qualified Hasql.Connection.Session as B
-import qualified Hasql.Connection.Session.Statement as C
-import qualified Hasql.Connection.Session.Statement.Decoding as D
-import qualified Hasql.Connection.Session.Statement.Encoding as E
-import qualified Data.Vector as F
+import qualified Hasql.Query as J
+import qualified Hasql.Interact as F
+import qualified Hasql.Model as E
+import qualified Hasql.DecodeResult as B
+import qualified Hasql.DecodeRow as C
+import qualified Hasql.DecodePrimitive as D
+import qualified Data.Vector as H
+import qualified Control.Foldl as I
 
 
 main =
   do
-    Right connection <- A.acquire "localhost" Nothing "postgres" Nothing Nothing
+    connection <- connect
     let
-      sessionBench :: NFData a => String -> B.Session a -> Benchmark
-      sessionBench name session =
-        bench name (nfIO (runSession session))
+      interactBench :: NFData a => String -> F.Interact a -> Benchmark
+      interactBench name interact =
+        bench name (nfIO (runInteract interact))
         where
-          runSession session =
+          runInteract interact =
             do
-              Right result <- A.use connection session
+              Right result <- A.interact connection interact
               return result
       in
         defaultMain
         [
-          sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
-          sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
-          sessionBench "largeResultInRevList" sessionWithSingleLargeResultInRevList,
-          sessionBench "manySmallResults" sessionWithManySmallResults
+          interactBench "singleLargeResultInVector" singleLargeResultInVectorInteract,
+          interactBench "manyLargeResultsInVector" manyLargeResultsInVectorInteract,
+          interactBench "manyLargeResultsInVectorInBatch" manyLargeResultsInVectorInBatchInteract,
+          interactBench "manySmallResults" manySmallResultsInteract,
+          interactBench "manySmallResultsInBatch" manySmallResultsInBatchInteract
         ]
 
--- * Sessions
--------------------------
-
-sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
-sessionWithManySmallParameters =
-  $(todo "sessionWithManySmallParameters")
-
-sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
-sessionWithSingleLargeResultInVector =
-  B.batch (B.statement statementWithManyRowsInVector ())
-
-sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
-sessionWithSingleLargeResultInList =
-  B.batch (B.statement statementWithManyRowsInList ())
-
-sessionWithSingleLargeResultInRevList :: B.Session (List (Int64, Int64))
-sessionWithSingleLargeResultInRevList =
-  B.batch (B.statement statementWithManyRowsInRevList ())
-
-sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
-sessionWithManySmallResults =
-  F.replicateM 1000 (B.batch (B.statement statementWithSingleRow ()))
-
-
--- * Statements
--------------------------
-
-statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
-statementWithManyParameters =
-  $(todo "statementWithManyParameters")
-
-statementWithSingleRow :: C.Statement () (Int64, Int64)
-statementWithSingleRow =
-  C.statement template encoder decoder True
+connect :: IO A.Connection
+connect =
+  do
+    openingResult <- A.open (A.TCPConnectionSettings "localhost" 5432) "postgres" "" Nothing handleErrorOrNotification
+    case openingResult of
+      Left error -> fail (showString "Can't connect: " (show error))
+      Right connection -> return connection
   where
-    template =
-      "SELECT 1, 2"
-    encoder =
-      conquer
-    decoder =
-      C.row row
-      where
-        row =
-          tuple <$> C.column D.int8 <*> C.column D.int8
-          where
-            tuple !a !b =
-              (a, b)
+    handleErrorOrNotification x =
+      putStrLn ("Async event: " <> show x)
 
-statementWithManyRows :: (C.RowDecoder (Int64, Int64) -> C.Decoder result) -> C.Statement () result
-statementWithManyRows decoder =
-  C.statement template encoder (decoder rowDecoder) True
+-- * Interactions
+-------------------------
+
+singleLargeResultInVectorInteract :: F.Interact (Vector (Int64, Int64))
+singleLargeResultInVectorInteract =
+  F.query (manyRowsQuery (B.rows I.vector))
+
+manyLargeResultsInVectorInteract :: F.Interact [Vector (Int64, Int64)]
+manyLargeResultsInVectorInteract =
+  replicateM 1000 (F.query (manyRowsQuery (B.rows I.vector)))
+
+manyLargeResultsInVectorInBatchInteract :: F.Interact [Vector (Int64, Int64)]
+manyLargeResultsInVectorInBatchInteract =
+  F.query (replicateM 1000 (manyRowsQuery (B.rows I.vector)))
+
+manySmallResultsInteract :: F.Interact [(Int64, Int64)]
+manySmallResultsInteract =
+  replicateM 1000 (F.query singleRowQuery)
+
+manySmallResultsInBatchInteract :: F.Interact [(Int64, Int64)]
+manySmallResultsInBatchInteract =
+  F.query (replicateM 1000 singleRowQuery)
+
+-- * Queries
+-------------------------
+
+singleRowQuery :: J.Query (Int64, Int64)
+singleRowQuery =
+  J.preparedStatement "select 1, 2" mempty decode
+  where
+    decode =
+      B.row ((,) <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8)
+
+{-# INLINE manyRowsQuery #-}
+manyRowsQuery :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Query result
+manyRowsQuery decodeResult =
+  J.preparedStatement template mempty decode
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
-    encoder =
-      conquer
-    rowDecoder =
-      tuple <$> C.column D.int8 <*> C.column D.int8
-      where
+    decode =
+      decodeResult $
+      tuple <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8
+        where
         tuple !a !b =
           (a, b)
-
-statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
-statementWithManyRowsInVector =
-  statementWithManyRows C.rowVector
-
-statementWithManyRowsInRevList :: C.Statement () (List (Int64, Int64))
-statementWithManyRowsInRevList =
-  statementWithManyRows C.rowRevList
-
-statementWithManyRowsInList :: C.Statement () (List (Int64, Int64))
-statementWithManyRowsInList =
-  statementWithManyRows C.rowList
