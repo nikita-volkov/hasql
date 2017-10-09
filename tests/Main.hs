@@ -47,12 +47,12 @@ runTests connection =
         [
           test "select 1" (Right 1) $
           J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8))
-          -- ,
-          -- test "select '1' and select 'true'" (Right (1, True)) $
-          -- (,) <$>
-          -- J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
-          -- J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
-          -- ,
-          -- testCase "Simultaneous result decoding and counting" $ pure ()
+          ,
+          test "select '1' and select 'true'" (Right (1, True)) $
+          (,) <$>
+          J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
+          J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
+          ,
+          testCase "Simultaneous result decoding and counting" $ pure ()
         ]
   ]
