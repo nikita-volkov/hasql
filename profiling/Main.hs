@@ -16,8 +16,10 @@ import qualified Control.Foldl as I
 main =
   do
     connection <- connect
+    traceEventIO "START Interact"
     Right !result <- fmap force <$> A.interact connection (interact 10 100 100)
     Right !result <- fmap force <$> A.interact connection (interact 10 100 100)
+    traceEventIO "STOP Interact"
     return ()
 
 connect :: IO A.Connection
