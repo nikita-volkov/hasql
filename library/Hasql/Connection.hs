@@ -15,6 +15,7 @@ import qualified Hasql.Socket as B
 import qualified Hasql.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
 import qualified Hasql.Query as E
+import qualified Hasql.Interact as F
 import qualified Hasql.InteractUnauthenticated as G
 
 
@@ -43,6 +44,10 @@ open transportSettings username password databaseMaybe sendErrorOrNotification =
             Right idt -> do
               psrVar <- newMVar D.nil
               return (Right (Connection socket dispatcher psrVar idt))
+
+interact :: Connection -> F.Interact result -> IO (Either Error result)
+interact connection (F.Interact free) =
+  runExceptT (iterM (\x -> join (ExceptT (query connection x))) free)
 
 query :: Connection -> E.Query result -> IO (Either Error result)
 query (Connection _ dispatcher psrVar idt) (E.Query queryFn) =
