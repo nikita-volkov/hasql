@@ -54,9 +54,10 @@ library
     Hasql.DecodeRow
     Hasql.DecodePrimitive
     Hasql.Query
+    Hasql.Interact
     Hasql.Model
   other-modules:
-    Hasql.Interact
+    Hasql.InteractUnauthenticated
     Hasql.Request
     Hasql.Dispatcher
     Hasql.Choosing

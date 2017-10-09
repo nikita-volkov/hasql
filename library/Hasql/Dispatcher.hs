@@ -9,7 +9,7 @@ import qualified PtrMagic.Encoding as F
 import qualified Hasql.ParseMessageStream as E
 import qualified Hasql.ParseMessage as H
 import qualified Hasql.Request as C
-import qualified Hasql.Interact as G
+import qualified Hasql.InteractUnauthenticated as G
 import qualified Hasql.Loops.Serializer as SerializerLoop
 import qualified Hasql.Loops.Receiver as ReceiverLoop
 import qualified Hasql.Loops.Sender as SenderLoop
@@ -89,12 +89,7 @@ start socket sendErrorOrNotification =
 
 interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
 interact dispatcher (G.Interact free) =
-  interpretFreeRequest free
+  runExceptT $ iterM interpretFreeRequest free
   where
-    interpretFreeRequest =
-      \case
-        Free request ->
-          performRequest dispatcher request >>= \case
-            Left error -> return (Left error)
-            Right free -> interpretFreeRequest free
-        Pure a -> return (Right a)
+    interpretFreeRequest request =
+      join (ExceptT (performRequest dispatcher request))
