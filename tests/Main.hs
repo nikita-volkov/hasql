@@ -53,6 +53,6 @@ runTests connection =
           J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
           J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
           ,
-          testCase "Simultaneous result decoding and counting" $ pure ()
+          testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
   ]
