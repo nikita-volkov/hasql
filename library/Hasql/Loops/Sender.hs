@@ -8,9 +8,9 @@ import qualified Data.ByteString as B
 {-# INLINABLE loop #-}
 loop :: A.Socket -> IO ByteString -> (Text -> IO ()) -> IO ()
 loop socket getNextChunk reportError =
-  fix $ \loop -> do
+  forever $ do
     bytes <- getNextChunk
     resultOfSending <- A.send socket bytes
     case resultOfSending of
-      Right () -> loop
+      Right () -> return ()
       Left msg -> reportError msg

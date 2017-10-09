@@ -124,19 +124,19 @@ matchTraceUserEvents =
     False -> \x _ -> x
 
 {-# NOINLINE traceEventIO #-}
-!traceEventIO =
+traceEventIO =
   matchTraceUserEvents (const (return ())) B.traceEventIO
 
 {-# NOINLINE traceEvent #-}
-!traceEvent =
+traceEvent =
   matchTraceUserEvents (const id) B.traceEvent
 
 {-# NOINLINE traceMarkerIO #-}
-!traceMarkerIO =
+traceMarkerIO =
   matchTraceUserEvents (const (return ())) B.traceMarkerIO
 
 {-# NOINLINE traceMarker #-}
-!traceMarker =
+traceMarker =
   matchTraceUserEvents (const id) B.traceMarker
 
 {-# INLINE forMToZero_ #-}

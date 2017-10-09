@@ -16,7 +16,9 @@ import qualified Control.Foldl as I
 main =
   do
     connection <- connect
-    Right !result <- fmap force <$> A.interact connection (interact 10 100 100)
+    traceEventIO "START Interact"
+    Right !result <- fmap force <$> A.interact connection (interact 10 10 100)
+    traceEventIO "STOP Interact"
     return ()
 
 connect :: IO A.Connection
@@ -36,6 +38,13 @@ connect =
 interact :: Int -> Int -> Int -> F.Interact [[[(Int64, Int64)]]]
 interact amountOfQueries amountOfStatements amountOfRows =
   replicateM amountOfQueries (F.query (replicateM amountOfStatements (manyRowsQuery amountOfRows (B.rows I.revList))))
+  where
+    replicateM cnt0 f =
+      loop cnt0
+      where
+        loop cnt
+            | cnt <= 0  = pure []
+            | otherwise = liftA2 (:) f (loop (cnt - 1))
 
 -- * Queries
 -------------------------
