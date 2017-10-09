@@ -31,9 +31,11 @@ loop getMessage sendBytes =
               sendBytes (C.PS fp 0 offset)
               startAnew
     serialize !fp !offset !spaceRequired !write =
+      traceEvent "START Serializer/serialize" $
       if size - offset >= spaceRequired
         then do
           withForeignPtr fp (\p -> write (plusPtr p offset))
+          traceEventIO "STOP Serializer/serialize"
           processNextMessage fp (offset + spaceRequired)
         else do
           when (offset >= 0) (sendBytes (C.PS fp 0 offset))
@@ -42,9 +44,11 @@ loop getMessage sendBytes =
               newFP <- mallocForeignPtrBytes spaceRequired
               withForeignPtr newFP write
               sendBytes (C.PS newFP 0 spaceRequired)
+              traceEventIO "STOP Serializer/serialize"
               startAnew
             else do
               newFP <- mallocForeignPtrBytes size
               withForeignPtr newFP write
+              traceEventIO "STOP Serializer/serialize"
               processNextMessage newFP spaceRequired
         
