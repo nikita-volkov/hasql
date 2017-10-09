@@ -204,6 +204,7 @@ data AuthenticationMessage =
   OkAuthenticationMessage |
   ClearTextPasswordAuthenticationMessage |
   MD5PasswordAuthenticationMessage !ByteString
+  deriving (Show, Eq)
 
 
 data NotificationMessage =

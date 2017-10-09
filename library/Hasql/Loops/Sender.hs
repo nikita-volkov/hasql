@@ -2,6 +2,7 @@ module Hasql.Loops.Sender where
 
 import Hasql.Prelude
 import qualified Hasql.Socket as A
+import qualified Data.ByteString as B
 
 
 {-# INLINABLE loop #-}

@@ -37,7 +37,7 @@ instance Applicative Request where
 {-# INLINE simple #-}
 simple :: B.Builder -> A.ParseMessageStream result -> Request result
 simple builder pms =
-  Request builder (ExceptT (fmap Right pms <|> fmap Left (A.errorCont BackendError)))
+  Request builder (ExceptT (A.orParseMessage (E.errorCont BackendError) pms))
 
 {-# INLINE parse #-}
 parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
@@ -67,21 +67,21 @@ sync =
   simple K.syncMessage A.readyForQuery
 
 {-# INLINE startUp #-}
-startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request (Either Text AuthenticationResult)
+startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request AuthenticationResult
 startUp username databaseMaybe runtimeParameters =
   simple 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
     (A.authentication)
 
 {-# INLINE clearTextPassword #-}
-clearTextPassword :: ByteString -> Request (Either Text AuthenticationResult)
+clearTextPassword :: ByteString -> Request AuthenticationResult
 clearTextPassword password =
   simple
     (K.clearTextPasswordMessage password)
     (A.authentication)
 
 {-# INLINE md5Password #-}
-md5Password :: ByteString -> ByteString -> ByteString -> Request (Either Text AuthenticationResult)
+md5Password :: ByteString -> ByteString -> ByteString -> Request AuthenticationResult
 md5Password username password salt =
   simple
     (K.md5PasswordMessage username password salt)

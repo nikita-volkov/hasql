@@ -53,7 +53,7 @@ start socket sendErrorOrNotification =
           sendResult resultVar resultOrError =
             do
               result <- case resultOrError of
-                Left (H.ParsingError context message) -> return (Left (DecodingError ((fromString . show) context <> ": " <> message)))
+                Left message -> return (Left (DecodingError message))
                 Right result -> atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure result)
               atomically (putTMVar resultVar result)
       loopSending =
