@@ -17,6 +17,7 @@ main =
   do
     connection <- connect
     Right !result <- fmap force <$> A.interact connection (interact 10 100 100)
+    Right !result <- fmap force <$> A.interact connection (interact 10 100 100)
     return ()
 
 connect :: IO A.Connection
