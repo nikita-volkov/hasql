@@ -26,6 +26,8 @@ main =
         ,
         sessionBench "largeResultInList" sessionWithSingleLargeResultInList
         ,
+        sessionBench "manyLargeResults" sessionWithManyLargeResults
+        ,
         sessionBench "manySmallResults" sessionWithManySmallResults
       ]
       where
@@ -45,13 +47,17 @@ sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
   B.query () queryWithManyRowsInVector
 
+sessionWithManyLargeResults :: B.Session [Vector (Int64, Int64)]
+sessionWithManyLargeResults =
+  replicateM 1000 (B.query () queryWithManyRowsInVector)
+
 sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInList =
   B.query () queryWithManyRowsInList
 
-sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
+sessionWithManySmallResults :: B.Session [(Int64, Int64)]
 sessionWithManySmallResults =
-  F.replicateM 1000 (B.query () queryWithSingleRow)
+  replicateM 1000 (B.query () queryWithSingleRow)
 
 
 -- * Statements
