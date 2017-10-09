@@ -54,6 +54,15 @@ row pdr =
     end =
       raiseError "Not a single row" <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
 
+rowWithCount :: F.ParseDataRow row -> ParseMessageStream (row, Int)
+rowWithCount pdr =
+  join (parseMessage (row <|> end))
+  where
+    row =
+      (\row -> parseMessage ((row,) <$> A.commandComplete <|> (row, 0) <$ A.emptyQuery)) <$> A.dataRow pdr
+    end =
+      raiseError "Not a single row" <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
+
 rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =
   fold foldStart
@@ -63,6 +72,16 @@ rows parseDataRow (Fold foldStep foldStart foldEnd) =
       where
         step = fold . foldStep state <$> A.dataRow parseDataRow
         end = pure (foldEnd state) <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
+
+rowsWithCount :: F.ParseDataRow row -> Fold row result -> ParseMessageStream (result, Int)
+rowsWithCount parseDataRow (Fold foldStep foldStart foldEnd) =
+  fold foldStart
+  where
+    fold !state =
+      join (parseMessage (step <|> end))
+      where
+        step = fold . foldStep state <$> A.dataRow parseDataRow
+        end = (\x -> pure (foldEnd state, x)) <$> (A.commandComplete <|> 0 <$ A.emptyQuery)
 
 rowsAffected :: ParseMessageStream Int
 rowsAffected =
