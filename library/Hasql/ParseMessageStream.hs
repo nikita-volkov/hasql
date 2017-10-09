@@ -2,6 +2,7 @@ module Hasql.ParseMessageStream where
 
 import Hasql.Prelude hiding (error)
 import Hasql.Model hiding (Error(..))
+import Control.Monad.Free.Church
 import qualified Hasql.ParseMessage as A
 import qualified Hasql.ParseDataRow as F
 import qualified Hasql.MessageTypePredicates as G
@@ -14,53 +15,16 @@ import qualified BinaryParser as D
 A specification of how to parse a stream of messages.
 -}
 newtype ParseMessageStream result =
-  ParseMessageStream (A.ParseMessage (Either (Either Text result) (ParseMessageStream result)))
+  ParseMessageStream (F (Compose A.ParseMessage (Either Text)) result)
+  deriving (Functor, Applicative, Alternative, Monad)
 
-instance Functor ParseMessageStream where
-  fmap mapping (ParseMessageStream parseMessage) =
-    ParseMessageStream (fmap (either (Left . fmap mapping) (Right . fmap mapping)) parseMessage)
-
-instance Applicative ParseMessageStream where
-  pure x =
-    ParseMessageStream (pure (Left (Right x)))
-  (<*>) (ParseMessageStream leftPM) rightPMS =
-    ParseMessageStream $
-    flip fmap leftPM $ \case
-      Left leftTermination -> case leftTermination of
-        Left leftError -> Left (Left leftError)
-        Right leftResult -> Right (fmap leftResult rightPMS)
-      Right leftNextPMS -> Right (leftNextPMS <*> rightPMS)
-
-instance Alternative ParseMessageStream where
-  empty =
-    ParseMessageStream empty
-  (<|>) (ParseMessageStream leftPM) (ParseMessageStream rightPM) =
-    ParseMessageStream $
-    fmap (fmap (<|> ParseMessageStream rightPM)) leftPM <|>
-    fmap (fmap (ParseMessageStream leftPM <|>)) rightPM
-
-instance Monad ParseMessageStream where
-  return = pure
-  (>>=) (ParseMessageStream leftPM) rightK =
-    ParseMessageStream $
-    flip fmap leftPM $ \case
-      Left leftTermination -> case leftTermination of
-        Left leftError -> Left (Left leftError)
-        Right leftResult -> Right (rightK leftResult)
-      Right leftNextPMS -> Right (leftNextPMS >>= rightK)
-
-instance MonadPlus ParseMessageStream where
-  mzero = empty
-  mplus = (<|>)
-
-failure :: Text -> ParseMessageStream result
-failure error =
-  ParseMessageStream (pure (Left (Left error)))
+raiseError :: Text -> ParseMessageStream result
+raiseError error =
+  ParseMessageStream (liftF (Compose (pure (Left error))))
 
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
-  ParseMessageStream $ flip fmap parseMessage $ \result ->
-  Left $ Right $ result
+  ParseMessageStream (liftF (Compose (fmap Right parseMessage)))
 
 error :: ParseMessageStream ErrorMessage
 error =
@@ -92,13 +56,12 @@ rows parseDataRow (Fold foldStep foldStart foldEnd) =
 
 rowsAffected :: ParseMessageStream Int
 rowsAffected =
-  ParseMessageStream $
   commandComplete <|> emptyQuery
   where
     commandComplete =
-      Left . Right <$> A.commandComplete
+      parseMessage A.commandComplete
     emptyQuery =
-      (Left . Right) 0 <$ A.emptyQuery
+      0 <$ parseMessage A.emptyQuery
 
 parseComplete :: ParseMessageStream ()
 parseComplete =
@@ -143,5 +106,5 @@ params =
           do
             parseMessage A.readyForQuery
             case state of
-              Left error -> failure error
+              Left error -> raiseError error
               Right result -> return result
