@@ -65,14 +65,13 @@ rowWithCount pdr =
 
 rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =
-  traceEvent "START ParseMessageStream/rows" $
   fold foldStart
   where
     fold !state =
       join (parseMessage (step <|> end))
       where
         step = fold . foldStep state <$> A.dataRow parseDataRow
-        end = pure (traceEvent "STOP ParseMessageStream/rows" $ foldEnd state) <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
+        end = pure (foldEnd state) <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
 
 rowsWithCount :: F.ParseDataRow row -> Fold row result -> ParseMessageStream (result, Int)
 rowsWithCount parseDataRow (Fold foldStep foldStart foldEnd) =
