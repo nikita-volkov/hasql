@@ -47,7 +47,12 @@ commandComplete =
 
 row :: F.ParseDataRow row -> ParseMessageStream row
 row pdr =
-  parseMessage (A.dataRow pdr) <* parseMessage A.commandCompleteWithoutAmount
+  join (parseMessage (row <|> end))
+  where
+    row =
+      (\row -> parseMessage (A.commandCompleteWithoutAmount <|> A.emptyQuery) $> row) <$> A.dataRow pdr
+    end =
+      raiseError "Not a single row" <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
 
 rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =

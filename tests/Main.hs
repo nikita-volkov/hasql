@@ -46,13 +46,35 @@ runTests connection =
         testGroup "Query" $
         [
           test "select 1" (Right 1) $
-          J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8))
+          J.preparedStatement "select 1" mempty (B.row (C.nonNullPrimitive D.int8))
           ,
           test "select '1' and select 'true'" (Right (1, True)) $
           (,) <$>
-          J.preparedStatement "select 1 :: int8" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
+          J.preparedStatement "select 1" mempty (B.row (C.nonNullPrimitive D.int8)) <*>
           J.preparedStatement "select 'true' :: bool" mempty (B.row (C.nonNullPrimitive D.bool))
+          ,
+          test "Error" (Left (E.BackendError "42703" "column \"abc\" does not exist")) $
+          J.preparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8))
+          ,
+          test "Errors in multiple queries" (Left (E.BackendError "42703" "column \"abc\" does not exist")) $
+          J.unpreparedStatement "select 1" mempty (B.row (C.nonNullPrimitive D.int8)) *>
+          J.unpreparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8)) *>
+          J.unpreparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8))
+          ,
+          test "traverse" (Right [1,2,3]) $
+          traverse (\template -> J.preparedStatement template mempty (B.row (C.nonNullPrimitive D.int8))) $
+          ["select 1", "select 2", "select 3"]
+          ,
+          test "Not a single row" (Left (E.DecodingError "Not a single row")) $
+          J.preparedStatement "" mempty (B.row (C.nonNullPrimitive D.int8))
           ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
+    ,
+    testCase "Failed prepared statement should be forgotten" $ do
+      result1 <- A.query connection $
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+      result2 <- A.query connection $
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+      assertEqual "" (Left (E.BackendError "42601" "syntax error at or near \"fail\"")) result2
   ]
