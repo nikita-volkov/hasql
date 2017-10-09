@@ -8,7 +8,7 @@ import qualified Hasql.DecodeRow as B
 
 newtype DecodeResult result =
   DecodeResult (ReaderT Bool A.ParseMessageStream result)
-  deriving (Functor, Applicative)
+  deriving (Functor)
 
 rowsAffected :: DecodeResult Int
 rowsAffected =
@@ -24,3 +24,7 @@ Exactly one row
 row :: B.DecodeRow row -> DecodeResult row
 row (B.DecodeRow (ReaderT parseDataRow)) =
   DecodeResult (ReaderT (\idt -> A.row (parseDataRow idt)))
+
+unit :: DecodeResult ()
+unit =
+  DecodeResult (ReaderT (const (pure ())))

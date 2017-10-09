@@ -73,8 +73,8 @@ runTests connection =
     ,
     testCase "Failed prepared statement should be forgotten" $ do
       result1 <- A.query connection $
-        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (B.unit)
       result2 <- A.query connection $
-        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (B.unit)
       assertEqual "" (Left (E.BackendError "42601" "syntax error at or near \"fail\"")) result2
   ]
