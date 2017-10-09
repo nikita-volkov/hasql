@@ -31,6 +31,7 @@ main =
         defaultMain
         [
           interactBench "singleLargeResultInVector" singleLargeResultInVectorInteract,
+          interactBench "singleLargeResultInRevList" singleLargeResultInRevListInteract,
           interactBench "manyLargeResultsInVector" manyLargeResultsInVectorInteract,
           interactBench "manyLargeResultsInVectorInBatch" manyLargeResultsInVectorInBatchInteract,
           interactBench "manySmallResults" manySmallResultsInteract,
@@ -54,6 +55,10 @@ connect =
 singleLargeResultInVectorInteract :: F.Interact (Vector (Int64, Int64))
 singleLargeResultInVectorInteract =
   F.query (manyRowsQuery (B.rows I.vector))
+
+singleLargeResultInRevListInteract :: F.Interact [(Int64, Int64)]
+singleLargeResultInRevListInteract =
+  F.query (manyRowsQuery (B.rows I.revList))
 
 manyLargeResultsInVectorInteract :: F.Interact [Vector (Int64, Int64)]
 manyLargeResultsInVectorInteract =
