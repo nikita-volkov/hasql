@@ -4,6 +4,6 @@ set -eo pipefail
 cabal build profiling --ghc-options="-eventlog"
 cd dist
 build/profiling/profiling +RTS -N -ls -RTS
-ghc-events-analyze --timed --bucket-width 0.5 --bucket-height 14 --border-width 0 --ms --tick-every 20 --buckets 2400 --window Interact profiling.eventlog
+ghc-events-analyze --timed --bucket-width 2 --bucket-height 14 --border-width 0 --ms --tick-every 20 --buckets 1000 --window Interact profiling.eventlog
 open profiling.0.timed.svg
 threadscope profiling.eventlog
