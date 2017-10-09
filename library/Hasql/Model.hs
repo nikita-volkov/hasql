@@ -8,23 +8,7 @@ data AuthenticationResult =
   NeedMD5PasswordAuthenticationResult !ByteString |
   OkAuthenticationResult !Bool
 
-data Message = Message !Word8 !ByteString
-
 data Notification = Notification !Word32 !ByteString !ByteString deriving (Show)
-
-{-| 
-An erroneous result received from the DB.
-The components are:
-
-* The SQLSTATE code for the error. The SQLSTATE code identifies the type of error that has occurred; 
-it can be used by front-end applications to perform specific operations (such as error handling) 
-in response to a particular database error. 
-For a list of the possible SQLSTATE codes, see Appendix A.
-This field is not localizable, and is always present.
-
-* The primary human-readable error message (typically one line). Always present.
--}
-data ErrorMessage = ErrorMessage !ByteString !ByteString
 
 data Error =
   {-| 
