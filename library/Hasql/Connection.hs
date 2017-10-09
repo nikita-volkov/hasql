@@ -51,7 +51,9 @@ query (Connection _ dispatcher psrVar idt) (E.Query queryFn) =
     case queryFn idt psr of
       (request, newPsr) -> do
         result <- A.performRequest dispatcher (request <* C.sync)
-        putMVar psrVar newPsr
+        putMVar psrVar $ case result of
+          Left (BackendError _ _) -> psr
+          _ -> newPsr
         return result
 
 close :: Connection -> IO ()
