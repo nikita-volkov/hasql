@@ -14,6 +14,5 @@ loop getNextChunk sendMessage =
     read =
       do
         message <- C.fetchMessage Message
-        -- traceM ("Received a message of type \27[1m" <> case message of Message type_ _ -> A.string type_ <> "\27[0m")
         liftIO (sendMessage message)
         read
