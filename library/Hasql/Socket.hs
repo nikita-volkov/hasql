@@ -10,6 +10,10 @@ import qualified Network.Socket as B
 import qualified Network.Socket.ByteString as C
 
 
+data ConnectionSettings =
+  TCPConnectionSettings !ByteString !Int |
+  SocketConnectionSettings !ByteString
+
 newtype Socket =
   Socket B.Socket
 
@@ -21,7 +25,13 @@ trySocketIO io =
     socketExceptionText e =
       (fromString . show) e
 
-connectToHostAndPort :: ByteString -> Word16 -> IO (Either Text Socket)
+connect :: ConnectionSettings -> IO (Either Text Socket)
+connect =
+  \case
+    TCPConnectionSettings host port -> connectToHostAndPort host port
+    SocketConnectionSettings socket -> $(todo "Implement connection thru socket")
+
+connectToHostAndPort :: ByteString -> Int -> IO (Either Text Socket)
 connectToHostAndPort host port =
   do
     runExceptT $ do

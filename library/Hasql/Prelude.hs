@@ -10,6 +10,9 @@ module Hasql.Prelude
   traceEvent,
   traceMarkerIO,
   traceMarker,
+  startThread,
+  startThreads,
+  ErrorWithContext(..),
 )
 where
 
@@ -28,6 +31,7 @@ import Control.Monad.Trans.Maybe as Exports
 import Control.Monad.Trans.Reader as Exports (Reader, runReader, mapReader, withReader, ReaderT(ReaderT), runReaderT, mapReaderT, withReaderT)
 import Control.Monad.Trans.State.Strict as Exports (State, runState, evalState, execState, mapState, withState, StateT(StateT), runStateT, evalStateT, execStateT, mapStateT, withStateT)
 import Control.Monad.Trans.Writer.Strict as Exports (Writer, runWriter, execWriter, mapWriter, WriterT(..), execWriterT, mapWriterT)
+import Data.Functor.Compose as Exports
 
 -- mtl
 -------------------------
@@ -53,6 +57,10 @@ import Data.Semigroup as Exports
 -- foldl
 -------------------------
 import Control.Foldl as Exports (Fold(..), FoldM(..))
+
+-- free
+-------------------------
+import Control.Monad.Free.Church as Exports
 
 -- stm
 -------------------------
@@ -91,6 +99,10 @@ import Data.HashMap.Strict as Exports (HashMap)
 -------------------------
 import Data.DList as Exports (DList)
 
+-- time
+-------------------------
+import Data.Time as Exports
+
 -- bug
 -------------------------
 import Bug as Exports
@@ -113,19 +125,19 @@ matchTraceUserEvents =
     False -> \x _ -> x
 
 {-# NOINLINE traceEventIO #-}
-!traceEventIO =
+traceEventIO =
   matchTraceUserEvents (const (return ())) B.traceEventIO
 
 {-# NOINLINE traceEvent #-}
-!traceEvent =
+traceEvent =
   matchTraceUserEvents (const id) B.traceEvent
 
 {-# NOINLINE traceMarkerIO #-}
-!traceMarkerIO =
+traceMarkerIO =
   matchTraceUserEvents (const (return ())) B.traceMarkerIO
 
 {-# NOINLINE traceMarker #-}
-!traceMarker =
+traceMarker =
   matchTraceUserEvents (const id) B.traceMarker
 
 {-# INLINE forMToZero_ #-}
@@ -179,3 +191,17 @@ match defaultOutput cases =
         then output
         else match defaultOutput casesTail input
     _ -> const defaultOutput
+
+{-# INLINE startThread #-}
+startThread :: IO () -> IO (IO ())
+startThread action =
+  fmap killThread (forkIO action)
+
+{-# INLINE startThreads #-}
+startThreads :: [IO ()] -> IO (IO ())
+startThreads =
+  fmap sequence_ . traverse startThread
+
+data ErrorWithContext =
+  ContextErrorWithContext !Text !ErrorWithContext |
+  MessageErrorWithContext !Text

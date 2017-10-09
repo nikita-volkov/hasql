@@ -3,6 +3,8 @@ module Hasql.Protocol.Decoding where
 import Hasql.Prelude
 import Hasql.Protocol.Model
 import BinaryParser
+import qualified Data.Vector as A
+import qualified Hasql.ParseDataRow as F
 
 
 {-# INLINE word8 #-}
@@ -80,12 +82,12 @@ commandCompleteMessageAffectedRows =
 The essential components of the error (or notice) message.
 -}
 {-# INLINE errorMessage #-}
-errorMessage :: BinaryParser Error
-errorMessage =
+errorMessage :: (ByteString -> ByteString -> errorMessage) -> BinaryParser errorMessage
+errorMessage errorMessage =
   do
     tupleFn <- loop id
     case tupleFn (Nothing, Nothing) of
-      (Just v1, Just v2) -> return (Error v1 v2)
+      (Just v1, Just v2) -> return (errorMessage v1 v2)
       _ -> failure "Some of the error fields are missing"
   where
     loop state =
@@ -129,9 +131,9 @@ authenticationMessage =
       _ -> failure ("Unsupported authentication method: " <> (fromString . show) method)
 
 {-# INLINE notificationMessage #-}
-notificationMessage :: BinaryParser NotificationMessage
-notificationMessage =
-  NotificationMessage <$> word32 <*> nullTerminatedString <*> nullTerminatedString
+notificationMessage :: (Word32 -> ByteString -> ByteString -> result) -> BinaryParser result
+notificationMessage cont =
+  cont <$> word32 <*> nullTerminatedString <*> nullTerminatedString
 
 {-# INLINE dataRowMessage #-}
 dataRowMessage :: (Word16 -> BinaryParser a) -> BinaryParser a
@@ -139,6 +141,18 @@ dataRowMessage contentsParser =
   do
     amountOfColumns <- word16
     contentsParser amountOfColumns
+
+{-# INLINE parseDataRow #-}
+parseDataRow :: F.ParseDataRow a -> BinaryParser a
+parseDataRow (F.ParseDataRow columnsAmount vectorFn) =
+  do
+    actualColumnsAmount <- fromIntegral <$> word16
+    if actualColumnsAmount == columnsAmount
+      then do
+        bytesVector <- A.replicateM actualColumnsAmount sizedBytes
+        either throwError return (vectorFn bytesVector 0)
+      else throwError ("Invalid amount of columns: " <> (fromString . show) actualColumnsAmount <>
+        ", expecting " <> (fromString . show) columnsAmount)
 
 {-|
 ParameterStatus (B)
@@ -158,3 +172,36 @@ The current value of the parameter.
 parameterStatusMessagePayloadKeyValue :: (ByteString -> ByteString -> a) -> BinaryParser a
 parameterStatusMessagePayloadKeyValue cont =
   cont <$> nullTerminatedString <*> nullTerminatedString
+
+{-|
+Int16
+The number of column values that follow (possibly zero).
+
+Next, the following pair of fields appear for each column:
+
+Int32
+The length of the column value, in bytes (this count does not include itself). Can be zero. As a special case, -1 indicates a NULL column value. No value bytes follow in the NULL case.
+
+Byten
+The value of the column, in the format indicated by the associated format code. n is the above length.
+-}
+vector :: BinaryParser element -> BinaryParser (Vector element)
+vector element =
+  do
+    size <- fromIntegral <$> word16
+    A.replicateM size element
+
+{-|
+Int32
+The length of the column value, in bytes (this count does not include itself). Can be zero. As a special case, -1 indicates a NULL column value. No value bytes follow in the NULL case.
+
+Byten
+The value of the column, in the format indicated by the associated format code. n is the above length.
+-}
+sizedBytes :: BinaryParser (Maybe ByteString)
+sizedBytes =
+  do
+    size <- fromIntegral <$> word32
+    if size == -1
+      then return Nothing
+      else Just <$> bytesOfSize size

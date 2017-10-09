@@ -49,38 +49,38 @@ library
     Haskell2010
   exposed-modules:
     Hasql.Connection
-    Hasql.Connection.Session
-    Hasql.Connection.Session.Statement
-    Hasql.Connection.Session.Statement.Encoding
-    Hasql.Connection.Session.Statement.Decoding
+    Hasql.EncodedParams
+    Hasql.DecodeResult
+    Hasql.DecodeRow
+    Hasql.DecodePrimitive
+    Hasql.Query
+    Hasql.Interact
+    Hasql.Model
   other-modules:
-    Hasql.Client.Communicator
-    Hasql.Client.Communicator.Guts
-    Hasql.Client.EventBasedResultAggregation
-    Hasql.Client.MessagesConsumer
-    Hasql.Client.Model
-    Hasql.Receiver
-    Hasql.Sender
+    Hasql.InteractUnauthenticated
+    Hasql.Request
+    Hasql.Dispatcher
+    Hasql.Choosing
+    Hasql.ChooseMessage
+    Hasql.ParseMessage
+    Hasql.ParseMessageStream
+    Hasql.ParseDataRow
+    Hasql.ReadStream
+    Hasql.MessageTypePredicates
+    Hasql.MessageTypeNames
+    Hasql.Loops.Serializer
+    Hasql.Loops.Receiver
+    Hasql.Loops.Sender
+    Hasql.Loops.IncomingMessagesSlicer
+    Hasql.Loops.Interpreter
     Hasql.Socket
-    Hasql.Ptr.Peek
-    Hasql.Ptr.Do
-    Hasql.Ptr.IO
-    Hasql.Buffer
-    Hasql.Connection.Session.Session
-    Hasql.Connection.Session.Statement.Decoding.Decoding
-    Hasql.Connection.Session.Statement.Encoding.Encoding
-    Hasql.Connection.Session.Statement.OIDsValidatorBuilder
-    Hasql.Connection.Session.Statement.Statement
     Hasql.OID.Array
     Hasql.OID.Primitive
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
     Hasql.Protocol.Decoding
     Hasql.Protocol.Encoding
-    Hasql.Protocol.Interpreter
-    Hasql.Protocol.MessagePayloadInterpretation
     Hasql.Protocol.Model
-    Hasql.Protocol.Scanner
   build-depends:
     -- concurrency:
     stm >= 2.4 && < 3,
@@ -109,7 +109,10 @@ library
     hashable >= 1.2 && < 1.3,
     containers == 0.5.*,
     unordered-containers == 0.2.*,
+    ptr-magic >= 0.6.2 && < 0.7,
+    time == 1.*,
     -- control:
+    free >= 4.12.4 && < 5,
     managed == 1.*,
     foldl >= 1.3 && < 2,
     semigroups >= 0.18 && < 0.20,
@@ -123,11 +126,11 @@ library
     base-prelude >= 0.1.19 && < 2,
     base >= 4.7 && < 5
 
-test-suite sandbox
+test-suite tests
   type:
     exitcode-stdio-1.0
   hs-source-dirs:
-    sandbox
+    tests
   main-is:
     Main.hs
   ghc-options:
@@ -140,7 +143,16 @@ test-suite sandbox
     Haskell2010
   build-depends:
     hasql,
+    -- testing:
+    tasty == 0.11.*,
+    tasty-quickcheck == 0.8.*,
+    tasty-smallcheck == 0.8.*,
+    tasty-hunit == 0.9.*,
+    quickcheck-instances >= 0.3.11 && < 0.4,
+    QuickCheck >= 2.8.1 && < 2.10,
+    -- 
     foldl,
+    bug == 1.*,
     rerebase == 1.*
 
 benchmark benchmarks
@@ -164,6 +176,7 @@ benchmark benchmarks
     -- benchmarking:
     criterion >= 1.0 && < 2,
     -- general:
+    foldl,
     bug == 1.*,
     rerebase < 2
 
@@ -184,5 +197,6 @@ test-suite profiling
     Haskell2010
   build-depends:
     hasql,
+    foldl,
     bug == 1.*,
     rerebase == 1.*
