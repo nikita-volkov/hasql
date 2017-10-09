@@ -78,9 +78,7 @@ readyForQuery =
 authentication :: ParseMessageStream AuthenticationResult
 authentication =
   do
-    traceM ("Getting authentication")
     response <- parseMessage A.authentication
-    traceM ("Got a response: " <> show response)
     case response of
       C.OkAuthenticationMessage -> fmap OkAuthenticationResult params
       C.ClearTextPasswordAuthenticationMessage -> return NeedClearTextPasswordAuthenticationResult
