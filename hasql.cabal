@@ -67,9 +67,11 @@ library
     Hasql.ParseDataRow
     Hasql.ReadStream
     Hasql.MessageTypePredicates
+    Hasql.NoticeFieldTypes
     Hasql.MessageTypeNames
+    Hasql.Scanner
     -- Hasql.Loops.Serializer
-    -- Hasql.Loops.Receiver
+    Hasql.Loops.Receiver
     -- Hasql.Loops.Sender
     -- Hasql.Loops.IncomingMessagesSlicer
     -- Hasql.Loops.Interpreter

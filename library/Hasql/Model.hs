@@ -3,6 +3,30 @@ module Hasql.Model where
 import Hasql.Prelude hiding (State, peek)
 
 
+data Response =
+  DataRowResponse !(Vector (Maybe ByteString)) |
+  CommandCompleteResponse !Int |
+  ReadyForQueryResponse !TransactionStatus |
+  ParseCompleteResponse |
+  EmptyQueryResponse |
+  NotificationResponse !Word32 !ByteString !ByteString |
+  ErrorResponse !ByteString !ByteString |
+  AuthenticationResponse !AuthenticationStatus |
+  ParameterStatusResponse !ByteString !ByteString
+  deriving (Show)
+
+data AuthenticationStatus =
+  NeedClearTextPasswordAuthenticationStatus |
+  NeedMD5PasswordAuthenticationStatus !ByteString |
+  OkAuthenticationStatus
+  deriving (Show)
+
+data TransactionStatus =
+  IdleTransactionStatus |
+  ActiveTransactionStatus |
+  FailedTransactionStatus
+  deriving (Show)
+
 data AuthenticationResult =
   NeedClearTextPasswordAuthenticationResult |
   NeedMD5PasswordAuthenticationResult !ByteString |
