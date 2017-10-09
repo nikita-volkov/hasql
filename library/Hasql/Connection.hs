@@ -4,11 +4,12 @@ module Hasql.Connection
   B.ConnectionSettings(..),
   open,
   query,
+  interact,
   close,
 )
 where
 
-import Hasql.Prelude
+import Hasql.Prelude hiding (interact)
 import Hasql.Model
 import qualified Hasql.Dispatcher as A
 import qualified Hasql.Socket as B
