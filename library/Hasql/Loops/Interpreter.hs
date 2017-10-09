@@ -33,6 +33,7 @@ loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
           parsingResult <- parseMessageStream newFetchMessage (interpretUnaffiliatedMessage sendUnaffiliatedResult) pms
           sendResult parsingResult
       Nothing ->
+        trace ("Interpreting an unaffiliated a message of type \ESC[1m" <> H.string (case message of Message type_ _ -> type_) <> "\ESC[0m") $
         interpretUnaffiliatedMessage sendUnaffiliatedResult message
 
 {-|
