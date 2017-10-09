@@ -2,12 +2,13 @@ module Hasql.ParseMessageStream where
 
 import Hasql.Prelude hiding (error)
 import Hasql.Model hiding (Error(..))
-import qualified Hasql.Looping as B
+import Control.Monad.Free.Church
 import qualified Hasql.ParseMessage as A
 import qualified Hasql.ParseDataRow as F
 import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as C
+import qualified Hasql.Choosing as B
 import qualified BinaryParser as D
 
 
@@ -15,23 +16,22 @@ import qualified BinaryParser as D
 A specification of how to parse a stream of messages.
 -}
 newtype ParseMessageStream result =
-  ParseMessageStream (B.Looping A.ParseMessage result)
-  deriving (Functor, Applicative, Alternative, Monad, MonadPlus)
+  ParseMessageStream (F (Compose A.ParseMessage (Either Text)) result)
+  deriving (Functor, Applicative, Monad)
 
-run :: ParseMessageStream result -> Word8 -> Maybe (ByteString -> Either (Either A.Error result) (ParseMessageStream result))
-run (ParseMessageStream (B.Looping pm)) type_ =
-  case A.run pm type_ of
-    Just payloadFn -> 
-      Just $ \payload ->
-        case payloadFn payload of 
-          Left error -> Left (Left error)
-          Right (Left result) -> Left (Right result)
-          Right (Right looping) -> Right (ParseMessageStream looping)
-    Nothing -> Nothing
+raiseError :: Text -> ParseMessageStream result
+raiseError error =
+  ParseMessageStream (liftF (Compose (pure (Left error))))
 
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
-  ParseMessageStream (B.Looping (fmap Left parseMessage))
+  ParseMessageStream (liftF (Compose (fmap Right parseMessage)))
+
+orParseMessage :: A.ParseMessage leftResult -> ParseMessageStream rightResult -> ParseMessageStream (Either leftResult rightResult)
+orParseMessage pm (ParseMessageStream (F freeFn)) =
+  ParseMessageStream $ F $ \pure free ->
+  freeFn (pure . Right) $ \(Compose rightPm) ->
+  free (Compose (rightPm <|> fmap (Right . pure . Left) pm))
 
 error :: ParseMessageStream ErrorMessage
 error =
@@ -51,30 +51,17 @@ row pdr =
 
 rows :: F.ParseDataRow row -> Fold row result -> ParseMessageStream result
 rows parseDataRow (Fold foldStep foldStart foldEnd) =
-  ParseMessageStream (fold foldStart)
+  fold foldStart
   where
     fold !state =
-      B.Looping (step <|> end)
+      join (parseMessage (step <|> end))
       where
-        step =
-          fmap (Right . fold . foldStep state) (A.dataRow parseDataRow)
-        end =
-          (A.commandCompleteWithoutAmount <|> A.emptyQuery) $>
-          Left (foldEnd state)
+        step = fold . foldStep state <$> A.dataRow parseDataRow
+        end = pure (foldEnd state) <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
 
 rowsAffected :: ParseMessageStream Int
 rowsAffected =
-  ParseMessageStream looping
-  where
-    looping =
-      B.Looping (commandComplete <|> dataRow <|> emptyQuery)
-      where
-        commandComplete =
-          Left <$> A.commandComplete
-        dataRow =
-          Right looping <$ A.dataRowWithoutData
-        emptyQuery =
-          Left 0 <$ A.emptyQuery
+  parseMessage (A.commandComplete <|> 0 <$ A.emptyQuery)
 
 parseComplete :: ParseMessageStream ()
 parseComplete =
@@ -88,31 +75,34 @@ readyForQuery :: ParseMessageStream ()
 readyForQuery =
   parseMessage A.readyForQuery
 
-authentication :: ParseMessageStream (Either Text AuthenticationResult)
+authentication :: ParseMessageStream AuthenticationResult
 authentication =
   do
+    traceM ("Getting authentication")
     response <- parseMessage A.authentication
+    traceM ("Got a response: " <> show response)
     case response of
-      C.OkAuthenticationMessage -> (fmap . fmap) OkAuthenticationResult params
-      C.ClearTextPasswordAuthenticationMessage -> return (Right NeedClearTextPasswordAuthenticationResult)
-      C.MD5PasswordAuthenticationMessage salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
+      C.OkAuthenticationMessage -> fmap OkAuthenticationResult params
+      C.ClearTextPasswordAuthenticationMessage -> return NeedClearTextPasswordAuthenticationResult
+      C.MD5PasswordAuthenticationMessage salt -> return (NeedMD5PasswordAuthenticationResult salt)
 
-params :: ParseMessageStream (Either Text Bool)
+params :: ParseMessageStream Bool
 params =
-  ParseMessageStream (iterate (Left "Missing the \"integer_datetimes\" setting"))
+  iterate (Left "Missing the \"integer_datetimes\" setting")
   where
     iterate !state =
-      B.Looping (param <|> readyForQuery)
+      join (parseMessage (param <|> readyForQuery))
       where
         param =
-          fromParsingResult <$> A.parameterStatus
-          where
-            fromParsingResult (name, value) =
-              case name of
-                "integer_datetimes" -> case value of
-                  "on" -> Right (iterate (Right True))
-                  "off" -> Right (iterate (Right False))
-                  _ -> Right (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
-                _ -> Right (iterate state)
+          flip fmap A.parameterStatus $ \(name, value) ->
+          case name of
+            "integer_datetimes" -> case value of
+              "on" -> iterate (Right True)
+              "off" -> iterate (Right False)
+              _ -> iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value))
+            _ -> iterate state
         readyForQuery =
-          Left state <$ A.readyForQuery
+          A.readyForQuery $>
+          case state of
+            Left error -> raiseError error
+            Right result -> return result

@@ -11,10 +11,11 @@ import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Looping as C
 import qualified Hasql.Choosing as I
 import qualified BinaryParser as D
+import qualified Control.Monad.Free.Church as J
 
 
 data ResultProcessor =
-  forall result. ResultProcessor !(A.ParseMessageStream result) !(Either B.Error result -> IO ())
+  forall result. ResultProcessor !(A.ParseMessageStream result) !(Either Text result -> IO ())
 
 data UnaffiliatedResult =
   NotificationUnaffiliatedResult !Notification |
@@ -23,49 +24,58 @@ data UnaffiliatedResult =
 
 loop :: IO Message -> IO (Maybe ResultProcessor) -> (UnaffiliatedResult -> IO ()) -> IO ()
 loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
-  fetchingMessage tryToFetchResultProcessor
+  forever $ do
+    message <- fetchMessage
+    fetchResult <- fetchResultProcessor
+    case fetchResult of
+      Just (ResultProcessor pms sendResult) ->
+        do
+          newFetchMessage <- backtrackFetch message fetchMessage
+          parsingResult <- parseMessageStream newFetchMessage (interpretUnaffiliatedMessage sendUnaffiliatedResult) pms
+          sendResult parsingResult
+      Nothing ->
+        interpretUnaffiliatedMessage sendUnaffiliatedResult message
+
+{-|
+Append one element to a fetching action.
+-}
+backtrackFetch :: a -> IO a -> IO (IO a)
+backtrackFetch element fetch =
+  do
+    notFirstRef <- newIORef False
+    return $ do
+      notFirst <- readIORef notFirstRef
+      if notFirst
+        then fetch
+        else do
+          writeIORef notFirstRef True
+          return element
+
+parseMessageStream :: IO Message -> (Message -> IO ()) -> A.ParseMessageStream result -> IO (Either Text result)
+parseMessageStream fetchMessage discardMessage (A.ParseMessageStream free) =
+  runExceptT $ J.iterM interpretCompose free
   where
-    fetchingMessage handler =
-      do
+    interpretCompose (Compose (B.ParseMessage (I.Choosing typeFn))) =
+      ExceptT $ fix $ \recur -> do
         Message type_ payload <- fetchMessage
-        handler type_ payload
-    tryToFetchResultProcessor type_ payload =
-      do
-        fetchResult <- fetchResultProcessor
-        case fetchResult of
-          Just resultProcessor ->
-            interpretWithResultProcessor resultProcessor type_ payload
-          Nothing ->
-            interpretUnaffiliatedMessage tryToFetchResultProcessor type_ payload
-    interpretWithResultProcessor (ResultProcessor (A.ParseMessageStream (C.Looping (B.ParseMessage (I.Choosing typeFn)))) sendResult) =
-      parseMessageStream typeFn
-      where
-        parseMessageStream typeFn type_ payload =
-          case typeFn type_ of
-            Just (ReaderT payloadFn) ->
-              trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m with a result processor") $
-              case payloadFn payload of
-                Left parsingError -> 
-                  trace ("Parsing error: " <> show parsingError) $
-                  sendResult (Left parsingError)
-                Right loopingDecision -> 
-                  case loopingDecision of
-                    Left result ->
-                      trace ("Sending the result") $
-                      sendResult (Right result) >> fetchingMessage tryToFetchResultProcessor
-                    Right (C.Looping (B.ParseMessage (I.Choosing typeFn))) ->
-                      trace ("Looping") $
-                      fetchingMessage (parseMessageStream typeFn)
-            Nothing ->
-              interpretUnaffiliatedMessage
-                (parseMessageStream typeFn)
-                type_ payload
-    interpretUnaffiliatedMessage interpretNext type_ payload =
-      trace ("Interpreting a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m without a result processor") $
-      case unaffiliatedResultTypeFn type_ of
-        Just payloadFn -> sendUnaffiliatedResult (payloadFn payload) >> fetchingMessage interpretNext
-        Nothing -> fetchingMessage interpretNext
-      where
-        F.ChooseMessage (I.Choosing unaffiliatedResultTypeFn) =
-          fmap (either ProtocolErrorUnaffiliatedResult NotificationUnaffiliatedResult) F.notification <|>
-          fmap (either ProtocolErrorUnaffiliatedResult ErrorMessageUnaffiliatedResult) F.error
+        case typeFn type_ of
+          Nothing -> do
+            traceM ("Discarding a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m")
+            discardMessage (Message type_ payload)
+            recur
+          Just (ReaderT payloadFn) ->
+            trace ("Consuming a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m") $
+            case payloadFn payload of
+              Left (B.ParsingError context message) -> return (Left ((fromString . show) context <> ": " <> message))
+              Right (Left sequenceError) -> return (Left sequenceError)
+              Right (Right (ExceptT next)) -> next
+
+interpretUnaffiliatedMessage :: (UnaffiliatedResult -> IO ()) -> Message -> IO ()
+interpretUnaffiliatedMessage sendUnaffiliatedResult (Message type_ payload) =
+  case unaffiliatedResultTypeFn type_ of
+    Just payloadFn -> sendUnaffiliatedResult (payloadFn payload)
+    Nothing -> return ()
+  where
+    F.ChooseMessage (I.Choosing unaffiliatedResultTypeFn) =
+      fmap (either ProtocolErrorUnaffiliatedResult NotificationUnaffiliatedResult) F.notification <|>
+      fmap (either ProtocolErrorUnaffiliatedResult ErrorMessageUnaffiliatedResult) F.error
