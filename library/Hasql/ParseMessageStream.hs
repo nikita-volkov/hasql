@@ -8,6 +8,7 @@ import qualified Hasql.ParseDataRow as F
 import qualified Hasql.MessageTypePredicates as G
 import qualified Hasql.Protocol.Decoding as E
 import qualified Hasql.Protocol.Model as C
+import qualified Hasql.Choosing as B
 import qualified BinaryParser as D
 
 
@@ -16,7 +17,7 @@ A specification of how to parse a stream of messages.
 -}
 newtype ParseMessageStream result =
   ParseMessageStream (F (Compose A.ParseMessage (Either Text)) result)
-  deriving (Functor, Applicative, Alternative, Monad)
+  deriving (Functor, Applicative, Monad)
 
 raiseError :: Text -> ParseMessageStream result
 raiseError error =
@@ -25,6 +26,12 @@ raiseError error =
 parseMessage :: A.ParseMessage result -> ParseMessageStream result
 parseMessage parseMessage =
   ParseMessageStream (liftF (Compose (fmap Right parseMessage)))
+
+orParseMessage :: A.ParseMessage leftResult -> ParseMessageStream rightResult -> ParseMessageStream (Either leftResult rightResult)
+orParseMessage pm (ParseMessageStream (F freeFn)) =
+  ParseMessageStream $ F $ \pure free ->
+  freeFn (pure . Right) $ \(Compose rightPm) ->
+  free (Compose (rightPm <|> fmap (Right . pure . Left) pm))
 
 error :: ParseMessageStream ErrorMessage
 error =
@@ -47,21 +54,14 @@ rows parseDataRow (Fold foldStep foldStart foldEnd) =
   fold foldStart
   where
     fold !state =
-      step <|> end
+      join (parseMessage (step <|> end))
       where
-        step =
-          parseMessage (A.dataRow parseDataRow) >>= fold . foldStep state
-        end =
-          parseMessage (A.commandCompleteWithoutAmount <|> A.emptyQuery) $> foldEnd state
+        step = fold . foldStep state <$> A.dataRow parseDataRow
+        end = pure (foldEnd state) <$ (A.commandCompleteWithoutAmount <|> A.emptyQuery)
 
 rowsAffected :: ParseMessageStream Int
 rowsAffected =
-  commandComplete <|> emptyQuery
-  where
-    commandComplete =
-      parseMessage A.commandComplete
-    emptyQuery =
-      0 <$ parseMessage A.emptyQuery
+  parseMessage (A.commandComplete <|> 0 <$ A.emptyQuery)
 
 parseComplete :: ParseMessageStream ()
 parseComplete =
@@ -91,20 +91,18 @@ params =
   iterate (Left "Missing the \"integer_datetimes\" setting")
   where
     iterate !state =
-      param <|> readyForQuery
+      join (parseMessage (param <|> readyForQuery))
       where
         param =
-          do
-            (name, value) <- parseMessage A.parameterStatus
-            case name of
-              "integer_datetimes" -> case value of
-                "on" -> iterate (Right True)
-                "off" -> iterate (Right False)
-                _ -> iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value))
-              _ -> iterate state
+          flip fmap A.parameterStatus $ \(name, value) ->
+          case name of
+            "integer_datetimes" -> case value of
+              "on" -> iterate (Right True)
+              "off" -> iterate (Right False)
+              _ -> iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value))
+            _ -> iterate state
         readyForQuery =
-          do
-            parseMessage A.readyForQuery
-            case state of
-              Left error -> raiseError error
-              Right result -> return result
+          A.readyForQuery $>
+          case state of
+            Left error -> raiseError error
+            Right result -> return result

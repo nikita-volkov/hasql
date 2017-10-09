@@ -37,7 +37,7 @@ instance Applicative Request where
 {-# INLINE simple #-}
 simple :: B.Builder -> A.ParseMessageStream result -> Request result
 simple builder pms =
-  Request builder (ExceptT (fmap Right pms <|> fmap Left (A.errorCont BackendError)))
+  Request builder (ExceptT (A.orParseMessage (E.errorCont BackendError) pms))
 
 {-# INLINE parse #-}
 parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
