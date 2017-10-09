@@ -14,8 +14,8 @@ rowsAffected :: DecodeResult Int
 rowsAffected =
   DecodeResult (ReaderT (const (A.rowsAffected)))
 
-rows :: B.DecodeRow row -> Fold row result -> DecodeResult result
-rows (B.DecodeRow (ReaderT parseDataRow)) fold =
+rows :: Fold row result -> B.DecodeRow row -> DecodeResult result
+rows fold (B.DecodeRow (ReaderT parseDataRow)) =
   DecodeResult (ReaderT (\idt -> A.rows (parseDataRow idt) fold))
 
 {-|
