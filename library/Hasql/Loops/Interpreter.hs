@@ -25,17 +25,17 @@ loop :: IO Message -> IO (Maybe ResultProcessor) -> (UnaffiliatedResult -> IO ()
 loop fetchMessage fetchResultProcessor sendUnaffiliatedResult =
   forever $ do
     message <- fetchMessage
-    traceEventIO "START Interpreter/loop"
     fetchResult <- fetchResultProcessor
     case fetchResult of
       Just (ResultProcessor pms sendResult) ->
         do
+          traceEventIO "START Interpreter/process results"
           newFetchMessage <- backtrackFetch message fetchMessage
           parsingResult <- parseMessageStream newFetchMessage (interpretUnaffiliatedMessage sendUnaffiliatedResult) pms
+          traceEventIO "STOP Interpreter/process results"
           sendResult parsingResult
       Nothing ->
         interpretUnaffiliatedMessage sendUnaffiliatedResult message
-    traceEventIO "STOP Interpreter/loop"
 
 {-|
 Append one element to a fetching action.
