@@ -57,9 +57,9 @@ runTests connection =
           J.preparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8))
           ,
           test "Errors in multiple queries" (Left (E.BackendError "42703" "column \"abc\" does not exist")) $
-          J.preparedStatement "select 1" mempty (B.row (C.nonNullPrimitive D.int8)) *>
-          J.preparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8)) *>
-          J.preparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8))
+          J.unpreparedStatement "select 1" mempty (B.row (C.nonNullPrimitive D.int8)) *>
+          J.unpreparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8)) *>
+          J.unpreparedStatement "select abc" mempty (B.row (C.nonNullPrimitive D.int8))
           ,
           test "traverse" (Right [1,2,3]) $
           traverse (\template -> J.preparedStatement template mempty (B.row (C.nonNullPrimitive D.int8))) $
@@ -70,4 +70,11 @@ runTests connection =
           ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
+    ,
+    testCase "Failed prepared statement should be forgotten" $ do
+      result1 <- A.query connection $
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+      result2 <- A.query connection $
+        J.preparedStatement "fail 'Failed prepared statement 1'" mempty (pure ())
+      assertEqual "" (Left (E.BackendError "42601" "syntax error at or near \"fail\"")) result2
   ]
