@@ -60,9 +60,11 @@ parseMessageStream fetchMessage discardMessage (A.ParseMessageStream free) =
         Message type_ payload <- fetchMessage
         case typeFn type_ of
           Nothing -> do
+            traceM ("Discarding a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m")
             discardMessage (Message type_ payload)
             recur
           Just (ReaderT payloadFn) ->
+            trace ("Consuming a message of type \ESC[1m" <> H.string type_ <> "\ESC[0m") $
             case payloadFn payload of
               Left (B.ParsingError context message) -> return (Left ((fromString . show) context <> ": " <> message))
               Right (Left sequenceError) -> return (Left sequenceError)
