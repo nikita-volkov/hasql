@@ -65,6 +65,9 @@ runTests connection =
           traverse (\template -> J.preparedStatement template mempty (B.row (C.nonNullPrimitive D.int8))) $
           ["select 1", "select 2", "select 3"]
           ,
+          test "Not a single row" (Left (E.DecodingError "Not a single row")) $
+          J.preparedStatement "" mempty (B.row (C.nonNullPrimitive D.int8))
+          ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
   ]
