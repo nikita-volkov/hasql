@@ -9,9 +9,8 @@ import qualified Data.ByteString as B
 loop :: A.Socket -> (ByteString -> IO ()) -> (Text -> IO ()) -> IO ()
 loop socket sendResult reportError =
   forever $ do
-    traceEventIO "START Receiver/receive"
     resultOfReceiving <- A.receive socket (shiftL 2 12)
-    traceEventIO "STOP Receiver/receive"
+    traceEventIO "START Receiver/sending"
     case resultOfReceiving of
       Right bytes ->
         if B.null bytes
@@ -19,3 +18,4 @@ loop socket sendResult reportError =
           else sendResult bytes
       Left msg ->
         reportError msg
+    traceEventIO "STOP Receiver/sending"
