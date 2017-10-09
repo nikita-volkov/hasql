@@ -8,7 +8,6 @@ import qualified Hasql.ParseMessageStream as A
 import qualified Hasql.ParseMessage as B
 import qualified Hasql.ChooseMessage as F
 import qualified Hasql.Protocol.Decoding as E
-import qualified Hasql.Looping as C
 import qualified Hasql.Choosing as I
 import qualified BinaryParser as D
 import qualified Control.Monad.Free.Church as J

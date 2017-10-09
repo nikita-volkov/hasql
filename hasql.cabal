@@ -56,7 +56,6 @@ library
     Hasql.Query
     Hasql.Model
   other-modules:
-    Hasql.Looping
     Hasql.Interact
     Hasql.Request
     Hasql.Dispatcher
