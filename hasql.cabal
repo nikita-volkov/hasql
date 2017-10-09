@@ -56,7 +56,7 @@ library
     Hasql.Query
     Hasql.Model
   other-modules:
-    Hasql.Interact
+    Hasql.InteractUnauthenticated
     Hasql.Request
     Hasql.Dispatcher
     Hasql.Choosing

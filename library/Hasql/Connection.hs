@@ -15,7 +15,7 @@ import qualified Hasql.Socket as B
 import qualified Hasql.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
 import qualified Hasql.Query as E
-import qualified Hasql.Interact as G
+import qualified Hasql.InteractUnauthenticated as G
 
 
 data Connection =

@@ -1,4 +1,4 @@
-module Hasql.Interact where
+module Hasql.InteractUnauthenticated where
 
 import Hasql.Prelude
 import Hasql.Model
