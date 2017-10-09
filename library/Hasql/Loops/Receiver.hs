@@ -8,12 +8,12 @@ import qualified Data.ByteString as B
 {-# INLINABLE loop #-}
 loop :: A.Socket -> (ByteString -> IO ()) -> (Text -> IO ()) -> IO ()
 loop socket sendResult reportError =
-  fix $ \loop -> do
+  forever $ do
     resultOfReceiving <- A.receive socket (shiftL 2 12)
     case resultOfReceiving of
       Right bytes ->
         if B.null bytes
           then reportError "Connection interrupted"
-          else sendResult bytes >> loop
+          else sendResult bytes
       Left msg ->
         reportError msg
