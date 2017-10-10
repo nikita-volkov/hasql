@@ -67,6 +67,7 @@ asciiIntegral =
     step !state !byte =
       state * 10 + fromIntegral byte - 48
 
+{-# INLINE nullTerminatedString #-}
 nullTerminatedString :: Scanner ByteString
 nullTerminatedString =
   A.takeWhile (/= 0) <* A.anyWord8
@@ -74,6 +75,7 @@ nullTerminatedString =
 -- * Responses
 -------------------------
 
+{-# INLINE response #-}
 response :: Scanner (Maybe Response)
 response =
   do
@@ -92,6 +94,7 @@ response =
       | C.parameterStatus type_ -> Just <$> parameterStatusBody ParameterStatusResponse
       | True -> A.take bodyLength $> Nothing
 
+{-# INLINE dataRowBody #-}
 dataRowBody :: (Vector (Maybe ByteString) -> result) -> Scanner result
 dataRowBody result =
   do
@@ -99,6 +102,7 @@ dataRowBody result =
     bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
     return (result bytesVector)
 
+{-# INLINE commandCompleteBody #-}
 commandCompleteBody :: (Int -> result) -> Scanner result
 commandCompleteBody result =
   do
@@ -114,6 +118,7 @@ commandCompleteBody result =
     byteIsDigit byte =
       byte - 48 <= 9
 
+{-# INLINE readyForQueryBody #-}
 readyForQueryBody :: (TransactionStatus -> result) -> Scanner result
 readyForQueryBody result =
   do
@@ -124,10 +129,12 @@ readyForQueryBody result =
       69 -> return (result FailedTransactionStatus)
       _ -> fail (showString "Unexpected transaction status byte: " (show statusByte))
 
+{-# INLINE notificationBody #-}
 notificationBody :: (Word32 -> ByteString -> ByteString -> result) -> Scanner result
 notificationBody result =
   result <$> word32 <*> nullTerminatedString <*> nullTerminatedString
 
+{-# INLINE errorResponseBody #-}
 errorResponseBody :: Int -> (ByteString -> ByteString -> result) -> Scanner result
 errorResponseBody length result =
   do
@@ -146,10 +153,12 @@ errorResponseBody length result =
             | True -> iterate (offset + 2 + B.length payload) code message))
         else return (code, message)
 
+{-# INLINE noticeField #-}
 noticeField :: (Word8 -> ByteString -> result) -> Scanner result
 noticeField result =
   result <$> word8 <*> nullTerminatedString
 
+{-# INLINE authenticationBody #-}
 authenticationBody :: (AuthenticationStatus -> result) -> Scanner result
 authenticationBody result =
   do
@@ -162,6 +171,7 @@ authenticationBody result =
         return (result (NeedMD5PasswordAuthenticationStatus salt))
       _ -> fail ("Unsupported authentication status: " <> show status)
 
+{-# INLINE parameterStatusBody #-}
 parameterStatusBody :: (ByteString -> ByteString -> result) -> Scanner result
 parameterStatusBody result =
   result <$> nullTerminatedString <*> nullTerminatedString
@@ -173,6 +183,7 @@ The length of the column value, in bytes (this count does not include itself). C
 Byten
 The value of the column, in the format indicated by the associated format code. n is the above length.
 -}
+{-# INLINE sizedBytes #-}
 sizedBytes :: Scanner (Maybe ByteString)
 sizedBytes =
   do
