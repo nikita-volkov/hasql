@@ -25,8 +25,9 @@ loop socket sendResponse reportError =
             Left msg ->
               reportError msg
         C.Done remainders responseMaybe -> do
-          forM_ responseMaybe $ \response -> 
-            sendResponse response
-          processScannerResult (C.scan D.response remainders)
+          traverse_ sendResponse responseMaybe
+          if B.null remainders
+            then processScannerResult (C.More (C.scan D.response))
+            else processScannerResult (C.scan D.response remainders)
         C.Fail remainders message -> do
           reportError (fromString message)
