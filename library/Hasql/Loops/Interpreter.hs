@@ -8,7 +8,7 @@ import qualified Data.Vector as B
 
 
 data ResultProcessor =
-  forall result. ResultProcessor !(C.InterpretResponses result) !(result -> IO ())
+  forall result. ResultProcessor !(C.InterpretResponses result) !(Either Error result -> IO ())
 
 loop :: IO Response -> IO (Maybe ResultProcessor) -> (Notification -> IO ()) -> IO ()
 loop fetchResponse fetchResultProcessor sendNotification =

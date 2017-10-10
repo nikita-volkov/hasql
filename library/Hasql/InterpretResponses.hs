@@ -9,30 +9,32 @@ import qualified Data.Vector as B
 
 
 newtype InterpretResponses result =
-  InterpretResponses (Response -> IO Response -> (Response -> IO ()) -> IO result)
+  InterpretResponses (Response -> IO Response -> (Response -> IO ()) -> IO (Either Error result))
 
 instance Functor InterpretResponses where
   fmap mapping (InterpretResponses io) =
-    InterpretResponses (\a b c -> fmap mapping (io a b c))
+    InterpretResponses (\a b c -> (fmap . fmap) mapping (io a b c))
 
 instance Applicative InterpretResponses where
   pure x =
-    InterpretResponses (\_ _ _ -> pure x)
+    InterpretResponses (\_ _ _ -> pure (Right x))
   (<*>) (InterpretResponses leftIO) (InterpretResponses rightIO) =
     InterpretResponses $ \firstResponse fetchResponse discardResponse ->
-    leftIO firstResponse fetchResponse discardResponse <*> rightIO firstResponse fetchResponse discardResponse
+    (<*>) <$> leftIO firstResponse fetchResponse discardResponse <*> rightIO firstResponse fetchResponse discardResponse
 
 instance Monad InterpretResponses where
   return = pure
   (>>=) (InterpretResponses leftIO) rightK =
     InterpretResponses $ \firstResponse fetchResponse discardResponse ->
     do
-      leftResult <- leftIO firstResponse fetchResponse discardResponse
-      case rightK leftResult of
-        InterpretResponses rightIO -> rightIO firstResponse fetchResponse discardResponse
+      leftEither <- leftIO firstResponse fetchResponse discardResponse
+      case leftEither of
+        Left error -> return (Left error)
+        Right leftResult -> case rightK leftResult of
+          InterpretResponses rightIO -> rightIO firstResponse fetchResponse discardResponse
 
 
-matchResponse :: (Response -> Maybe result) -> InterpretResponses result
+matchResponse :: (Response -> Maybe (Either Error result)) -> InterpretResponses result
 matchResponse match =
   InterpretResponses def
   where
@@ -47,7 +49,7 @@ matchResponse match =
               nextResponse <- fetchResponse
               processResponse response
 
-foldRows :: A.ParseDataRow row -> FoldM IO row result -> InterpretResponses (Either Text (result, Int))
+foldRows :: A.ParseDataRow row -> FoldM IO row result -> InterpretResponses (result, Int)
 foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
   InterpretResponses def
   where
@@ -61,20 +63,22 @@ foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) 
             DataRowResponse values ->
               if B.length values == rowLength
                 then case vectorFn values 0 of
-                  Left error -> return (Left error)
+                  Left error -> return (Left (DecodingError error))
                   Right row -> do
                     nextState <- foldStep state row
                     nextResponse <- fetchResponse
                     processResponse nextState nextResponse
-                else return (Left (fromString
+                else return (Left (DecodingError (fromString
                   (showString "Invalid amount of columns: "
                     (shows (B.length values)
                       (showString ", expecting "
-                        (show rowLength))))))
+                        (show rowLength)))))))
             CommandCompleteResponse amount ->
               do
                 result <- foldEnd state
                 return (Right (result, amount))
+            ErrorResponse state message ->
+              return (Left (BackendError state message))
             EmptyQueryResponse ->
               do
                 result <- foldEnd state
@@ -85,7 +89,7 @@ foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) 
                 nextResponse <- fetchResponse
                 processResponse state nextResponse
 
-singleRow :: A.ParseDataRow row -> InterpretResponses (Either Text row)
+singleRow :: A.ParseDataRow row -> InterpretResponses row
 singleRow (A.ParseDataRow rowLength vectorFn) =
   InterpretResponses def
   where
@@ -97,19 +101,21 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
             DataRowResponse values ->
               if B.length values == rowLength
                 then case vectorFn values 0 of
-                  Left error -> return (Left error)
+                  Left error -> return (Left (DecodingError error))
                   Right row -> do
                     nextResponse <- fetchResponse
                     processResponseWithRow row nextResponse
-                else return (Left (fromString
+                else return (Left (DecodingError (fromString
                   (showString "Invalid amount of columns: "
                     (shows (B.length values)
                       (showString ", expecting "
-                        (show rowLength))))))
+                        (show rowLength)))))))
             CommandCompleteResponse _ ->
-              return (Left "Not a single row")
+              return (Left (DecodingError "Not a single row"))
+            ErrorResponse state message ->
+              return (Left (BackendError state message))
             EmptyQueryResponse ->
-              return (Left "Empty query")
+              return (Left (DecodingError "Empty query"))
             otherResponse ->
               do
                 discardResponse otherResponse
@@ -138,9 +144,10 @@ rowsAffected =
       where
         processResponse =
           \case
-            CommandCompleteResponse amount -> return amount
+            CommandCompleteResponse amount -> return (Right amount)
             DataRowResponse _ -> fetchResponse >>= processResponse
-            EmptyQueryResponse -> return 0
+            ErrorResponse state message -> return (Left (BackendError state message))
+            EmptyQueryResponse -> return (Right 0)
             otherResponse -> do
               discardResponse otherResponse
               nextResponse <- fetchResponse
@@ -149,21 +156,23 @@ rowsAffected =
 authenticationStatus :: InterpretResponses AuthenticationStatus
 authenticationStatus =
   matchResponse $ \case
-    AuthenticationResponse status -> Just status
+    AuthenticationResponse status -> Just (Right status)
+    ErrorResponse status message -> Just (Left (BackendError status message))
     _ -> Nothing
 
 parameterStatus :: (ByteString -> ByteString -> result) -> InterpretResponses result
 parameterStatus result =
   matchResponse $ \case
-    ParameterStatusResponse name value -> Just (result name value)
+    ParameterStatusResponse name value -> Just (Right (result name value))
+    ErrorResponse status message -> Just (Left (BackendError status message))
     _ -> Nothing
 
-parameters :: InterpretResponses (Either Text Bool)
+parameters :: InterpretResponses Bool
 parameters =
   InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
-      processResponse (Left "Missing the \"integer_datetimes\" setting") firstResponse
+      processResponse (Left (ProtocolError "Missing the \"integer_datetimes\" setting")) firstResponse
       where
         processResponse !state =
           \case
@@ -173,7 +182,7 @@ parameters =
                 "integer_datetimes" -> case value of
                   "on" -> processResponse (Right True) nextResponse
                   "off" -> processResponse (Right False) nextResponse
-                  _ -> processResponse (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)) nextResponse
+                  _ -> processResponse (Left (ProtocolError ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value))) nextResponse
                 _ -> processResponse state nextResponse
             ReadyForQueryResponse _ -> return state
             otherResponse -> do
@@ -181,11 +190,11 @@ parameters =
               nextResponse <- fetchResponse
               processResponse state nextResponse
 
-authenticationResult :: InterpretResponses (Either Text AuthenticationResult)
+authenticationResult :: InterpretResponses AuthenticationResult
 authenticationResult =
   do
     authenticationStatusResult <- authenticationStatus
     case authenticationStatusResult of
-      NeedClearTextPasswordAuthenticationStatus -> return (Right NeedClearTextPasswordAuthenticationResult)
-      NeedMD5PasswordAuthenticationStatus salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
-      OkAuthenticationStatus -> fmap OkAuthenticationResult <$> parameters
+      NeedClearTextPasswordAuthenticationStatus -> return (NeedClearTextPasswordAuthenticationResult)
+      NeedMD5PasswordAuthenticationStatus salt -> return (NeedMD5PasswordAuthenticationResult salt)
+      OkAuthenticationStatus -> OkAuthenticationResult <$> parameters
