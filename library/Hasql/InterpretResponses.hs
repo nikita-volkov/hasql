@@ -142,6 +142,8 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
                 processResponseWithRow row nextResponse
             CommandCompleteResponse _ ->
               return (Right row)
+            ErrorResponse state message ->
+              return (Left (BackendError state message))
             otherResponse ->
               do
                 discardResponse otherResponse
