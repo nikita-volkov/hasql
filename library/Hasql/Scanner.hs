@@ -84,6 +84,7 @@ response =
       | C.commandComplete type_ -> commandCompleteBody (Just . CommandCompleteResponse)
       | C.readyForQuery type_ -> readyForQueryBody (Just . ReadyForQueryResponse)
       | C.parseComplete type_ -> pure (Just ParseCompleteResponse)
+      | C.bindComplete type_ -> pure (Just BindCompleteResponse)
       | C.emptyQuery type_ -> pure (Just EmptyQueryResponse)
       | C.notification type_ -> Just <$> notificationBody NotificationResponse
       | C.error type_ -> Just <$> errorResponseBody bodyLength ErrorResponse

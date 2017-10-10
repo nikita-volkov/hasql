@@ -8,6 +8,7 @@ data Response =
   CommandCompleteResponse !Int |
   ReadyForQueryResponse !TransactionStatus |
   ParseCompleteResponse |
+  BindCompleteResponse |
   EmptyQueryResponse |
   NotificationResponse !Word32 !ByteString !ByteString |
   ErrorResponse !ByteString !ByteString |
