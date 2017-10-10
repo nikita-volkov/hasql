@@ -124,77 +124,77 @@ library
     base-prelude >= 0.1.19 && < 2,
     base >= 4.7 && < 5
 
--- test-suite tests
---   type:
---     exitcode-stdio-1.0
---   hs-source-dirs:
---     tests
---   main-is:
---     Main.hs
---   ghc-options:
---     -O2
---     -threaded
---     "-with-rtsopts=-N"
---   default-extensions:
---     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
---   default-language:
---     Haskell2010
---   build-depends:
---     hasql,
---     -- testing:
---     tasty == 0.11.*,
---     tasty-quickcheck == 0.8.*,
---     tasty-smallcheck == 0.8.*,
---     tasty-hunit == 0.9.*,
---     quickcheck-instances >= 0.3.11 && < 0.4,
---     QuickCheck >= 2.8.1 && < 2.10,
---     -- 
---     foldl,
---     bug == 1.*,
---     rerebase == 1.*
+test-suite tests
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    tests
+  main-is:
+    Main.hs
+  ghc-options:
+    -O2
+    -threaded
+    "-with-rtsopts=-N"
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    hasql,
+    -- testing:
+    tasty == 0.11.*,
+    tasty-quickcheck == 0.8.*,
+    tasty-smallcheck == 0.8.*,
+    tasty-hunit == 0.9.*,
+    quickcheck-instances >= 0.3.11 && < 0.4,
+    QuickCheck >= 2.8.1 && < 2.10,
+    -- 
+    foldl,
+    bug == 1.*,
+    rerebase == 1.*
 
--- benchmark benchmarks
---   type:
---     exitcode-stdio-1.0
---   hs-source-dirs:
---     benchmarks
---   main-is:
---     Main.hs
---   ghc-options:
---     -O2
---     -threaded
---     -rtsopts
---     "-with-rtsopts=-N"
---   default-extensions:
---     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
---   default-language:
---     Haskell2010
---   build-depends:
---     hasql,
---     -- benchmarking:
---     criterion >= 1.0 && < 2,
---     -- general:
---     foldl,
---     bug == 1.*,
---     rerebase < 2
+benchmark benchmarks
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    benchmarks
+  main-is:
+    Main.hs
+  ghc-options:
+    -O2
+    -threaded
+    -rtsopts
+    "-with-rtsopts=-N"
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    hasql,
+    -- benchmarking:
+    criterion >= 1.0 && < 2,
+    -- general:
+    foldl,
+    bug == 1.*,
+    rerebase < 2
 
--- test-suite profiling
---   type:
---     exitcode-stdio-1.0
---   hs-source-dirs:
---     profiling
---   main-is:
---     Main.hs
---   ghc-options:
---     -O2
---     -threaded
---     -rtsopts
---   default-extensions:
---     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
---   default-language:
---     Haskell2010
---   build-depends:
---     hasql,
---     foldl,
---     bug == 1.*,
---     rerebase == 1.*
+test-suite profiling
+  type:
+    exitcode-stdio-1.0
+  hs-source-dirs:
+    profiling
+  main-is:
+    Main.hs
+  ghc-options:
+    -O2
+    -threaded
+    -rtsopts
+  default-extensions:
+    Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
+  default-language:
+    Haskell2010
+  build-depends:
+    hasql,
+    foldl,
+    bug == 1.*,
+    rerebase == 1.*

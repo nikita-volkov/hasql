@@ -54,19 +54,19 @@ connect =
 
 singleLargeResultInVectorInteract :: F.Interact (Vector (Int64, Int64))
 singleLargeResultInVectorInteract =
-  F.query (manyRowsQuery (B.rows I.vector))
+  F.query (manyRowsQuery B.vector)
 
 singleLargeResultInRevListInteract :: F.Interact [(Int64, Int64)]
 singleLargeResultInRevListInteract =
-  F.query (manyRowsQuery (B.rows I.revList))
+  F.query (manyRowsQuery B.revList)
 
 manyLargeResultsInVectorInteract :: F.Interact [Vector (Int64, Int64)]
 manyLargeResultsInVectorInteract =
-  replicateM 1000 (F.query (manyRowsQuery (B.rows I.vector)))
+  replicateM 1000 (F.query (manyRowsQuery B.vector))
 
 manyLargeResultsInVectorInBatchInteract :: F.Interact [Vector (Int64, Int64)]
 manyLargeResultsInVectorInBatchInteract =
-  F.query (replicateM 1000 (manyRowsQuery (B.rows I.vector)))
+  F.query (replicateM 1000 (manyRowsQuery B.vector))
 
 manySmallResultsInteract :: F.Interact [(Int64, Int64)]
 manySmallResultsInteract =
@@ -84,7 +84,7 @@ singleRowQuery =
   J.preparedStatement "select 1, 2" mempty decode
   where
     decode =
-      B.row ((,) <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8)
+      B.head ((,) <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8)
 
 {-# INLINE manyRowsQuery #-}
 manyRowsQuery :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Query result
