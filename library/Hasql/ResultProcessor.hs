@@ -11,6 +11,42 @@ import qualified Data.Vector as B
 newtype ResultProcessor result =
   ResultProcessor (Response -> IO Response -> (Response -> IO ()) -> IO result)
 
+instance Functor ResultProcessor where
+  fmap mapping (ResultProcessor io) =
+    ResultProcessor (\a b c -> fmap mapping (io a b c))
+
+instance Applicative ResultProcessor where
+  pure x =
+    ResultProcessor (\_ _ _ -> pure x)
+  (<*>) (ResultProcessor leftIO) (ResultProcessor rightIO) =
+    ResultProcessor $ \firstResponse fetchResponse discardResponse ->
+    leftIO firstResponse fetchResponse discardResponse <*> rightIO firstResponse fetchResponse discardResponse
+
+instance Monad ResultProcessor where
+  return = pure
+  (>>=) (ResultProcessor leftIO) rightK =
+    ResultProcessor $ \firstResponse fetchResponse discardResponse ->
+    do
+      leftResult <- leftIO firstResponse fetchResponse discardResponse
+      case rightK leftResult of
+        ResultProcessor rightIO -> rightIO firstResponse fetchResponse discardResponse
+
+
+matchResponse :: (Response -> Maybe result) -> ResultProcessor result
+matchResponse match =
+  ResultProcessor def
+  where
+    def firstResponse fetchResponse discardResponse =
+      processResponse firstResponse
+      where
+        processResponse response =
+          case match response of
+            Just result -> return result
+            Nothing -> do
+              discardResponse response
+              nextResponse <- fetchResponse
+              processResponse response
+
 foldRows :: A.ParseDataRow row -> FoldM IO row result -> ResultProcessor (Either Text (result, Int))
 foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
   ResultProcessor def
@@ -109,3 +145,47 @@ rowsAffected =
               discardResponse otherResponse
               nextResponse <- fetchResponse
               processResponse nextResponse
+
+authenticationStatus :: ResultProcessor AuthenticationStatus
+authenticationStatus =
+  matchResponse $ \case
+    AuthenticationResponse status -> Just status
+    _ -> Nothing
+
+parameterStatus :: (ByteString -> ByteString -> result) -> ResultProcessor result
+parameterStatus result =
+  matchResponse $ \case
+    ParameterStatusResponse name value -> Just (result name value)
+    _ -> Nothing
+
+parameters :: ResultProcessor (Either Text Bool)
+parameters =
+  ResultProcessor def
+  where
+    def firstResponse fetchResponse discardResponse =
+      processResponse (Left "Missing the \"integer_datetimes\" setting") firstResponse
+      where
+        processResponse !state =
+          \case
+            ParameterStatusResponse name value -> do
+              nextResponse <- fetchResponse
+              case name of
+                "integer_datetimes" -> case value of
+                  "on" -> processResponse (Right True) nextResponse
+                  "off" -> processResponse (Right False) nextResponse
+                  _ -> processResponse (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)) nextResponse
+                _ -> processResponse state nextResponse
+            ReadyForQueryResponse _ -> return state
+            otherResponse -> do
+              discardResponse otherResponse
+              nextResponse <- fetchResponse
+              processResponse state nextResponse
+
+authenticationResult :: ResultProcessor (Either Text AuthenticationResult)
+authenticationResult =
+  do
+    authenticationStatusResult <- authenticationStatus
+    case authenticationStatusResult of
+      NeedClearTextPasswordAuthenticationStatus -> return (Right NeedClearTextPasswordAuthenticationResult)
+      NeedMD5PasswordAuthenticationStatus salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
+      OkAuthenticationStatus -> fmap OkAuthenticationResult <$> parameters
