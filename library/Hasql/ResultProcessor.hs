@@ -8,18 +8,17 @@ import qualified Hasql.ParseDataRow as A
 import qualified Data.Vector as B
 
 
-newtype ResultProcessor =
-  ResultProcessor (Response -> IO Response -> (Response -> IO ()) -> IO ())
+newtype ResultProcessor result =
+  ResultProcessor (Response -> IO Response -> (Response -> IO ()) -> IO result)
 
-foldRows :: A.ParseDataRow row -> FoldM IO row result -> (Either Text (result, Int) -> IO ()) -> ResultProcessor
-foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) sendResult =
+foldRows :: A.ParseDataRow row -> FoldM IO row result -> ResultProcessor (Either Text (result, Int))
+foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
   ResultProcessor def
   where
     def firstResponse fetchResponse discardResponse =
       do
         initialState <- foldStart
-        result <- processResponse initialState firstResponse
-        sendResult result
+        processResponse initialState firstResponse
       where
         processResponse !state =
           \case
@@ -50,12 +49,12 @@ foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) 
                 nextResponse <- fetchResponse
                 processResponse state nextResponse
 
-singleRow :: A.ParseDataRow row -> (Either Text row -> IO ()) -> ResultProcessor
-singleRow (A.ParseDataRow rowLength vectorFn) sendResult =
+singleRow :: A.ParseDataRow row -> ResultProcessor (Either Text row)
+singleRow (A.ParseDataRow rowLength vectorFn) =
   ResultProcessor def
   where
     def firstResponse fetchResponse discardResponse =
-      sendResult =<< processResponseWithoutRow firstResponse
+      processResponseWithoutRow firstResponse
       where
         processResponseWithoutRow =
           \case
@@ -94,12 +93,12 @@ singleRow (A.ParseDataRow rowLength vectorFn) sendResult =
                 nextResponse <- fetchResponse
                 processResponseWithRow row nextResponse
 
-rowsAffected :: (Int -> IO ()) -> ResultProcessor
-rowsAffected sendResult =
+rowsAffected :: ResultProcessor Int
+rowsAffected =
   ResultProcessor def
   where
     def firstResponse fetchResponse discardResponse =
-      sendResult =<< processResponse firstResponse
+      processResponse firstResponse
       where
         processResponse =
           \case
