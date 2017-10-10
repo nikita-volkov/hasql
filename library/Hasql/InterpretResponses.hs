@@ -134,8 +134,8 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
                 discardResponse otherResponse
                 nextResponse <- fetchResponse
                 processResponseWithoutRow nextResponse
-        processResponseWithRow row =
-          \case
+        processResponseWithRow row response =
+          case response of
             DataRowResponse _ ->
               do
                 nextResponse <- fetchResponse
