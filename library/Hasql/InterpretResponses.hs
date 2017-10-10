@@ -1,4 +1,4 @@
-module Hasql.ProcessResponses where
+module Hasql.InterpretResponses where
 
 import Hasql.Prelude
 import Hasql.Model
@@ -8,33 +8,33 @@ import qualified Hasql.ParseDataRow as A
 import qualified Data.Vector as B
 
 
-newtype ProcessResponses result =
-  ProcessResponses (Response -> IO Response -> (Response -> IO ()) -> IO result)
+newtype InterpretResponses result =
+  InterpretResponses (Response -> IO Response -> (Response -> IO ()) -> IO result)
 
-instance Functor ProcessResponses where
-  fmap mapping (ProcessResponses io) =
-    ProcessResponses (\a b c -> fmap mapping (io a b c))
+instance Functor InterpretResponses where
+  fmap mapping (InterpretResponses io) =
+    InterpretResponses (\a b c -> fmap mapping (io a b c))
 
-instance Applicative ProcessResponses where
+instance Applicative InterpretResponses where
   pure x =
-    ProcessResponses (\_ _ _ -> pure x)
-  (<*>) (ProcessResponses leftIO) (ProcessResponses rightIO) =
-    ProcessResponses $ \firstResponse fetchResponse discardResponse ->
+    InterpretResponses (\_ _ _ -> pure x)
+  (<*>) (InterpretResponses leftIO) (InterpretResponses rightIO) =
+    InterpretResponses $ \firstResponse fetchResponse discardResponse ->
     leftIO firstResponse fetchResponse discardResponse <*> rightIO firstResponse fetchResponse discardResponse
 
-instance Monad ProcessResponses where
+instance Monad InterpretResponses where
   return = pure
-  (>>=) (ProcessResponses leftIO) rightK =
-    ProcessResponses $ \firstResponse fetchResponse discardResponse ->
+  (>>=) (InterpretResponses leftIO) rightK =
+    InterpretResponses $ \firstResponse fetchResponse discardResponse ->
     do
       leftResult <- leftIO firstResponse fetchResponse discardResponse
       case rightK leftResult of
-        ProcessResponses rightIO -> rightIO firstResponse fetchResponse discardResponse
+        InterpretResponses rightIO -> rightIO firstResponse fetchResponse discardResponse
 
 
-matchResponse :: (Response -> Maybe result) -> ProcessResponses result
+matchResponse :: (Response -> Maybe result) -> InterpretResponses result
 matchResponse match =
-  ProcessResponses def
+  InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
       processResponse firstResponse
@@ -47,9 +47,9 @@ matchResponse match =
               nextResponse <- fetchResponse
               processResponse response
 
-foldRows :: A.ParseDataRow row -> FoldM IO row result -> ProcessResponses (Either Text (result, Int))
+foldRows :: A.ParseDataRow row -> FoldM IO row result -> InterpretResponses (Either Text (result, Int))
 foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
-  ProcessResponses def
+  InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
       do
@@ -85,9 +85,9 @@ foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) 
                 nextResponse <- fetchResponse
                 processResponse state nextResponse
 
-singleRow :: A.ParseDataRow row -> ProcessResponses (Either Text row)
+singleRow :: A.ParseDataRow row -> InterpretResponses (Either Text row)
 singleRow (A.ParseDataRow rowLength vectorFn) =
-  ProcessResponses def
+  InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
       processResponseWithoutRow firstResponse
@@ -129,9 +129,9 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
                 nextResponse <- fetchResponse
                 processResponseWithRow row nextResponse
 
-rowsAffected :: ProcessResponses Int
+rowsAffected :: InterpretResponses Int
 rowsAffected =
-  ProcessResponses def
+  InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
       processResponse firstResponse
@@ -146,21 +146,21 @@ rowsAffected =
               nextResponse <- fetchResponse
               processResponse nextResponse
 
-authenticationStatus :: ProcessResponses AuthenticationStatus
+authenticationStatus :: InterpretResponses AuthenticationStatus
 authenticationStatus =
   matchResponse $ \case
     AuthenticationResponse status -> Just status
     _ -> Nothing
 
-parameterStatus :: (ByteString -> ByteString -> result) -> ProcessResponses result
+parameterStatus :: (ByteString -> ByteString -> result) -> InterpretResponses result
 parameterStatus result =
   matchResponse $ \case
     ParameterStatusResponse name value -> Just (result name value)
     _ -> Nothing
 
-parameters :: ProcessResponses (Either Text Bool)
+parameters :: InterpretResponses (Either Text Bool)
 parameters =
-  ProcessResponses def
+  InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
       processResponse (Left "Missing the \"integer_datetimes\" setting") firstResponse
@@ -181,7 +181,7 @@ parameters =
               nextResponse <- fetchResponse
               processResponse state nextResponse
 
-authenticationResult :: ProcessResponses (Either Text AuthenticationResult)
+authenticationResult :: InterpretResponses (Either Text AuthenticationResult)
 authenticationResult =
   do
     authenticationStatusResult <- authenticationStatus
