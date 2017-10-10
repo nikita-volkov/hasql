@@ -60,7 +60,7 @@ library
     Hasql.InterpretResponses
     Hasql.InteractUnauthenticated
     Hasql.Request
-    -- Hasql.Dispatcher
+    Hasql.Dispatcher
     Hasql.Choosing
     -- Hasql.ChooseMessage
     -- Hasql.ParseMessage
