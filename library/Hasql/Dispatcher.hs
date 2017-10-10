@@ -37,19 +37,13 @@ start socket sendNotification =
         do
           resultVar <- newEmptyTMVarIO
           atomically $ do
-            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor ir (sendResult resultVar))
+            writeTQueue resultProcessorQueue (InterpreterLoop.ResultProcessor ir (atomically . putTMVar resultVar))
             writeTQueue serializerMessageQueue (SerializerLoop.SerializeMessage encoding)
             writeTQueue serializerMessageQueue (SerializerLoop.FlushMessage)
-          atomically (takeTMVar resultVar)
+          atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> takeTMVar resultVar)
         where
           encoding =
             B.builderPtrFiller builder F.Encoding
-          sendResult resultVar errorOrResult =
-            do
-              result <- case errorOrResult of
-                Left error -> return (Left error)
-                Right result -> atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> pure (Right result))
-              atomically (putTMVar resultVar result)
       loopSending =
         SenderLoop.loop socket
           (atomically (readTQueue outgoingBytesQueue))
