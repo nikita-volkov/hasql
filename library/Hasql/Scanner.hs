@@ -132,17 +132,18 @@ errorResponseBody :: Int -> (ByteString -> ByteString -> result) -> Scanner resu
 errorResponseBody length result =
   do
     tuple <- iterate 0 Nothing Nothing
+    A.anyWord8
     case tuple of
       (Just code, Just message) -> return (result code message)
       _ -> fail "Some of the required error fields are missing"
   where
     iterate !offset code message  =
-      if offset < length
+      if offset < length - 1
         then join (noticeField (\type_ payload ->
           if
-            | type_ == E.code -> iterate (2 + B.length payload) (Just payload) message
-            | type_ == E.message -> iterate (2 + B.length payload) code (Just payload)
-            | True -> iterate (2 + B.length payload) code message))
+            | type_ == E.code -> iterate (offset + 2 + B.length payload) (Just payload) message
+            | type_ == E.message -> iterate (offset + 2 + B.length payload) code (Just payload)
+            | True -> iterate (offset + 2 + B.length payload) code message))
         else return (code, message)
 
 noticeField :: (Word8 -> ByteString -> result) -> Scanner result
