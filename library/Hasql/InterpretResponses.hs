@@ -42,6 +42,7 @@ matchResponse match =
       processResponse firstResponse
       where
         processResponse response =
+          trace ("InterpretResponses/matchResponse/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
           case match response of
             Just result -> return result
             Nothing -> case response of
@@ -61,6 +62,7 @@ foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) 
         processResponse initialState firstResponse
       where
         processResponse !state response =
+          trace ("InterpretResponses/foldRows/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
           case response of
             DataRowResponse values ->
               if B.length values == rowLength
@@ -99,6 +101,7 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
       processResponseWithoutRow firstResponse
       where
         processResponseWithoutRow response =
+          trace ("InterpretResponses/singleRow/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
           case response of
             DataRowResponse values ->
               if B.length values == rowLength
