@@ -51,8 +51,8 @@ matchResponse match =
                 nextResponse <- fetchResponse
                 processResponse response
 
-foldRows :: A.ParseDataRow row -> FoldM IO row result -> InterpretResponses (result, Int)
-foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
+foldRows :: FoldM IO row result -> A.ParseDataRow row -> InterpretResponses (result, Int)
+foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) =
   InterpretResponses def
   where
     def firstResponse fetchResponse discardResponse =
