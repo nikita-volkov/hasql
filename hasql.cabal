@@ -58,8 +58,8 @@ library
     Hasql.Model
   other-modules:
     Hasql.InterpretResponses
-    -- Hasql.InteractUnauthenticated
-    -- Hasql.Request
+    Hasql.InteractUnauthenticated
+    Hasql.Request
     -- Hasql.Dispatcher
     Hasql.Choosing
     -- Hasql.ChooseMessage
