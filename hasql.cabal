@@ -71,10 +71,10 @@ library
     Hasql.NoticeFieldTypes
     Hasql.MessageTypeNames
     Hasql.Scanner
-    -- Hasql.Loops.Serializer
+    Hasql.Loops.Serializer
     Hasql.Loops.Receiver
-    -- Hasql.Loops.Sender
     -- Hasql.Loops.Interpreter
+    Hasql.Loops.Sender
     Hasql.Socket
     Hasql.OID.Array
     Hasql.OID.Primitive
