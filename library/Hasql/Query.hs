@@ -4,7 +4,6 @@ import Hasql.Prelude
 import Hasql.Model
 import qualified Hasql.Request as C
 import qualified Hasql.PreparedStatementRegistry as D
-import qualified Hasql.ParseMessageStream as A
 import qualified ByteString.StrictBuilder as E
 import qualified Hasql.EncodedParams as B
 import qualified Hasql.DecodeResult as F
