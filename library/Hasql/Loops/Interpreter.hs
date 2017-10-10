@@ -25,6 +25,7 @@ loop fetchResponse fetchResultProcessor sendNotification =
 
 interpretAsyncResponse :: (Notification -> IO ()) -> Response -> IO ()
 interpretAsyncResponse sendNotification response =
+  trace ("Interpreting an async response: " <> show response) $
   case response of
     NotificationResponse a b c -> sendNotification (Notification a b c)
     _ -> return ()
