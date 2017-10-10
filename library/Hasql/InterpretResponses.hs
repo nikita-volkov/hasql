@@ -198,3 +198,21 @@ authenticationResult =
       NeedClearTextPasswordAuthenticationStatus -> return (NeedClearTextPasswordAuthenticationResult)
       NeedMD5PasswordAuthenticationStatus salt -> return (NeedMD5PasswordAuthenticationResult salt)
       OkAuthenticationStatus -> OkAuthenticationResult <$> parameters
+
+parseComplete :: InterpretResponses ()
+parseComplete =
+  matchResponse $ \case
+    ParseCompleteResponse -> Just (Right ())
+    _ -> Nothing
+
+bindComplete :: InterpretResponses ()
+bindComplete =
+  matchResponse $ \case
+    BindCompleteResponse -> Just (Right ())
+    _ -> Nothing
+
+readyForQuery :: InterpretResponses TransactionStatus
+readyForQuery =
+  matchResponse $ \case
+    ReadyForQueryResponse transactionStatus -> Just (Right transactionStatus)
+    _ -> Nothing
