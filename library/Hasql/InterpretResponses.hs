@@ -106,7 +106,7 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
       fetchResponse >>= processResponseWithoutRow
       where
         processResponseWithoutRow response =
-          trace ("InterpretResponses/singleRow/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
+          trace ("InterpretResponses/singleRow/processResponseWithoutRow: \ESC[1m" <> show response <> "\ESC[0m") $
           case response of
             DataRowResponse values ->
               if B.length values == rowLength
@@ -132,6 +132,7 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
                 nextResponse <- fetchResponse
                 processResponseWithoutRow nextResponse
         processResponseWithRow row response =
+          trace ("InterpretResponses/singleRow/processResponseWithRow: \ESC[1m" <> show response <> "\ESC[0m") $
           case response of
             DataRowResponse _ ->
               do
