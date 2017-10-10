@@ -29,14 +29,14 @@ data Connection =
   -}
   Connection !B.Socket !A.Dispatcher !(MVar D.Registry) !Bool
 
-open :: B.ConnectionSettings -> ByteString -> ByteString -> Maybe ByteString -> (Either Error Notification -> IO ()) -> IO (Either Error Connection)
-open transportSettings username password databaseMaybe sendErrorOrNotification =
+open :: B.ConnectionSettings -> ByteString -> ByteString -> Maybe ByteString -> (Notification -> IO ()) -> IO (Either Error Connection)
+open transportSettings username password databaseMaybe sendNotification =
   do
     connectionResult <- B.connect transportSettings
     case connectionResult of
       Left message -> return (Left (TransportError message))
       Right socket -> do
-        dispatcher <- A.start socket sendErrorOrNotification
+        dispatcher <- A.start socket sendNotification
         handshakeResult <- A.interact dispatcher (G.handshake username password databaseMaybe [])
         case handshakeResult of
           Left error -> return (Left error)

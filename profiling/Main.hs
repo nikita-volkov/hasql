@@ -37,7 +37,7 @@ connect =
 
 interact :: Int -> Int -> Int -> F.Interact [[[(Int64, Int64)]]]
 interact amountOfQueries amountOfStatements amountOfRows =
-  replicateM amountOfQueries (F.query (replicateM amountOfStatements (manyRowsQuery amountOfRows (B.rows I.revList))))
+  replicateM amountOfQueries (F.query (replicateM amountOfStatements (manyRowsQuery amountOfRows (B.revList))))
   where
     replicateM cnt0 f =
       loop cnt0

@@ -57,21 +57,19 @@ library
     Hasql.Interact
     Hasql.Model
   other-modules:
+    Hasql.InterpretResponses
     Hasql.InteractUnauthenticated
     Hasql.Request
     Hasql.Dispatcher
-    Hasql.Choosing
-    Hasql.ChooseMessage
-    Hasql.ParseMessage
-    Hasql.ParseMessageStream
     Hasql.ParseDataRow
     Hasql.ReadStream
     Hasql.MessageTypePredicates
+    Hasql.NoticeFieldTypes
     Hasql.MessageTypeNames
+    Hasql.Scanner
     Hasql.Loops.Serializer
     Hasql.Loops.Receiver
     Hasql.Loops.Sender
-    Hasql.Loops.IncomingMessagesSlicer
     Hasql.Loops.Interpreter
     Hasql.Socket
     Hasql.OID.Array
