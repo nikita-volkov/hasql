@@ -9,45 +9,42 @@ import qualified Data.Vector as B
 
 
 newtype InterpretResponses result =
-  InterpretResponses (Response -> IO Response -> (Response -> IO ()) -> IO (Either Error result))
+  InterpretResponses (IO Response -> (Response -> IO ()) -> IO (Either Error result))
 
 instance Functor InterpretResponses where
   fmap mapping (InterpretResponses io) =
-    InterpretResponses (\a b c -> (fmap . fmap) mapping (io a b c))
+    InterpretResponses (\a b -> (fmap . fmap) mapping (io a b))
 
 instance Applicative InterpretResponses where
   pure x =
-    InterpretResponses (\_ _ _ -> pure (Right x))
+    InterpretResponses (\_ _ -> pure (Right x))
   (<*>) (InterpretResponses leftIO) (InterpretResponses rightIO) =
-    InterpretResponses $ \firstResponse fetchResponse discardResponse -> do
-      leftEither <- leftIO firstResponse fetchResponse discardResponse
+    InterpretResponses $ \fetchResponse discardResponse -> do
+      leftEither <- leftIO fetchResponse discardResponse
       case leftEither of
         Left error -> return (Left error)
         Right leftResult -> do
-          rightFirstResponse <- fetchResponse
-          rightEither <- rightIO rightFirstResponse fetchResponse discardResponse
+          rightEither <- rightIO fetchResponse discardResponse
           return (fmap leftResult rightEither)
 
 instance Monad InterpretResponses where
   return = pure
   (>>=) (InterpretResponses leftIO) rightK =
-    InterpretResponses $ \firstResponse fetchResponse discardResponse ->
+    InterpretResponses $ \fetchResponse discardResponse ->
     do
-      leftEither <- leftIO firstResponse fetchResponse discardResponse
+      leftEither <- leftIO fetchResponse discardResponse
       case leftEither of
         Left error -> return (Left error)
         Right leftResult -> case rightK leftResult of
-          InterpretResponses rightIO -> do
-            rightFirstResponse <- fetchResponse
-            rightIO rightFirstResponse fetchResponse discardResponse
+          InterpretResponses rightIO -> rightIO fetchResponse discardResponse
 
 
 matchResponse :: (Response -> Maybe (Either Error result)) -> InterpretResponses result
 matchResponse match =
   InterpretResponses def
   where
-    def firstResponse fetchResponse discardResponse =
-      processResponse firstResponse
+    def fetchResponse discardResponse =
+      fetchResponse >>= processResponse
       where
         processResponse response =
           trace ("InterpretResponses/matchResponse/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
@@ -64,10 +61,10 @@ foldRows :: FoldM IO row result -> A.ParseDataRow row -> InterpretResponses (res
 foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) =
   InterpretResponses def
   where
-    def firstResponse fetchResponse discardResponse =
+    def fetchResponse discardResponse =
       do
         initialState <- foldStart
-        processResponse initialState firstResponse
+        fetchResponse >>= processResponse initialState
       where
         processResponse !state response =
           trace ("InterpretResponses/foldRows/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
@@ -105,8 +102,8 @@ singleRow :: A.ParseDataRow row -> InterpretResponses row
 singleRow (A.ParseDataRow rowLength vectorFn) =
   InterpretResponses def
   where
-    def firstResponse fetchResponse discardResponse =
-      processResponseWithoutRow firstResponse
+    def fetchResponse discardResponse =
+      fetchResponse >>= processResponseWithoutRow
       where
         processResponseWithoutRow response =
           trace ("InterpretResponses/singleRow/processResponse: \ESC[1m" <> show response <> "\ESC[0m") $
@@ -154,8 +151,8 @@ rowsAffected :: InterpretResponses Int
 rowsAffected =
   InterpretResponses def
   where
-    def firstResponse fetchResponse discardResponse =
-      processResponse firstResponse
+    def fetchResponse discardResponse =
+      fetchResponse >>= processResponse
       where
         processResponse =
           \case
@@ -184,8 +181,8 @@ parameters :: InterpretResponses Bool
 parameters =
   InterpretResponses def
   where
-    def firstResponse fetchResponse discardResponse =
-      processResponse (Left (ProtocolError "Missing the \"integer_datetimes\" setting")) firstResponse
+    def fetchResponse discardResponse =
+      fetchResponse >>= processResponse (Left (ProtocolError "Missing the \"integer_datetimes\" setting"))
       where
         processResponse !state =
           \case

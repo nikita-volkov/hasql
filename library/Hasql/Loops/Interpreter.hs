@@ -17,7 +17,9 @@ loop fetchResponse fetchResultProcessor sendNotification =
     fetchResult <- fetchResultProcessor
     case fetchResult of
       Just (ResultProcessor (C.InterpretResponses processResponses) sendResult) ->
-        sendResult =<< processResponses response fetchResponse (interpretAsyncResponse sendNotification)
+        do
+          newFetchResponse <- backtrackFetch response fetchResponse
+          sendResult =<< processResponses newFetchResponse (interpretAsyncResponse sendNotification)
       Nothing ->
         interpretAsyncResponse sendNotification response
 
@@ -26,3 +28,18 @@ interpretAsyncResponse sendNotification response =
   case response of
     NotificationResponse a b c -> sendNotification (Notification a b c)
     _ -> return ()
+
+{-|
+Append one element to a fetching action.
+-}
+backtrackFetch :: a -> IO a -> IO (IO a)
+backtrackFetch element fetch =
+  do
+    notFirstRef <- newIORef False
+    return $ do
+      notFirst <- readIORef notFirstRef
+      if notFirst
+        then fetch
+        else do
+          writeIORef notFirstRef True
+          return element
