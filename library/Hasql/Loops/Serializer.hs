@@ -1,13 +1,13 @@
 module Hasql.Loops.Serializer where
 
 import Hasql.Prelude
-import qualified PtrMagic.Encoding as A
+import qualified ByteString.StrictBuilder as D
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as C
 
 
 data Message =
-  SerializeMessage !A.Encoding |
+  SerializeMessage !D.Builder |
   FlushMessage
 
 loop :: IO Message -> (ByteString -> IO ()) -> IO ()
@@ -24,8 +24,8 @@ loop getMessage sendBytes =
       do
         message <- getMessage
         case message of
-          SerializeMessage (A.Encoding spaceRequired write) ->
-            serialize fp offset spaceRequired write
+          SerializeMessage builder ->
+            D.builderPtrFiller builder $ \spaceRequired write -> serialize fp offset spaceRequired write
           FlushMessage ->
             do
               sendBytes (C.PS fp 0 offset)
