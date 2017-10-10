@@ -29,6 +29,8 @@ loop socket sendResponse reportError =
         C.Done remainders responseMaybe -> do
           traceM ("Parsed a response: \27[1m" <> show responseMaybe <> "\27[0m, remainders amount: " <> show (B.length remainders))
           traverse_ sendResponse responseMaybe
-          processScannerResult (C.scan D.response remainders)
+          if B.null remainders
+            then processScannerResult (C.More (C.scan D.response))
+            else processScannerResult (C.scan D.response remainders)
         C.Fail remainders message -> do
           reportError (fromString message)
