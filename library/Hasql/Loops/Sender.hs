@@ -11,6 +11,7 @@ loop socket getNextChunk reportError =
   forever $ do
     bytes <- getNextChunk
     resultOfSending <- A.send socket bytes
+    traceM ("Sent " <> show (B.length bytes) <> " bytes")
     case resultOfSending of
       Right () -> return ()
       Left msg -> reportError msg

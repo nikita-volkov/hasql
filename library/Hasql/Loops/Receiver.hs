@@ -16,9 +16,11 @@ loop socket sendResponse reportError =
     processScannerResult =
       \case
         C.More consume -> do
+          traceM ("Receiving more bytes")
           receivingResult <- A.receive socket (shiftL 2 12)
           case receivingResult of
             Right bytes ->
+              trace ("Received " <> show (B.length bytes) <> " bytes: " <> show bytes) $
               if B.null bytes
                 then reportError "Connection interrupted"
                 else processScannerResult (consume bytes)
