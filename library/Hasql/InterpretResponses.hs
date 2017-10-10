@@ -44,10 +44,12 @@ matchResponse match =
         processResponse response =
           case match response of
             Just result -> return result
-            Nothing -> do
-              discardResponse response
-              nextResponse <- fetchResponse
-              processResponse response
+            Nothing -> case response of
+              ErrorResponse status message -> return (Left (BackendError status message))
+              _ -> do
+                discardResponse response
+                nextResponse <- fetchResponse
+                processResponse response
 
 foldRows :: A.ParseDataRow row -> FoldM IO row result -> InterpretResponses (result, Int)
 foldRows (A.ParseDataRow rowLength vectorFn) (FoldM foldStep foldStart foldEnd) =
@@ -157,14 +159,12 @@ authenticationStatus :: InterpretResponses AuthenticationStatus
 authenticationStatus =
   matchResponse $ \case
     AuthenticationResponse status -> Just (Right status)
-    ErrorResponse status message -> Just (Left (BackendError status message))
     _ -> Nothing
 
 parameterStatus :: (ByteString -> ByteString -> result) -> InterpretResponses result
 parameterStatus result =
   matchResponse $ \case
     ParameterStatusResponse name value -> Just (Right (result name value))
-    ErrorResponse status message -> Just (Left (BackendError status message))
     _ -> Nothing
 
 parameters :: InterpretResponses Bool
