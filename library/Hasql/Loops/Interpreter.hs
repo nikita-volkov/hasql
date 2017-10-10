@@ -22,7 +22,7 @@ loop fetchResponse fetchResultProcessor sendNotification =
         interpretAsyncResponse sendNotification response
 
 interpretAsyncResponse :: (Notification -> IO ()) -> Response -> IO ()
-interpretAsyncResponse sendNotification =
-  \case
+interpretAsyncResponse sendNotification response =
+  case response of
     NotificationResponse a b c -> sendNotification (Notification a b c)
     _ -> return ()
