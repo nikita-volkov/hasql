@@ -57,6 +57,7 @@ library
     -- Hasql.Interact
     Hasql.Model
   other-modules:
+    Hasql.ResultProcessor
     -- Hasql.InteractUnauthenticated
     -- Hasql.Request
     -- Hasql.Dispatcher
