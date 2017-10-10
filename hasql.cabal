@@ -74,7 +74,6 @@ library
     -- Hasql.Loops.Serializer
     Hasql.Loops.Receiver
     -- Hasql.Loops.Sender
-    -- Hasql.Loops.IncomingMessagesSlicer
     -- Hasql.Loops.Interpreter
     Hasql.Socket
     Hasql.OID.Array
