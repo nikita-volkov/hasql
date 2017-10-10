@@ -60,8 +60,8 @@ foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) 
         initialState <- foldStart
         processResponse initialState firstResponse
       where
-        processResponse !state =
-          \case
+        processResponse !state response =
+          case response of
             DataRowResponse values ->
               if B.length values == rowLength
                 then case vectorFn values 0 of
@@ -98,8 +98,8 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
     def firstResponse fetchResponse discardResponse =
       processResponseWithoutRow firstResponse
       where
-        processResponseWithoutRow =
-          \case
+        processResponseWithoutRow response =
+          case response of
             DataRowResponse values ->
               if B.length values == rowLength
                 then case vectorFn values 0 of
