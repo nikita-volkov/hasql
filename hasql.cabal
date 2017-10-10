@@ -61,10 +61,6 @@ library
     Hasql.InteractUnauthenticated
     Hasql.Request
     Hasql.Dispatcher
-    Hasql.Choosing
-    -- Hasql.ChooseMessage
-    -- Hasql.ParseMessage
-    -- Hasql.ParseMessageStream
     Hasql.ParseDataRow
     Hasql.ReadStream
     Hasql.MessageTypePredicates
