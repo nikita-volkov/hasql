@@ -19,8 +19,14 @@ instance Applicative InterpretResponses where
   pure x =
     InterpretResponses (\_ _ _ -> pure (Right x))
   (<*>) (InterpretResponses leftIO) (InterpretResponses rightIO) =
-    InterpretResponses $ \firstResponse fetchResponse discardResponse ->
-    (<*>) <$> leftIO firstResponse fetchResponse discardResponse <*> rightIO firstResponse fetchResponse discardResponse
+    InterpretResponses $ \firstResponse fetchResponse discardResponse -> do
+      leftEither <- leftIO firstResponse fetchResponse discardResponse
+      case leftEither of
+        Left error -> return (Left error)
+        Right leftResult -> do
+          rightFirstResponse <- fetchResponse
+          rightEither <- rightIO rightFirstResponse fetchResponse discardResponse
+          return (fmap leftResult rightEither)
 
 instance Monad InterpretResponses where
   return = pure
@@ -31,7 +37,9 @@ instance Monad InterpretResponses where
       case leftEither of
         Left error -> return (Left error)
         Right leftResult -> case rightK leftResult of
-          InterpretResponses rightIO -> rightIO firstResponse fetchResponse discardResponse
+          InterpretResponses rightIO -> do
+            rightFirstResponse <- fetchResponse
+            rightIO rightFirstResponse fetchResponse discardResponse
 
 
 matchResponse :: (Response -> Maybe (Either Error result)) -> InterpretResponses result
