@@ -62,7 +62,6 @@ library
     Hasql.Request
     Hasql.Dispatcher
     Hasql.ParseDataRow
-    Hasql.ReadStream
     Hasql.MessageTypePredicates
     Hasql.NoticeFieldTypes
     Hasql.MessageTypeNames
@@ -107,7 +106,6 @@ library
     hashable >= 1.2 && < 1.3,
     containers == 0.5.*,
     unordered-containers == 0.2.*,
-    ptr-magic >= 0.6.2 && < 0.7,
     time == 1.*,
     -- control:
     free >= 4.12.4 && < 5,
