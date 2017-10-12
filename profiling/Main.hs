@@ -3,12 +3,12 @@ module Main where
 import Prelude hiding (interact)
 import Bug
 import qualified Hasql.Connection as A
-import qualified Hasql.Query as J
-import qualified Hasql.Interact as F
-import qualified Hasql.Model as E
-import qualified Hasql.DecodeResult as B
-import qualified Hasql.DecodeRow as C
-import qualified Hasql.DecodePrimitive as D
+import qualified Hasql.Core.Query as J
+import qualified Hasql.Core.Interact as F
+import qualified Hasql.Core.Model as E
+import qualified Hasql.Core.DecodeResult as B
+import qualified Hasql.Core.DecodeRow as C
+import qualified Hasql.Core.DecodePrimitive as D
 import qualified Data.Vector as H
 import qualified Control.Foldl as I
 
