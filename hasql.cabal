@@ -8,9 +8,8 @@ synopsis:
   An efficient native PostgreSQL driver
 description:
   A highly efficient PostgreSQL driver and a flexible mapping API.
-  The performance is higher than of \"libpq\" itself, and, hence, of all of its derivatives.
-  The mapping API allows to work with data-structures of any complexity
-  (e.g., composites, multidimensional arrays, arrays of composites, composites of arrays).
+  .
+  This is an experimental version, which implements the binary protocol natively.
   .
   This package is the root of the \"hasql\" ecosystem.
   .
