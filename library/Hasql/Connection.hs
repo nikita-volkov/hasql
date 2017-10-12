@@ -3,6 +3,7 @@ module Hasql.Connection
   Connection,
   B.ConnectionSettings(..),
   Error(..),
+  Notification(..),
   open,
   query,
   interact,
