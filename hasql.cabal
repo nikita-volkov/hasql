@@ -1,7 +1,7 @@
 name:
   hasql
 version:
-  0.19.18.2
+  1
 category:
   Hasql, Database, PostgreSQL
 synopsis:
@@ -10,6 +10,8 @@ description:
   This package is the root of the \"hasql\" ecosystem.
   .
   The API is completely disinfected from exceptions. All error-reporting is explicit and is presented using the 'Either' type.
+  .
+  The version 1 is completely backward-compatible with 0.19.
 homepage:
   https://github.com/nikita-volkov/hasql 
 bug-reports:
