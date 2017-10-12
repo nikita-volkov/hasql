@@ -1,11 +1,11 @@
-module Hasql.Loops.Receiver where
+module Hasql.Core.Loops.Receiver where
 
 import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.Socket as A
+import Hasql.Core.Model
+import qualified Hasql.Core.Socket as A
 import qualified Data.ByteString as B
 import qualified Scanner as C
-import qualified Hasql.Scanner as D
+import qualified Hasql.Core.Scanner as D
 
 
 {-# INLINABLE loop #-}

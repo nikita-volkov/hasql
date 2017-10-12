@@ -1,13 +1,13 @@
-module Hasql.Scanner where
+module Hasql.Core.Scanner where
 
 import Hasql.Prelude
-import Hasql.Model
+import Hasql.Core.Model
 import Scanner (Scanner)
 import qualified Scanner as A
 import qualified Data.ByteString as B
 import qualified Data.Vector as D
-import qualified Hasql.MessageTypePredicates as C
-import qualified Hasql.NoticeFieldTypes as E
+import qualified Hasql.Core.MessageTypePredicates as C
+import qualified Hasql.Core.NoticeFieldTypes as E
 
 
 {-# INLINE word8 #-}

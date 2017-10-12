@@ -1,4 +1,4 @@
-module Hasql.NoticeFieldTypes where
+module Hasql.Core.NoticeFieldTypes where
 
 import Hasql.Prelude
 

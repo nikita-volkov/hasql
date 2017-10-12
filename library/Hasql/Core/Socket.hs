@@ -1,7 +1,7 @@
-module Hasql.Socket where
+module Hasql.Core.Socket where
 
 import Hasql.Prelude
-import Hasql.Protocol.Model
+import Hasql.Core.Protocol.Model
 import qualified ByteString.StrictBuilder as F
 import qualified Data.ByteString as G
 import qualified Data.ByteString.Char8 as H

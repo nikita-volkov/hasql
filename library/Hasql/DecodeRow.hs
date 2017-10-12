@@ -1,15 +1,10 @@
-module Hasql.DecodeRow where
+module Hasql.DecodeRow
+(
+  DecodeRow,
+  primitive,
+  nullablePrimitive,
+)
+where
 
-import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.ParseDataRow as A
-import qualified Hasql.DecodePrimitive as B
+import Hasql.Core.DecodeRow
 
-
-newtype DecodeRow row =
-  DecodeRow (ReaderT Bool A.ParseDataRow row)
-  deriving (Functor, Applicative)
-
-nonNullPrimitive :: B.DecodePrimitive column -> DecodeRow column
-nonNullPrimitive (B.DecodePrimitive (ReaderT parser)) =
-  DecodeRow (ReaderT (A.nonNullColumn . parser))

@@ -1,4 +1,4 @@
-module Hasql.PreparedStatementRegistry
+module Hasql.Core.PreparedStatementRegistry
 (
   Registry,
   nil,

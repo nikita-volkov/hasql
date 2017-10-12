@@ -49,35 +49,48 @@ library
     Haskell2010
   exposed-modules:
     Hasql.Connection
-    Hasql.EncodedParams
+    Hasql.Statement
+    Hasql.EncodeParams
+    Hasql.EncodeParam
+    Hasql.EncodePrimitive
     Hasql.DecodeResult
     Hasql.DecodeRow
     Hasql.DecodePrimitive
     Hasql.Query
     Hasql.Interact
-    Hasql.Model
   other-modules:
-    Hasql.InterpretResponses
-    Hasql.InteractUnauthenticated
-    Hasql.Request
-    Hasql.Dispatcher
-    Hasql.ParseDataRow
-    Hasql.MessageTypePredicates
-    Hasql.NoticeFieldTypes
-    Hasql.MessageTypeNames
-    Hasql.Scanner
-    Hasql.Loops.Serializer
-    Hasql.Loops.Receiver
-    Hasql.Loops.Sender
-    Hasql.Loops.Interpreter
-    Hasql.Socket
-    Hasql.OID.Array
-    Hasql.OID.Primitive
     Hasql.Prelude
-    Hasql.PreparedStatementRegistry
-    Hasql.Protocol.Decoding
-    Hasql.Protocol.Encoding
-    Hasql.Protocol.Model
+    Hasql.Core.Statement
+    Hasql.Core.Query
+    Hasql.Core.Interact
+    Hasql.Core.Model
+    Hasql.Core.EncodeParams
+    Hasql.Core.EncodeParam
+    Hasql.Core.EncodePrimitive
+    Hasql.Core.EncodeArray
+    Hasql.Core.DecodeResult
+    Hasql.Core.DecodeRow
+    Hasql.Core.DecodePrimitive
+    Hasql.Core.InterpretResponses
+    Hasql.Core.InteractUnauthenticated
+    Hasql.Core.Request
+    Hasql.Core.Dispatcher
+    Hasql.Core.ParseDataRow
+    Hasql.Core.MessageTypePredicates
+    Hasql.Core.NoticeFieldTypes
+    Hasql.Core.MessageTypeNames
+    Hasql.Core.Scanner
+    Hasql.Core.Loops.Serializer
+    Hasql.Core.Loops.Receiver
+    Hasql.Core.Loops.Sender
+    Hasql.Core.Loops.Interpreter
+    Hasql.Core.Socket
+    Hasql.Core.OID.Array
+    Hasql.Core.OID.Primitive
+    Hasql.Core.PreparedStatementRegistry
+    Hasql.Core.Protocol.Decoding
+    Hasql.Core.Protocol.Encoding
+    Hasql.Core.Protocol.Model
   build-depends:
     -- concurrency:
     stm >= 2.4 && < 3,

@@ -9,12 +9,12 @@ import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import qualified Hasql.Connection as A
 import qualified Hasql.Query as J
-import qualified Hasql.Model as E
-import qualified Data.Vector as H
-import qualified Control.Foldl as I
 import qualified Hasql.DecodeResult as B
 import qualified Hasql.DecodeRow as C
 import qualified Hasql.DecodePrimitive as D
+import qualified Hasql.Statement as E
+import qualified Data.Vector as H
+import qualified Control.Foldl as I
 
 
 main =
@@ -37,7 +37,7 @@ runTests connection =
   testGroup "Tests with connection" $
   [
     let
-      test :: (Eq result, Show result) => String -> Either E.Error result -> J.Query result -> TestTree
+      test :: (Eq result, Show result) => String -> Either A.Error result -> J.Query result -> TestTree
       test name expectedResult query =
         testCase name $ do
           result <- A.query connection query
@@ -46,35 +46,35 @@ runTests connection =
         testGroup "Query" $
         [
           test "select 1" (Right 1) $
-          J.preparedStatement "select 1" mempty (B.head (C.nonNullPrimitive D.int8))
+          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int8))) ()
           ,
           test "select '1' and select 'true'" (Right (1, True)) $
           (,) <$>
-          J.preparedStatement "select 1" mempty (B.head (C.nonNullPrimitive D.int8)) <*>
-          J.preparedStatement "select 'true' :: bool" mempty (B.head (C.nonNullPrimitive D.bool))
+          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int8))) () <*>
+          J.statement (E.prepared "select 'true' :: bool" conquer (B.head (C.primitive D.bool))) ()
           ,
-          test "Error" (Left (E.BackendError "42703" "column \"abc\" does not exist")) $
-          J.preparedStatement "select abc" mempty (B.head (C.nonNullPrimitive D.int8))
+          test "Error" (Left (A.BackendError "42703" "column \"abc\" does not exist")) $
+          J.statement (E.prepared "select abc" conquer (B.head (C.primitive D.int8))) ()
           ,
-          test "Errors in multiple queries" (Left (E.BackendError "42703" "column \"abc\" does not exist")) $
-          J.unpreparedStatement "select 1" mempty (B.head (C.nonNullPrimitive D.int8)) *>
-          J.unpreparedStatement "select abc" mempty (B.head (C.nonNullPrimitive D.int8)) *>
-          J.unpreparedStatement "select abc" mempty (B.head (C.nonNullPrimitive D.int8))
+          test "Errors in multiple queries" (Left (A.BackendError "42703" "column \"abc\" does not exist")) $
+          J.statement (E.unprepared "select 1" conquer (B.head (C.primitive D.int8))) () *>
+          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int8))) () *>
+          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int8))) ()
           ,
           test "traverse" (Right [1,2,3]) $
-          traverse (\template -> J.preparedStatement template mempty (B.head (C.nonNullPrimitive D.int8))) $
+          traverse (\template -> J.statement (E.prepared template conquer (B.head (C.primitive D.int8))) ()) $
           ["select 1", "select 2", "select 3"]
           ,
-          test "Not a single row" (Left (E.DecodingError "Empty query")) $
-          J.preparedStatement "" mempty (B.head (C.nonNullPrimitive D.int8))
+          test "Not a single row" (Left (A.DecodingError "Empty query")) $
+          J.statement (E.prepared "" conquer (B.head (C.primitive D.int8))) ()
           ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
     ,
     testCase "Failed prepared statement should be forgotten" $ do
       result1 <- A.query connection $
-        J.preparedStatement "fail 'Failed prepared statement 1'" mempty B.ignore
+        J.statement (E.prepared "fail 'Failed prepared statement 1'" conquer B.ignore) ()
       result2 <- A.query connection $
-        J.preparedStatement "fail 'Failed prepared statement 1'" mempty B.ignore
-      assertEqual "" (Left (E.BackendError "42601" "syntax error at or near \"fail\"")) result2
+        J.statement (E.prepared "fail 'Failed prepared statement 1'" conquer B.ignore) ()
+      assertEqual "" (Left (A.BackendError "42601" "syntax error at or near \"fail\"")) result2
   ]

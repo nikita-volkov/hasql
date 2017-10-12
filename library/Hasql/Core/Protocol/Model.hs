@@ -1,4 +1,4 @@
-module Hasql.Protocol.Model where
+module Hasql.Core.Protocol.Model where
 
 import Hasql.Prelude
 

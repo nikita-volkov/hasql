@@ -1,10 +1,10 @@
-module Hasql.Protocol.Decoding where
+module Hasql.Core.Protocol.Decoding where
 
 import Hasql.Prelude
-import Hasql.Protocol.Model
+import Hasql.Core.Protocol.Model
 import BinaryParser
 import qualified Data.Vector as A
-import qualified Hasql.ParseDataRow as F
+import qualified Hasql.Core.ParseDataRow as F
 
 
 {-# INLINE word8 #-}

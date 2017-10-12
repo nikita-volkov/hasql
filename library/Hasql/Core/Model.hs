@@ -1,4 +1,4 @@
-module Hasql.Model where
+module Hasql.Core.Model where
 
 import Hasql.Prelude hiding (State, peek)
 

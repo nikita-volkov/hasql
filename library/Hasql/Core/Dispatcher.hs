@@ -1,16 +1,16 @@
-module Hasql.Dispatcher where
+module Hasql.Core.Dispatcher where
 
 import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.Socket as A
+import Hasql.Core.Model
+import qualified Hasql.Core.Socket as A
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
-import qualified Hasql.Request as C
-import qualified Hasql.InteractUnauthenticated as G
-import qualified Hasql.Loops.Serializer as H
-import qualified Hasql.Loops.Receiver as I
-import qualified Hasql.Loops.Sender as J
-import qualified Hasql.Loops.Interpreter as K
+import qualified Hasql.Core.Request as C
+import qualified Hasql.Core.InteractUnauthenticated as G
+import qualified Hasql.Core.Loops.Serializer as H
+import qualified Hasql.Core.Loops.Receiver as I
+import qualified Hasql.Core.Loops.Sender as J
+import qualified Hasql.Core.Loops.Interpreter as K
 
 
 data Dispatcher =

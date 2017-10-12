@@ -1,13 +1,9 @@
-module Hasql.Interact where
+module Hasql.Interact
+(
+  Interact,
+  query,
+)
+where
 
-import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.Query as A
+import Hasql.Core.Interact
 
-
-newtype Interact result =
-  Interact (F A.Query result)
-  deriving (Functor, Applicative, Monad)
-
-query :: A.Query result -> Interact result
-query = Interact . liftF

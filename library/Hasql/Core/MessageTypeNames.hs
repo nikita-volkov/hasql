@@ -1,4 +1,4 @@
-module Hasql.MessageTypeNames where
+module Hasql.Core.MessageTypeNames where
 
 import Hasql.Prelude
 

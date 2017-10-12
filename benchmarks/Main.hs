@@ -7,7 +7,7 @@ import Criterion.Main
 import qualified Hasql.Connection as A
 import qualified Hasql.Query as J
 import qualified Hasql.Interact as F
-import qualified Hasql.Model as E
+import qualified Hasql.Statement as G
 import qualified Hasql.DecodeResult as B
 import qualified Hasql.DecodeRow as C
 import qualified Hasql.DecodePrimitive as D
@@ -81,21 +81,21 @@ manySmallResultsInBatchInteract =
 
 singleRowQuery :: J.Query (Int64, Int64)
 singleRowQuery =
-  J.preparedStatement "select 1, 2" mempty decode
+  J.statement (G.prepared "select 1, 2" conquer decode) ()
   where
     decode =
-      B.head ((,) <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8)
+      B.head ((,) <$> C.primitive D.int8 <*> C.primitive D.int8)
 
 {-# INLINE manyRowsQuery #-}
 manyRowsQuery :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Query result
 manyRowsQuery decodeResult =
-  J.preparedStatement template mempty decode
+  J.statement (G.prepared template mempty decode) ()
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
     decode =
       decodeResult $
-      tuple <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8
+      tuple <$> C.primitive D.int8 <*> C.primitive D.int8
         where
         tuple !a !b =
           (a, b)

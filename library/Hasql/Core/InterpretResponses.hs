@@ -1,10 +1,10 @@
-module Hasql.InterpretResponses where
+module Hasql.Core.InterpretResponses where
 
 import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.MessageTypePredicates as G
-import qualified Hasql.MessageTypeNames as H
-import qualified Hasql.ParseDataRow as A
+import Hasql.Core.Model
+import qualified Hasql.Core.MessageTypePredicates as G
+import qualified Hasql.Core.MessageTypeNames as H
+import qualified Hasql.Core.ParseDataRow as A
 import qualified Data.Vector as B
 
 

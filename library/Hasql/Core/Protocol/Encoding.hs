@@ -1,10 +1,10 @@
 {-|
 https://www.postgresql.org/docs/9.6/static/protocol-message-formats.html
 -}
-module Hasql.Protocol.Encoding where
+module Hasql.Core.Protocol.Encoding where
 
 import Hasql.Prelude
-import Hasql.Protocol.Model
+import Hasql.Core.Protocol.Model
 import ByteString.StrictBuilder
 import qualified Data.Vector as A
 import qualified Crypto.Hash as B

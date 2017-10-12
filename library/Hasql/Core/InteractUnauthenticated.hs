@@ -1,8 +1,8 @@
-module Hasql.InteractUnauthenticated where
+module Hasql.Core.InteractUnauthenticated where
 
 import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.Request as A
+import Hasql.Core.Model
+import qualified Hasql.Core.Request as A
 
 
 newtype Interact result =

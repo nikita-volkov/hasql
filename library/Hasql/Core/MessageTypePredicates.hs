@@ -1,4 +1,4 @@
-module Hasql.MessageTypePredicates where
+module Hasql.Core.MessageTypePredicates where
 
 import Hasql.Prelude
 

@@ -1,9 +1,9 @@
-module Hasql.Loops.Interpreter where
+module Hasql.Core.Loops.Interpreter where
 
 import Hasql.Prelude
-import Hasql.Model
-import qualified Hasql.MessageTypeNames as H
-import qualified Hasql.InterpretResponses as C
+import Hasql.Core.Model
+import qualified Hasql.Core.MessageTypeNames as H
+import qualified Hasql.Core.InterpretResponses as C
 import qualified Data.Vector as B
 
 

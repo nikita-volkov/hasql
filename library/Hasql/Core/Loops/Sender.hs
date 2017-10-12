@@ -1,7 +1,7 @@
-module Hasql.Loops.Sender where
+module Hasql.Core.Loops.Sender where
 
 import Hasql.Prelude
-import qualified Hasql.Socket as A
+import qualified Hasql.Core.Socket as A
 import qualified Data.ByteString as B
 
 

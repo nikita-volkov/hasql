@@ -1,4 +1,4 @@
-module Hasql.Loops.Serializer where
+module Hasql.Core.Loops.Serializer where
 
 import Hasql.Prelude
 import qualified ByteString.StrictBuilder as D

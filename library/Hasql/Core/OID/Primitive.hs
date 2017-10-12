@@ -1,4 +1,4 @@
-module Hasql.OID.Primitive where
+module Hasql.Core.OID.Primitive where
 
 import Hasql.Prelude
 
