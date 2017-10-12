@@ -1,4 +1,4 @@
-module Hasql.Core.Query where
+module Hasql.Core.Batch where
 
 import Hasql.Prelude
 import Hasql.Core.Model
@@ -11,24 +11,24 @@ import qualified VectorBuilder.Vector as O
 import qualified Data.Vector as G
 
 
-newtype Query result =
-  Query (Bool -> D.Registry -> (C.Request result, D.Registry))
+newtype Batch result =
+  Batch (Bool -> D.Registry -> (C.Request result, D.Registry))
 
-deriving instance Functor Query
+deriving instance Functor Batch
 
-instance Applicative Query where
+instance Applicative Batch where
   {-# INLINE pure #-}
   pure x =
-    Query (\_ psr -> (pure x, psr))
+    Batch (\_ psr -> (pure x, psr))
   {-# INLINABLE (<*>) #-}
-  (<*>) (Query left) (Query right) =
-    Query (\idt psr -> case left idt psr of
+  (<*>) (Batch left) (Batch right) =
+    Batch (\idt psr -> case left idt psr of
       (leftRequest, leftPsr) -> case right idt leftPsr of
         (rightRequest, rightPsr) -> (leftRequest <*> rightRequest, rightPsr))
 
-statement :: A.Statement params result -> params -> Query result
+statement :: A.Statement params result -> params -> Batch result
 statement (A.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 interpretResponses1 interpretResponses2 prepared) params =
-  Query $ \idt psr ->
+  Batch $ \idt psr ->
   if prepared
     then case D.lookupOrRegister template paramOIDs psr of
       (newOrOldName, newPsr) ->

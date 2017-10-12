@@ -6,7 +6,7 @@ import qualified Hasql.Core.Socket as A
 import qualified ByteString.StrictBuilder as B
 import qualified BinaryParser as D
 import qualified Hasql.Core.Request as C
-import qualified Hasql.Core.InteractUnauthenticated as G
+import qualified Hasql.Core.UnauthenticatedSession as G
 import qualified Hasql.Core.Loops.Serializer as H
 import qualified Hasql.Core.Loops.Receiver as I
 import qualified Hasql.Core.Loops.Sender as J
@@ -64,8 +64,8 @@ stop (Dispatcher interpreterTid serializerTid senderTid receiverTid _ _ _ _ _) =
     killThread senderTid
     killThread receiverTid
 
-interact :: Dispatcher -> G.Interact result -> IO (Either Error result)
-interact dispatcher (G.Interact free) =
+interact :: Dispatcher -> G.Session result -> IO (Either Error result)
+interact dispatcher (G.Session free) =
   runExceptT $ iterM interpretFreeRequest free
   where
     interpretFreeRequest request =

@@ -5,8 +5,8 @@ module Hasql.Connection
   Error(..),
   Notification(..),
   open,
-  query,
-  interact,
+  session,
+  batch,
   close,
 )
 where
@@ -17,9 +17,9 @@ import qualified Hasql.Core.Dispatcher as A
 import qualified Hasql.Core.Socket as B
 import qualified Hasql.Core.Request as C
 import qualified Hasql.Core.PreparedStatementRegistry as D
-import qualified Hasql.Core.Query as E
-import qualified Hasql.Core.Interact as F
-import qualified Hasql.Core.InteractUnauthenticated as G
+import qualified Hasql.Core.Batch as E
+import qualified Hasql.Core.Session as F
+import qualified Hasql.Core.UnauthenticatedSession as G
 
 
 data Connection =
@@ -48,15 +48,15 @@ open transportSettings username password databaseMaybe sendNotification =
               psrVar <- newMVar D.nil
               return (Right (Connection socket dispatcher psrVar idt))
 
-interact :: Connection -> F.Interact result -> IO (Either Error result)
-interact connection (F.Interact free) =
-  runExceptT (iterM (\x -> join (ExceptT (query connection x))) free)
+session :: Connection -> F.Session result -> IO (Either Error result)
+session connection (F.Session free) =
+  runExceptT (iterM (\x -> join (ExceptT (batch connection x))) free)
 
-query :: Connection -> E.Query result -> IO (Either Error result)
-query (Connection _ dispatcher psrVar idt) (E.Query queryFn) =
+batch :: Connection -> E.Batch result -> IO (Either Error result)
+batch (Connection _ dispatcher psrVar idt) (E.Batch batchFn) =
   do
     psr <- takeMVar psrVar
-    case queryFn idt psr of
+    case batchFn idt psr of
       (request, newPsr) -> do
         result <- A.performRequest dispatcher (request <* C.sync)
         putMVar psrVar $ case result of

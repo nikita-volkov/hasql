@@ -56,13 +56,13 @@ library
     Hasql.DecodeResult
     Hasql.DecodeRow
     Hasql.DecodePrimitive
-    Hasql.Query
-    Hasql.Interact
+    Hasql.Batch
+    Hasql.Session
   other-modules:
     Hasql.Prelude
     Hasql.Core.Statement
-    Hasql.Core.Query
-    Hasql.Core.Interact
+    Hasql.Core.Batch
+    Hasql.Core.Session
     Hasql.Core.Model
     Hasql.Core.EncodeParams
     Hasql.Core.EncodeParam
@@ -72,7 +72,7 @@ library
     Hasql.Core.DecodeRow
     Hasql.Core.DecodePrimitive
     Hasql.Core.InterpretResponses
-    Hasql.Core.InteractUnauthenticated
+    Hasql.Core.UnauthenticatedSession
     Hasql.Core.Request
     Hasql.Core.Dispatcher
     Hasql.Core.ParseDataRow

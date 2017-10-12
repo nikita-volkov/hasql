@@ -5,8 +5,8 @@ import Bug
 import Criterion
 import Criterion.Main
 import qualified Hasql.Connection as A
-import qualified Hasql.Query as J
-import qualified Hasql.Interact as F
+import qualified Hasql.Batch as J
+import qualified Hasql.Session as F
 import qualified Hasql.Statement as G
 import qualified Hasql.DecodeResult as B
 import qualified Hasql.DecodeRow as C
@@ -19,23 +19,23 @@ main =
   do
     connection <- connect
     let
-      interactBench :: NFData a => String -> F.Interact a -> Benchmark
-      interactBench name interact =
-        bench name (nfIO (runInteract interact))
+      sessionBench :: NFData a => String -> F.Session a -> Benchmark
+      sessionBench name session =
+        bench name (nfIO (runSession session))
         where
-          runInteract interact =
+          runSession session =
             do
-              Right result <- A.interact connection interact
+              Right result <- A.session connection session
               return result
       in
         defaultMain
         [
-          interactBench "singleLargeResultInVector" singleLargeResultInVectorInteract,
-          interactBench "singleLargeResultInRevList" singleLargeResultInRevListInteract,
-          interactBench "manyLargeResultsInVector" manyLargeResultsInVectorInteract,
-          interactBench "manyLargeResultsInVectorInBatch" manyLargeResultsInVectorInBatchInteract,
-          interactBench "manySmallResults" manySmallResultsInteract,
-          interactBench "manySmallResultsInBatch" manySmallResultsInBatchInteract
+          sessionBench "singleLargeResultInVector" singleLargeResultInVectorSession,
+          sessionBench "singleLargeResultInRevList" singleLargeResultInRevListSession,
+          sessionBench "manyLargeResultsInVector" manyLargeResultsInVectorSession,
+          sessionBench "manyLargeResultsInVectorInBatch" manyLargeResultsInVectorInBatchSession,
+          sessionBench "manySmallResults" manySmallResultsSession,
+          sessionBench "manySmallResultsInBatch" manySmallResultsInBatchSession
         ]
 
 connect :: IO A.Connection
@@ -49,46 +49,46 @@ connect =
     handleErrorOrNotification x =
       putStrLn ("Async event: " <> show x)
 
--- * Interactions
+-- * Sessions
 -------------------------
 
-singleLargeResultInVectorInteract :: F.Interact (Vector (Int64, Int64))
-singleLargeResultInVectorInteract =
-  F.query (manyRowsQuery B.vector)
+singleLargeResultInVectorSession :: F.Session (Vector (Int64, Int64))
+singleLargeResultInVectorSession =
+  F.batch (manyRowsBatch B.vector)
 
-singleLargeResultInRevListInteract :: F.Interact [(Int64, Int64)]
-singleLargeResultInRevListInteract =
-  F.query (manyRowsQuery B.revList)
+singleLargeResultInRevListSession :: F.Session [(Int64, Int64)]
+singleLargeResultInRevListSession =
+  F.batch (manyRowsBatch B.revList)
 
-manyLargeResultsInVectorInteract :: F.Interact [Vector (Int64, Int64)]
-manyLargeResultsInVectorInteract =
-  replicateM 1000 (F.query (manyRowsQuery B.vector))
+manyLargeResultsInVectorSession :: F.Session [Vector (Int64, Int64)]
+manyLargeResultsInVectorSession =
+  replicateM 1000 (F.batch (manyRowsBatch B.vector))
 
-manyLargeResultsInVectorInBatchInteract :: F.Interact [Vector (Int64, Int64)]
-manyLargeResultsInVectorInBatchInteract =
-  F.query (replicateM 1000 (manyRowsQuery B.vector))
+manyLargeResultsInVectorInBatchSession :: F.Session [Vector (Int64, Int64)]
+manyLargeResultsInVectorInBatchSession =
+  F.batch (replicateM 1000 (manyRowsBatch B.vector))
 
-manySmallResultsInteract :: F.Interact [(Int64, Int64)]
-manySmallResultsInteract =
-  replicateM 1000 (F.query singleRowQuery)
+manySmallResultsSession :: F.Session [(Int64, Int64)]
+manySmallResultsSession =
+  replicateM 1000 (F.batch singleRowBatch)
 
-manySmallResultsInBatchInteract :: F.Interact [(Int64, Int64)]
-manySmallResultsInBatchInteract =
-  F.query (replicateM 1000 singleRowQuery)
+manySmallResultsInBatchSession :: F.Session [(Int64, Int64)]
+manySmallResultsInBatchSession =
+  F.batch (replicateM 1000 singleRowBatch)
 
 -- * Queries
 -------------------------
 
-singleRowQuery :: J.Query (Int64, Int64)
-singleRowQuery =
+singleRowBatch :: J.Batch (Int64, Int64)
+singleRowBatch =
   J.statement (G.prepared "select 1, 2" conquer decode) ()
   where
     decode =
       B.head ((,) <$> C.primitive D.int8 <*> C.primitive D.int8)
 
-{-# INLINE manyRowsQuery #-}
-manyRowsQuery :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Query result
-manyRowsQuery decodeResult =
+{-# INLINE manyRowsBatch #-}
+manyRowsBatch :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Batch result
+manyRowsBatch decodeResult =
   J.statement (G.prepared template mempty decode) ()
   where
     template =
