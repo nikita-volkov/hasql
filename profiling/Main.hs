@@ -3,12 +3,12 @@ module Main where
 import Prelude hiding (interact)
 import Bug
 import qualified Hasql.Connection as A
-import qualified Hasql.Core.Query as J
-import qualified Hasql.Core.Interact as F
-import qualified Hasql.Core.Model as E
-import qualified Hasql.Core.DecodeResult as B
-import qualified Hasql.Core.DecodeRow as C
-import qualified Hasql.Core.DecodePrimitive as D
+import qualified Hasql.Query as J
+import qualified Hasql.Interact as F
+import qualified Hasql.DecodeResult as B
+import qualified Hasql.DecodeRow as C
+import qualified Hasql.DecodePrimitive as D
+import qualified Hasql.Statement as G
 import qualified Data.Vector as H
 import qualified Control.Foldl as I
 
@@ -51,13 +51,13 @@ interact amountOfQueries amountOfStatements amountOfRows =
 
 manyRowsQuery :: Int -> (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Query result
 manyRowsQuery amountOfRows decodeResult =
-  J.preparedStatement template mempty decode
+  J.statement (G.unprepared template conquer decode) ()
   where
     template =
       "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a, generate_series(10000," <> fromString (show (amountOfRows + 10000)) <> ") as b"
     decode =
       decodeResult $
-      tuple <$> C.nonNullPrimitive D.int8 <*> C.nonNullPrimitive D.int8
+      tuple <$> C.primitive D.int8 <*> C.primitive D.int8
         where
         tuple !a !b =
           (a, b)
