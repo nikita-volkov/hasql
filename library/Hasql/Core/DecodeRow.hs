@@ -13,3 +13,7 @@ newtype DecodeRow row =
 primitive :: B.DecodePrimitive column -> DecodeRow column
 primitive (B.DecodePrimitive (ReaderT parser)) =
   DecodeRow (ReaderT (A.column . parser))
+
+nullablePrimitive :: B.DecodePrimitive column -> DecodeRow (Maybe column)
+nullablePrimitive (B.DecodePrimitive (ReaderT parser)) =
+  DecodeRow (ReaderT (A.nullableColumn . parser))
