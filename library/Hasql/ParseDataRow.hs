@@ -23,14 +23,14 @@ instance Applicative ParseDataRow where
       (leftSize + rightSize)
       (\vec !index -> leftInterpreter vec index <*> rightInterpreter vec (index + leftSize))
 
-column :: D.BinaryParser column -> ParseDataRow (Maybe column)
-column parser =
+nullableColumn :: D.BinaryParser column -> ParseDataRow (Maybe column)
+nullableColumn parser =
   ParseDataRow 1 $ \vec index ->
   either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
   traverse (D.run parser) (A.unsafeIndex vec index)
 
-nonNullColumn :: D.BinaryParser column -> ParseDataRow column
-nonNullColumn parser =
+column :: D.BinaryParser column -> ParseDataRow column
+column parser =
   ParseDataRow 1 $ \vec index ->
   either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
   case A.unsafeIndex vec index of

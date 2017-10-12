@@ -10,6 +10,6 @@ newtype DecodeRow row =
   DecodeRow (ReaderT Bool A.ParseDataRow row)
   deriving (Functor, Applicative)
 
-nonNullPrimitive :: B.DecodePrimitive column -> DecodeRow column
-nonNullPrimitive (B.DecodePrimitive (ReaderT parser)) =
-  DecodeRow (ReaderT (A.nonNullColumn . parser))
+primitive :: B.DecodePrimitive column -> DecodeRow column
+primitive (B.DecodePrimitive (ReaderT parser)) =
+  DecodeRow (ReaderT (A.column . parser))

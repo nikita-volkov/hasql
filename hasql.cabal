@@ -50,10 +50,14 @@ library
   exposed-modules:
     Hasql.Connection
   other-modules:
+    Hasql.Statement
     Hasql.Query
     Hasql.Interact
     Hasql.Model
-    Hasql.EncodedParams
+    Hasql.EncodeParams
+    Hasql.EncodeParam
+    Hasql.EncodePrimitive
+    Hasql.EncodeArray
     Hasql.DecodeResult
     Hasql.DecodeRow
     Hasql.DecodePrimitive
