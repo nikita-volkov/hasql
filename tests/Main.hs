@@ -23,13 +23,13 @@ main =
 connect :: IO A.Connection
 connect =
   do
-    openingResult <- A.open (A.TCPConnectionSettings "localhost" 5432) "postgres" "" Nothing handleErrorOrNotification
+    openingResult <- A.open (A.TCPConnectionSettings "localhost" 5432) "postgres" "" Nothing handleNotification
     case openingResult of
       Left error -> fail (showString "Can't connect: " (show error))
       Right connection -> return connection
   where
-    handleErrorOrNotification x =
-      putStrLn ("Async event: " <> show x)
+    handleNotification x =
+      putStrLn ("Notification: " <> show x)
 
 runTests :: A.Connection -> IO ()
 runTests connection =
