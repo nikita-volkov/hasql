@@ -25,13 +25,13 @@ instance Applicative ParseDataRow where
 
 nullableColumn :: D.BinaryParser column -> ParseDataRow (Maybe column)
 nullableColumn parser =
-  ParseDataRow 1 $ \vec index ->
+  ParseDataRow 1 $ \vec !index ->
   either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
   traverse (D.run parser) (A.unsafeIndex vec index)
 
 column :: D.BinaryParser column -> ParseDataRow column
 column parser =
-  ParseDataRow 1 $ \vec index ->
+  ParseDataRow 1 $ \vec !index ->
   either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
   case A.unsafeIndex vec index of
     Just bytes -> D.run parser bytes
