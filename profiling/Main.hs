@@ -17,8 +17,12 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- fmap force <$> A.session connection (session 10 200 100)
-    Right !result <- fmap force <$> A.session connection (session 200 10 100)
+    Right !result <- fmap force <$> A.session connection (session 50 10 100)
+    Right !result <- fmap force <$> A.session connection (session 50 10 100)
+    Right !result <- fmap force <$> A.session connection (session 10 50 100)
+    Right !result <- fmap force <$> A.session connection (session 50 10 100)
+    Right !result <- fmap force <$> A.session connection (session 10 50 100)
+    Right !result <- fmap force <$> A.session connection (session 10 50 100)
     traceEventIO "STOP Session"
     return ()
 
