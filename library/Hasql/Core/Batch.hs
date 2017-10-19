@@ -22,16 +22,16 @@ instance Applicative Batch where
     Batch (\_ psr -> (pure x, psr))
   {-# INLINABLE (<*>) #-}
   (<*>) (Batch left) (Batch right) =
-    Batch (\idt psr -> case left idt psr of
+    Batch (\(!idt) (!psr) -> case left idt psr of
       (leftRequest, leftPsr) -> case right idt leftPsr of
         (rightRequest, rightPsr) -> (leftRequest <*> rightRequest, rightPsr))
 
 statement :: A.Statement params result -> params -> Batch result
 statement (A.Statement template paramOIDs paramBytesBuilder1 paramBytesBuilder2 interpretResponses1 interpretResponses2 prepared) params =
-  Batch $ \idt psr ->
+  Batch $ \(!idt) (!psr) ->
   if prepared
     then case D.lookupOrRegister template paramOIDs psr of
-      (newOrOldName, newPsr) ->
+      (!newOrOldName, !newPsr) ->
         let
           request =
             case newOrOldName of
