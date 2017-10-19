@@ -191,3 +191,14 @@ sizedBytes =
     if size == -1
       then return Nothing
       else Just <$> A.take size
+
+{-# INLINE sizedBytesCopy #-}
+sizedBytesCopy :: Scanner (Maybe ByteString)
+sizedBytesCopy =
+  do
+    size <- fromIntegral <$> word32
+    if size == -1
+      then return Nothing
+      else do
+        !bytes <- fmap B.copy (A.take size)
+        return (Just bytes)
