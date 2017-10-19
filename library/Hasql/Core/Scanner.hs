@@ -99,7 +99,7 @@ dataRowBody :: (Vector (Maybe ByteString) -> result) -> Scanner result
 dataRowBody result =
   do
     amountOfColumns <- word16
-    bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
+    bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytesCopy
     return (result bytesVector)
 
 {-# INLINE commandCompleteBody #-}
