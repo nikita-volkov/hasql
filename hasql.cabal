@@ -87,7 +87,6 @@ library
     Hasql.Core.OID.Array
     Hasql.Core.OID.Primitive
     Hasql.Core.PreparedStatementRegistry
-    Hasql.Core.Protocol.Decoding
     Hasql.Core.Protocol.Encoding
     Hasql.Core.Protocol.Model
   build-depends:
