@@ -78,7 +78,6 @@ library
     Hasql.Core.MessageTypePredicates
     Hasql.Core.NoticeFieldTypes
     Hasql.Core.MessageTypeNames
-    Hasql.Core.Scanner
     Hasql.Core.Loops.Serializer
     Hasql.Core.Loops.Receiver
     Hasql.Core.Loops.Sender
@@ -88,6 +87,8 @@ library
     Hasql.Core.OID.Primitive
     Hasql.Core.PreparedStatementRegistry
     Hasql.Core.Protocol.Encoding
+    Hasql.Core.Protocol.Take
+    Hasql.Core.Protocol.Peek
     Hasql.Core.Protocol.Model
   build-depends:
     -- concurrency:
@@ -98,11 +99,13 @@ library
     -- template-haskell:
     template-haskell == 2.*,
     -- parsing:
-    scanner == 0.2.*,
     binary-parser >= 0.5.5 && < 0.6,
     attoparsec >= 0.10 && < 0.14,
     -- database:
     postgresql-binary == 0.12.*,
+    -- IO:
+    ptr >= 0.14 && < 0.15,
+    buffer >= 0.5 && < 0.6,
     -- data:
     bytestring-strict-builder >= 0.4.5 && < 0.5,
     vector-builder == 0.3.*,
