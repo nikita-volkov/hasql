@@ -32,7 +32,7 @@ loop socket sendResponse reportTransportError =
         load =
           peekFromBuffer E.response $ \bodyPeek ->
           peekFromBuffer bodyPeek $ \case
-            Just (Just (Right response)) -> sendResponse response >> load
+            Just (Just (Right !response)) -> sendResponse response >> load
             Just (Just (Left error)) -> $(todo "Handle message parsing error")
             Just Nothing -> load
             Nothing -> $(todo "Handle corrupt data")
