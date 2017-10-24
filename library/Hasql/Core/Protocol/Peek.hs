@@ -39,4 +39,5 @@ messageTypeAndPayload take_ =
 {-# INLINE response #-}
 response :: Peek (Peek (Maybe (Maybe (Either Text Response))))
 response =
+  {-# SCC "response" #-} 
   messageTypeAndPayload G.responseBody

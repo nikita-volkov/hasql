@@ -24,6 +24,7 @@ The value of the column, in the format indicated by the associated format code. 
 {-# INLINE sizedBytes #-}
 sizedBytes :: Take (Maybe ByteString)
 sizedBytes =
+  {-# SCC "sizedBytes" #-} 
   do
     size <- fromIntegral <$> beWord32
     if size == -1
@@ -37,6 +38,7 @@ sizedBytes =
 {-# INLINE responseBody #-}
 responseBody :: Word8 -> Take (Maybe (Either Text Response))
 responseBody type_ =
+  {-# SCC "responseBody" #-} 
   if
     | C.dataRow type_ -> dataRowBody (Just . Right . DataRowResponse)
     | C.commandComplete type_ -> commandCompleteBody (Just . Right . CommandCompleteResponse)
@@ -53,6 +55,7 @@ responseBody type_ =
 {-# INLINE dataRowBody #-}
 dataRowBody :: (Vector (Maybe ByteString) -> result) -> Take result
 dataRowBody result =
+  {-# SCC "dataRowBody" #-} 
   do
     amountOfColumns <- beWord16
     bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
@@ -61,6 +64,7 @@ dataRowBody result =
 {-# INLINE commandCompleteBody #-}
 commandCompleteBody :: (Int -> result) -> Take result
 commandCompleteBody result =
+  {-# SCC "commandCompleteBody" #-} 
   do
     header <- bytesWhile byteIsUpperLetter
     word8
@@ -77,6 +81,7 @@ commandCompleteBody result =
 {-# INLINE readyForQueryBody #-}
 readyForQueryBody :: Take (Either Text TransactionStatus)
 readyForQueryBody =
+  {-# SCC "readyForQueryBody" #-} 
   do
     statusByte <- word8
     case statusByte of
@@ -88,11 +93,13 @@ readyForQueryBody =
 {-# INLINE notificationBody #-}
 notificationBody :: (Word32 -> ByteString -> ByteString -> result) -> Take result
 notificationBody result =
+  {-# SCC "notificationBody" #-} 
   result <$> beWord32 <*> nullTerminatedBytes <*> nullTerminatedBytes
 
 {-# INLINE errorResponseBody #-}
 errorResponseBody :: (ByteString -> ByteString -> result) -> Take (Either Text result)
 errorResponseBody result =
+  {-# SCC "errorResponseBody" #-} 
   iterate Nothing Nothing
   where
     iterate code message =
@@ -116,11 +123,13 @@ errorResponseBody result =
 {-# INLINE noticeField #-}
 noticeField :: (Word8 -> ByteString -> result) -> Take result
 noticeField result =
+  {-# SCC "noticeField" #-} 
   result <$> word8 <*> nullTerminatedBytes
 
 {-# INLINE authenticationBody #-}
 authenticationBody :: Take (Either Text AuthenticationStatus)
 authenticationBody =
+  {-# SCC "authenticationBody" #-} 
   do
     status <- beWord32
     case status of
@@ -134,4 +143,5 @@ authenticationBody =
 {-# INLINE parameterStatusBody #-}
 parameterStatusBody :: (ByteString -> ByteString -> result) -> Take result
 parameterStatusBody result =
+  {-# SCC "parameterStatusBody" #-} 
   result <$> nullTerminatedBytes <*> nullTerminatedBytes

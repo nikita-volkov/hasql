@@ -8,6 +8,7 @@ import qualified Data.ByteString as B
 {-# INLINABLE loop #-}
 loop :: A.Socket -> IO ByteString -> (Text -> IO ()) -> IO ()
 loop socket getNextChunk reportError =
+  {-# SCC "loop" #-} 
   forever $ do
     bytes <- getNextChunk
     resultOfSending <- A.send socket bytes

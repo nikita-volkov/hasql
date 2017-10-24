@@ -11,6 +11,7 @@ import qualified Ptr.Peek as D
 {-# INLINABLE loop #-}
 loop :: A.Socket -> (Response -> IO ()) -> (Text -> IO ()) -> IO ()
 loop socket sendResponse reportTransportError =
+  {-# SCC "loop" #-} 
   do
     buffer <- C.new 16384
     withBuffer buffer
@@ -27,7 +28,7 @@ loop socket sendResponse reportTransportError =
         peekFromBuffer :: D.Peek a -> (a -> IO ()) -> IO ()
         peekFromBuffer (D.Peek amount ptrIO) succeed =
           fix $ \recur ->
-          join $ C.pull buffer amount (fmap succeed . ptrIO) $ \_ ->
+          join $ C.pull buffer amount (fmap succeed . {-# SCC "loop/peeking" #-} ptrIO) $ \_ ->
           receiveToBuffer reportTransportError recur
         load =
           peekFromBuffer E.response $ \bodyPeek ->
