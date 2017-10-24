@@ -29,7 +29,9 @@ sizedBytes =
     size <- fromIntegral <$> beWord32
     if size == -1
       then return Nothing
-      else Just <$> bytes size
+      else do
+        !bytes_ <- bytes size
+        return (Just bytes_)
 
 
 -- * Responses
@@ -58,7 +60,7 @@ dataRowBody result =
   {-# SCC "dataRowBody" #-} 
   do
     amountOfColumns <- beWord16
-    bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
+    !bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
     return (result bytesVector)
 
 {-# INLINE commandCompleteBody #-}
