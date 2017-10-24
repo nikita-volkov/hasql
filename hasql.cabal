@@ -78,7 +78,6 @@ library
     Hasql.Core.MessageTypePredicates
     Hasql.Core.NoticeFieldTypes
     Hasql.Core.MessageTypeNames
-    Hasql.Core.Scanner
     Hasql.Core.Loops.Serializer
     Hasql.Core.Loops.Receiver
     Hasql.Core.Loops.Sender
@@ -100,7 +99,6 @@ library
     -- template-haskell:
     template-haskell == 2.*,
     -- parsing:
-    scanner == 0.2.*,
     binary-parser >= 0.5.5 && < 0.6,
     attoparsec >= 0.10 && < 0.14,
     -- database:
