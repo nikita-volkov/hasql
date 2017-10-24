@@ -8,6 +8,7 @@ import qualified Data.ByteString.Internal as A
 import qualified Data.Vector as D
 import qualified Hasql.Core.MessageTypePredicates as C
 import qualified Hasql.Core.NoticeFieldTypes as E
+import qualified Hasql.Core.ParseDataRow as F
 
 
 
@@ -42,7 +43,7 @@ responseBody :: Word8 -> Take (Maybe (Either Text Response))
 responseBody type_ =
   {-# SCC "responseBody" #-} 
   if
-    | C.dataRow type_ -> dataRowBody (Just . Right . DataRowResponse)
+    | C.dataRow type_ -> (Just . Right . DataRowResponse) <$> allBytes
     | C.commandComplete type_ -> commandCompleteBody (Just . Right . CommandCompleteResponse)
     | C.readyForQuery type_ -> fmap (Just . fmap ReadyForQueryResponse) readyForQueryBody
     | C.parseComplete type_ -> pure (Just (Right ParseCompleteResponse))
@@ -54,14 +55,30 @@ responseBody type_ =
     | C.parameterStatus type_ -> Just . Right <$> parameterStatusBody ParameterStatusResponse
     | True -> pure Nothing
 
-{-# INLINE dataRowBody #-}
-dataRowBody :: (Vector (Maybe ByteString) -> result) -> Take result
-dataRowBody result =
-  {-# SCC "dataRowBody" #-} 
+{-# INLINE unparsedFieldsOfDataRowBody #-}
+unparsedFieldsOfDataRowBody :: Take (Vector (Maybe ByteString))
+unparsedFieldsOfDataRowBody =
+  {-# SCC "unparsedFieldsOfDataRowBody" #-} 
   do
     amountOfColumns <- beWord16
-    !bytesVector <- D.replicateM (fromIntegral amountOfColumns) sizedBytes
-    return (result bytesVector)
+    D.replicateM (fromIntegral amountOfColumns) sizedBytes
+
+{-# INLINE dataRowBody #-}
+dataRowBody :: F.ParseDataRow row -> Take (Either Text row)
+dataRowBody (F.ParseDataRow rowLength vectorFn) =
+  fmap fromUnparsedValues unparsedFieldsOfDataRowBody
+  where
+    fromUnparsedValues unparsedValues =
+      if actualRowLength == rowLength
+        then vectorFn unparsedValues 0
+        else Left (fromString
+          (showString "Invalid amount of columns: "
+            (shows actualRowLength
+              (showString ", expecting "
+                (show rowLength)))))
+      where
+        actualRowLength =
+          D.length unparsedValues
 
 {-# INLINE commandCompleteBody #-}
 commandCompleteBody :: (Int -> result) -> Take result
