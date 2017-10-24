@@ -31,9 +31,8 @@ loop socket sendResponse reportTransportError =
           join $ C.pull buffer amount (fmap succeed . {-# SCC "loop/peeking" #-} ptrIO) $ \_ ->
           receiveToBuffer reportTransportError recur
         load =
-          peekFromBuffer E.response $ \bodyPeek ->
-          peekFromBuffer bodyPeek $ \case
-            Just (Just (Right !response)) -> sendResponse response >> load
-            Just (Just (Left error)) -> $(todo "Handle message parsing error")
-            Just Nothing -> load
-            Nothing -> $(todo "Handle corrupt data")
+          peekFromBuffer
+            (E.response
+              $(todo "Handle corrupt response")
+              (maybe load (\response -> sendResponse response >> load)))
+            (\ bodyPeek -> peekFromBuffer bodyPeek id)

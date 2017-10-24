@@ -87,7 +87,7 @@ library
     Hasql.Core.OID.Primitive
     Hasql.Core.PreparedStatementRegistry
     Hasql.Core.Protocol.Encoding
-    Hasql.Core.Protocol.Take
+    Hasql.Core.Protocol.Parse
     Hasql.Core.Protocol.Peek
     Hasql.Core.Protocol.Model
   build-depends:
@@ -104,7 +104,7 @@ library
     -- database:
     postgresql-binary == 0.12.*,
     -- IO:
-    ptr >= 0.14.1 && < 0.15,
+    ptr >= 0.15 && < 0.16,
     buffer >= 0.5 && < 0.6,
     -- data:
     bytestring-strict-builder >= 0.4.5 && < 0.5,
