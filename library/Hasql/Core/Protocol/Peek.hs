@@ -29,7 +29,7 @@ payloadLength =
 {-# INLINE messageTypeAndPayload #-}
 messageTypeAndPayload :: (Word8 -> F.Take a) -> Peek (Peek (Maybe a))
 messageTypeAndPayload take_ =
-  messageTypeAndLength $ \messageType length ->
+  messageTypeAndLength $ \(!messageType) (!length) ->
   take length (take_ messageType)
 
 
