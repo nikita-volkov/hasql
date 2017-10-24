@@ -3,31 +3,36 @@ module Hasql.Core.Loops.Receiver where
 import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.Socket as A
-import qualified Data.ByteString as B
-import qualified Scanner as C
-import qualified Hasql.Core.Scanner as D
+import qualified Hasql.Core.Protocol.Peek as E
+import qualified Buffer as C
+import qualified Ptr.Peek as D
 
 
 {-# INLINABLE loop #-}
 loop :: A.Socket -> (Response -> IO ()) -> (Text -> IO ()) -> IO ()
-loop socket sendResponse reportError =
-  processScannerResult (C.More (C.scan D.response))
+loop socket sendResponse reportTransportError =
+  do
+    buffer <- C.new 16384
+    withBuffer buffer
   where
-    processScannerResult =
-      \case
-        C.More consume -> do
-          receivingResult <- A.receive socket (shiftL 2 12)
-          case receivingResult of
-            Right bytes ->
-              if B.null bytes
-                then reportError "Connection interrupted"
-                else processScannerResult (consume bytes)
-            Left msg ->
-              reportError msg
-        C.Done remainders responseMaybe -> do
-          traverse_ sendResponse responseMaybe
-          if B.null remainders
-            then processScannerResult (C.More (C.scan D.response))
-            else processScannerResult (C.scan D.response remainders)
-        C.Fail remainders message -> do
-          reportError (fromString message)
+    withBuffer buffer =
+      load
+      where
+        receiveToBuffer failure success =
+          C.push buffer 8192 $ \ptr -> do
+            result <- A.receiveToPtr socket ptr 8192
+            case result of
+              Right amountReceived -> return (amountReceived, success)
+              Left error -> return (0, failure error)
+        peekFromBuffer :: D.Peek a -> (a -> IO ()) -> IO ()
+        peekFromBuffer (D.Peek amount ptrIO) succeed =
+          fix $ \recur ->
+          join $ C.pull buffer amount (fmap succeed . ptrIO) $ \_ ->
+          receiveToBuffer reportTransportError recur
+        load =
+          peekFromBuffer E.response $ \bodyPeek ->
+          peekFromBuffer bodyPeek $ \case
+            Just (Just (Right response)) -> sendResponse response >> load
+            Just (Just (Left error)) -> $(todo "Handle message parsing error")
+            Just Nothing -> load
+            Nothing -> $(todo "Handle corrupt data")
