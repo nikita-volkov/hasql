@@ -6,6 +6,9 @@ import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Core.MessageTypeNames as H
 import qualified Hasql.Core.ParseDataRow as A
 import qualified Data.Vector as B
+import qualified Hasql.Core.Protocol.Parse.Responses as E
+import qualified Ptr.Parse as C
+import qualified Ptr.ByteString as D
 
 
 newtype InterpretResponses result =
@@ -57,7 +60,7 @@ matchResponse match =
                 processResponse response
 
 foldRows :: FoldM IO row result -> A.ParseDataRow row -> InterpretResponses (result, Int)
-foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) =
+foldRows (FoldM foldStep foldStart foldEnd) pdr =
   InterpretResponses def
   where
     def fetchResponse discardResponse =
@@ -67,19 +70,16 @@ foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) 
       where
         processResponse !state response =
           case response of
-            DataRowResponse values ->
-              if B.length values == rowLength
-                then case vectorFn values 0 of
-                  Left error -> return (Left (DecodingError error))
-                  Right row -> do
+            DataRowResponse bytes ->
+              D.parse bytes
+                (do
+                  row <- E.dataRowBody pdr
+                  return $ do
                     nextState <- foldStep state row
                     nextResponse <- fetchResponse
-                    processResponse nextState nextResponse
-                else return (Left (DecodingError (fromString
-                  (showString "Invalid amount of columns: "
-                    (shows (B.length values)
-                      (showString ", expecting "
-                        (show rowLength)))))))
+                    processResponse nextState nextResponse)
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
+                (return . Left . ProtocolError)
             CommandCompleteResponse amount ->
               do
                 result <- foldEnd state
@@ -97,7 +97,7 @@ foldRows (FoldM foldStep foldStart foldEnd) (A.ParseDataRow rowLength vectorFn) 
                 processResponse state nextResponse
 
 singleRow :: A.ParseDataRow row -> InterpretResponses row
-singleRow (A.ParseDataRow rowLength vectorFn) =
+singleRow pdr =
   InterpretResponses def
   where
     def fetchResponse discardResponse =
@@ -105,18 +105,15 @@ singleRow (A.ParseDataRow rowLength vectorFn) =
       where
         processResponseWithoutRow response =
           case response of
-            DataRowResponse values ->
-              if B.length values == rowLength
-                then case vectorFn values 0 of
-                  Left error -> return (Left (DecodingError error))
-                  Right row -> do
+            DataRowResponse bytes ->
+              D.parse bytes
+                (do
+                  row <- E.dataRowBody pdr
+                  return $ do
                     nextResponse <- fetchResponse
-                    processResponseWithRow row nextResponse
-                else return (Left (DecodingError (fromString
-                  (showString "Invalid amount of columns: "
-                    (shows (B.length values)
-                      (showString ", expecting "
-                        (show rowLength)))))))
+                    processResponseWithRow row nextResponse)
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
+                (return . Left . ProtocolError)
             CommandCompleteResponse _ ->
               return (Left (DecodingError "Not a single row"))
             ErrorResponse state message ->

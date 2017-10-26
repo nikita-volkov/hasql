@@ -4,7 +4,7 @@ import Hasql.Prelude hiding (State, peek)
 
 
 data Response =
-  DataRowResponse !(Vector (Maybe ByteString)) |
+  DataRowResponse {-# UNPACK #-} !ByteString |
   CommandCompleteResponse !Int |
   ReadyForQueryResponse !TransactionStatus |
   ParseCompleteResponse |

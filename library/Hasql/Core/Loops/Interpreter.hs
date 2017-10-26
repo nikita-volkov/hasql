@@ -12,6 +12,7 @@ data ResultProcessor =
 
 loop :: IO Response -> IO (Maybe ResultProcessor) -> (Notification -> IO ()) -> IO ()
 loop fetchResponse fetchResultProcessor sendNotification =
+  {-# SCC "loop" #-} 
   forever $ do
     response <- fetchResponse
     fetchResult <- fetchResultProcessor
@@ -34,6 +35,7 @@ Append one element to a fetching action.
 -}
 backtrackFetch :: a -> IO a -> IO (IO a)
 backtrackFetch element fetch =
+  {-# SCC "backtrackFetch" #-} 
   do
     notFirstRef <- newIORef False
     return $ do

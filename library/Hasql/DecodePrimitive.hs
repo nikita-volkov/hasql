@@ -2,6 +2,7 @@ module Hasql.DecodePrimitive
 (
   DecodePrimitive,
   bool,
+  int4,
   int8,
   text,
   bytea,

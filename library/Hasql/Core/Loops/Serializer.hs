@@ -12,6 +12,7 @@ data Message =
 
 loop :: IO Message -> (ByteString -> IO ()) -> IO ()
 loop getMessage sendBytes =
+  {-# SCC "loop" #-} 
   startAnew
   where
     size =
