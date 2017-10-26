@@ -5,6 +5,11 @@ import Ptr.Parse
 import Hasql.Core.Protocol.Parse.Primitives
 
 
+{-# INLINE int4 #-}
+int4 :: Parse Int32
+int4 =
+  fmap fromIntegral beWord32
+
 {-# INLINE int8 #-}
 int8 :: Parse Int64
 int8 =

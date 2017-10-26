@@ -32,6 +32,11 @@ bool :: DecodePrimitive Bool
 bool =
   nonDateTime B.bool
 
+{-# INLINE int4 #-}
+int4 :: DecodePrimitive Int32
+int4 =
+  nonDateTime B.int4
+
 {-# INLINE int8 #-}
 int8 :: DecodePrimitive Int64
 int8 =

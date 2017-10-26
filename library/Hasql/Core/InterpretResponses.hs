@@ -78,7 +78,7 @@ foldRows (FoldM foldStep foldStart foldEnd) pdr =
                     nextState <- foldStep state row
                     nextResponse <- fetchResponse
                     processResponse nextState nextResponse)
-                (\ _ -> return (Left (ProtocolError "Not enough data")))
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
                 (return . Left . ProtocolError)
             CommandCompleteResponse amount ->
               do
@@ -112,7 +112,7 @@ singleRow pdr =
                   return $ do
                     nextResponse <- fetchResponse
                     processResponseWithRow row nextResponse)
-                (\ _ -> return (Left (ProtocolError "Not enough data")))
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
                 (return . Left . ProtocolError)
             CommandCompleteResponse _ ->
               return (Left (DecodingError "Not a single row"))
