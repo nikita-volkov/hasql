@@ -52,42 +52,42 @@ connect =
 -- * Sessions
 -------------------------
 
-singleLargeResultInVectorSession :: F.Session (Vector (Int64, Int64))
+singleLargeResultInVectorSession :: F.Session (Vector (Int32, Int32))
 singleLargeResultInVectorSession =
   F.batch (manyRowsBatch B.vector)
 
-singleLargeResultInRevListSession :: F.Session [(Int64, Int64)]
+singleLargeResultInRevListSession :: F.Session [(Int32, Int32)]
 singleLargeResultInRevListSession =
   F.batch (manyRowsBatch B.revList)
 
-manyLargeResultsInVectorSession :: F.Session [Vector (Int64, Int64)]
+manyLargeResultsInVectorSession :: F.Session [Vector (Int32, Int32)]
 manyLargeResultsInVectorSession =
   replicateM 1000 (F.batch (manyRowsBatch B.vector))
 
-manyLargeResultsInVectorInBatchSession :: F.Session [Vector (Int64, Int64)]
+manyLargeResultsInVectorInBatchSession :: F.Session [Vector (Int32, Int32)]
 manyLargeResultsInVectorInBatchSession =
   F.batch (replicateM 1000 (manyRowsBatch B.vector))
 
-manySmallResultsSession :: F.Session [(Int64, Int64)]
+manySmallResultsSession :: F.Session [(Int32, Int32)]
 manySmallResultsSession =
   replicateM 1000 (F.batch singleRowBatch)
 
-manySmallResultsInBatchSession :: F.Session [(Int64, Int64)]
+manySmallResultsInBatchSession :: F.Session [(Int32, Int32)]
 manySmallResultsInBatchSession =
   F.batch (replicateM 1000 singleRowBatch)
 
 -- * Queries
 -------------------------
 
-singleRowBatch :: J.Batch (Int64, Int64)
+singleRowBatch :: J.Batch (Int32, Int32)
 singleRowBatch =
   J.statement (G.prepared "select 1, 2" conquer decode) ()
   where
     decode =
-      B.head ((,) <$> C.primitive D.int8 <*> C.primitive D.int8)
+      B.head ((,) <$> C.primitive D.int4 <*> C.primitive D.int4)
 
 {-# INLINE manyRowsBatch #-}
-manyRowsBatch :: (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Batch result
+manyRowsBatch :: (C.DecodeRow (Int32, Int32) -> B.DecodeResult result) -> J.Batch result
 manyRowsBatch decodeResult =
   J.statement (G.prepared template mempty decode) ()
   where
@@ -95,7 +95,7 @@ manyRowsBatch decodeResult =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
     decode =
       decodeResult $
-      tuple <$> C.primitive D.int8 <*> C.primitive D.int8
+      tuple <$> C.primitive D.int4 <*> C.primitive D.int4
         where
         tuple !a !b =
           (a, b)

@@ -1,8 +1,8 @@
 module Hasql.Core.ParseDataRow where
 
 import Hasql.Prelude
-import qualified BinaryParser as D
-import qualified Data.Vector as A
+import qualified Ptr.Parse as B
+import qualified Hasql.Core.Protocol.Parse.Primitives as C
 
 
 {-|
@@ -11,30 +11,20 @@ A specification for processing of DataRow messages.
 It is assumed that the size of the input vector is checked externally.
 -}
 data ParseDataRow result =
-  ParseDataRow !Int !(Vector (Maybe ByteString) -> Int -> Either Text result)
+  ParseDataRow {-# UNPACK #-} !Int (B.Parse result)
 
 deriving instance Functor ParseDataRow
 
 instance Applicative ParseDataRow where
   pure x =
-    ParseDataRow 0 (\_ _ -> Right x)
-  (<*>) (ParseDataRow leftSize leftInterpreter) (ParseDataRow rightSize rightInterpreter) =
-    ParseDataRow
-      (leftSize + rightSize)
-      (\vec !index -> leftInterpreter vec index <*> rightInterpreter vec (index + leftSize))
+    ParseDataRow 0 (pure x)
+  (<*>) (ParseDataRow leftSize leftParse) (ParseDataRow rightSize rightParse) =
+    ParseDataRow (leftSize + rightSize) (leftParse <*> rightParse)
 
-nullableColumn :: D.BinaryParser column -> ParseDataRow (Maybe column)
-nullableColumn parser =
-  {-# SCC "nullableColumn" #-} 
-  ParseDataRow 1 $ \vec !index ->
-  either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
-  traverse (D.run parser) (A.unsafeIndex vec index)
+nullableColumn :: B.Parse column -> ParseDataRow (Maybe column)
+nullableColumn parseColumn =
+  ParseDataRow 1 (C.nullableDataRowColumn parseColumn)
 
-column :: D.BinaryParser column -> ParseDataRow column
-column parser =
-  {-# SCC "column" #-} 
-  ParseDataRow 1 $ \vec !index ->
-  either (Left . mappend ("Column " <> (fromString . show) index <> ": ")) Right $
-  case A.unsafeIndex vec index of
-    Just bytes -> D.run parser bytes
-    Nothing -> Left "Unexpected NULL"
+column :: B.Parse column -> ParseDataRow column
+column parseColumn =
+  ParseDataRow 1 (C.nonNullDataRowColumn parseColumn)

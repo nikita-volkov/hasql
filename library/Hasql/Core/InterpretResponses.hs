@@ -6,7 +6,7 @@ import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Core.MessageTypeNames as H
 import qualified Hasql.Core.ParseDataRow as A
 import qualified Data.Vector as B
-import qualified Hasql.Core.Protocol.Parse as E
+import qualified Hasql.Core.Protocol.Parse.Responses as E
 import qualified Ptr.Parse as C
 import qualified Ptr.ByteString as D
 
@@ -78,7 +78,7 @@ foldRows (FoldM foldStep foldStart foldEnd) pdr =
                     nextState <- foldStep state row
                     nextResponse <- fetchResponse
                     processResponse nextState nextResponse)
-                (\ _ -> return (Left (ProtocolError "Not enough data")))
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
                 (return . Left . ProtocolError)
             CommandCompleteResponse amount ->
               do
@@ -112,7 +112,7 @@ singleRow pdr =
                   return $ do
                     nextResponse <- fetchResponse
                     processResponseWithRow row nextResponse)
-                (\ _ -> return (Left (ProtocolError "Not enough data")))
+                (\ n -> return (Left (ProtocolError ("Missing " <> (fromString . show) n <> " bytes"))))
                 (return . Left . ProtocolError)
             CommandCompleteResponse _ ->
               return (Left (DecodingError "Not a single row"))

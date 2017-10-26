@@ -3,8 +3,6 @@ module Hasql.Core.Dispatcher where
 import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.Socket as A
-import qualified ByteString.StrictBuilder as B
-import qualified BinaryParser as D
 import qualified Hasql.Core.Request as C
 import qualified Hasql.Core.UnauthenticatedSession as G
 import qualified Hasql.Core.Loops.Serializer as H

@@ -3,7 +3,6 @@ module Hasql.Core.Request where
 import Hasql.Prelude
 import Hasql.Core.Model
 import qualified ByteString.StrictBuilder as B
-import qualified BinaryParser as D
 import qualified Hasql.Core.InterpretResponses as A
 import qualified Hasql.Core.Protocol.Encoding as K
 import qualified Hasql.Core.Protocol.Model as C

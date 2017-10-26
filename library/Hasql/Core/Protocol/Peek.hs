@@ -3,7 +3,7 @@ module Hasql.Core.Protocol.Peek where
 import Hasql.Prelude hiding (take)
 import Hasql.Core.Model
 import Ptr.Peek
-import qualified Hasql.Core.Protocol.Parse as G
+import qualified Hasql.Core.Protocol.Parse.Responses as G
 import qualified Ptr.Parse as F
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Internal as A

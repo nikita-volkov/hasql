@@ -46,27 +46,27 @@ runTests connection =
         testGroup "Batch" $
         [
           test "select 1" (Right 1) $
-          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int8))) ()
+          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int4))) ()
           ,
           test "select '1' and select 'true'" (Right (1, True)) $
           (,) <$>
-          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int8))) () <*>
+          J.statement (E.prepared "select 1" conquer (B.head (C.primitive D.int4))) () <*>
           J.statement (E.prepared "select 'true' :: bool" conquer (B.head (C.primitive D.bool))) ()
           ,
           test "Error" (Left (A.BackendError "42703" "column \"abc\" does not exist")) $
-          J.statement (E.prepared "select abc" conquer (B.head (C.primitive D.int8))) ()
+          J.statement (E.prepared "select abc" conquer (B.head (C.primitive D.int4))) ()
           ,
           test "Errors in multiple queries" (Left (A.BackendError "42703" "column \"abc\" does not exist")) $
-          J.statement (E.unprepared "select 1" conquer (B.head (C.primitive D.int8))) () *>
-          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int8))) () *>
-          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int8))) ()
+          J.statement (E.unprepared "select 1" conquer (B.head (C.primitive D.int4))) () *>
+          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int4))) () *>
+          J.statement (E.unprepared "select abc" conquer (B.head (C.primitive D.int4))) ()
           ,
           test "traverse" (Right [1,2,3]) $
-          traverse (\template -> J.statement (E.prepared template conquer (B.head (C.primitive D.int8))) ()) $
+          traverse (\template -> J.statement (E.prepared template conquer (B.head (C.primitive D.int4))) ()) $
           ["select 1", "select 2", "select 3"]
           ,
           test "Not a single row" (Left (A.DecodingError "Empty query")) $
-          J.statement (E.prepared "" conquer (B.head (C.primitive D.int8))) ()
+          J.statement (E.prepared "" conquer (B.head (C.primitive D.int4))) ()
           ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"
         ]
