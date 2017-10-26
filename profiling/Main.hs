@@ -36,7 +36,7 @@ connect =
 -- * Sessions
 -------------------------
 
-session :: Int -> Int -> Int -> F.Session [[[(Int64, Int64)]]]
+session :: Int -> Int -> Int -> F.Session [[[(Int32, Int32)]]]
 session amountOfQueries amountOfStatements amountOfRows =
   replicateM amountOfQueries (F.batch (replicateM amountOfStatements (manyRowsBatch amountOfRows (B.revList))))
   where
@@ -50,7 +50,7 @@ session amountOfQueries amountOfStatements amountOfRows =
 -- * Queries
 -------------------------
 
-manyRowsBatch :: Int -> (C.DecodeRow (Int64, Int64) -> B.DecodeResult result) -> J.Batch result
+manyRowsBatch :: Int -> (C.DecodeRow (Int32, Int32) -> B.DecodeResult result) -> J.Batch result
 manyRowsBatch amountOfRows decodeResult =
   J.statement (G.unprepared template conquer decode) ()
   where
@@ -58,7 +58,7 @@ manyRowsBatch amountOfRows decodeResult =
       "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a, generate_series(10000," <> fromString (show (amountOfRows + 10000)) <> ") as b"
     decode =
       decodeResult $
-      tuple <$> C.primitive D.int8 <*> C.primitive D.int8
+      tuple <$> C.primitive D.int4 <*> C.primitive D.int4
         where
         tuple !a !b =
           (a, b)
