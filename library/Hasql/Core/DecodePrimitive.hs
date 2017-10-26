@@ -2,12 +2,12 @@ module Hasql.Core.DecodePrimitive where
 
 import Hasql.Prelude hiding (bool)
 import Hasql.Core.Model
-import qualified BinaryParser as A
-import qualified PostgreSQL.Binary.Decoding as B
+import qualified Ptr.Parse as A
+import qualified Hasql.Core.Protocol.Parse.Values as B
 
 
 newtype DecodePrimitive primitive =
-  DecodePrimitive (ReaderT Bool A.BinaryParser primitive)
+  DecodePrimitive (ReaderT Bool A.Parse primitive)
   deriving (Functor)
 
 
@@ -15,12 +15,12 @@ newtype DecodePrimitive primitive =
 -------------------------
 
 {-# INLINE nonDateTime #-}
-nonDateTime :: A.BinaryParser primitive -> DecodePrimitive primitive
+nonDateTime :: A.Parse primitive -> DecodePrimitive primitive
 nonDateTime parser =
   DecodePrimitive (ReaderT (const parser))
 
 {-# INLINE dateTime #-}
-dateTime :: A.BinaryParser primitive -> A.BinaryParser primitive -> DecodePrimitive primitive
+dateTime :: A.Parse primitive -> A.Parse primitive -> DecodePrimitive primitive
 dateTime intParser floatParser =
   DecodePrimitive (ReaderT (\case False -> floatParser; True -> intParser))
 
@@ -35,7 +35,7 @@ bool =
 {-# INLINE int8 #-}
 int8 :: DecodePrimitive Int64
 int8 =
-  nonDateTime B.int
+  nonDateTime B.int8
 
 -- * Blobs
 -------------------------
@@ -43,12 +43,12 @@ int8 =
 {-# INLINE text #-}
 text :: DecodePrimitive Text
 text =
-  nonDateTime B.text_strict
+  nonDateTime B.text
 
 {-# INLINE bytea #-}
 bytea :: DecodePrimitive ByteString
 bytea =
-  nonDateTime B.bytea_strict
+  nonDateTime B.bytea
 
 -- * Time
 -------------------------
@@ -56,4 +56,4 @@ bytea =
 {-# INLINE timestamptz #-}
 timestamptz :: DecodePrimitive UTCTime
 timestamptz =
-  dateTime B.timestamptz_int B.timestamptz_float
+  dateTime B.intTimestamptz B.floatTimestamptz

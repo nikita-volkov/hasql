@@ -6,7 +6,7 @@ import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Core.MessageTypeNames as H
 import qualified Hasql.Core.ParseDataRow as A
 import qualified Data.Vector as B
-import qualified Hasql.Core.Protocol.Parse as E
+import qualified Hasql.Core.Protocol.Parse.Responses as E
 import qualified Ptr.Parse as C
 import qualified Ptr.ByteString as D
 

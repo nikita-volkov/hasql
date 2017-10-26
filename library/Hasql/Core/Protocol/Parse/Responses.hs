@@ -1,6 +1,7 @@
-module Hasql.Core.Protocol.Parse where
+module Hasql.Core.Protocol.Parse.Responses where
 
 import Hasql.Prelude hiding (fail)
+import Hasql.Core.Protocol.Parse.Primitives
 import Hasql.Core.Model
 import Ptr.Parse
 import qualified Data.ByteString as B
@@ -10,32 +11,6 @@ import qualified Hasql.Core.MessageTypePredicates as C
 import qualified Hasql.Core.NoticeFieldTypes as E
 import qualified Hasql.Core.ParseDataRow as F
 
-
--- * Postgres Protocol-specific Primitives
--------------------------
-
-{-|
-Int32
-The length of the column value, in bytes (this count does not include itself). Can be zero. As a special case, -1 indicates a NULL column value. No value bytes follow in the NULL case.
-
-Byten
-The value of the column, in the format indicated by the associated format code. n is the above length.
--}
-{-# INLINE sizedBytes #-}
-sizedBytes :: Parse (Maybe ByteString)
-sizedBytes =
-  {-# SCC "sizedBytes" #-} 
-  do
-    size <- fromIntegral <$> beWord32
-    if size == -1
-      then return Nothing
-      else do
-        !bytes_ <- bytes size
-        return (Just bytes_)
-
-
--- * Responses
--------------------------
 
 {-# INLINE responseBody #-}
 responseBody :: Word8 -> Parse (Maybe Response)
@@ -64,15 +39,14 @@ unparsedFieldsOfDataRowBody =
 
 {-# INLINE dataRowBody #-}
 dataRowBody :: F.ParseDataRow row -> Parse row
-dataRowBody (F.ParseDataRow rowLength vectorFn) =
+dataRowBody (F.ParseDataRow rowLength parse) =
   do
-    unparsedValues <- unparsedFieldsOfDataRowBody
-    let actualRowLength = D.length unparsedValues
-    if actualRowLength == rowLength
-      then either fail return (vectorFn unparsedValues 0)
+    amountOfColumns <- beWord16
+    if fromIntegral amountOfColumns == rowLength
+      then parse
       else fail (fromString
         (showString "Invalid amount of columns: "
-          (shows actualRowLength
+          (shows amountOfColumns
             (showString ", expecting "
               (show rowLength)))))
 
@@ -159,3 +133,5 @@ parameterStatusBody :: (ByteString -> ByteString -> result) -> Parse result
 parameterStatusBody result =
   {-# SCC "parameterStatusBody" #-} 
   result <$> nullTerminatedBytes <*> nullTerminatedBytes
+
+

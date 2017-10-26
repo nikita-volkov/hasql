@@ -87,7 +87,9 @@ library
     Hasql.Core.OID.Primitive
     Hasql.Core.PreparedStatementRegistry
     Hasql.Core.Protocol.Encoding
-    Hasql.Core.Protocol.Parse
+    Hasql.Core.Protocol.Parse.Primitives
+    Hasql.Core.Protocol.Parse.Responses
+    Hasql.Core.Protocol.Parse.Values
     Hasql.Core.Protocol.Peek
     Hasql.Core.Protocol.Model
   build-depends:
@@ -99,12 +101,11 @@ library
     -- template-haskell:
     template-haskell == 2.*,
     -- parsing:
-    binary-parser >= 0.5.5 && < 0.6,
     attoparsec >= 0.10 && < 0.14,
     -- database:
     postgresql-binary == 0.12.*,
     -- IO:
-    ptr >= 0.15 && < 0.16,
+    ptr >= 0.15.1 && < 0.16,
     buffer >= 0.5 && < 0.6,
     -- data:
     bytestring-strict-builder >= 0.4.5 && < 0.5,
