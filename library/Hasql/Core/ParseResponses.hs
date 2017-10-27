@@ -17,20 +17,35 @@ newtype ParseResponses output =
 
 deriving instance Functor ParseResponses
 
+instance Applicative ParseResponses where
+  pure = return
+  (<*>) = ap
+
+instance Monad ParseResponses where
+  return x =
+    ParseResponses $ \ type_ recurResult outputResult alternative ->
+    pure (outputResult x) 
+  (>>=) (ParseResponses left) rightK =
+    ParseResponses $ \ type_ recurResult outputResult alternative ->
+    left type_
+      (\ parseResponses -> recurResult (parseResponses >>= rightK))
+      (\ leftOutput -> recurResult (rightK leftOutput))
+      alternative
+
 foldRows :: Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
 foldRows (Fold step start end) pdr =
   loop start
   where
     loop !state =
-      ParseResponses $ \ type_ pdrResult outputResult parseAlternative ->
+      ParseResponses $ \ type_ recurResult outputResult alternative ->
       if
         | G.dataRow type_ ->
           flip fmap (E.dataRowBody pdr) $ \ !row ->
-          pdrResult (loop (step state row))
+          recurResult (loop (step state row))
         | G.commandComplete type_ ->
           flip fmap (E.commandCompleteBody) $ \ !amount ->
           outputResult (end state, amount)
         | G.emptyQuery type_ ->
           return (outputResult (end state, 0))
         | True ->
-          parseAlternative
+          alternative
