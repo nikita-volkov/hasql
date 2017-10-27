@@ -14,14 +14,12 @@ import qualified Ptr.Parse as I
 
 
 data ResultProcessor =
-  forall result. ResultProcessor
-    (B.ParseResponses result)
+  ResultProcessor
+    (B.ParseResponses (IO ()))
     (Text -> IO ())
     (ByteString -> ByteString -> IO ())
-    (result -> IO ())
 
 
-{-# INLINABLE loop #-}
 loop :: A.Socket -> IO (Maybe ResultProcessor) -> (Word32 -> ByteString -> ByteString -> IO ()) -> (Text -> IO ()) -> (Text -> IO ()) -> IO ()
 loop socket fetchResultProcessor sendNotification reportTransportError reportProtocolError =
   {-# SCC "loop" #-} 
@@ -74,7 +72,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   pure (pure ())
           where
             parseBodyWithResultProcessor :: ResultProcessor -> Word8 -> I.Parse (IO ())
-            parseBodyWithResultProcessor (ResultProcessor parseResponses reportParsingError reportBackendError sendResult) =
+            parseBodyWithResultProcessor (ResultProcessor parseResponses reportParsingError reportBackendError) =
               parseBodyWithParseResponses parseResponses
               where
                 parseBodyWithParseResponses (B.ParseResponses parse) =
@@ -86,8 +84,8 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                         parseNextResponseWithParseResponses parseResponses =
                           parseNextResponseBody $ \ type_ ->
                           return (parseBodyWithParseResponses parseResponses type_)
-                        sendResultAndLoop !result =
-                          sendResult result >> parseNextResponse
+                        sendResultAndLoop sendResult =
+                          sendResult >> parseNextResponse
                         altParse =
                           if
                             | G.notification type_ ->
