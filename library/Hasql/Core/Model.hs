@@ -56,14 +56,5 @@ data Error =
   {-|
   Problems with the connection.
   -}
-  TransportError !Text |
-  {-|
-  An unexpected or broken data packet received from the server.
-  Can happen as a result of 
-  the server sending an unsupported message or
-  something interfering
-  in the communication channel.
-  This error type is highly unlikely.
-  -}
-  ProtocolError !Text
+  FatalError !Text
   deriving (Show, Eq)

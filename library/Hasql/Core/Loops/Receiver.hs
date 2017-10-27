@@ -79,7 +79,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   parseBody
                   where
                     parseBody type_ =
-                      parse type_ parseNextResponseWithParseResponses sendResultAndLoop altParse
+                      parse type_ reportProtocolError parseNextResponseWithParseResponses sendResultAndLoop altParse
                       where
                         parseNextResponseWithParseResponses parseResponses =
                           parseNextResponseBody $ \ type_ ->
