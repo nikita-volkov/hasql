@@ -25,10 +25,11 @@ start socket sendNotification =
     resultProcessorQueue <- newTQueueIO
     transportErrorVar <- newEmptyTMVarIO
     interpreterTid <-
-      forkIO (K.loop
-        (atomically (readTQueue responseQueue))
-        (atomically (tryReadTQueue resultProcessorQueue))
-        (sendNotification))
+      $(todo "")
+      -- forkIO (K.loop
+      --   (atomically (readTQueue responseQueue))
+      --   (atomically (tryReadTQueue resultProcessorQueue))
+      --   (sendNotification))
     serializerTid <-
       forkIO (H.loop
         (atomically (readTQueue serializerMessageQueue))
@@ -38,9 +39,10 @@ start socket sendNotification =
         (atomically (readTQueue outgoingBytesQueue))
         (atomically . putTMVar transportErrorVar))
     receiverTid <-
-      forkIO (I.loop socket
-        (atomically . writeTQueue responseQueue)
-        (atomically . putTMVar transportErrorVar))
+      $(todo "")
+      -- forkIO (I.loop socket
+      --   (atomically . writeTQueue responseQueue)
+      --   (atomically . putTMVar transportErrorVar))
     return (Dispatcher interpreterTid serializerTid senderTid receiverTid
       outgoingBytesQueue serializerMessageQueue responseQueue resultProcessorQueue transportErrorVar)
 
@@ -49,7 +51,7 @@ performRequest (Dispatcher _ _ _ _ _ serializerMessageQueue _ resultProcessorQue
   do
     resultVar <- newEmptyTMVarIO
     atomically $ do
-      writeTQueue resultProcessorQueue (K.ResultProcessor ir (atomically . putTMVar resultVar))
+      -- writeTQueue resultProcessorQueue (K.ResultProcessor ir (atomically . putTMVar resultVar))
       writeTQueue serializerMessageQueue (H.SerializeMessage builder)
       writeTQueue serializerMessageQueue (H.FlushMessage)
     atomically (fmap (Left . TransportError) (readTMVar transportErrorVar) <|> takeTMVar resultVar)

@@ -76,6 +76,7 @@ library
     Hasql.Core.Dispatcher
     Hasql.Core.ParseDataRow
     Hasql.Core.ParseResponse
+    Hasql.Core.ParseResponses
     Hasql.Core.MessageTypePredicates
     Hasql.Core.NoticeFieldTypes
     Hasql.Core.MessageTypeNames
