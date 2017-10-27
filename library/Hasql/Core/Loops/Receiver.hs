@@ -75,24 +75,21 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             parseBodyWithResultProcessor (ResultProcessor parseResponses reportParsingError reportBackendError) =
               parseBodyWithParseResponses parseResponses
               where
-                parseBodyWithParseResponses (B.ParseResponses parse) =
-                  parseBody
+                parseBodyWithParseResponses (B.ParseResponses parse) type_ =
+                  parse type_ reportProtocolError parseNextResponseWithParseResponses sendResultAndLoop altParse
                   where
-                    parseBody type_ =
-                      parse type_ reportProtocolError parseNextResponseWithParseResponses sendResultAndLoop altParse
-                      where
-                        parseNextResponseWithParseResponses parseResponses =
-                          parseNextResponseBody $ \ type_ ->
-                          return (parseBodyWithParseResponses parseResponses type_)
-                        sendResultAndLoop sendResult =
-                          sendResult >> parseNextResponse
-                        altParse =
-                          if
-                            | G.notification type_ ->
-                              flip fmap (F.notificationBody sendNotification) $ \ send ->
-                              send >> parseNextResponseWithParseResponses (B.ParseResponses parse)
-                            | G.error type_ ->
-                              flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
-                              report >> parseNextResponse
-                            | otherwise ->
-                              pure (parseNextResponseWithParseResponses (B.ParseResponses parse))
+                    parseNextResponseWithParseResponses parseResponses =
+                      parseNextResponseBody $ \ type_ ->
+                      return (parseBodyWithParseResponses parseResponses type_)
+                    sendResultAndLoop sendResult =
+                      sendResult >> parseNextResponse
+                    altParse =
+                      if
+                        | G.notification type_ ->
+                          flip fmap (F.notificationBody sendNotification) $ \ send ->
+                          send >> parseNextResponseWithParseResponses (B.ParseResponses parse)
+                        | G.error type_ ->
+                          flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
+                          report >> parseNextResponse
+                        | otherwise ->
+                          pure (parseNextResponseWithParseResponses (B.ParseResponses parse))
