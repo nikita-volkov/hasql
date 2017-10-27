@@ -10,51 +10,96 @@ import qualified Hasql.Core.Protocol.Parse.Responses as E
 import qualified Ptr.Parse as C
 import qualified Ptr.ByteString as D
 
+
 newtype ParseResponse output =
-  ParseResponse (forall result. Word8 -> C.Parse result -> (output -> C.Parse result) -> C.Parse result)
+  ParseResponse (Word8 -> forall a. a -> (C.Parse output -> a) -> a)
 
 deriving instance Functor ParseResponse
 
 instance Applicative ParseResponse where
   pure x =
-    ParseResponse $ \ _ _ succeed -> succeed x
+    ParseResponse (\ _ _ parse -> parse (pure x))
+  {-# INLINE (<*>) #-}
   (<*>) (ParseResponse left) (ParseResponse right) =
-    ParseResponse $ \ type_ fail succeed ->
-    left type_ fail
-      (\ leftOutput ->
-        right type_ fail
-          (\ rightOutput -> succeed (leftOutput rightOutput)))
+    ParseResponse $ \ type_ yield parse ->
+    left type_ yield $ \ leftParse ->
+    right type_ yield $ \ rightParse ->
+    parse (leftParse <*> rightParse)
 
 instance Alternative ParseResponse where
   empty =
-    ParseResponse $ \ _ fail _ -> fail
+    ParseResponse (\ _ yield _ -> yield)
+  {-# INLINE (<|>) #-}
   (<|>) (ParseResponse left) (ParseResponse right) =
-    ParseResponse $ \ type_ fail succeed ->
-    left type_ (right type_ fail succeed) succeed
+    ParseResponse $ \ type_ yield parse ->
+    left type_ (right type_ yield parse) parse
 
-rowOrEnd :: (row -> output) -> (Int -> output) -> A.ParseDataRow row -> ParseResponse output
-rowOrEnd rowOutput amountOutput pdr =
-  ParseResponse $ \ type_ fail succeed ->
+{-# INLINE predicateAndParser #-}
+predicateAndParser :: (Word8 -> Bool) -> C.Parse result -> ParseResponse result
+predicateAndParser predicate parser =
+  ParseResponse $ \ type_ yield parse ->
+  if predicate type_
+    then parse parser
+    else yield
+
+{-# INLINE rowOrEnd #-}
+rowOrEnd :: A.ParseDataRow output -> (Int -> output) -> ParseResponse output
+rowOrEnd pdr amountOutput =
+  ParseResponse $ \ type_ yield parse ->
   if
-    | G.dataRow type_ -> E.dataRowBody pdr >>= succeed . rowOutput
-    | G.commandComplete type_ -> E.commandCompleteBody >>= succeed . amountOutput
-    | G.emptyQuery type_ -> succeed (amountOutput 0)
-    | otherwise -> fail
+    | G.dataRow type_ -> parse (E.dataRowBody pdr)
+    | G.commandComplete type_ -> parse (fmap amountOutput E.commandCompleteBody)
+    | G.emptyQuery type_ -> parse (pure (amountOutput 0))
+    | otherwise -> yield
 
+{-# INLINE rowsAffected #-}
+rowsAffected :: ParseResponse Int
+rowsAffected =
+  ParseResponse $ \ type_ yield parse ->
+  if
+    | G.commandComplete type_ -> parse E.commandCompleteBody
+    | G.emptyQuery type_ -> parse (pure 0)
+    | otherwise -> yield
+
+{-# INLINE error #-}
 error :: (ByteString -> ByteString -> error) -> ParseResponse error
 error errorResult =
-  ParseResponse $ \ type_ fail succeed ->
-  if G.error type_
-    then E.errorResponseBody errorResult >>= succeed
-    else fail
+  predicateAndParser G.error (E.errorResponseBody errorResult)
 
+{-# INLINE authenticationStatus #-}
+authenticationStatus :: ParseResponse AuthenticationStatus
+authenticationStatus =
+  predicateAndParser G.authentication E.authenticationBody
+
+{-# INLINE parameterStatus #-}
+parameterStatus :: (ByteString -> ByteString -> result) -> ParseResponse result
+parameterStatus result =
+  predicateAndParser G.parameterStatus (E.parameterStatusBody result)
+
+{-# INLINE readyForQuery #-}
+readyForQuery :: ParseResponse ()
+readyForQuery =
+  predicateAndParser G.readyForQuery (pure ())
+
+{-# INLINE parseComplete #-}
+parseComplete :: ParseResponse ()
+parseComplete =
+  predicateAndParser G.parseComplete (pure ())
+
+{-# INLINE bindComplete #-}
+bindComplete :: ParseResponse ()
+bindComplete =
+  predicateAndParser G.bindComplete (pure ())
+
+{-# INLINE notification #-}
 notification :: (Word32 -> ByteString -> ByteString -> notification) -> ParseResponse notification
 notification notificationResult =
-  ParseResponse $ \ type_ fail succeed ->
+  ParseResponse $ \ type_ yield parse ->
   if G.notification type_
-    then E.notificationBody notificationResult >>= succeed
-    else fail
+    then parse (E.notificationBody notificationResult)
+    else yield
 
+{-# INLINE any #-}
 any :: ParseResponse ()
 any =
-  ParseResponse $ \ _ _ succeed -> succeed ()
+  ParseResponse $ \ _ _ parse -> parse (pure ())

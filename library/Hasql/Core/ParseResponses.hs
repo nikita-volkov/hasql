@@ -13,125 +13,80 @@ import qualified Ptr.ByteString as D
 
 
 newtype ParseResponses output =
-  ParseResponses (forall result. Word8 -> (Text -> result) -> (ParseResponses output -> result) -> (output -> result) -> C.Parse result -> C.Parse result)
+  ParseResponses (F F.ParseResponse output)
+  deriving (Functor, Applicative, Monad)
 
-deriving instance Functor ParseResponses
+parseResponse :: F.ParseResponse output -> ParseResponses output
+parseResponse pr =
+  ParseResponses (liftF pr)
 
-instance Applicative ParseResponses where
-  pure = return
-  (<*>) = ap
-
-instance Monad ParseResponses where
-  return x =
-    ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-    pure (outputResult x) 
-  (>>=) (ParseResponses left) rightK =
-    ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-    left type_ errorResult
-      (\ parseResponses -> recurResult (parseResponses >>= rightK))
-      (\ leftOutput -> recurResult (rightK leftOutput))
-      alternative
-
-foldRows :: Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
-foldRows (Fold step start end) pdr =
-  iterate start
-  where
+foldRows :: forall row output. Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
+foldRows (Fold foldStep foldStart foldEnd) pdr =
+  ParseResponses $ F $ \ pure lift ->
+  let
     iterate !state =
-      ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-      if
-        | G.dataRow type_ ->
-          flip fmap (E.dataRowBody pdr) $ \ !row ->
-          recurResult (iterate (step state row))
-        | G.commandComplete type_ ->
-          flip fmap (E.commandCompleteBody) $ \ !amount ->
-          outputResult (end state, amount)
-        | G.emptyQuery type_ ->
-          return (outputResult (end state, 0))
-        | True ->
-          alternative
+      lift $
+      F.rowOrEnd
+        (fmap (\ !row -> iterate (foldStep state row)) pdr)
+        (\ !amount -> pure (foldEnd state, amount))
+    in 
+      iterate foldStart
 
-singleRow :: A.ParseDataRow row -> ParseResponses row
+singleRow :: A.ParseDataRow row -> ParseResponses (Either Text row)
 singleRow pdr =
-  iterate (Left "Not a single row")
-  where
+  ParseResponses $ F $ \ pure lift ->
+  let
     iterate !state =
-      ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-      if
-        | G.dataRow type_ ->
-          flip fmap (E.dataRowBody pdr) $ \ !row ->
-          recurResult (iterate (Right row))
-        | G.commandComplete type_ ->
-          return (either errorResult outputResult state)
-        | G.emptyQuery type_ ->
-          return (either errorResult outputResult state)
-        | True ->
-          alternative
+      lift $
+      F.rowOrEnd
+        (fmap (\ !row -> iterate (Right row)) pdr)
+        (\ _ -> pure state)
+    in iterate (Left "Not a single row")
 
 rowsAffected :: ParseResponses Int
 rowsAffected =
-  ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-  if
-    | G.commandComplete type_ ->
-      flip fmap (E.commandCompleteBody) $ \ !amount ->
-      outputResult amount
-    | G.emptyQuery type_ ->
-      return (outputResult 0)
-    | True ->
-      alternative
+  parseResponse F.rowsAffected
 
 authenticationStatus :: ParseResponses AuthenticationStatus
 authenticationStatus =
-  ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-  if G.authentication type_
-    then fmap outputResult E.authenticationBody
-    else alternative
+  parseResponse F.authenticationStatus
 
-parameters :: ParseResponses Bool
+parameters :: ParseResponses (Either Text Bool)
 parameters =
-  iterate (Left "Missing the \"integer_datetimes\" setting")
-  where
+  ParseResponses $ F $ \ pure lift ->
+  let
     iterate !state =
-      ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-      if
-        | G.parameterStatus type_ ->
-          E.parameterStatusBody $ \ name value ->
+      lift $ parameterStatus <|> readyForQuery
+      where
+        parameterStatus =
+          F.parameterStatus $ \ name value ->
           if name == "integer_datetimes"
             then case value of
-              "on" -> recurResult (iterate (Right True))
-              "off" -> recurResult (iterate (Right False))
-              _ -> recurResult (iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value)))
-            else recurResult (iterate state)
-        | G.readyForQuery type_ ->
-          return (either errorResult outputResult state)
-        | otherwise ->
-          alternative
+              "on" -> iterate (Right True)
+              "off" -> iterate (Right False)
+              _ -> iterate (Left ("Unexpected value of the \"integer_datetimes\" setting: " <> (fromString . show) value))
+            else iterate state
+        readyForQuery =
+          F.readyForQuery $> pure state
+    in iterate (Left "Missing the \"integer_datetimes\" setting")
 
-authenticationResult :: ParseResponses AuthenticationResult
+authenticationResult :: ParseResponses (Either Text AuthenticationResult)
 authenticationResult =
   do
     authenticationStatusResult <- authenticationStatus
     case authenticationStatusResult of
-      NeedClearTextPasswordAuthenticationStatus -> return (NeedClearTextPasswordAuthenticationResult)
-      NeedMD5PasswordAuthenticationStatus salt -> return (NeedMD5PasswordAuthenticationResult salt)
-      OkAuthenticationStatus -> OkAuthenticationResult <$> parameters
+      NeedClearTextPasswordAuthenticationStatus -> return (Right (NeedClearTextPasswordAuthenticationResult))
+      NeedMD5PasswordAuthenticationStatus salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
+      OkAuthenticationStatus -> fmap OkAuthenticationResult <$> parameters
 
 parseComplete :: ParseResponses ()
 parseComplete =
-  ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-  if G.parseComplete type_
-    then return (outputResult ())
-    else alternative
+  parseResponse F.parseComplete
 
 bindComplete :: ParseResponses ()
 bindComplete =
-  ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-  if G.bindComplete type_
-    then return (outputResult ())
-    else alternative
+  parseResponse F.bindComplete
 
 readyForQuery :: ParseResponses ()
 readyForQuery =
-  ParseResponses $ \ type_ errorResult recurResult outputResult alternative ->
-  if G.readyForQuery type_
-    then return (outputResult ())
-    else alternative
+  parseResponse F.readyForQuery

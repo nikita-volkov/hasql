@@ -14,7 +14,7 @@ A builder of concatenated outgoing messages and
 a parser of the stream of incoming messages.
 -}
 data Request result =
-  Request !B.Builder !(A.ParseResponses result)
+  Request B.Builder (ExceptT Text A.ParseResponses result)
 
 instance Functor Request where
   {-# INLINE fmap #-}
@@ -31,8 +31,8 @@ instance Applicative Request where
 
 {-# INLINE simple #-}
 simple :: B.Builder -> A.ParseResponses result -> Request result
-simple builder ir =
-  Request builder ir
+simple builder pr =
+  Request builder (ExceptT (fmap Right pr))
 
 {-# INLINE parse #-}
 parse :: ByteString -> ByteString -> Vector Word32 -> Request ()
@@ -64,23 +64,23 @@ sync =
 {-# INLINE startUp #-}
 startUp :: ByteString -> Maybe ByteString -> [(ByteString, ByteString)] -> Request AuthenticationResult
 startUp username databaseMaybe runtimeParameters =
-  simple 
+  Request 
     (K.startUpMessage 3 0 username databaseMaybe runtimeParameters)
-    (A.authenticationResult)
+    (ExceptT A.authenticationResult)
 
 {-# INLINE clearTextPassword #-}
 clearTextPassword :: ByteString -> Request AuthenticationResult
 clearTextPassword password =
-  simple
+  Request
     (K.clearTextPasswordMessage password)
-    (A.authenticationResult)
+    (ExceptT A.authenticationResult)
 
 {-# INLINE md5Password #-}
 md5Password :: ByteString -> ByteString -> ByteString -> Request AuthenticationResult
 md5Password username password salt =
-  simple
+  Request
     (K.md5PasswordMessage username password salt)
-    (A.authenticationResult)
+    (ExceptT A.authenticationResult)
 
 {-# INLINE unparsedStatement #-}
 unparsedStatement :: ByteString -> ByteString -> Vector Word32 -> B.Builder -> A.ParseResponses result -> Request result
