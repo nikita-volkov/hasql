@@ -13,28 +13,28 @@ import qualified Ptr.ByteString as D
 
 
 newtype ParseResponses output =
-  ParseResponses (F F.ParseResponse output)
-  deriving (Functor, Applicative, Monad)
+  ParseResponses (ExceptT Text (F F.ParseResponse) output)
+  deriving (Functor, Applicative, Monad, MonadError Text)
 
 parseResponse :: F.ParseResponse output -> ParseResponses output
 parseResponse pr =
-  ParseResponses (liftF pr)
+  ParseResponses (lift (liftF pr))
 
 foldRows :: forall row output. Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
 foldRows (Fold foldStep foldStart foldEnd) pdr =
-  ParseResponses $ F $ \ pure lift ->
+  ParseResponses $ ExceptT $ F $ \ pure lift ->
   let
     iterate !state =
       lift $
       F.rowOrEnd
         (fmap (\ !row -> iterate (foldStep state row)) pdr)
-        (\ !amount -> pure (foldEnd state, amount))
+        (\ !amount -> pure (Right (foldEnd state, amount)))
     in 
       iterate foldStart
 
-singleRow :: A.ParseDataRow row -> ParseResponses (Either Text row)
+singleRow :: A.ParseDataRow row -> ParseResponses row
 singleRow pdr =
-  ParseResponses $ F $ \ pure lift ->
+  ParseResponses $ ExceptT $ F $ \ pure lift ->
   let
     iterate !state =
       lift $
@@ -51,9 +51,9 @@ authenticationStatus :: ParseResponses AuthenticationStatus
 authenticationStatus =
   parseResponse F.authenticationStatus
 
-parameters :: ParseResponses (Either Text Bool)
+parameters :: ParseResponses Bool
 parameters =
-  ParseResponses $ F $ \ pure lift ->
+  ParseResponses $ ExceptT $ F $ \ pure lift ->
   let
     iterate !state =
       lift $ parameterStatus <|> readyForQuery
@@ -70,14 +70,14 @@ parameters =
           F.readyForQuery $> pure state
     in iterate (Left "Missing the \"integer_datetimes\" setting")
 
-authenticationResult :: ParseResponses (Either Text AuthenticationResult)
+authenticationResult :: ParseResponses AuthenticationResult
 authenticationResult =
   do
     authenticationStatusResult <- authenticationStatus
     case authenticationStatusResult of
-      NeedClearTextPasswordAuthenticationStatus -> return (Right (NeedClearTextPasswordAuthenticationResult))
-      NeedMD5PasswordAuthenticationStatus salt -> return (Right (NeedMD5PasswordAuthenticationResult salt))
-      OkAuthenticationStatus -> fmap OkAuthenticationResult <$> parameters
+      NeedClearTextPasswordAuthenticationStatus -> return (NeedClearTextPasswordAuthenticationResult)
+      NeedMD5PasswordAuthenticationStatus salt -> return (NeedMD5PasswordAuthenticationResult salt)
+      OkAuthenticationStatus -> OkAuthenticationResult <$> parameters
 
 parseComplete :: ParseResponses ()
 parseComplete =
