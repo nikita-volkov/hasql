@@ -69,7 +69,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   flip fmap (F.notificationBody sendNotification) $ \ send ->
                   send >> parseNextResponse
                 | otherwise ->
-                  pure (pure ())
+                  pure parseNextResponse
           where
             parseBodyWithResultProcessor :: ResultProcessor -> Word8 -> I.Parse (IO ())
             parseBodyWithResultProcessor (ResultProcessor parseResponses reportParsingError reportBackendError) =
@@ -95,4 +95,4 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                               flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
                               report >> parseNextResponse
                             | otherwise ->
-                              pure (pure ())
+                              pure (parseNextResponseWithParseResponses (B.ParseResponses parse))
