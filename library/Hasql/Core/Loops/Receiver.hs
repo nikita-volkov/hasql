@@ -28,7 +28,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
     withBuffer buffer
   where
     withBuffer buffer =
-      parseNextResponse
+      parseNextResponseSequence
       where
         receiveToBuffer :: IO () -> IO (IO ())
         receiveToBuffer succeed =
@@ -55,8 +55,8 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 return (D.parse length parse 
                   (const (reportProtocolError "Parser consumed more data than it was supposed to"))
                   reportProtocolError)
-        parseNextResponse :: IO ()
-        parseNextResponse =
+        parseNextResponseSequence :: IO ()
+        parseNextResponseSequence =
           parseNextResponseBody $ \type_ ->
           fetchResultProcessor >>= \case
             Just resultProcessor ->
@@ -66,9 +66,9 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 | G.notification type_ ->
                   return $
                   flip fmap (F.notificationBody sendNotification) $ \ send ->
-                  send >> parseNextResponse
+                  send >> parseNextResponseSequence
                 | otherwise ->
-                  return (pure parseNextResponse)
+                  return (pure parseNextResponseSequence)
         resultProcessorBodyParser :: ResultProcessor -> Word8 -> IO (I.Parse (IO ()))
         resultProcessorBodyParser (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) type_ =
           freeBodyParser free type_
@@ -81,7 +81,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 pureCase result type_ =
                   case result of
                     Left error -> return (return (reportProtocolError error))
-                    Right send -> return (return (send >> parseNextResponse))
+                    Right send -> return (return (send >> parseNextResponseSequence))
                 liftCase :: J.ParseResponse (Word8 -> IO (I.Parse (IO ()))) -> Word8 -> IO (I.Parse (IO ()))
                 liftCase (J.ParseResponse parseResponse) type_ =
                   parseResponse type_ yieldCase parseCase
@@ -95,7 +95,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                           send >> interpretOnNextResponse (F unlift)
                         | G.error type_ ->
                           flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
-                          report >> parseNextResponse
+                          report >> parseNextResponseSequence
                         | otherwise ->
                           pure (interpretOnNextResponse (F unlift))
                     parseCase :: I.Parse (Word8 -> IO (I.Parse (IO ()))) -> IO (I.Parse (IO ()))
