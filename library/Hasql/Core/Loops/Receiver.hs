@@ -57,6 +57,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   reportProtocolError)
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
+          trace "parseNextResponseSequence" $
           parseNextResponseBody $ \type_ ->
           fetchResultProcessor >>= \case
             Just resultProcessor ->
@@ -79,6 +80,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
               where
                 pureCase :: Either Text (IO ()) -> Word8 -> IO (I.Parse (IO ()))
                 pureCase result type_ =
+                  trace ("pureCase: " <> H.string type_) $
                   case result of
                     Left error -> return (return (reportProtocolError error))
                     Right send -> return (return (send >> parseNextResponseSequence))
@@ -88,6 +90,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   where
                     yieldCase :: IO (I.Parse (IO ()))
                     yieldCase =
+                      trace ("liftCase/yieldCase: " <> H.string type_) $
                       return $
                       if
                         | G.notification type_ ->
@@ -100,6 +103,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                           pure (interpretOnNextResponse (F unlift))
                     parseCase :: I.Parse (Word8 -> IO (I.Parse (IO ()))) -> IO (I.Parse (IO ()))
                     parseCase parser =
+                      trace ("liftCase/parseCase: " <> H.string type_) $
                       return (fmap parseNextResponseBody parser)
             interpretOnNextResponse :: F J.ParseResponse (Either Text (IO ())) -> IO ()
             interpretOnNextResponse f =
