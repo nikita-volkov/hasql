@@ -91,53 +91,18 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                     yieldCase :: IO (I.Parse (IO ()))
                     yieldCase =
                       trace ("liftCase/yieldCase: " <> H.string type_) $
-                      return $
+                      pure $
                       if
                         | G.notification type_ ->
                           flip fmap (F.notificationBody sendNotification) $ \ send ->
-                          send >> parseNextResponseWithFree (F unlift)
+                          send >> parseNextResponseBody (liftCase (J.ParseResponse parseResponse))
                         | G.error type_ ->
                           flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
                           report >> parseNextResponseSequence
                         | otherwise ->
-                          pure (parseNextResponseWithFree (F unlift))
+                          pure $
+                          parseNextResponseBody (liftCase (J.ParseResponse parseResponse))
                     parseCase :: I.Parse (Word8 -> IO (I.Parse (IO ()))) -> IO (I.Parse (IO ()))
                     parseCase parser =
                       trace ("liftCase/parseCase: " <> H.string type_) $
                       return (fmap parseNextResponseBody parser)
-            parseNextResponseWithFree :: F J.ParseResponse (Either Text (IO ())) -> IO ()
-            parseNextResponseWithFree (F unlift) =
-              unlift pureCase liftCase
-              where
-                pureCase :: Either Text (IO ()) -> IO ()
-                pureCase result =
-                  trace "parseNextResponseWithFree/pureCase" $
-                  case result of
-                    Left error -> reportProtocolError error
-                    Right send -> send >> parseNextResponseSequence
-                liftCase :: J.ParseResponse (IO ()) -> IO ()
-                liftCase (J.ParseResponse parseResponse) =
-                  trace "parseNextResponseWithFree/liftCase" $
-                  parseNextResponseBody $ \ type_ ->
-                  let
-                    yieldCase :: IO (I.Parse (IO ()))
-                    yieldCase =
-                      trace ("parseNextResponseWithFree/liftCase/yieldCase: " <> H.string type_) $
-                      return $
-                      if
-                        | G.notification type_ ->
-                          flip fmap (F.notificationBody sendNotification) $ \ send ->
-                          send >> parseNextResponseWithFree (F unlift)
-                        | G.error type_ ->
-                          flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
-                          report >> parseNextResponseSequence
-                        | otherwise ->
-                          pure (parseNextResponseWithFree (F unlift))
-                    parseCase :: I.Parse (IO ()) -> IO (I.Parse (IO ()))
-                    parseCase =
-                      trace ("parseNextResponseWithFree/liftCase/parseCase: " <> H.string type_) $
-                      return
-                    in
-                      parseResponse type_ yieldCase parseCase
-                      
-
