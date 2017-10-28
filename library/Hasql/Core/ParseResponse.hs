@@ -94,10 +94,7 @@ bindComplete =
 {-# INLINE notification #-}
 notification :: (Word32 -> ByteString -> ByteString -> notification) -> ParseResponse notification
 notification notificationResult =
-  ParseResponse $ \ type_ yield parse ->
-  if G.notification type_
-    then parse (E.notificationBody notificationResult)
-    else yield
+  predicateAndParser G.notification (E.notificationBody notificationResult)
 
 {-# INLINE any #-}
 any :: ParseResponse ()

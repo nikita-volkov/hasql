@@ -8,6 +8,7 @@ import qualified Hasql.Core.Protocol.Parse.Responses as F
 import qualified Hasql.Core.MessageTypeNames as H
 import qualified Hasql.Core.MessageTypePredicates as G
 import qualified Hasql.Core.ParseResponses as B
+import qualified Hasql.Core.ParseResponse as J
 import qualified Buffer as C
 import qualified Ptr.Peek as D
 import qualified Ptr.Parse as I
@@ -19,7 +20,6 @@ data ResultProcessor =
     (Text -> IO ())
     (ByteString -> ByteString -> IO ())
 
-
 loop :: A.Socket -> IO (Maybe ResultProcessor) -> (Word32 -> ByteString -> ByteString -> IO ()) -> (Text -> IO ()) -> (Text -> IO ()) -> IO ()
 loop socket fetchResultProcessor sendNotification reportTransportError reportProtocolError =
   {-# SCC "loop" #-} 
@@ -30,19 +30,18 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
     withBuffer buffer =
       parseNextResponse
       where
-        receiveToBuffer failure success =
+        receiveToBuffer :: IO () -> IO (IO ())
+        receiveToBuffer succeed =
           C.push buffer 4096 $ \ptr -> do
             result <- A.receiveToPtr socket ptr 4096
             case result of
-              Right amountReceived -> return (amountReceived, success)
-              Left error -> return (0, failure error)
-
+              Right amountReceived -> return (amountReceived, succeed)
+              Left error -> return (0, reportTransportError error)
         peekFromBuffer :: D.Peek a -> (a -> IO ()) -> IO ()
         peekFromBuffer (D.Peek amount ptrIO) succeed =
           fix $ \ recur ->
           join $ C.pull buffer amount (fmap succeed . {-# SCC "loop/peeking" #-} ptrIO) $ \ _ ->
-          receiveToBuffer reportTransportError recur
-
+          receiveToBuffer recur
         parseNextResponseBody :: (Word8 -> IO (I.Parse (IO ()))) -> IO ()
         parseNextResponseBody cont =
           peekFromBuffer peek $ \ bodyPeekIO -> do
@@ -56,40 +55,52 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 return (D.parse length parse 
                   (const (reportProtocolError "Parser consumed more data than it was supposed to"))
                   reportProtocolError)
-
         parseNextResponse :: IO ()
         parseNextResponse =
-          parseNextResponseBody $ \ type_ ->
-          flip fmap fetchResultProcessor $ \case
+          parseNextResponseBody $ \type_ ->
+          fetchResultProcessor >>= \case
             Just resultProcessor ->
-              parseBodyWithResultProcessor resultProcessor type_
+              resultProcessorBodyParser resultProcessor type_
             Nothing ->
               if
                 | G.notification type_ ->
+                  return $
                   flip fmap (F.notificationBody sendNotification) $ \ send ->
                   send >> parseNextResponse
                 | otherwise ->
-                  pure parseNextResponse
+                  return (pure parseNextResponse)
+        resultProcessorBodyParser :: ResultProcessor -> Word8 -> IO (I.Parse (IO ()))
+        resultProcessorBodyParser (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) type_ =
+          freeBodyParser free type_
           where
-            parseBodyWithResultProcessor :: ResultProcessor -> Word8 -> I.Parse (IO ())
-            parseBodyWithResultProcessor (ResultProcessor parseResponses reportParsingError reportBackendError) =
-              parseBodyWithParseResponses parseResponses
+            freeBodyParser :: F J.ParseResponse (Either Text (IO ())) -> Word8 -> IO (I.Parse (IO ()))
+            freeBodyParser (F unlift) =
+              unlift pureCase liftCase
               where
-                parseBodyWithParseResponses (B.ParseResponses parse) type_ =
-                  parse type_ reportProtocolError parseNextResponseWithParseResponses sendResultAndLoop altParse
+                pureCase :: Either Text (IO ()) -> Word8 -> IO (I.Parse (IO ()))
+                pureCase result type_ =
+                  case result of
+                    Left error -> return (return (reportProtocolError error))
+                    Right send -> return (return (send >> parseNextResponse))
+                liftCase :: J.ParseResponse (Word8 -> IO (I.Parse (IO ()))) -> Word8 -> IO (I.Parse (IO ()))
+                liftCase (J.ParseResponse parseResponse) type_ =
+                  parseResponse type_ yieldCase parseCase
                   where
-                    parseNextResponseWithParseResponses parseResponses =
-                      parseNextResponseBody $ \ type_ ->
-                      return (parseBodyWithParseResponses parseResponses type_)
-                    sendResultAndLoop sendResult =
-                      sendResult >> parseNextResponse
-                    altParse =
+                    yieldCase :: IO (I.Parse (IO ()))
+                    yieldCase =
+                      return $
                       if
                         | G.notification type_ ->
                           flip fmap (F.notificationBody sendNotification) $ \ send ->
-                          send >> parseNextResponseWithParseResponses (B.ParseResponses parse)
+                          send >> interpretOnNextResponse (F unlift)
                         | G.error type_ ->
                           flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
                           report >> parseNextResponse
                         | otherwise ->
-                          pure (parseNextResponseWithParseResponses (B.ParseResponses parse))
+                          pure (interpretOnNextResponse (F unlift))
+                    parseCase :: I.Parse (Word8 -> IO (I.Parse (IO ()))) -> IO (I.Parse (IO ()))
+                    parseCase parser =
+                      return (fmap parseNextResponseBody parser)
+            interpretOnNextResponse :: F J.ParseResponse (Either Text (IO ())) -> IO ()
+            interpretOnNextResponse f =
+              parseNextResponseBody (freeBodyParser f)

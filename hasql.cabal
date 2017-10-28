@@ -80,7 +80,7 @@ library
   --   Hasql.Core.NoticeFieldTypes
   --   Hasql.Core.MessageTypeNames
   --   Hasql.Core.Loops.Serializer
-    -- Hasql.Core.Loops.Receiver
+    Hasql.Core.Loops.Receiver
   --   Hasql.Core.Loops.Sender
   --   Hasql.Core.Socket
   --   Hasql.Core.OID.Array
