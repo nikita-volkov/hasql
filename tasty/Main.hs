@@ -283,27 +283,27 @@ tree =
               Query.statement sql mempty Decoders.unit True
               where
                 sql =
-                  "drop type if exists mood"
+                  "create or replace function overloaded(a int, b int) returns int as $$ select a + b $$ language sql;"
             in DSL.query () query
           let
             query =
               Query.statement sql mempty Decoders.unit True
               where
                 sql =
-                  "create type mood as enum ('sad', 'ok', 'happy')"
+                  "create or replace function overloaded(a text, b text, c text) returns text as $$ select a || b || c $$ language sql;"
             in DSL.query () query
           let
             query =
               Query.statement sql encoder decoder True
               where
                 sql =
-                  "select $1 = ('ok' :: mood)"
+                  "select overloaded($1, $2) || overloaded($3, $4, $5)"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                  (Decoders.singleRow (Decoders.value (Decoders.text)))
                 encoder =
-                  Encoders.value (Encoders.unknown)
-            in DSL.query "ok" query
-      in actualIO >>= assertEqual "" (Right True)
+                  contramany (Encoders.value Encoders.unknown)
+            in DSL.query ["1", "2", "4", "5", "6"] query
+      in actualIO >>= assertEqual "" (Right "3456")
     ,
     testCase "Enum" $
     let
