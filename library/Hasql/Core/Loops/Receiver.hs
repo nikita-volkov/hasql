@@ -58,7 +58,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
           trace "parseNextResponseSequence" $
-          parseNextResponseBody $ \type_ ->
+          parseNextResponseBody $ \ type_ ->
           fetchResultProcessor >>= \case
             Just resultProcessor ->
               resultProcessorBodyParser resultProcessor type_
