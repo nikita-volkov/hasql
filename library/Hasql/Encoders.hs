@@ -358,15 +358,6 @@ enum mapping =
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
 -- thus leaving it up to Postgres to infer the actual type of the value.
--- 
--- The bytestring needs to be encoded according to the Postgres\' binary format
--- of the type it expects.
--- 
--- Essentially this is a low-level hook for encoding of values with custom codecs.
--- The
--- <http://hackage.haskell.org/package/postgresql-binary "postgresql-binary">
--- library will provide you with the toolchain.
--- 
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
 unknown =
