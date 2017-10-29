@@ -91,8 +91,11 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 Right send -> send >> parseNextResponseSequence
             liftCase :: J.ParseResponse (IO ()) -> IO ()
             liftCase rpParseResponse =
-              fix $ \ recur ->
-              parseNextResponse recur parseResponse
+              loop
               where
+                loop =
+                  parseNextResponse loop parseResponse
                 parseResponse =
-                  rpParseResponse <|> J.notification sendNotification <|> J.error reportBackendError
+                  rpParseResponse <|>
+                  fmap (\ send -> send >> loop) (J.notification sendNotification) <|>
+                  fmap (\ report -> report >> parseNextResponseSequence) (J.error reportBackendError)
