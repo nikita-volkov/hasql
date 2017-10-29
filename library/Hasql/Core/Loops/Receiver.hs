@@ -37,72 +37,65 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             case result of
               Right amountReceived -> return (amountReceived, succeed)
               Left error -> return (0, reportTransportError error)
-        peekFromBuffer :: D.Peek a -> (a -> IO ()) -> IO ()
-        peekFromBuffer (D.Peek amount ptrIO) succeed =
+        receivingToBuffer :: IO () -> IO ()
+        receivingToBuffer succeed =
+          join (receiveToBuffer succeed)
+        ensuringBufferHasData :: IO () -> IO ()
+        ensuringBufferHasData succeed =
+          do
+            space <- C.getSpace buffer
+            if space == 0
+              then receivingToBuffer succeed
+              else succeed
+        peekingFromBuffer :: D.Peek a -> (a -> IO ()) -> IO ()
+        peekingFromBuffer (D.Peek amount ptrIO) succeed =
           fix $ \ recur ->
           join $ C.pull buffer amount (fmap succeed . {-# SCC "loop/peeking" #-} ptrIO) $ \ _ ->
           receiveToBuffer recur
-        parseNextResponseBody :: (Word8 -> IO (I.Parse (IO ()))) -> IO ()
-        parseNextResponseBody cont =
-          peekFromBuffer peek $ \ bodyPeekIO -> do
-            bodyPeek <- bodyPeekIO
-            peekFromBuffer bodyPeek id
+        parsingNextResponse :: J.ParseResponse a -> IO () -> (a -> IO ()) -> IO ()
+        parsingNextResponse (J.ParseResponse parseResponseChurch) ignore succeed =
+          {-# SCC "parsingNextResponse" #-} 
+          peekingFromBuffer peek $ \ bodyPeek ->
+          peekingFromBuffer bodyPeek id
           where
             peek =
               E.messageTypeAndLength $ \ !type_ !length ->
-              do
-                parse <- cont type_
-                return (D.parse length parse 
+              trace ("parsingNextResponse: " <> H.string type_) $
+              parseResponseChurch type_
+                (D.Peek length (const (pure ignore)))
+                (\ parse -> D.parse length
+                  (fmap succeed parse)
                   (const (reportProtocolError "Parser consumed more data than it was supposed to"))
                   reportProtocolError)
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
           trace "parseNextResponseSequence" $
-          parseNextResponseBody $ \ type_ ->
+          ensuringBufferHasData $
           fetchResultProcessor >>= \case
             Just resultProcessor ->
-              resultProcessorBodyParser resultProcessor type_
+              parseNextResponseSequenceWithResultProcessor resultProcessor
             Nothing ->
-              if
-                | G.notification type_ ->
-                  return $
-                  flip fmap (F.notificationBody sendNotification) $ \ send ->
-                  send >> parseNextResponseSequence
-                | otherwise ->
-                  return (pure parseNextResponseSequence)
-        resultProcessorBodyParser :: ResultProcessor -> Word8 -> IO (I.Parse (IO ()))
-        resultProcessorBodyParser (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) type_ =
-          freeBodyParser free type_
-          where
-            freeBodyParser :: F J.ParseResponse (Either Text (IO ())) -> Word8 -> IO (I.Parse (IO ()))
-            freeBodyParser (F unlift) =
-              unlift pureCase liftCase
+              parsingNextResponse parseResponse parseNextResponseSequence id
               where
-                pureCase :: Either Text (IO ()) -> Word8 -> IO (I.Parse (IO ()))
-                pureCase result type_ =
-                  trace ("pureCase: " <> H.string type_) $
+                parseResponse =
+                  fmap (\ send -> send >> parseNextResponseSequence) (J.notification sendNotification)
+        parseNextResponseSequenceWithResultProcessor :: ResultProcessor -> IO ()
+        parseNextResponseSequenceWithResultProcessor (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) =
+          runFree free
+          where
+            runFree :: F J.ParseResponse (Either Text (IO ())) -> IO ()
+            runFree (F run) =
+              run pureCase liftCase
+              where
+                pureCase :: Either Text (IO ()) -> IO ()
+                pureCase result =
                   case result of
-                    Left error -> return (return (reportProtocolError error))
-                    Right send -> return (return (send >> parseNextResponseSequence))
-                liftCase :: J.ParseResponse (Word8 -> IO (I.Parse (IO ()))) -> Word8 -> IO (I.Parse (IO ()))
-                liftCase (J.ParseResponse parseResponse) type_ =
-                  parseResponse type_ yieldCase parseCase
+                    Left error -> reportProtocolError error
+                    Right send -> send >> parseNextResponseSequence
+                liftCase :: J.ParseResponse (IO ()) -> IO ()
+                liftCase rpParseResponse =
+                  fix $ \ recur ->
+                  parsingNextResponse parseResponse recur id
                   where
-                    yieldCase :: IO (I.Parse (IO ()))
-                    yieldCase =
-                      trace ("liftCase/yieldCase: " <> H.string type_) $
-                      pure $
-                      if
-                        | G.notification type_ ->
-                          flip fmap (F.notificationBody sendNotification) $ \ send ->
-                          send >> parseNextResponseBody (liftCase (J.ParseResponse parseResponse))
-                        | G.error type_ ->
-                          flip fmap (F.errorResponseBody reportBackendError) $ \ report ->
-                          report >> parseNextResponseSequence
-                        | otherwise ->
-                          pure $
-                          parseNextResponseBody (liftCase (J.ParseResponse parseResponse))
-                    parseCase :: I.Parse (Word8 -> IO (I.Parse (IO ()))) -> IO (I.Parse (IO ()))
-                    parseCase parser =
-                      trace ("liftCase/parseCase: " <> H.string type_) $
-                      return (fmap parseNextResponseBody parser)
+                    parseResponse =
+                      rpParseResponse <|> J.notification sendNotification <|> J.error reportBackendError
