@@ -37,6 +37,7 @@ instance Alternative ParseResponse where
 {-# INLINE predicateAndParser #-}
 predicateAndParser :: (Word8 -> Bool) -> C.Parse result -> ParseResponse result
 predicateAndParser predicate parser =
+  {-# SCC "predicateAndParser" #-} 
   ParseResponse $ \ type_ yield parse ->
   if predicate type_
     then parse parser
@@ -45,6 +46,7 @@ predicateAndParser predicate parser =
 {-# INLINE rowOrEnd #-}
 rowOrEnd :: A.ParseDataRow output -> (Int -> output) -> ParseResponse output
 rowOrEnd pdr amountOutput =
+  {-# SCC "rowOrEnd" #-} 
   ParseResponse $ \ type_ yield parse ->
   if
     | G.dataRow type_ -> parse (E.dataRowBody pdr)
