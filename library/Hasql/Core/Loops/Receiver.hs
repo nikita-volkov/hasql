@@ -38,9 +38,9 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             case result of
               Right amountReceived -> return (amountReceived, succeed)
               Left error -> return (0, reportTransportError error)
-        ensureBufferHasData :: IO () -> IO ()
-        ensureBufferHasData succeed =
-          {-# SCC "ensureBufferHasData" #-} 
+        ensuringBufferHasData :: IO () -> IO ()
+        ensuringBufferHasData succeed =
+          {-# SCC "ensuringBufferHasData" #-} 
           do
             space <- C.getSpace buffer
             if space == 0
@@ -68,7 +68,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
           {-# SCC "parseNextResponseSequence" #-} 
-          ensureBufferHasData $
+          ensuringBufferHasData $
           fetchResultProcessor >>= \case
             Just resultProcessor ->
               parseNextResponseSequenceWithResultProcessor resultProcessor
