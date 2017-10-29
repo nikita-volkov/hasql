@@ -80,23 +80,19 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 parseResponse =
                   fmap (\ send -> send >> parseNextResponseSequence) (J.notification sendNotification)
         parseNextResponseSequenceWithResultProcessor :: ResultProcessor -> IO ()
-        parseNextResponseSequenceWithResultProcessor (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) =
-          {-# SCC "parseNextResponseSequenceWithResultProcessor" #-} 
-          runFree free
+        parseNextResponseSequenceWithResultProcessor (ResultProcessor (B.ParseResponses (ExceptT (F run))) reportParsingError reportBackendError) =
+          {-# SCC "parseNextResponseSequenceWithResultProcessor" #-}
+          run pureCase liftCase
           where
-            runFree :: F J.ParseResponse (Either Text (IO ())) -> IO ()
-            runFree (F run) =
-              run pureCase liftCase
+            pureCase :: Either Text (IO ()) -> IO ()
+            pureCase result =
+              case result of
+                Left error -> reportProtocolError error
+                Right send -> send >> parseNextResponseSequence
+            liftCase :: J.ParseResponse (IO ()) -> IO ()
+            liftCase rpParseResponse =
+              fix $ \ recur ->
+              parseNextResponse recur parseResponse
               where
-                pureCase :: Either Text (IO ()) -> IO ()
-                pureCase result =
-                  case result of
-                    Left error -> reportProtocolError error
-                    Right send -> send >> parseNextResponseSequence
-                liftCase :: J.ParseResponse (IO ()) -> IO ()
-                liftCase rpParseResponse =
-                  fix $ \ recur ->
-                  parseNextResponse recur parseResponse
-                  where
-                    parseResponse =
-                      rpParseResponse <|> J.notification sendNotification <|> J.error reportBackendError
+                parseResponse =
+                  rpParseResponse <|> J.notification sendNotification <|> J.error reportBackendError
