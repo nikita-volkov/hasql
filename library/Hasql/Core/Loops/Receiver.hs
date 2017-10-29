@@ -37,41 +37,41 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             case result of
               Right amountReceived -> return (amountReceived, succeed)
               Left error -> return (0, reportTransportError error)
-        ensuringBufferHasData :: IO () -> IO ()
-        ensuringBufferHasData succeed =
+        ensureBufferHasData :: IO () -> IO ()
+        ensureBufferHasData succeed =
           do
             space <- C.getSpace buffer
             if space == 0
               then join (receiveToBuffer succeed)
               else succeed
-        peekingFromBuffer :: D.Peek (IO ()) -> IO ()
-        peekingFromBuffer (D.Peek amount ptrIO) =
+        peekFromBuffer :: D.Peek (IO ()) -> IO ()
+        peekFromBuffer (D.Peek amount ptrIO) =
           fix $ \ recur ->
           join $ C.pull buffer amount ptrIO $ \ _ ->
           receiveToBuffer recur
-        parsingNextResponse :: IO () -> J.ParseResponse (IO ()) -> IO ()
-        parsingNextResponse ignore (J.ParseResponse parseResponseChurch) =
-          {-# SCC "parsingNextResponse" #-} 
-          peekingFromBuffer peek
+        parseNextResponse :: IO () -> J.ParseResponse (IO ()) -> IO ()
+        parseNextResponse ignore (J.ParseResponse parseResponseChurch) =
+          {-# SCC "parseNextResponse" #-} 
+          peekFromBuffer peek
           where
             peek =
               E.messageTypeAndLength $ \ !type_ !length ->
-              trace ("parsingNextResponse: " <> H.string type_) $
+              trace ("parseNextResponse: " <> H.string type_) $
               parseResponseChurch type_
-                (peekingFromBuffer (D.Peek length (const (pure ignore))))
-                (\ parse -> peekingFromBuffer (D.parse length
+                (peekFromBuffer (D.Peek length (const (pure ignore))))
+                (\ parse -> peekFromBuffer (D.parse length
                   parse
                   (const (reportProtocolError "Parser consumed more data than it was supposed to"))
                   reportProtocolError))
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
           trace "parseNextResponseSequence" $
-          ensuringBufferHasData $
+          ensureBufferHasData $
           fetchResultProcessor >>= \case
             Just resultProcessor ->
               parseNextResponseSequenceWithResultProcessor resultProcessor
             Nothing ->
-              parsingNextResponse parseNextResponseSequence parseResponse
+              parseNextResponse parseNextResponseSequence parseResponse
               where
                 parseResponse =
                   fmap (\ send -> send >> parseNextResponseSequence) (J.notification sendNotification)
@@ -91,7 +91,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                 liftCase :: J.ParseResponse (IO ()) -> IO ()
                 liftCase rpParseResponse =
                   fix $ \ recur ->
-                  parsingNextResponse recur parseResponse
+                  parseNextResponse recur parseResponse
                   where
                     parseResponse =
                       rpParseResponse <|> J.notification sendNotification <|> J.error reportBackendError
