@@ -37,15 +37,12 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             case result of
               Right amountReceived -> return (amountReceived, succeed)
               Left error -> return (0, reportTransportError error)
-        receivingToBuffer :: IO () -> IO ()
-        receivingToBuffer succeed =
-          join (receiveToBuffer succeed)
         ensuringBufferHasData :: IO () -> IO ()
         ensuringBufferHasData succeed =
           do
             space <- C.getSpace buffer
             if space == 0
-              then receivingToBuffer succeed
+              then join (receiveToBuffer succeed)
               else succeed
         peekingFromBuffer :: D.Peek (IO ()) -> IO ()
         peekingFromBuffer (D.Peek amount ptrIO) =
