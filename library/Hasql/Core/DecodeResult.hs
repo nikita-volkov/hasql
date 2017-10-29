@@ -2,14 +2,14 @@ module Hasql.Core.DecodeResult where
 
 import Hasql.Prelude
 import Hasql.Core.Model
-import qualified Hasql.Core.InterpretResponses as A
+import qualified Hasql.Core.ParseResponses as A
 import qualified Hasql.Core.DecodeRow as B
 import qualified Control.Foldl as C
 import qualified Data.HashMap.Strict as L
 
 
 newtype DecodeResult result =
-  DecodeResult (ReaderT Bool A.InterpretResponses result)
+  DecodeResult (ReaderT Bool A.ParseResponses result)
   deriving (Functor)
 
 {-|
@@ -87,17 +87,5 @@ since it's provided by the database either way.
 -}
 {-# INLINE foldRows #-}
 foldRows :: Fold row result -> B.DecodeRow row -> DecodeResult (result, Int)
-foldRows fold =
-  foldMRows (C.generalize fold)
-
-{-|
-Essentially, a specification of Map/Reduce over all the rows of the result set.
-Can be used to produce all kinds of containers or to implement aggregation algorithms on the client side.
-
-Besides the result of folding it returns the amount of affected rows,
-since it's provided by the database either way.
--}
-{-# INLINE foldMRows #-}
-foldMRows :: FoldM IO row result -> B.DecodeRow row -> DecodeResult (result, Int)
-foldMRows fold (B.DecodeRow (ReaderT parseDataRow)) =
+foldRows fold (B.DecodeRow (ReaderT parseDataRow)) =
   DecodeResult (ReaderT (\idt -> A.foldRows fold (parseDataRow idt)))

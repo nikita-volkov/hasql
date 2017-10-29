@@ -65,7 +65,7 @@ runTests connection =
           traverse (\template -> J.statement (E.prepared template conquer (B.head (C.primitive D.int4))) ()) $
           ["select 1", "select 2", "select 3"]
           ,
-          test "Not a single row" (Left (A.DecodingError "Empty query")) $
+          test "Not a single row" (Left (A.DecodingError "Not a single row")) $
           J.statement (E.prepared "" conquer (B.head (C.primitive D.int4))) ()
           ,
           testCaseInfo "Simultaneous result decoding and counting" $ pure "Pending"

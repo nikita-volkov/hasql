@@ -4,7 +4,7 @@ import Hasql.Prelude
 import Hasql.Core.Model
 import qualified Hasql.Core.EncodeParams as A
 import qualified Hasql.Core.DecodeResult as B
-import qualified Hasql.Core.InterpretResponses as C
+import qualified Hasql.Core.ParseResponses as C
 import qualified ByteString.StrictBuilder as D
 import qualified VectorBuilder.Vector as O
 
@@ -13,7 +13,7 @@ data Statement params result =
   Statement
     ByteString
     (Vector Word32) (params -> D.Builder) (params -> D.Builder)
-    (C.InterpretResponses result) (C.InterpretResponses result)
+    (C.ParseResponses result) (C.ParseResponses result)
     Bool
 
 deriving instance Functor (Statement params)

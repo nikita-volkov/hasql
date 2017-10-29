@@ -10,7 +10,6 @@ module Hasql.DecodeResult
   revList,
   hashMap,
   foldRows,
-  foldMRows,
 )
 where
 

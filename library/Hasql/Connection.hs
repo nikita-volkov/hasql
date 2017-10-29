@@ -36,14 +36,14 @@ open transportSettings username password databaseMaybe sendNotification =
   do
     connectionResult <- B.connect transportSettings
     case connectionResult of
-      Left message -> return (Left (TransportError message))
+      Left message -> return (Left (FatalError message))
       Right socket -> do
         dispatcher <- A.start socket sendNotification
         handshakeResult <- A.interact dispatcher (G.handshake username password databaseMaybe [])
         case handshakeResult of
           Left error -> return (Left error)
           Right errorOrIdt -> case errorOrIdt of
-            Left error -> return (Left (TransportError error))
+            Left error -> return (Left (FatalError error))
             Right idt -> do
               psrVar <- newMVar D.nil
               return (Right (Connection socket dispatcher psrVar idt))

@@ -70,18 +70,18 @@ library
     Hasql.Core.DecodeResult
     Hasql.Core.DecodeRow
     Hasql.Core.DecodePrimitive
-    Hasql.Core.InterpretResponses
     Hasql.Core.UnauthenticatedSession
     Hasql.Core.Request
     Hasql.Core.Dispatcher
     Hasql.Core.ParseDataRow
+    Hasql.Core.ParseResponse
+    Hasql.Core.ParseResponses
     Hasql.Core.MessageTypePredicates
     Hasql.Core.NoticeFieldTypes
     Hasql.Core.MessageTypeNames
     Hasql.Core.Loops.Serializer
     Hasql.Core.Loops.Receiver
     Hasql.Core.Loops.Sender
-    Hasql.Core.Loops.Interpreter
     Hasql.Core.Socket
     Hasql.Core.OID.Array
     Hasql.Core.OID.Primitive
