@@ -85,8 +85,8 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
             pureCase :: Either Text (IO ()) -> IO ()
             pureCase result =
               case result of
-                Left error -> reportProtocolError error
                 Right send -> send >> parseNextResponseSequence
+                Left error -> reportParsingError error
             liftCase :: J.ParseResponse (IO ()) -> IO ()
             liftCase rpParseResponse =
               loop

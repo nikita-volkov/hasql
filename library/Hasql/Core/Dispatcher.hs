@@ -47,7 +47,7 @@ performRequest (Dispatcher _ _ _ _ serializerMessageQueue resultProcessorQueue f
       writeTQueue resultProcessorQueue
         (I.ResultProcessor
           (fmap (atomically . putTMVar resultVar . Right) parseResponses)
-          $(todo "")
+          (\ error -> atomically (putTMVar resultVar (Left (DecodingError error))))
           (\ code details -> (atomically . putTMVar resultVar . Left) (BackendError code details)))
       writeTQueue serializerMessageQueue (H.SerializeMessage builder)
       writeTQueue serializerMessageQueue (H.FlushMessage)
