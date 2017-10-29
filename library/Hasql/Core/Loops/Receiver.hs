@@ -59,7 +59,6 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
           where
             peek =
               E.messageTypeAndLength $ \ !type_ !length ->
-              trace ("parseNextResponse: " <> H.string type_) $
               parseResponseChurch type_
                 (peekFromBuffer (D.Peek length (const (pure ignore))))
                 (\ parse -> peekFromBuffer (D.parse length
@@ -69,7 +68,6 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
           {-# SCC "parseNextResponseSequence" #-} 
-          trace "parseNextResponseSequence" $
           ensureBufferHasData $
           fetchResultProcessor >>= \case
             Just resultProcessor ->
