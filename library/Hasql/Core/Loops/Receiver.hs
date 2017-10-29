@@ -32,6 +32,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
       where
         receiveToBuffer :: IO () -> IO (IO ())
         receiveToBuffer succeed =
+          {-# SCC "receiveToBuffer" #-} 
           C.push buffer 4096 $ \ptr -> do
             result <- A.receiveToPtr socket ptr 4096
             case result of
@@ -39,6 +40,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
               Left error -> return (0, reportTransportError error)
         ensureBufferHasData :: IO () -> IO ()
         ensureBufferHasData succeed =
+          {-# SCC "ensureBufferHasData" #-} 
           do
             space <- C.getSpace buffer
             if space == 0
@@ -46,6 +48,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
               else succeed
         peekFromBuffer :: D.Peek (IO ()) -> IO ()
         peekFromBuffer (D.Peek amount ptrIO) =
+          {-# SCC "peekFromBuffer" #-} 
           fix $ \ recur ->
           join $ C.pull buffer amount ptrIO $ \ _ ->
           receiveToBuffer recur
@@ -65,6 +68,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   reportProtocolError))
         parseNextResponseSequence :: IO ()
         parseNextResponseSequence =
+          {-# SCC "parseNextResponseSequence" #-} 
           trace "parseNextResponseSequence" $
           ensureBufferHasData $
           fetchResultProcessor >>= \case
@@ -77,6 +81,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
                   fmap (\ send -> send >> parseNextResponseSequence) (J.notification sendNotification)
         parseNextResponseSequenceWithResultProcessor :: ResultProcessor -> IO ()
         parseNextResponseSequenceWithResultProcessor (ResultProcessor (B.ParseResponses (ExceptT free)) reportParsingError reportBackendError) =
+          {-# SCC "parseNextResponseSequenceWithResultProcessor" #-} 
           runFree free
           where
             runFree :: F J.ParseResponse (Either Text (IO ())) -> IO ()
