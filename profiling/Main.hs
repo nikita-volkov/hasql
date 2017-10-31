@@ -17,7 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- A.session connection (batchSession 10 10 (nonDecodingBatch 10000))
+    Right !result <- A.session connection (batchSession 1 1 (manyRowsBatch 1000000 (B.foldRows forcingLengthFold)))
     traceEventIO "STOP Session"
     return ()
 
@@ -83,3 +83,12 @@ nonDecodingBatch amountOfRows =
   where
     template =
       "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a"
+
+-- * Folds
+-------------------------
+
+forcingLengthFold :: I.Fold a Int
+forcingLengthFold =
+  I.Fold step 0 id
+  where
+    step !n !row = succ n
