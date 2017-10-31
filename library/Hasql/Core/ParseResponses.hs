@@ -14,7 +14,13 @@ import qualified Ptr.ByteString as D
 
 newtype ParseResponses output =
   ParseResponses (ExceptT Text (F F.ParseResponse) output)
-  deriving (Functor, Applicative, Monad, MonadError Text)
+  deriving (Applicative, Monad, MonadError Text)
+
+instance Functor ParseResponses where
+  {-# INLINE fmap #-}
+  fmap fn (ParseResponses (ExceptT free)) =
+    {-# SCC "fmap" #-} 
+    ParseResponses (ExceptT (fmap (fmap fn) free))
 
 parseResponse :: F.ParseResponse output -> ParseResponses output
 parseResponse pr =
