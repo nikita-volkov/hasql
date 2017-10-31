@@ -34,9 +34,12 @@ foldRows (Fold foldStep foldStart foldEnd) pdr =
   let
     iterate !state =
       lift $
-      F.rowOrEnd
-        (fmap (\ !row -> iterate (foldStep state row)) pdr)
-        (\ !amount -> pure (Right (foldEnd state, amount)))
+      F.ParseResponse $ \ type_ yield parse ->
+      if
+        | G.dataRow type_ -> parse (fmap (\ !row -> iterate (foldStep state row)) (E.dataRowBody pdr))
+        | G.commandComplete type_ -> parse (fmap (\ !amount -> pure (Right (foldEnd state, amount))) E.commandCompleteBody)
+        | G.emptyQuery type_ -> parse (return (pure (Right (foldEnd state, 0))))
+        | otherwise -> yield
     in 
       iterate foldStart
 
