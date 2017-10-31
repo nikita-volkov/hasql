@@ -36,7 +36,7 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
           C.push buffer 4096 $ \ptr -> do
             result <- A.receiveToPtr socket ptr 4096
             case result of
-              Right amountReceived -> return (amountReceived, succeed)
+              Right !amountReceived -> return (amountReceived, succeed)
               Left error -> return (0, reportTransportError error)
         ensuringBufferHasData :: IO () -> IO ()
         ensuringBufferHasData succeed =
