@@ -3,4 +3,4 @@ set -eo pipefail
 
 cabal build profiling -v0
 cd dist
-build/profiling/profiling +RTS -N -s -RTS
+build/profiling/profiling +RTS -N4 -s -RTS
