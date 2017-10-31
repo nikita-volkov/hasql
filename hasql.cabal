@@ -59,6 +59,7 @@ library
     Hasql.Session
   other-modules:
     Hasql.Prelude
+    Hasql.Core.Fail
     Hasql.Core.Failing
     Hasql.Core.Statement
     Hasql.Core.Batch
