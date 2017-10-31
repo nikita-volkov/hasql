@@ -14,12 +14,20 @@ import qualified Ptr.ByteString as D
 
 newtype ParseResponses output =
   ParseResponses (ExceptT Text (F F.ParseResponse) output)
-  deriving (Functor, Applicative, Monad, MonadError Text)
+  deriving (Applicative, Monad, MonadError Text)
 
+instance Functor ParseResponses where
+  {-# INLINE fmap #-}
+  fmap fn (ParseResponses (ExceptT free)) =
+    {-# SCC "fmap" #-} 
+    ParseResponses (ExceptT (fmap (fmap fn) free))
+
+{-# INLINE parseResponse #-}
 parseResponse :: F.ParseResponse output -> ParseResponses output
 parseResponse pr =
   ParseResponses (lift (liftF pr))
 
+{-# INLINE foldRows #-}
 foldRows :: forall row output. Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
 foldRows (Fold foldStep foldStart foldEnd) pdr =
   ParseResponses $ ExceptT $ F $ \ pure lift ->
@@ -32,6 +40,7 @@ foldRows (Fold foldStep foldStart foldEnd) pdr =
     in 
       iterate foldStart
 
+{-# INLINE singleRow #-}
 singleRow :: A.ParseDataRow row -> ParseResponses row
 singleRow pdr =
   ParseResponses $ ExceptT $ F $ \ pure lift ->
@@ -43,14 +52,17 @@ singleRow pdr =
         (\ _ -> pure state)
     in iterate (Left "Not a single row")
 
+{-# INLINE rowsAffected #-}
 rowsAffected :: ParseResponses Int
 rowsAffected =
   parseResponse F.rowsAffected
 
+{-# INLINE authenticationStatus #-}
 authenticationStatus :: ParseResponses AuthenticationStatus
 authenticationStatus =
   parseResponse F.authenticationStatus
 
+{-# INLINE parameters #-}
 parameters :: ParseResponses Bool
 parameters =
   ParseResponses $ ExceptT $ F $ \ pure lift ->
@@ -70,6 +82,7 @@ parameters =
           F.readyForQuery $> pure state
     in iterate (Left "Missing the \"integer_datetimes\" setting")
 
+{-# INLINE authenticationResult #-}
 authenticationResult :: ParseResponses AuthenticationResult
 authenticationResult =
   do
@@ -79,14 +92,17 @@ authenticationResult =
       NeedMD5PasswordAuthenticationStatus salt -> return (NeedMD5PasswordAuthenticationResult salt)
       OkAuthenticationStatus -> OkAuthenticationResult <$> parameters
 
+{-# INLINE parseComplete #-}
 parseComplete :: ParseResponses ()
 parseComplete =
   parseResponse F.parseComplete
 
+{-# INLINE bindComplete #-}
 bindComplete :: ParseResponses ()
 bindComplete =
   parseResponse F.bindComplete
 
+{-# INLINE readyForQuery #-}
 readyForQuery :: ParseResponses ()
 readyForQuery =
   parseResponse F.readyForQuery

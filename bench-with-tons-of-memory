@@ -12,6 +12,5 @@ if ! test -d "dist.optimized"
     ln -s dist.optimized dist
   fi;
 
-cabal build profiling -v0
-cd dist
-build/profiling/profiling +RTS -N4 -s -RTS
+cabal build benchmarks -v0
+dist/build/benchmarks/benchmarks +RTS -A256m -H512m

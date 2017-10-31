@@ -49,9 +49,12 @@ loop socket fetchResultProcessor sendNotification reportTransportError reportPro
         peekFromBuffer :: D.Peek (IO ()) -> IO ()
         peekFromBuffer (D.Peek amount ptrIO) =
           {-# SCC "peekFromBuffer" #-} 
-          fix $ \ recur ->
-          join $ C.pull buffer amount ptrIO $ \ _ ->
-          receiveToBuffer recur
+          loop
+          where
+            loop =
+              do
+                io <- C.pull buffer amount ({-# SCC "ptrIO" #-} ptrIO) (const ({-# SCC "refill-buffer" #-} receiveToBuffer loop))
+                io
         parseNextResponse :: IO () -> J.ParseResponse (IO ()) -> IO ()
         parseNextResponse ignore (J.ParseResponse parseResponseChurch) =
           {-# SCC "parseNextResponse" #-} 

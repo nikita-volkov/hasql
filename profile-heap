@@ -1,13 +1,24 @@
 #!/bin/bash
 set -eo pipefail
 
+if ! test -d "dist.prof"
+  then
+    mkdir "dist.prof"
+    rm -rf dist
+    ln -s dist.prof dist
+    cabal-init-for-profiling
+  else
+    rm -rf dist
+    ln -s dist.prof dist
+  fi;
+
 function wait_till_exists {
   while ! test -f "$1"; do
     sleep 0.1
   done
 }
 
-cabal build profiling
+cabal build profiling -v0
 cd dist
 rm -f profiling.ps
 rm -f profiling.hp

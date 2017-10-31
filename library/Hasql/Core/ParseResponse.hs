@@ -21,24 +21,24 @@ instance Applicative ParseResponse where
     ParseResponse (\ _ _ parse -> parse (pure x))
   {-# INLINE (<*>) #-}
   (<*>) (ParseResponse left) (ParseResponse right) =
-    ParseResponse $ \ type_ yield parse ->
+    ParseResponse $ \ !type_ !yield parse ->
     left type_ yield $ \ leftParse ->
     right type_ yield $ \ rightParse ->
     parse (leftParse <*> rightParse)
 
 instance Alternative ParseResponse where
   empty =
-    ParseResponse (\ _ yield _ -> yield)
+    ParseResponse (\ _ !yield _ -> yield)
   {-# INLINE (<|>) #-}
   (<|>) (ParseResponse left) (ParseResponse right) =
-    ParseResponse $ \ type_ yield parse ->
+    ParseResponse $ \ !type_ !yield parse ->
     left type_ (right type_ yield parse) parse
 
 {-# INLINE predicateAndParser #-}
 predicateAndParser :: (Word8 -> Bool) -> C.Parse result -> ParseResponse result
 predicateAndParser predicate parser =
   {-# SCC "predicateAndParser" #-} 
-  ParseResponse $ \ type_ yield parse ->
+  ParseResponse $ \ !type_ !yield parse ->
   if predicate type_
     then parse parser
     else yield
@@ -47,7 +47,7 @@ predicateAndParser predicate parser =
 rowOrEnd :: A.ParseDataRow output -> (Int -> output) -> ParseResponse output
 rowOrEnd pdr amountOutput =
   {-# SCC "rowOrEnd" #-} 
-  ParseResponse $ \ type_ yield parse ->
+  ParseResponse $ \ !type_ !yield parse ->
   if
     | G.dataRow type_ -> parse (E.dataRowBody pdr)
     | G.commandComplete type_ -> parse (fmap amountOutput E.commandCompleteBody)
@@ -57,7 +57,7 @@ rowOrEnd pdr amountOutput =
 {-# INLINE rowsAffected #-}
 rowsAffected :: ParseResponse Int
 rowsAffected =
-  ParseResponse $ \ type_ yield parse ->
+  ParseResponse $ \ !type_ !yield parse ->
   if
     | G.commandComplete type_ -> parse E.commandCompleteBody
     | G.emptyQuery type_ -> parse (pure 0)

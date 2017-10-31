@@ -1,7 +1,18 @@
 #!/bin/bash
 set -eo pipefail
 
-cabal build profiling --ghc-options="-eventlog"
+if ! test -d "dist.events"
+  then
+    mkdir "dist.events"
+    rm -rf dist
+    ln -s dist.events dist
+    cabal-init-for-dev
+  else
+    rm -rf dist
+    ln -s dist.events dist
+  fi;
+
+cabal build profiling --ghc-options="-eventlog" -v0
 cd dist
 build/profiling/profiling +RTS -N4 -la -RTS
 ghc-events-analyze --timed --bucket-width 1 --bucket-height 14 --border-width 0 --ms --tick-every 20 --buckets 1000 --window Session profiling.eventlog

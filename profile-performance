@@ -1,7 +1,18 @@
 #!/bin/bash
 set -eo pipefail
 
-cabal build profiling
+if ! test -d "dist.prof"
+  then
+    mkdir "dist.prof"
+    rm -rf dist
+    ln -s dist.prof dist
+    cabal-init-for-profiling
+  else
+    rm -rf dist
+    ln -s dist.prof dist
+  fi;
+
+cabal build profiling -v0
 cd dist
-build/profiling/profiling +RTS -N4 -p -s -RTS
+build/profiling/profiling +RTS -N4 -p -s -V0.00001 -RTS
 open profiling.prof

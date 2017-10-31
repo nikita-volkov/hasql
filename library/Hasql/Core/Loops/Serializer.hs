@@ -32,6 +32,7 @@ loop getMessage sendBytes =
               sendBytes (C.PS fp 0 offset)
               startAnew
     serialize !fp !offset !spaceRequired !write =
+      {-# SCC "serialize" #-} 
       if size - offset >= spaceRequired
         then do
           withForeignPtr fp (\p -> write (plusPtr p offset))

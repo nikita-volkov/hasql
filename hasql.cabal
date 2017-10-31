@@ -59,6 +59,8 @@ library
     Hasql.Session
   other-modules:
     Hasql.Prelude
+    Hasql.Core.Fail
+    Hasql.Core.Failing
     Hasql.Core.Statement
     Hasql.Core.Batch
     Hasql.Core.Session
@@ -106,7 +108,7 @@ library
     postgresql-binary == 0.12.*,
     -- IO:
     ptr >= 0.15.3 && < 0.16,
-    buffer >= 0.5.1 && < 0.6,
+    buffer >= 0.5.3 && < 0.6,
     -- data:
     bytestring-strict-builder >= 0.4.5 && < 0.5,
     vector-builder == 0.3.*,
