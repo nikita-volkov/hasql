@@ -17,7 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- A.session connection (batchSession 50 10 (singleColumnRowBatch 100 B.revList))
+    Right !result <- A.session connection (batchSession 50 10 (nonDecodingBatch 100))
     traceEventIO "STOP Session"
     return ()
 
@@ -76,3 +76,10 @@ singleColumnRowBatch amountOfRows decodeResult =
       "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a"
     decode =
       decodeResult (C.primitive D.int4)
+
+nonDecodingBatch :: Int -> J.Batch ()
+nonDecodingBatch amountOfRows =
+  J.statement (G.unprepared template conquer B.ignore) ()
+  where
+    template =
+      "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a"
