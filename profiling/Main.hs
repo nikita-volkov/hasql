@@ -17,8 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- fmap force <$> A.session connection (session 50 10 100)
-    Right !result <- fmap force <$> A.session connection (session 10 50 100)
+    Right !result <- A.session connection (batchSession 50 10 (singleColumnRowBatch 100 B.revList))
     traceEventIO "STOP Session"
     return ()
 
@@ -36,9 +35,15 @@ connect =
 -- * Sessions
 -------------------------
 
-session :: Int -> Int -> Int -> F.Session [[[(Int32, Int32)]]]
-session amountOfQueries amountOfStatements amountOfRows =
-  replicateM amountOfQueries (F.batch (replicateM amountOfStatements (manyRowsBatch amountOfRows (B.revList))))
+{-# INLINE manyRowsSession #-}
+manyRowsSession :: Int -> Int -> Int -> F.Session [[[(Int32, Int32)]]]
+manyRowsSession amountOfQueries amountOfStatements amountOfRows =
+  batchSession amountOfQueries amountOfStatements (manyRowsBatch amountOfRows B.revList)
+
+{-# INLINE batchSession #-}
+batchSession :: Int -> Int -> J.Batch batchResult -> F.Session [[batchResult]]
+batchSession amountOfQueries amountOfStatements batch =
+  replicateM amountOfQueries (F.batch (replicateM amountOfStatements batch))
   where
     replicateM cnt0 f =
       loop cnt0
@@ -62,3 +67,12 @@ manyRowsBatch amountOfRows decodeResult =
         where
         tuple !a !b =
           (a, b)
+
+singleColumnRowBatch :: Int -> (C.DecodeRow Int32 -> B.DecodeResult result) -> J.Batch result
+singleColumnRowBatch amountOfRows decodeResult =
+  J.statement (G.unprepared template conquer decode) ()
+  where
+    template =
+      "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a"
+    decode =
+      decodeResult (C.primitive D.int4)
