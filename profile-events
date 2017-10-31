@@ -1,6 +1,17 @@
 #!/bin/bash
 set -eo pipefail
 
+if ! test -d "dist.events"
+  then
+    mkdir "dist.events"
+    rm -rf dist
+    ln -s dist.events dist
+    cabal-init-for-dev
+  else
+    rm -rf dist
+    ln -s dist.events dist
+  fi;
+
 cabal build profiling --ghc-options="-eventlog" -v0
 cd dist
 build/profiling/profiling +RTS -N4 -la -RTS

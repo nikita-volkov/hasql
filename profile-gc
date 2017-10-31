@@ -1,6 +1,17 @@
 #!/bin/bash
 set -eo pipefail
 
+if ! test -d "dist.optimized"
+  then
+    mkdir "dist.optimized"
+    rm -rf dist
+    ln -s dist.optimized dist
+    cabal-init-for-dev
+  else
+    rm -rf dist
+    ln -s dist.optimized dist
+  fi;
+
 cabal build profiling -v0
 cd dist
 build/profiling/profiling +RTS -N4 -s -RTS
