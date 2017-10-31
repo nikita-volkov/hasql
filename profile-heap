@@ -7,7 +7,7 @@ function wait_till_exists {
   done
 }
 
-cabal build profiling
+cabal build profiling -v0
 cd dist
 rm -f profiling.ps
 rm -f profiling.hp
