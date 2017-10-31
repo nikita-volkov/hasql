@@ -28,7 +28,7 @@ parseResponse pr =
   ParseResponses (lift (liftF pr))
 
 {-# INLINE foldRows #-}
-foldRows :: forall row output. Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
+foldRows :: Fold row output -> A.ParseDataRow row -> ParseResponses (output, Int)
 foldRows (Fold foldStep foldStart foldEnd) pdr =
   ParseResponses $ ExceptT $ F $ \ pure lift ->
   let
