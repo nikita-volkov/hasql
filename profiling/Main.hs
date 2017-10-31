@@ -17,7 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- A.session connection (batchSession 1 1 (manyRowsBatch 1000000 (B.foldRows forcingLengthFold)))
+    Right !result <- A.session connection (batchSession 1 1 (singleColumnRowBatch 1000000 (B.foldRows I.sum)))
     traceEventIO "STOP Session"
     return ()
 
