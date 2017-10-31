@@ -3,5 +3,5 @@ set -eo pipefail
 
 cabal build profiling
 cd dist
-build/profiling/profiling +RTS -N4 -p -s -RTS
+build/profiling/profiling +RTS -N4 -p -s -V0.00001 -RTS
 open profiling.prof
