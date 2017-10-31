@@ -17,7 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- A.session connection (batchSession 50 10 (nonDecodingBatch 100))
+    Right !result <- A.session connection (batchSession 10 10 (nonDecodingBatch 10000))
     traceEventIO "STOP Session"
     return ()
 
