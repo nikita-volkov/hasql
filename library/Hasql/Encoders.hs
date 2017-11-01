@@ -358,6 +358,11 @@ enum mapping =
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
 -- thus leaving it up to Postgres to infer the actual type of the value.
+-- 
+-- The value transimitted is any value encoded in the Postgres' Text data format.
+-- For reference, see the
+-- <https://www.postgresql.org/docs/10/static/protocol-overview.html#protocol-format-codes Formats and Format Codes>
+-- section of the Postgres' documentation.
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
 unknown =
