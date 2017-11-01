@@ -28,7 +28,7 @@ run' (Params (Op op)) params integerDatetimes =
     step (oid, bytesGetter) ~(oidList, bytesAndFormatList) =
       (,)
         (oid : oidList)
-        (fmap (\bytes -> (bytes, A.Binary)) (bytesGetter integerDatetimes) : bytesAndFormatList)
+        (fmap (\bytes -> (bytes, format oid)) (bytesGetter integerDatetimes) : bytesAndFormatList)
 
 run'' :: Params a -> a -> Bool -> [Maybe (A.Oid, ByteString, A.Format)]
 run'' (Params (Op op)) params integerDatetimes =
@@ -39,7 +39,12 @@ run'' (Params (Op op)) params integerDatetimes =
       mapping a : b
       where
         mapping (oid, bytesGetter) =
-          (,,) <$> pure oid <*> bytesGetter integerDatetimes <*> pure A.Binary
+          (,,) <$> pure oid <*> bytesGetter integerDatetimes <*> pure (format oid)
+
+format :: A.Oid -> A.Format
+format oid = case oid of
+  A.Oid 705 -> A.Text -- is unknown
+  _         -> A.Binary
 
 value :: C.Value a -> Params a
 value =
