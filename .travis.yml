@@ -26,8 +26,6 @@ install:
     if [ "$lower_bound_dependencies" = "1" ];
     then
       constraint_options=(
-        "--constraint=transformers==0.3.*"
-        "--constraint=time==1.4.*"
       );
     fi;
   # Install the "haskell-src-exts" implicit dependency
