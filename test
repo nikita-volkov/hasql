@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eo pipefail
+
+distdir="dist"
+
+if ! test -d "$distdir"
+  then
+    mkdir "$distdir"
+    cabal install --only-dependencies --enable-tests --enable-benchmarks --builddir="$distdir"
+    cabal configure --disable-library-profiling --enable-tests --enable-benchmarks --builddir="$distdir"
+  fi;
+
+cabal build tests -v0 --builddir="$distdir"
+cd "$distdir"
+build/tests/tests
