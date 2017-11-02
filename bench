@@ -1,16 +1,15 @@
 #!/bin/bash
 set -eo pipefail
 
-if ! test -d "dist.optimized"
+distdir="dist.optimized"
+
+if ! test -d "$distdir"
   then
-    mkdir "dist.optimized"
-    rm -rf dist
-    ln -s dist.optimized dist
-    cabal-init-for-dev
-  else
-    rm -rf dist
-    ln -s dist.optimized dist
+    mkdir "$distdir"
+    cabal install --only-dependencies --enable-tests --enable-benchmarks --builddir="$distdir"
+    cabal configure --disable-library-profiling --enable-tests --enable-benchmarks --builddir="$distdir"
   fi;
 
-cabal build benchmarks -v0
-dist/build/benchmarks/benchmarks
+cabal build benchmarks -v0 --builddir="$distdir"
+cd "$distdir"
+build/benchmarks/benchmarks
