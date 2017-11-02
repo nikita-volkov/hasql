@@ -14,5 +14,5 @@ if ! test -d "dist.prof"
 
 cabal build profiling -v0
 cd dist
-build/profiling/profiling +RTS -N4 -p -s -V0.00001 -RTS
+build/profiling/profiling +RTS -N4 -p -V0.00001 -RTS
 open profiling.prof
