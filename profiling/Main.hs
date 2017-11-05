@@ -17,7 +17,7 @@ main =
   do
     connection <- connect
     traceEventIO "START Session"
-    Right !result <- A.session connection (batchSession 1 1 (singleColumnRowBatch 1000000 (B.foldRows I.sum)))
+    Right !result <- A.session connection (batchSession 1 1 (multiColumnRowBatch 100000 (B.foldRows I.revList)))
     traceEventIO "STOP Session"
     return ()
 
@@ -35,11 +35,6 @@ connect =
 -- * Sessions
 -------------------------
 
-{-# INLINE manyRowsSession #-}
-manyRowsSession :: Int -> Int -> Int -> F.Session [[[(Int32, Int32)]]]
-manyRowsSession amountOfQueries amountOfStatements amountOfRows =
-  batchSession amountOfQueries amountOfStatements (manyRowsBatch amountOfRows B.revList)
-
 {-# INLINE batchSession #-}
 batchSession :: Int -> Int -> J.Batch batchResult -> F.Session [[batchResult]]
 batchSession amountOfQueries amountOfStatements batch =
@@ -55,18 +50,20 @@ batchSession amountOfQueries amountOfStatements batch =
 -- * Queries
 -------------------------
 
-manyRowsBatch :: Int -> (C.DecodeRow (Int32, Int32) -> B.DecodeResult result) -> J.Batch result
-manyRowsBatch amountOfRows decodeResult =
+multiColumnRowBatch :: Int -> (C.DecodeRow (Int32, Int32, Int32) -> B.DecodeResult result) -> J.Batch result
+multiColumnRowBatch amountOfRows decodeResult =
   J.statement (G.unprepared template conquer decode) ()
   where
     template =
-      "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a, generate_series(10000," <> fromString (show (amountOfRows + 10000)) <> ") as b"
+      "SELECT generate_series(0," <> fromString (show amountOfRows) <> ") as a, \
+      \generate_series(1," <> fromString (show (amountOfRows + 1)) <> ") as b, \
+      \generate_series(2," <> fromString (show (amountOfRows + 2)) <> ") as c"
     decode =
       decodeResult $
-      tuple <$> C.primitive D.int4 <*> C.primitive D.int4
+      tuple <$> C.primitive D.int4 <*> C.primitive D.int4 <*> C.primitive D.int4
         where
-        tuple !a !b =
-          (a, b)
+        tuple !a !b !c =
+          (a, b, c)
 
 singleColumnRowBatch :: Int -> (C.DecodeRow Int32 -> B.DecodeResult result) -> J.Batch result
 singleColumnRowBatch amountOfRows decodeResult =
@@ -92,3 +89,7 @@ forcingLengthFold =
   I.Fold step 0 id
   where
     step !n !row = succ n
+
+multiColumnSumFold :: I.Fold (Int32, Int32, Int32) Int32
+multiColumnSumFold =
+  lmap (\ (!a, !b, !c) -> a + b + c) I.sum
