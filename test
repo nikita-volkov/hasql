@@ -10,6 +10,6 @@ if ! test -d "$distdir"
     cabal configure --disable-library-profiling --enable-tests --enable-benchmarks --builddir="$distdir"
   fi;
 
-cabal build tests -v0 --builddir="$distdir"
+cabal build tests -O0 -v0 --builddir="$distdir"
 cd "$distdir"
 build/tests/tests
