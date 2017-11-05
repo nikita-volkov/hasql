@@ -1,18 +1,16 @@
 #!/bin/bash
 set -eo pipefail
 
-if ! test -d "dist.prof"
+distdir="dist.prof"
+
+if ! test -d "$distdir"
   then
-    mkdir "dist.prof"
-    rm -rf dist
-    ln -s dist.prof dist
-    cabal-init-for-profiling
-  else
-    rm -rf dist
-    ln -s dist.prof dist
+    mkdir "$distdir"
+    cabal install --enable-library-profiling --only-dependencies --enable-tests --enable-benchmarks --builddir="$distdir"
+    cabal configure --enable-library-profiling --enable-profiling --enable-tests --enable-benchmarks --builddir="$distdir"
   fi;
 
-cabal build profiling -v0
-cd dist
-build/profiling/profiling +RTS -N4 -p -s -V0.00001 -RTS
+cabal build profiling -v0 --builddir="$distdir"
+cd "$distdir"
+build/profiling/profiling +RTS -N4 -p -V0.00001 -RTS
 open profiling.prof
