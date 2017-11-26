@@ -124,12 +124,11 @@ test-suite tasty
     -- database:
     hasql,
     -- testing:
-    tasty == 0.11.*,
-    tasty-quickcheck == 0.8.*,
-    tasty-smallcheck == 0.8.*,
-    tasty-hunit == 0.9.*,
+    tasty >= 0.12 && < 0.13,
+    tasty-quickcheck >= 0.9 && < 0.10,
+    tasty-hunit >= 0.9 && < 0.10,
     quickcheck-instances >= 0.3.11 && < 0.4,
-    QuickCheck >= 2.8.1 && < 2.10,
+    QuickCheck >= 2.8.1 && < 3,
     -- general:
     data-default-class,
     -- 
