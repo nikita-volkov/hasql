@@ -26,10 +26,10 @@ data SessionError =
 
 session :: Session a -> IO (Either SessionError a)
 session session =
-  runEitherT $ acquire >>= \connection -> use connection <* release connection
+  runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      EitherT $ fmap (mapLeft ConnectionError) $ HC.acquire settings
+      ExceptT $ fmap (mapLeft ConnectionError) $ HC.acquire settings
       where
         settings =
           HC.settings host port user password database
@@ -40,7 +40,7 @@ session session =
             password = ""
             database = "postgres"
     use connection =
-      EitherT $
+      ExceptT $
       fmap (mapLeft SessionError) $
       Hasql.Session.run session connection
     release connection =

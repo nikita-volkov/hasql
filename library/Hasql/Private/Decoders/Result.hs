@@ -11,7 +11,7 @@ import qualified Data.Vector.Mutable as MutableVector
 
 
 newtype Result a =
-  Result (ReaderT (Bool, LibPQ.Result) (EitherT Error IO) a)
+  Result (ReaderT (Bool, LibPQ.Result) (ExceptT Error IO) a)
   deriving (Functor, Applicative, Monad)
 
 data Error =
@@ -48,7 +48,7 @@ data Error =
 {-# INLINE run #-}
 run :: Result a -> (Bool, LibPQ.Result) -> IO (Either Error a)
 run (Result reader) env =
-  runEitherT (runReaderT reader env)
+  runExceptT (runReaderT reader env)
 
 {-# INLINE unit #-}
 unit :: Result ()
@@ -65,7 +65,7 @@ rowsAffected =
     checkExecStatus $ \case
       LibPQ.CommandOk -> True
       _ -> False
-    Result $ ReaderT $ \(_, result) -> EitherT $
+    Result $ ReaderT $ \(_, result) -> ExceptT $
       LibPQ.cmdTuples result & fmap cmdTuplesReader
   where
     cmdTuplesReader =
@@ -92,12 +92,12 @@ checkExecStatus predicate =
         LibPQ.BadResponse   -> serverError
         LibPQ.NonfatalError -> serverError
         LibPQ.FatalError    -> serverError
-        _ -> Result $ lift $ EitherT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
+        _ -> Result $ lift $ ExceptT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
 
 {-# INLINE serverError #-}
 serverError :: Result ()
 serverError =
-  Result $ ReaderT $ \(_, result) -> EitherT $ do
+  Result $ ReaderT $ \(_, result) -> ExceptT $ do
     code <- 
       fmap (fromMaybe ($bug "No code")) $
       LibPQ.resultErrorField result LibPQ.DiagSqlstate
@@ -117,7 +117,7 @@ maybe rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+    Result $ ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
       maxRows <- LibPQ.ntuples result
       case maxRows of
         0 -> return (Right Nothing)
@@ -138,7 +138,7 @@ single rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+    Result $ ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
       maxRows <- LibPQ.ntuples result
       case maxRows of
         1 -> do
@@ -158,7 +158,7 @@ vector rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+    Result $ ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
       maxRows <- LibPQ.ntuples result
       maxCols <- LibPQ.nfields result
       mvector <- MutableVector.unsafeNew (rowToInt maxRows)
@@ -185,7 +185,7 @@ foldl step init rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ {-# SCC "traversal" #-} do
+    Result $ ReaderT $ \(integerDatetimes, result) -> ExceptT $ {-# SCC "traversal" #-} do
       maxRows <- LibPQ.ntuples result
       maxCols <- LibPQ.nfields result
       accRef <- newIORef init
@@ -212,7 +212,7 @@ foldr step init rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $ ReaderT $ \(integerDatetimes, result) -> EitherT $ do
+    Result $ ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
       maxRows <- LibPQ.ntuples result
       maxCols <- LibPQ.nfields result
       accRef <- newIORef init

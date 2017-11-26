@@ -9,10 +9,10 @@ import qualified Hasql.Session
 
 with :: (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)
 with handler =
-  runEitherT $ acquire >>= \connection -> use connection <* release connection
+  runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      EitherT $ HC.acquire settings
+      ExceptT $ HC.acquire settings
       where
         settings =
           HC.settings host port user password database

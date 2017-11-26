@@ -25,9 +25,9 @@ type ConnectionError =
 acquire :: Settings.Settings -> IO (Either ConnectionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
-  runEitherT $ do
+  runExceptT $ do
     pqConnection <- lift (IO.acquireConnection settings)
-    lift (IO.checkConnectionStatus pqConnection) >>= traverse left
+    lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
     registry <- lift (IO.acquirePreparedStatementRegistry)

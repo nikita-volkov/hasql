@@ -19,7 +19,7 @@ import qualified Hasql.Private.Decoders.Row as Row
 
 
 newtype Results a =
-  Results (ReaderT (Bool, LibPQ.Connection) (EitherT Error IO) a)
+  Results (ReaderT (Bool, LibPQ.Connection) (ExceptT Error IO) a)
   deriving (Functor, Applicative, Monad)
 
 data Error =
@@ -34,12 +34,12 @@ data Error =
 {-# INLINE run #-}
 run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either Error a)
 run (Results stack) env =
-  runEitherT (runReaderT stack env)
+  runExceptT (runReaderT stack env)
 
 {-# INLINE clientError #-}
 clientError :: Results a
 clientError =
-  Results $ ReaderT $ \(_, connection) -> EitherT $
+  Results $ ReaderT $ \(_, connection) -> ExceptT $
   fmap (Left . ClientError) (LibPQ.errorMessage connection)
 
 -- |
@@ -47,7 +47,7 @@ clientError =
 {-# INLINE single #-}
 single :: Result.Result a -> Results a
 single resultDec =
-  Results $ ReaderT $ \(integerDatetimes, connection) -> EitherT $ do
+  Results $ ReaderT $ \(integerDatetimes, connection) -> ExceptT $ do
     resultMaybe <- LibPQ.getResult connection
     case resultMaybe of
       Just result ->
@@ -60,7 +60,7 @@ single resultDec =
 {-# INLINE getResult #-}
 getResult :: Results LibPQ.Result
 getResult =
-  Results $ ReaderT $ \(_, connection) -> EitherT $ do
+  Results $ ReaderT $ \(_, connection) -> ExceptT $ do
     resultMaybe <- LibPQ.getResult connection
     case resultMaybe of
       Just result -> pure (Right result)
@@ -88,4 +88,4 @@ dropRemainders =
           loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
-              EitherT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)
+              ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)

@@ -7,7 +7,7 @@ import qualified Hasql.Private.Decoders.Value as Value
 
 
 newtype Row a =
-  Row (ReaderT Env (EitherT Error IO) a)
+  Row (ReaderT Env (ExceptT Error IO) a)
   deriving (Functor, Applicative, Monad)
 
 data Env =
@@ -28,12 +28,12 @@ run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either Erro
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
-    runEitherT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef))
+    runExceptT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef))
 
 {-# INLINE error #-}
 error :: Error -> Row a
 error x =
-  Row (ReaderT (const (EitherT (pure (Left x)))))
+  Row (ReaderT (const (ExceptT (pure (Left x)))))
 
 -- |
 -- Next value, decoded using the provided value decoder.
@@ -41,7 +41,7 @@ error x =
 value :: Value.Value a -> Row (Maybe a)
 value valueDec =
   {-# SCC "value" #-} 
-  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> EitherT $ do
+  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
     col <- readIORef columnRef
     writeIORef columnRef (succ col)
     if col < columnsAmount

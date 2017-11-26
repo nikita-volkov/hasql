@@ -10,6 +10,7 @@ module Hasql.Private.Prelude
   forMToZero_,
   forMFromZero_,
   strictCons,
+  mapLeft,
 )
 where
 
@@ -22,9 +23,13 @@ import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, from
 -------------------------
 import Control.Monad.IO.Class as Exports
 import Control.Monad.Trans.Class as Exports
-import Control.Monad.Trans.Maybe as Exports hiding (liftListen, liftPass)
-import Control.Monad.Trans.Reader as Exports hiding (liftCallCC, liftCatch)
-import Control.Monad.Trans.State.Strict as Exports hiding (liftCallCC, liftCatch, liftListen, liftPass)
+import Control.Monad.Trans.Cont as Exports hiding (shift, callCC)
+import Control.Monad.Trans.Except as Exports (ExceptT(ExceptT), Except, except, runExcept, runExceptT, mapExcept, mapExceptT, withExcept, withExceptT, throwE, catchE)
+import Control.Monad.Trans.Maybe as Exports
+import Control.Monad.Trans.Reader as Exports (Reader, runReader, mapReader, withReader, ReaderT(ReaderT), runReaderT, mapReaderT, withReaderT)
+import Control.Monad.Trans.State.Strict as Exports (State, runState, evalState, execState, mapState, withState, StateT(StateT), runStateT, evalStateT, execStateT, mapStateT, withStateT)
+import Control.Monad.Trans.Writer.Strict as Exports (Writer, runWriter, execWriter, mapWriter, WriterT(..), execWriterT, mapWriterT)
+import Data.Functor.Compose as Exports
 import Data.Functor.Identity as Exports
 
 -- mtl
@@ -47,11 +52,6 @@ import Data.Functor.Contravariant.Divisible as Exports
 -- contravariant-extras
 -------------------------
 import Contravariant.Extras as Exports
-
--- either
--------------------------
-import Control.Monad.Trans.Either as Exports
-import Data.Either.Combinators as Exports
 
 -- semigroups
 -------------------------
@@ -128,3 +128,8 @@ forMFromZero_ !endN f =
 strictCons :: a -> [a] -> [a]
 strictCons !a b =
   let !c = a : b in c
+
+{-# INLINE mapLeft #-}
+mapLeft :: (a -> c) -> Either a b -> Either c b
+mapLeft f =
+  either (Left . f) Right

@@ -14,14 +14,14 @@ import qualified Hasql.Private.Connection as Connection
 -- |
 -- A batch of actions to be executed in the context of a database connection.
 newtype Session a =
-  Session (ReaderT Connection.Connection (EitherT Error IO) a)
+  Session (ReaderT Connection.Connection (ExceptT Error IO) a)
   deriving (Functor, Applicative, Monad, MonadError Error, MonadIO)
 
 -- |
 -- Executes a bunch of commands on the provided connection.
 run :: Session a -> Connection.Connection -> IO (Either Error a)
 run (Session impl) connection =
-  runEitherT $
+  runExceptT $
   runReaderT impl connection
 
 -- |
@@ -31,7 +31,7 @@ run (Session impl) connection =
 sql :: ByteString -> Session ()
 sql sql =
   Session $ ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
-    EitherT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection -> do
+    ExceptT $ fmap (mapLeft unsafeCoerce) $ withMVar pqConnectionRef $ \pqConnection -> do
       r1 <- IO.sendNonparametricQuery pqConnection sql
       r2 <- IO.getResults pqConnection integerDatetimes decoder
       return $ r1 *> r2

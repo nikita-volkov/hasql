@@ -114,9 +114,9 @@ sendPreparedParametricQuery ::
   [Maybe (ByteString, LibPQ.Format)] ->
   IO (Either ResultsDecoders.Error ())
 sendPreparedParametricQuery connection registry template oidList valueAndFormatList =
-  runEitherT $ do
-    key <- EitherT $ getPreparedStatementKey connection registry template oidList
-    EitherT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+  runExceptT $ do
+    key <- ExceptT $ getPreparedStatementKey connection registry template oidList
+    ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
 
 {-# INLINE sendUnpreparedParametricQuery #-}
 sendUnpreparedParametricQuery ::

@@ -34,7 +34,7 @@ import qualified Hasql.Private.Encoders.Params as Encoders.Params
 --       else insert -< params
 -- @
 newtype Query a b =
-  Query (Kleisli (ReaderT Connection.Connection (EitherT Decoders.Results.Error IO)) a b)
+  Query (Kleisli (ReaderT Connection.Connection (ExceptT Decoders.Results.Error IO)) a b)
   deriving (Category, Arrow, ArrowChoice, ArrowLoop, ArrowApply)
 
 instance Functor (Query a) where
@@ -54,7 +54,7 @@ statement :: ByteString -> Encoders.Params.Params a -> Decoders.Results.Results 
 statement template encoder decoder preparable =
   Query $ Kleisli $ \params -> 
     ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) -> 
-      EitherT $ withMVar pqConnectionRef $ \pqConnection -> do
+      ExceptT $ withMVar pqConnectionRef $ \pqConnection -> do
         r1 <- IO.sendParametricQuery pqConnection integerDatetimes registry template encoder preparable params
         r2 <- IO.getResults pqConnection integerDatetimes decoder
         return $ r1 *> r2
