@@ -4,7 +4,7 @@ Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both
 
 ## Ecosystem
 
-Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple. 
+Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple.
 
 * ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything revolves around that library.
 
@@ -14,7 +14,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
 
-* ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-query) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
+* ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-transactions) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
 
 * ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
 
