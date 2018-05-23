@@ -4,6 +4,7 @@ module Hasql.Private.IO
 where
 
 import Hasql.Private.Prelude
+import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Commands as Commands
 import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
@@ -58,7 +59,7 @@ initConnection c =
   void $ LibPQ.exec c (Commands.asBytes (Commands.setEncodersToUTF8 <> Commands.setMinClientMessagesToWarning))
 
 {-# INLINE getResults #-}
-getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either ResultsDecoders.Error a)
+getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either CommandError a)
 getResults connection integerDatetimes decoder =
   {-# SCC "getResults" #-} 
   (<*) <$> get <*> dropRemainders
@@ -72,7 +73,7 @@ getResults connection integerDatetimes decoder =
 getPreparedStatementKey ::
   LibPQ.Connection -> PreparedStatementRegistry.PreparedStatementRegistry ->
   ByteString -> [LibPQ.Oid] ->
-  IO (Either ResultsDecoders.Error ByteString)
+  IO (Either CommandError ByteString)
 getPreparedStatementKey connection registry template oidList =
   {-# SCC "getPreparedStatementKey" #-} 
   PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
@@ -99,33 +100,50 @@ getPreparedStatementKey connection registry template oidList =
       pure (pure key)
 
 {-# INLINE checkedSend #-}
-checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either ResultsDecoders.Error ())
+checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either CommandError ())
 checkedSend connection send =
   send >>= \case
-    False -> fmap (Left . ResultsDecoders.ClientError) $ LibPQ.errorMessage connection
+    False -> fmap (Left . ClientError) $ LibPQ.errorMessage connection
     True -> pure (Right ())
 
 {-# INLINE sendPreparedParametricQuery #-}
 sendPreparedParametricQuery ::
   LibPQ.Connection ->
   PreparedStatementRegistry.PreparedStatementRegistry ->
+  Bool ->
   ByteString ->
-  [LibPQ.Oid] ->
-  [Maybe (ByteString, LibPQ.Format)] ->
-  IO (Either ResultsDecoders.Error ())
-sendPreparedParametricQuery connection registry template oidList valueAndFormatList =
-  runExceptT $ do
-    key <- ExceptT $ getPreparedStatementKey connection registry template oidList
-    ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+  ParamsEncoders.Params a ->
+  a ->
+  IO (Either CommandError ())
+sendPreparedParametricQuery connection registry integerDatetimes template (ParamsEncoders.Params (Op encoderOp)) input =
+  let
+    (oidList, valueAndFormatList) =
+      let
+        step (oid, format, encoder, _) ~(oidList, bytesAndFormatList) =
+          (,)
+            (oid : oidList)
+            (fmap (\bytes -> (bytes, format)) (encoder integerDatetimes) : bytesAndFormatList)
+        in foldr step ([], []) (encoderOp input)
+    in runExceptT $ do
+      key <- ExceptT $ getPreparedStatementKey connection registry template oidList
+      ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
 
 {-# INLINE sendUnpreparedParametricQuery #-}
 sendUnpreparedParametricQuery ::
   LibPQ.Connection ->
+  Bool ->
   ByteString ->
-  [Maybe (LibPQ.Oid, ByteString, LibPQ.Format)] ->
-  IO (Either ResultsDecoders.Error ())
-sendUnpreparedParametricQuery connection template paramList =
-  checkedSend connection $ LibPQ.sendQueryParams connection template paramList LibPQ.Binary
+  ParamsEncoders.Params a ->
+  a ->
+  IO (Either CommandError ())
+sendUnpreparedParametricQuery connection integerDatetimes template (ParamsEncoders.Params (Op encoderOp)) input =
+  let
+    params =
+      let
+        step (oid, format, encoder, _) acc =
+          ((,,) <$> pure oid <*> encoder integerDatetimes <*> pure format) : acc
+        in foldr step [] (encoderOp input)
+    in checkedSend connection $ LibPQ.sendQueryParams connection template params LibPQ.Binary
 
 {-# INLINE sendParametricQuery #-}
 sendParametricQuery ::
@@ -136,24 +154,14 @@ sendParametricQuery ::
   ParamsEncoders.Params a ->
   Bool ->
   a ->
-  IO (Either ResultsDecoders.Error ())
+  IO (Either CommandError ())
 sendParametricQuery connection integerDatetimes registry template encoder prepared params =
   {-# SCC "sendParametricQuery" #-} 
   if prepared
-    then
-      let
-        (oidList, valueAndFormatList) =
-          ParamsEncoders.run' encoder params integerDatetimes
-        in
-          sendPreparedParametricQuery connection registry template oidList valueAndFormatList
-    else
-      let
-        paramList =
-          ParamsEncoders.run'' encoder params integerDatetimes
-        in
-          sendUnpreparedParametricQuery connection template paramList
+    then sendPreparedParametricQuery connection registry integerDatetimes template encoder params
+    else sendUnpreparedParametricQuery connection integerDatetimes template encoder params
 
 {-# INLINE sendNonparametricQuery #-}
-sendNonparametricQuery :: LibPQ.Connection -> ByteString -> IO (Either ResultsDecoders.Error ())
+sendNonparametricQuery :: LibPQ.Connection -> ByteString -> IO (Either CommandError ())
 sendNonparametricQuery connection sql =
   checkedSend connection $ LibPQ.sendQuery connection sql

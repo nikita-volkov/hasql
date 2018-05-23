@@ -47,6 +47,7 @@ where
 import Hasql.Private.Prelude hiding (bool)
 import qualified PostgreSQL.Binary.Encoding as A
 import qualified PostgreSQL.Binary.Data as B
+import qualified Text.Builder as C
 import qualified Hasql.Private.Encoders.Params as Params
 import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.Encoders.Array as Array
@@ -187,49 +188,49 @@ newtype Value a =
 {-# INLINABLE bool #-}
 bool :: Value Bool
 bool =
-  Value (Value.unsafePTI PTI.bool (const A.bool))
+  Value (Value.unsafePTIWithShow PTI.bool (const A.bool))
 
 -- |
 -- Encoder of @INT2@ values.
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
 int2 =
-  Value (Value.unsafePTI PTI.int2 (const A.int2_int16))
+  Value (Value.unsafePTIWithShow PTI.int2 (const A.int2_int16))
 
 -- |
 -- Encoder of @INT4@ values.
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
 int4 =
-  Value (Value.unsafePTI PTI.int4 (const A.int4_int32))
+  Value (Value.unsafePTIWithShow PTI.int4 (const A.int4_int32))
 
 -- |
 -- Encoder of @INT8@ values.
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
 int8 =
-  Value (Value.unsafePTI PTI.int8 (const A.int8_int64))
+  Value (Value.unsafePTIWithShow PTI.int8 (const A.int8_int64))
 
 -- |
 -- Encoder of @FLOAT4@ values.
 {-# INLINABLE float4 #-}
 float4 :: Value Float
 float4 =
-  Value (Value.unsafePTI PTI.float4 (const A.float4))
+  Value (Value.unsafePTIWithShow PTI.float4 (const A.float4))
 
 -- |
 -- Encoder of @FLOAT8@ values.
 {-# INLINABLE float8 #-}
 float8 :: Value Double
 float8 =
-  Value (Value.unsafePTI PTI.float8 (const A.float8))
+  Value (Value.unsafePTIWithShow PTI.float8 (const A.float8))
 
 -- |
 -- Encoder of @NUMERIC@ values.
 {-# INLINABLE numeric #-}
 numeric :: Value B.Scientific
 numeric =
-  Value (Value.unsafePTI PTI.numeric (const A.numeric))
+  Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 
 -- |
 -- Encoder of @CHAR@ values.
@@ -238,113 +239,115 @@ numeric =
 {-# INLINABLE char #-}
 char :: Value Char
 char =
-  Value (Value.unsafePTI PTI.text (const A.char_utf8))
+  Value (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
 
 -- |
 -- Encoder of @TEXT@ values.
 {-# INLINABLE text #-}
 text :: Value Text
 text =
-  Value (Value.unsafePTI PTI.text (const A.text_strict))
+  Value (Value.unsafePTIWithShow PTI.text (const A.text_strict))
 
 -- |
 -- Encoder of @BYTEA@ values.
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
 bytea =
-  Value (Value.unsafePTI PTI.bytea (const A.bytea_strict))
+  Value (Value.unsafePTIWithShow PTI.bytea (const A.bytea_strict))
 
 -- |
 -- Encoder of @DATE@ values.
 {-# INLINABLE date #-}
 date :: Value B.Day
 date =
-  Value (Value.unsafePTI PTI.date (const A.date))
+  Value (Value.unsafePTIWithShow PTI.date (const A.date))
 
 -- |
 -- Encoder of @TIMESTAMP@ values.
 {-# INLINABLE timestamp #-}
 timestamp :: Value B.LocalTime
 timestamp =
-  Value (Value.unsafePTI PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
+  Value (Value.unsafePTIWithShow PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINABLE timestamptz #-}
 timestamptz :: Value B.UTCTime
 timestamptz =
-  Value (Value.unsafePTI PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
+  Value (Value.unsafePTIWithShow PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINABLE time #-}
 time :: Value B.TimeOfDay
 time =
-  Value (Value.unsafePTI PTI.time (Prelude.bool A.time_float A.time_int))
+  Value (Value.unsafePTIWithShow PTI.time (Prelude.bool A.time_float A.time_int))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINABLE timetz #-}
 timetz :: Value (B.TimeOfDay, B.TimeZone)
 timetz =
-  Value (Value.unsafePTI PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
+  Value (Value.unsafePTIWithShow PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINABLE interval #-}
 interval :: Value B.DiffTime
 interval =
-  Value (Value.unsafePTI PTI.interval (Prelude.bool A.interval_float A.interval_int))
+  Value (Value.unsafePTIWithShow PTI.interval (Prelude.bool A.interval_float A.interval_int))
 
 -- |
 -- Encoder of @UUID@ values.
 {-# INLINABLE uuid #-}
 uuid :: Value B.UUID
 uuid =
-  Value (Value.unsafePTI PTI.uuid (const A.uuid))
+  Value (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
 
 -- |
 -- Encoder of @INET@ values.
 {-# INLINABLE inet #-}
 inet :: Value (B.NetAddr B.IP)
 inet =
-  Value (Value.unsafePTI PTI.inet (const A.inet))
+  Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
 {-# INLINABLE json #-}
 json :: Value B.Value
 json =
-  Value (Value.unsafePTI PTI.json (const A.json_ast))
+  Value (Value.unsafePTIWithShow PTI.json (const A.json_ast))
 
 -- |
 -- Encoder of @JSON@ values from raw JSON.
 {-# INLINABLE jsonBytes #-}
 jsonBytes :: Value ByteString
 jsonBytes =
-  Value (Value.unsafePTI PTI.json (const A.json_bytes))
+  Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
 
 -- |
 -- Encoder of @JSONB@ values from JSON AST.
 {-# INLINABLE jsonb #-}
 jsonb :: Value B.Value
 jsonb =
-  Value (Value.unsafePTI PTI.jsonb (const A.jsonb_ast))
+  Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
 
 -- |
 -- Encoder of @JSONB@ values from raw JSON.
 {-# INLINABLE jsonbBytes #-}
 jsonbBytes :: Value ByteString
 jsonbBytes =
-  Value (Value.unsafePTI PTI.jsonb (const A.jsonb_bytes))
+  Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
 
 -- |
 -- Unlifts the 'Array' encoder to the plain 'Value' encoder.
 {-# INLINABLE array #-}
 array :: Array a -> Value a
-array (Array imp) =
-  Array.run imp & \(arrayOID, encoder') ->
-    Value (Value.Value arrayOID arrayOID encoder')
+array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
+  let
+    encoder env input =
+      A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
+    in Value (Value.Value arrayOID arrayOID encoder renderer)
 
 -- |
 -- Given a function,
@@ -353,7 +356,7 @@ array (Array imp) =
 {-# INLINABLE enum #-}
 enum :: (a -> Text) -> Value a
 enum mapping =
-  Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)))
+  Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
 
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
@@ -366,7 +369,7 @@ enum mapping =
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
 unknown =
-  Value (Value.unsafePTI PTI.unknown (const A.bytea_strict))
+  Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
 
 
 -- ** Instances
@@ -503,15 +506,15 @@ newtype Array a =
 -- Lifts the 'Value' encoder into the 'Array' encoder of a non-nullable value.
 {-# INLINABLE arrayValue #-}
 arrayValue :: Value a -> Array a
-arrayValue (Value (Value.Value elementOID arrayOID encoder')) =
-  Array (Array.value elementOID arrayOID encoder')
+arrayValue (Value (Value.Value elementOID arrayOID encoder renderer)) =
+  Array (Array.value elementOID arrayOID encoder renderer)
 
 -- |
 -- Lifts the 'Value' encoder into the 'Array' encoder of a nullable value.
 {-# INLINABLE arrayNullableValue #-}
 arrayNullableValue :: Value a -> Array (Maybe a)
-arrayNullableValue (Value (Value.Value elementOID arrayOID encoder')) =
-  Array (Array.nullableValue elementOID arrayOID encoder')
+arrayNullableValue (Value (Value.Value elementOID arrayOID encoder renderer)) =
+  Array (Array.nullableValue elementOID arrayOID encoder renderer)
 
 -- |
 -- An encoder of an array dimension,

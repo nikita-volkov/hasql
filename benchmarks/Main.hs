@@ -69,7 +69,7 @@ queryWithManyParameters =
 
 queryWithSingleRow :: C.Query () (Int64, Int64)
 queryWithSingleRow =
-  C.statement template encoder decoder True
+  C.Query template encoder decoder True
   where
     template =
       "SELECT 1, 2"
@@ -86,7 +86,7 @@ queryWithSingleRow =
 
 queryWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Query () result
 queryWithManyRows decoder =
-  C.statement template encoder (decoder rowDecoder) True
+  C.Query template encoder (decoder rowDecoder) True
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"

@@ -21,7 +21,7 @@ type Session =
 
 data SessionError =
   ConnectionError (HC.ConnectionError) |
-  SessionError (Hasql.Session.Error)
+  SessionError (Hasql.Session.QueryError)
   deriving (Show, Eq)
 
 session :: Session a -> IO (Either SessionError a)

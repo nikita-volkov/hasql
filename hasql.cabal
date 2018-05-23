@@ -47,11 +47,17 @@ library
     Arrows, BangPatterns, ConstraintKinds, DataKinds, DefaultSignatures, DeriveDataTypeable, DeriveFoldable, DeriveFunctor, DeriveGeneric, DeriveTraversable, EmptyDataDecls, FlexibleContexts, FlexibleInstances, FunctionalDependencies, GADTs, GeneralizedNewtypeDeriving, LambdaCase, LiberalTypeSynonyms, MagicHash, MultiParamTypeClasses, MultiWayIf, NoImplicitPrelude, NoMonomorphismRestriction, OverloadedStrings, PatternGuards, ParallelListComp, QuasiQuotes, RankNTypes, RecordWildCards, ScopedTypeVariables, StandaloneDeriving, TemplateHaskell, TupleSections, TypeFamilies, TypeOperators, UnboxedTuples
   default-language:
     Haskell2010
+  exposed-modules:
+    Hasql.Decoders
+    Hasql.Encoders
+    Hasql.Connection
+    Hasql.Query
+    Hasql.Session
   other-modules:
     Hasql.Private.Prelude
+    Hasql.Private.Errors
     Hasql.Private.PTI
     Hasql.Private.IO
-    Hasql.Private.Query
     Hasql.Private.Session
     Hasql.Private.Connection
     Hasql.Private.PreparedStatementRegistry
@@ -66,12 +72,6 @@ library
     Hasql.Private.Encoders.Array
     Hasql.Private.Encoders.Value
     Hasql.Private.Encoders.Params
-  exposed-modules:
-    Hasql.Decoders
-    Hasql.Encoders
-    Hasql.Connection
-    Hasql.Query
-    Hasql.Session
   build-depends:
     -- parsing:
     attoparsec >= 0.10 && < 0.14,
@@ -85,6 +85,7 @@ library
     vector >= 0.10 && < 0.13,
     hashtables >= 1.1 && < 2,
     text >= 1 && < 2,
+    text-builder >= 0.5.1 && < 0.6,
     bytestring >= 0.10 && < 0.11,
     hashable >= 1.2 && < 1.3,
     -- control:

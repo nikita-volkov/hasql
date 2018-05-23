@@ -1,15 +1,14 @@
 module Hasql.Session
 (
-  Session.Session,
-  Session.sql,
-  Session.query,
+  Session,
+  sql,
+  query,
   -- * Execution
-  Session.Error(..),
-  Session.ResultError(..),
-  Session.RowError(..),
-  Session.run,
+  run,
+  -- * Errors
+  module Hasql.Private.Errors,
 )
 where
 
-import qualified Hasql.Private.Session as Session
-
+import Hasql.Private.Session
+import Hasql.Private.Errors

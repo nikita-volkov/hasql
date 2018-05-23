@@ -8,7 +8,7 @@ import qualified Hasql.Decoders as D
 
 selectSleep :: Query Double ()
 selectSleep =
-  statement sql encoder decoder True
+  Query sql encoder decoder True
   where
     sql =
       "select pg_sleep($1)"

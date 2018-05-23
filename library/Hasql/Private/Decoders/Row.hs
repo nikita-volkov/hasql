@@ -1,37 +1,32 @@
 module Hasql.Private.Decoders.Row where
 
 import Hasql.Private.Prelude
+import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Decoding as A
 import qualified Hasql.Private.Decoders.Value as Value
 
 
 newtype Row a =
-  Row (ReaderT Env (ExceptT Error IO) a)
+  Row (ReaderT Env (ExceptT RowError IO) a)
   deriving (Functor, Applicative, Monad)
 
 data Env =
   Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
-
-data Error =
-  EndOfInput |
-  UnexpectedNull |
-  ValueError !Text
-  deriving (Show)
 
 
 -- * Functions
 -------------------------
 
 {-# INLINE run #-}
-run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either Error a)
+run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either RowError a)
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
     runExceptT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef))
 
 {-# INLINE error #-}
-error :: Error -> Row a
+error :: RowError -> Row a
 error x =
   Row (ReaderT (const (ExceptT (pure (Left x)))))
 

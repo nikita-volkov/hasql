@@ -1,6 +1,7 @@
 module Hasql.Private.Decoders.Result where
 
 import Hasql.Private.Prelude hiding (maybe, many)
+import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Decoders.Row as Row
 import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
@@ -11,42 +12,11 @@ import qualified Data.Vector.Mutable as MutableVector
 
 
 newtype Result a =
-  Result (ReaderT (Bool, LibPQ.Result) (ExceptT Error IO) a)
+  Result (ReaderT (Bool, LibPQ.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
 
-data Error =
-  -- | 
-  -- An error reported by the DB. Code, message, details, hint.
-  -- 
-  -- * The SQLSTATE code for the error. The SQLSTATE code identifies the type of error that has occurred; 
-  -- it can be used by front-end applications to perform specific operations (such as error handling) 
-  -- in response to a particular database error. 
-  -- For a list of the possible SQLSTATE codes, see Appendix A.
-  -- This field is not localizable, and is always present.
-  -- 
-  -- * The primary human-readable error message (typically one line). Always present.
-  -- 
-  -- * Detail: an optional secondary error message carrying more detail about the problem. 
-  -- Might run to multiple lines.
-  -- 
-  -- * Hint: an optional suggestion what to do about the problem. 
-  -- This is intended to differ from detail in that it offers advice (potentially inappropriate) 
-  -- rather than hard facts. Might run to multiple lines.
-  ServerError !ByteString !ByteString !(Maybe ByteString) !(Maybe ByteString) |
-  -- |
-  -- The database returned an unexpected result.
-  -- Indicates an improper statement or a schema mismatch.
-  UnexpectedResult !Text |
-  -- |
-  -- An error of the row reader, preceded by the index of the row.
-  RowError !Int !Row.Error |
-  -- |
-  -- An unexpected amount of rows.
-  UnexpectedAmountOfRows !Int
-  deriving (Show)
-
 {-# INLINE run #-}
-run :: Result a -> (Bool, LibPQ.Result) -> IO (Either Error a)
+run :: Result a -> (Bool, LibPQ.Result) -> IO (Either ResultError a)
 run (Result reader) env =
   runExceptT (runReaderT reader env)
 
