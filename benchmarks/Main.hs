@@ -100,8 +100,8 @@ queryWithManyRows decoder =
 
 queryWithManyRowsInVector :: C.Query () (Vector (Int64, Int64))
 queryWithManyRowsInVector =
-  queryWithManyRows D.rowsVector
+  queryWithManyRows D.rowVector
 
 queryWithManyRowsInList :: C.Query () (List (Int64, Int64))
 queryWithManyRowsInList =
-  queryWithManyRows D.rowsList
+  queryWithManyRows D.rowList

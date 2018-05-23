@@ -32,7 +32,7 @@ tree =
               (Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8))))
               (Encoders.param Encoders.text)
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
         Session.query ([3, 7], "a") query
       in do
@@ -49,7 +49,7 @@ tree =
           encoder =
             Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
         do
           result1 <- Session.query [1, 2] query
@@ -67,7 +67,7 @@ tree =
           encoder =
             Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
         do
           result1 <- Session.query [1, 2] query

@@ -8,9 +8,9 @@ module Hasql.Decoders
   rowsAffected,
   singleRow,
   -- ** Specialized multi-row results
-  maybeRow,
-  rowsVector,
-  rowsList,
+  rowMaybe,
+  rowVector,
+  rowList,
   -- ** Multi-row traversers
   foldlRows,
   foldrRows,
@@ -134,28 +134,28 @@ foldrRows step init (Row row) =
 -- |
 -- Maybe one row or none.
 -- 
-{-# INLINABLE maybeRow #-}
-maybeRow :: Row a -> Result (Maybe a)
-maybeRow (Row row) =
+{-# INLINABLE rowMaybe #-}
+rowMaybe :: Row a -> Result (Maybe a)
+rowMaybe (Row row) =
   Result (Results.single (Result.maybe row))
 
 -- |
 -- Zero or more rows packed into the vector.
 -- 
--- It's recommended to prefer this function to 'rowsList',
+-- It's recommended to prefer this function to 'rowList',
 -- since it performs notably better.
 -- 
-{-# INLINABLE rowsVector #-}
-rowsVector :: Row a -> Result (Vector a)
-rowsVector (Row row) =
+{-# INLINABLE rowVector #-}
+rowVector :: Row a -> Result (Vector a)
+rowVector (Row row) =
   Result (Results.single (Result.vector row))
 
 -- |
 -- Zero or more rows packed into the list.
 -- 
-{-# INLINABLE rowsList #-}
-rowsList :: Row a -> Result [a]
-rowsList =
+{-# INLINABLE rowList #-}
+rowList :: Row a -> Result [a]
+rowList =
   foldrRows strictCons []
 
 
@@ -174,23 +174,23 @@ instance Default (Result Int64) where
   def =
     rowsAffected
 
--- | Maps to @('maybeRow' def)@.
+-- | Maps to @('rowMaybe' def)@.
 instance Default (Row a) => Default (Result (Maybe a)) where
   {-# INLINE def #-}
   def =
-    maybeRow def
+    rowMaybe def
 
--- | Maps to @('rowsVector' def)@.
+-- | Maps to @('rowVector' def)@.
 instance Default (Row a) => Default (Result (Vector a)) where
   {-# INLINE def #-}
   def =
-    rowsVector def
+    rowVector def
 
--- | Maps to @('rowsList' def)@.
+-- | Maps to @('rowList' def)@.
 instance Default (Row a) => Default (Result ([] a)) where
   {-# INLINE def #-}
   def =
-    rowsList def
+    rowList def
 
 -- | Maps to @(fmap Identity ('singleRow' def)@.
 instance Default (Row a) => Default (Result (Identity a)) where
