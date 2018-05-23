@@ -79,7 +79,7 @@ queryWithSingleRow =
       D.singleRow row
       where
         row =
-          tuple <$> D.value D.int8 <*> D.value D.int8
+          tuple <$> D.column D.int8 <*> D.column D.int8
           where
             tuple !a !b =
               (a, b)
@@ -93,7 +93,7 @@ queryWithManyRows decoder =
     encoder =
       conquer
     rowDecoder =
-      tuple <$> D.value D.int8 <*> D.value D.int8
+      tuple <$> D.column D.int8 <*> D.column D.int8
       where
         tuple !a !b =
           (a, b)

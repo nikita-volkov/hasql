@@ -29,10 +29,10 @@ tree =
         where
           encoder =
             contrazip2
-              (Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue Encoders.int8))))
-              (Encoders.value Encoders.text)
+              (Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8))))
+              (Encoders.param Encoders.text)
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.value Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
       session =
         Session.query ([3, 7], "a") query
       in do
@@ -47,9 +47,9 @@ tree =
         Query.Query "select true where 1 = any ($1)" encoder decoder True
         where
           encoder =
-            Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue Encoders.int8)))
+            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.value Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
       session =
         do
           result1 <- Session.query [1, 2] query
@@ -65,9 +65,9 @@ tree =
         Query.Query "select true where 3 <> all ($1)" encoder decoder True
         where
           encoder =
-            Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue Encoders.int8)))
+            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.value Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.maybeRow (Decoders.column Decoders.bool))
       session =
         do
           result1 <- Session.query [1, 2] query
@@ -87,7 +87,7 @@ tree =
           encoder = 
             Encoders.unit
           decoder =
-            Decoders.singleRow (Decoders.value (Decoders.composite ((,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool)))
+            Decoders.singleRow (Decoders.column (Decoders.composite ((,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool)))
       session =
         Session.query () query
       in do
@@ -105,14 +105,14 @@ tree =
             Encoders.unit
           decoder =
             Decoders.singleRow $
-            (,) <$> Decoders.value entity1 <*> Decoders.value entity2
+            (,) <$> Decoders.column entity1 <*> Decoders.column entity2
             where
               entity1 =
                 Decoders.composite $
-                (,) <$> Decoders.compositeValue Decoders.int8 <*> Decoders.compositeValue Decoders.bool
+                (,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool
               entity2 =
                 Decoders.composite $
-                (,) <$> Decoders.compositeValue Decoders.text <*> Decoders.compositeValue Decoders.int8
+                (,) <$> Decoders.field Decoders.text <*> Decoders.field Decoders.int8
       session =
         Session.query () query
       in do
@@ -137,7 +137,7 @@ tree =
                   encoder =
                     Encoders.unit
                   decoder =
-                    Decoders.singleRow (Decoders.value (Decoders.array (Decoders.arrayDimension replicateM (Decoders.arrayValue Decoders.int8))))
+                    Decoders.singleRow (Decoders.column (Decoders.array (Decoders.dimension replicateM (Decoders.element Decoders.int8))))
       in io
     ,
     testCase "Failing prepared statements" $
@@ -185,9 +185,9 @@ tree =
                       sql =
                         "select $1 :: int8"
                       encoder =
-                        Encoders.value Encoders.int8
+                        Encoders.param Encoders.int8
                       decoder =
-                        Decoders.singleRow $ Decoders.value Decoders.int8
+                        Decoders.singleRow $ Decoders.column Decoders.int8
               fail =
                 catchError (Session.sql "absurd") (const (pure ()))
       in io
@@ -201,10 +201,10 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.value Encoders.int8) <>
-            contramap snd (Encoders.value Encoders.int8)
+            contramap fst (Encoders.param Encoders.int8) <>
+            contramap snd (Encoders.param Encoders.int8)
           decoder =
-            Decoders.singleRow (Decoders.value Decoders.int8)
+            Decoders.singleRow (Decoders.column Decoders.int8)
       sumSession :: Session.Session Int64
       sumSession =
         Session.sql "begin" *> Session.query (1, 1) sumQuery <* Session.sql "end"
@@ -226,10 +226,10 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.value Encoders.int8) <>
-            contramap snd (Encoders.value Encoders.int8)
+            contramap fst (Encoders.param Encoders.int8) <>
+            contramap snd (Encoders.param Encoders.int8)
           decoder =
-            Decoders.singleRow (Decoders.value Decoders.int8)
+            Decoders.singleRow (Decoders.column Decoders.int8)
       session :: Session.Session Int64
       session =
         do
@@ -253,9 +253,9 @@ tree =
                 sql =
                   "select $1 = interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
                 encoder =
-                  Encoders.value (Encoders.interval)
+                  Encoders.param (Encoders.interval)
             in DSL.query (10 :: DiffTime) query
       in actualIO >>= \x -> assertEqual (show x) (Right True) x
     ,
@@ -270,7 +270,7 @@ tree =
                 sql =
                   "select interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
                 encoder =
                   Encoders.unit
             in DSL.query () query
@@ -287,9 +287,9 @@ tree =
                 sql =
                   "select $1"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.interval)))
+                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
                 encoder =
-                  Encoders.value (Encoders.interval)
+                  Encoders.param (Encoders.interval)
             in DSL.query (10 :: DiffTime) query
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
@@ -318,9 +318,9 @@ tree =
                 sql =
                   "select $1 = ('ok' :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.bool)))
+                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
                 encoder =
-                  Encoders.value (Encoders.unknown)
+                  Encoders.param (Encoders.unknown)
             in DSL.query "ok" query
       in actualIO >>= assertEqual "" (Right True)
     ,
@@ -349,9 +349,9 @@ tree =
                 sql =
                   "select overloaded($1, $2) || overloaded($3, $4, $5)"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.text)))
+                  (Decoders.singleRow (Decoders.column (Decoders.text)))
                 encoder =
-                  contramany (Encoders.value Encoders.unknown)
+                  contramany (Encoders.param Encoders.unknown)
             in DSL.query ["1", "2", "4", "5", "6"] query
       in actualIO >>= assertEqual "" (Right "3456")
     ,
@@ -380,9 +380,9 @@ tree =
                 sql =
                   "select ($1 :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.value (Decoders.enum (Just . id))))
+                  (Decoders.singleRow (Decoders.column (Decoders.enum (Just . id))))
                 encoder =
-                  Encoders.value (Encoders.enum id)
+                  Encoders.param (Encoders.enum id)
             in DSL.query "ok" query
       in actualIO >>= assertEqual "" (Right "ok")
     ,
@@ -400,9 +400,9 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.value Encoders.text
+                      Encoders.param Encoders.text
                     decoder =
-                      (Decoders.singleRow (Decoders.value (Decoders.text)))
+                      (Decoders.singleRow (Decoders.column (Decoders.text)))
             effect2 =
               DSL.query 1 query
               where
@@ -412,9 +412,9 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.value Encoders.int8
+                      Encoders.param Encoders.int8
                     decoder =
-                      (Decoders.singleRow (Decoders.value Decoders.int8))
+                      (Decoders.singleRow (Decoders.column Decoders.int8))
             in (,) <$> effect1 <*> effect2
       in actualIO >>= assertEqual "" (Right ("ok", 1))
     ,
@@ -452,8 +452,8 @@ tree =
         DSL.session $ do
           DSL.query () $ Queries.plain $ "drop table if exists a"
           DSL.query () $ Queries.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.query () $ Query.Query "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
-          id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.value Decoders.int4)) False
+          id1 <- DSL.query () $ Query.Query "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
+          id2 <- DSL.query () $ Query.Query "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
           DSL.query () $ Queries.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO

@@ -5,8 +5,8 @@ module Hasql.Encoders
   -- * Params
   Params,
   unit,
-  value,
-  nullableValue,
+  param,
+  nullableParam,
   -- * Value
   Value,
   bool,
@@ -36,9 +36,9 @@ module Hasql.Encoders
   unknown,
   -- * Array
   Array,
-  arrayValue,
-  arrayNullableValue,
-  arrayDimension,
+  element,
+  nullableElement,
+  dimension,
   -- ** Insert Many
   -- $insertMany
 )
@@ -68,7 +68,7 @@ import qualified Hasql.Private.Prelude as Prelude
 -- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
 --   'contramap' 'fst' ('value' 'int8') '<>'
---   'contramap' 'snd' ('nullableValue' 'text')
+--   'contramap' 'snd' ('nullableParam' 'text')
 -- @
 -- 
 -- As a general solution for tuples of any arity, instead of 'fst' and 'snd',
@@ -79,7 +79,7 @@ import qualified Hasql.Private.Prelude as Prelude
 -- @
 -- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contrazip2' ('value' 'int8') ('nullableValue' 'text')
+--   'contrazip2' ('value' 'int8') ('nullableParam' 'text')
 -- @
 -- 
 -- Here's how you can implement encoders for custom composite types:
@@ -122,17 +122,17 @@ unit =
 -- |
 -- Lift an individual value encoder to a parameters encoder.
 -- 
-{-# INLINABLE value #-}
-value :: Value a -> Params a
-value (Value x) =
+{-# INLINABLE param #-}
+param :: Value a -> Params a
+param (Value x) =
   Params (Params.value x)
 
 -- |
 -- Lift an individual nullable value encoder to a parameters encoder.
 -- 
-{-# INLINABLE nullableValue #-}
-nullableValue :: Value a -> Params (Maybe a)
-nullableValue (Value x) =
+{-# INLINABLE nullableParam #-}
+nullableParam :: Value a -> Params (Maybe a)
+nullableParam (Value x) =
   Params (Params.nullableValue x)
 
 
@@ -149,27 +149,27 @@ instance Default (Params ()) where
 instance Default (Value a) => Default (Params (Identity a)) where
   {-# INLINE def #-}
   def =
-    contramap runIdentity (value def)
+    contramap runIdentity (param def)
 
 instance (Default (Value a1), Default (Value a2)) => Default (Params (a1, a2)) where
   {-# INLINE def #-}
   def =
-    contrazip2 (value def) (value def)
+    contrazip2 (param def) (param def)
 
 instance (Default (Value a1), Default (Value a2), Default (Value a3)) => Default (Params (a1, a2, a3)) where
   {-# INLINE def #-}
   def =
-    contrazip3 (value def) (value def) (value def)
+    contrazip3 (param def) (param def) (param def)
 
 instance (Default (Value a1), Default (Value a2), Default (Value a3), Default (Value a4)) => Default (Params (a1, a2, a3, a4)) where
   {-# INLINE def #-}
   def =
-    contrazip4 (value def) (value def) (value def) (value def)
+    contrazip4 (param def) (param def) (param def) (param def)
 
 instance (Default (Value a1), Default (Value a2), Default (Value a3), Default (Value a4), Default (Value a5)) => Default (Params (a1, a2, a3, a4, a5)) where
   {-# INLINE def #-}
   def =
-    contrazip5 (value def) (value def) (value def) (value def) (value def)
+    contrazip5 (param def) (param def) (param def) (param def) (param def)
 
 
 -- * Value Encoder
@@ -494,7 +494,7 @@ instance Default (Value B.Value) where
 -- 
 -- >x :: Value [[Int64]]
 -- >x =
--- >  array (arrayDimension foldl' (arrayDimension foldl' (arrayValue int8)))
+-- >  array (dimension foldl' (dimension foldl' (element int8)))
 -- 
 -- Please note that the PostgreSQL __IN__ keyword does not "accept" an array, but rather a syntactical list of
 -- values, thus this encoder is not suited for that. Use a **field** = ANY($1) query instead.
@@ -504,16 +504,16 @@ newtype Array a =
 
 -- |
 -- Lifts the 'Value' encoder into the 'Array' encoder of a non-nullable value.
-{-# INLINABLE arrayValue #-}
-arrayValue :: Value a -> Array a
-arrayValue (Value (Value.Value elementOID arrayOID encoder renderer)) =
+{-# INLINABLE element #-}
+element :: Value a -> Array a
+element (Value (Value.Value elementOID arrayOID encoder renderer)) =
   Array (Array.value elementOID arrayOID encoder renderer)
 
 -- |
 -- Lifts the 'Value' encoder into the 'Array' encoder of a nullable value.
-{-# INLINABLE arrayNullableValue #-}
-arrayNullableValue :: Value a -> Array (Maybe a)
-arrayNullableValue (Value (Value.Value elementOID arrayOID encoder renderer)) =
+{-# INLINABLE nullableElement #-}
+nullableElement :: Value a -> Array (Maybe a)
+nullableElement (Value (Value.Value elementOID arrayOID encoder renderer)) =
   Array (Array.nullableValue elementOID arrayOID encoder renderer)
 
 -- |
@@ -526,12 +526,12 @@ arrayNullableValue (Value (Value.Value elementOID arrayOID encoder renderer)) =
 -- such as @Data.Foldable.'foldl''@,
 -- which determines the input value.
 -- 
--- * A component encoder, which can be either another 'arrayDimension',
--- 'arrayValue' or 'arrayNullableValue'.
+-- * A component encoder, which can be either another 'dimension',
+-- 'element' or 'nullableElement'.
 -- 
-{-# INLINABLE arrayDimension #-}
-arrayDimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
-arrayDimension foldl (Array imp) =
+{-# INLINABLE dimension #-}
+dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
+dimension foldl (Array imp) =
   Array (Array.dimension foldl imp)
 
 -- $insertMany
@@ -553,7 +553,7 @@ arrayDimension foldl (Array imp) =
 --         contrazip3 (vector Encoders.uuid) (vector Encoders.float8) (vector Encoders.float8)
 --         where
 --           vector value =
---             Encoders.value (Encoders.array (Encoders.arrayDimension foldl' (Encoders.arrayValue value)))
+--             Encoders.value (Encoders.array (Encoders.dimension foldl' (Encoders.element value)))
 --       decoder =
 --         Decoders.unit
 -- @

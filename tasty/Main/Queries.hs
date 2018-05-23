@@ -33,4 +33,4 @@ selectList =
     sql =
       "values (1,2), (3,4), (5,6)"
     decoder =
-      HD.rowsList ((,) <$> HD.value HD.int8 <*> HD.value HD.int8)
+      HD.rowsList ((,) <$> HD.column HD.int8 <*> HD.column HD.int8)
