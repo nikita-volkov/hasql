@@ -102,7 +102,7 @@ rowsAffected =
 
 -- |
 -- Exactly one row.
--- Will raise the 'Hasql.Query.UnexpectedAmountOfRows' error if it's any other.
+-- Will raise the 'Hasql.Errors.UnexpectedAmountOfRows' error if it's any other.
 -- 
 {-# INLINABLE singleRow #-}
 singleRow :: Row a -> Result a
