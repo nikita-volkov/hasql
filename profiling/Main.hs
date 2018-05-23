@@ -4,7 +4,7 @@ import Prelude
 import Bug
 import qualified Hasql.Connection as A
 import qualified Hasql.Session as B
-import qualified Hasql.Query as C
+import qualified Hasql.Statement as C
 import qualified Hasql.Decoders as D
 import qualified Hasql.Encoders as E
 import qualified Data.Vector as F
@@ -40,27 +40,27 @@ sessionWithManySmallParameters =
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
-  B.query () queryWithManyRowsInVector
+  B.statement () statementWithManyRowsInVector
 
 sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
 sessionWithSingleLargeResultInList =
-  B.query () queryWithManyRowsInList
+  B.statement () statementWithManyRowsInList
 
 sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
 sessionWithManySmallResults =
-  F.replicateM 1000 (B.query () queryWithSingleRow)
+  F.replicateM 1000 (B.statement () statementWithSingleRow)
 
 
 -- * Statements
 -------------------------
 
-queryWithManyParameters :: C.Query (Vector (Int64, Int64)) ()
-queryWithManyParameters =
+statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
+statementWithManyParameters =
   $(todo "statementWithManyParameters")
 
-queryWithSingleRow :: C.Query () (Int64, Int64)
-queryWithSingleRow =
-  C.Query template encoder decoder True
+statementWithSingleRow :: C.Statement () (Int64, Int64)
+statementWithSingleRow =
+  C.Statement template encoder decoder True
   where
     template =
       "SELECT 1, 2"
@@ -75,9 +75,9 @@ queryWithSingleRow =
             tuple !a !b =
               (a, b)
 
-queryWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Query () result
-queryWithManyRows decoder =
-  C.Query template encoder (decoder rowDecoder) True
+statementWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Statement () result
+statementWithManyRows decoder =
+  C.Statement template encoder (decoder rowDecoder) True
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
@@ -89,10 +89,10 @@ queryWithManyRows decoder =
         tuple !a !b =
           (a, b)
 
-queryWithManyRowsInVector :: C.Query () (Vector (Int64, Int64))
-queryWithManyRowsInVector =
-  queryWithManyRows D.rowVector
+statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
+statementWithManyRowsInVector =
+  statementWithManyRows D.rowVector
 
-queryWithManyRowsInList :: C.Query () (List (Int64, Int64))
-queryWithManyRowsInList =
-  queryWithManyRows D.rowList
+statementWithManyRowsInList :: C.Statement () (List (Int64, Int64))
+statementWithManyRowsInList =
+  statementWithManyRows D.rowList

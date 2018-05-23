@@ -3,7 +3,7 @@ where
 
 import Main.Prelude
 import qualified Hasql.Connection as HC
-import qualified Hasql.Query as HQ
+import qualified Hasql.Statement as HQ
 import qualified Hasql.Session
 
 

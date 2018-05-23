@@ -536,13 +536,13 @@ dimension foldl (Array imp) =
 
 -- $insertMany
 -- It is not currently possible to pass in an array of encodable values
--- to use in an 'insert many' query using Hasql. Instead, PostgreSQL's
+-- to use in an 'insert many' statement using Hasql. Instead, PostgreSQL's
 --  (9.4 or later) `unnest` function can be used to in an analogous way
 -- to haskell's `zip` function by passing in multiple arrays of values
 -- to be zipped into the rows we want to insert:
 --
 -- @
---   insertMultipleLocations :: Query (Vector (UUID, Double, Double)) ()
+--   insertMultipleLocations :: Statement (Vector (UUID, Double, Double)) ()
 --   insertMultipleLocations =
 --     statement sql encoder decoder True
 --     where

@@ -2,11 +2,11 @@ module Main where
 
 import Rebase.Prelude
 import qualified Hasql.Connection
-import qualified Hasql.Query
+import qualified Hasql.Statement
 import qualified Hasql.Encoders
 import qualified Hasql.Decoders
 import qualified Hasql.Session
-import qualified Main.Queries as Queries
+import qualified Main.Statements as Statements
 
 
 main =
@@ -29,13 +29,13 @@ main =
         forkIO $ do
           traceM "1: in"
           putMVar beginVar ()
-          session connection1 (Hasql.Session.query 0.2 Queries.selectSleep)
+          session connection1 (Hasql.Session.statement 0.2 Statements.selectSleep)
           traceM "1: out"
           void (tryPutMVar finishVar False)
         forkIO $ do
           takeMVar beginVar
           traceM "2: in"
-          session connection2 (Hasql.Session.query 0.1 Queries.selectSleep)
+          session connection2 (Hasql.Session.statement 0.1 Statements.selectSleep)
           traceM "2: out"
           void (tryPutMVar finishVar True)
         bool exitFailure exitSuccess . traceShowId =<< takeMVar finishVar

@@ -3,14 +3,14 @@ module Main.DSL
   Session,
   SessionError(..),
   session,
-  Hasql.Session.query,
+  Hasql.Session.statement,
   Hasql.Session.sql,
 )
 where
 
 import Main.Prelude
 import qualified Hasql.Connection as HC
-import qualified Hasql.Query as HQ
+import qualified Hasql.Statement as HQ
 import qualified Hasql.Encoders as HE
 import qualified Hasql.Decoders as HD
 import qualified Hasql.Session

@@ -2,7 +2,7 @@ module Hasql.Session
 (
   Session,
   sql,
-  query,
+  statement,
   -- * Execution
   run,
   -- * Errors

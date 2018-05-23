@@ -1,4 +1,4 @@
-module Hasql.Query
+module Hasql.Statement
 where
 
 import Hasql.Private.Prelude
@@ -26,9 +26,9 @@ import qualified Hasql.Encoders as Encoders
 -- Following is an example of the declaration of a prepared statement with its associated codecs.
 -- 
 -- @
--- selectSum :: Hasql.Query.'Query' (Int64, Int64) Int64
+-- selectSum :: Hasql.Statement.'Statement' (Int64, Int64) Int64
 -- selectSum =
---   Hasql.Query.'Query' sql encoder decoder True
+--   Hasql.Statement.'Statement' sql encoder decoder True
 --   where
 --     sql =
 --       "select ($1 + $2)"
@@ -42,14 +42,14 @@ import qualified Hasql.Encoders as Encoders
 -- The statement above accepts a product of two parameters of type 'Int64'
 -- and produces a single result of type 'Int64'.
 -- 
-data Query a b =
-  Query ByteString (Encoders.Params a) (Decoders.Result b) Bool
+data Statement a b =
+  Statement ByteString (Encoders.Params a) (Decoders.Result b) Bool
 
-instance Functor (Query a) where
+instance Functor (Statement a) where
   {-# INLINE fmap #-}
   fmap = rmap
 
-instance Profunctor Query where
+instance Profunctor Statement where
   {-# INLINE dimap #-}
-  dimap f1 f2 (Query template encoder decoder preparable) =
-    Query template (contramap f1 encoder) (fmap f2 decoder) preparable
+  dimap f1 f2 (Statement template encoder decoder preparable) =
+    Statement template (contramap f1 encoder) (fmap f2 decoder) preparable

@@ -1,14 +1,14 @@
-module Main.Queries where
+module Main.Statements where
 
 import Rebase.Prelude
-import Hasql.Query
+import Hasql.Statement
 import qualified Hasql.Encoders as E
 import qualified Hasql.Decoders as D
 
 
-selectSleep :: Query Double ()
+selectSleep :: Statement Double ()
 selectSleep =
-  Query sql encoder decoder True
+  Statement sql encoder decoder True
   where
     sql =
       "select pg_sleep($1)"
