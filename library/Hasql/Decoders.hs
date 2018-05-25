@@ -82,7 +82,7 @@ newtype Result a =
   deriving (Functor)
 
 -- |
--- Decode no column from the result.
+-- Decode no value from the result.
 -- 
 -- Useful for statements like @INSERT@ or @CREATE@.
 -- 
@@ -204,7 +204,7 @@ instance Default (Row a) => Default (Result (Identity a)) where
 
 -- |
 -- Decoder of an individual row,
--- which gets composed of column column decoders.
+-- which gets composed of column value decoders.
 -- 
 -- E.g.:
 -- 
@@ -217,7 +217,7 @@ newtype Row a =
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Lift an individual non-nullable column decoder to a composable row decoder.
+-- Lift an individual non-nullable value decoder to a composable row decoder.
 -- 
 {-# INLINABLE column #-}
 column :: Value a -> Row a
@@ -225,7 +225,7 @@ column (Value imp) =
   Row (Row.nonNullValue imp)
 
 -- |
--- Lift an individual nullable column decoder to a composable row decoder.
+-- Lift an individual nullable value decoder to a composable row decoder.
 -- 
 {-# INLINABLE nullableColumn #-}
 nullableColumn :: Value a -> Row (Maybe a)
@@ -256,18 +256,18 @@ instance (Default (Value a1), Default (Value a2)) => Default (Row (a1, a2)) wher
 -------------------------
 
 -- |
--- Decoder of an individual column.
+-- Decoder of an individual value.
 -- 
 newtype Value a =
   Value (Value.Value a)
   deriving (Functor)
 
 
--- ** Plain column decoders
+-- ** Plain value decoders
 -------------------------
 
 -- |
--- Decoder of the @BOOL@ columns.
+-- Decoder of the @BOOL@ values.
 -- 
 {-# INLINABLE bool #-}
 bool :: Value Bool
@@ -275,7 +275,7 @@ bool =
   Value (Value.decoder (const A.bool))
 
 -- |
--- Decoder of the @INT2@ columns.
+-- Decoder of the @INT2@ values.
 -- 
 {-# INLINABLE int2 #-}
 int2 :: Value Int16
@@ -283,7 +283,7 @@ int2 =
   Value (Value.decoder (const A.int))
 
 -- |
--- Decoder of the @INT4@ columns.
+-- Decoder of the @INT4@ values.
 -- 
 {-# INLINABLE int4 #-}
 int4 :: Value Int32
@@ -291,7 +291,7 @@ int4 =
   Value (Value.decoder (const A.int))
 
 -- |
--- Decoder of the @INT8@ columns.
+-- Decoder of the @INT8@ values.
 -- 
 {-# INLINABLE int8 #-}
 int8 :: Value Int64
@@ -300,7 +300,7 @@ int8 =
   Value (Value.decoder (const ({-# SCC "int8.int" #-} A.int)))
 
 -- |
--- Decoder of the @FLOAT4@ columns.
+-- Decoder of the @FLOAT4@ values.
 -- 
 {-# INLINABLE float4 #-}
 float4 :: Value Float
@@ -308,7 +308,7 @@ float4 =
   Value (Value.decoder (const A.float4))
 
 -- |
--- Decoder of the @FLOAT8@ columns.
+-- Decoder of the @FLOAT8@ values.
 -- 
 {-# INLINABLE float8 #-}
 float8 :: Value Double
@@ -316,7 +316,7 @@ float8 =
   Value (Value.decoder (const A.float8))
 
 -- |
--- Decoder of the @NUMERIC@ columns.
+-- Decoder of the @NUMERIC@ values.
 -- 
 {-# INLINABLE numeric #-}
 numeric :: Value B.Scientific
@@ -324,15 +324,15 @@ numeric =
   Value (Value.decoder (const A.numeric))
 
 -- |
--- Decoder of the @CHAR@ columns.
--- Note that it supports UTF-8 columns.
+-- Decoder of the @CHAR@ values.
+-- Note that it supports UTF-8 values.
 {-# INLINABLE char #-}
 char :: Value Char
 char =
   Value (Value.decoder (const A.char))
 
 -- |
--- Decoder of the @TEXT@ columns.
+-- Decoder of the @TEXT@ values.
 -- 
 {-# INLINABLE text #-}
 text :: Value Text
@@ -340,7 +340,7 @@ text =
   Value (Value.decoder (const A.text_strict))
 
 -- |
--- Decoder of the @BYTEA@ columns.
+-- Decoder of the @BYTEA@ values.
 -- 
 {-# INLINABLE bytea #-}
 bytea :: Value ByteString
@@ -348,7 +348,7 @@ bytea =
   Value (Value.decoder (const A.bytea_strict))
 
 -- |
--- Decoder of the @DATE@ columns.
+-- Decoder of the @DATE@ values.
 -- 
 {-# INLINABLE date #-}
 date :: Value B.Day
@@ -356,7 +356,7 @@ date =
   Value (Value.decoder (const A.date))
 
 -- |
--- Decoder of the @TIMESTAMP@ columns.
+-- Decoder of the @TIMESTAMP@ values.
 -- 
 {-# INLINABLE timestamp #-}
 timestamp :: Value B.LocalTime
@@ -364,22 +364,22 @@ timestamp =
   Value (Value.decoder (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
--- Decoder of the @TIMESTAMPTZ@ columns.
+-- Decoder of the @TIMESTAMPTZ@ values.
 -- 
 -- /NOTICE/
 -- 
 -- Postgres does not store the timezone information of @TIMESTAMPTZ@.
--- Instead it stores a UTC column and performs silent conversions
+-- Instead it stores a UTC value and performs silent conversions
 -- to the currently set timezone, when dealt with in the text format.
 -- However this library bypasses the silent conversions
--- and communicates with Postgres using the UTC columns directly.
+-- and communicates with Postgres using the UTC values directly.
 {-# INLINABLE timestamptz #-}
 timestamptz :: Value B.UTCTime
 timestamptz =
   Value (Value.decoder (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
--- Decoder of the @TIME@ columns.
+-- Decoder of the @TIME@ values.
 -- 
 {-# INLINABLE time #-}
 time :: Value B.TimeOfDay
@@ -387,20 +387,20 @@ time =
   Value (Value.decoder (Prelude.bool A.time_float A.time_int))
 
 -- |
--- Decoder of the @TIMETZ@ columns.
+-- Decoder of the @TIMETZ@ values.
 -- 
 -- Unlike in case of @TIMESTAMPTZ@, 
 -- Postgres does store the timezone information for @TIMETZ@.
 -- However the Haskell's \"time\" library does not contain any composite type,
 -- that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
--- to represent a column on the Haskell's side.
+-- to represent a value on the Haskell's side.
 {-# INLINABLE timetz #-}
 timetz :: Value (B.TimeOfDay, B.TimeZone)
 timetz =
   Value (Value.decoder (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
--- Decoder of the @INTERVAL@ columns.
+-- Decoder of the @INTERVAL@ values.
 -- 
 {-# INLINABLE interval #-}
 interval :: Value B.DiffTime
@@ -408,7 +408,7 @@ interval =
   Value (Value.decoder (Prelude.bool A.interval_float A.interval_int))
 
 -- |
--- Decoder of the @UUID@ columns.
+-- Decoder of the @UUID@ values.
 -- 
 {-# INLINABLE uuid #-}
 uuid :: Value B.UUID
@@ -416,7 +416,7 @@ uuid =
   Value (Value.decoder (const A.uuid))
 
 -- |
--- Decoder of the @INET@ columns.
+-- Decoder of the @INET@ values.
 --
 {-# INLINABLE inet #-}
 inet :: Value (B.NetAddr B.IP)
@@ -424,7 +424,7 @@ inet =
   Value (Value.decoder (const A.inet))
 
 -- |
--- Decoder of the @JSON@ columns into a JSON AST.
+-- Decoder of the @JSON@ values into a JSON AST.
 -- 
 {-# INLINABLE json #-}
 json :: Value B.Value
@@ -432,7 +432,7 @@ json =
   Value (Value.decoder (const A.json_ast))
 
 -- |
--- Decoder of the @JSON@ columns into a raw JSON 'ByteString'.
+-- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 -- 
 {-# INLINABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
@@ -440,7 +440,7 @@ jsonBytes fn =
   Value (Value.decoder (const (A.json_bytes fn)))
 
 -- |
--- Decoder of the @JSONB@ columns into a JSON AST.
+-- Decoder of the @JSONB@ values into a JSON AST.
 -- 
 {-# INLINABLE jsonb #-}
 jsonb :: Value B.Value
@@ -448,7 +448,7 @@ jsonb =
   Value (Value.decoder (const A.jsonb_ast))
 
 -- |
--- Decoder of the @JSONB@ columns into a raw JSON 'ByteString'.
+-- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 -- 
 {-# INLINABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
@@ -456,7 +456,7 @@ jsonbBytes fn =
   Value (Value.decoder (const (A.jsonb_bytes fn)))
 
 -- |
--- Lifts a custom column decoder function to a 'Value' decoder.
+-- Lifts a custom value decoder function to a 'Value' decoder.
 -- 
 {-# INLINABLE custom #-}
 custom :: (Bool -> ByteString -> Either Text a) -> Value a
@@ -464,7 +464,7 @@ custom fn =
   Value (Value.decoderFn fn)
 
 
--- ** Composite column decoders
+-- ** Composite value decoders
 -------------------------
 
 -- |
@@ -484,9 +484,9 @@ composite (Composite imp) =
   Value (Value.decoder (Composite.run imp))
 
 -- |
--- A generic decoder of @HSTORE@ columns.
+-- A generic decoder of @HSTORE@ values.
 -- 
--- Here's how you can use it to construct a specific column:
+-- Here's how you can use it to construct a specific value:
 -- 
 -- @
 -- x :: Value [(Text, Maybe Text)]
@@ -500,8 +500,8 @@ hstore replicateM =
   Value (Value.decoder (const (A.hstore replicateM A.text_strict A.text_strict)))
 
 -- |
--- Given a partial mapping from text to column,
--- produces a decoder of that column.
+-- Given a partial mapping from text to value,
+-- produces a decoder of that value.
 enum :: (Text -> Maybe a) -> Value a
 enum mapping =
   Value (Value.decoder (const (A.enum mapping)))
@@ -643,7 +643,7 @@ instance Default (Value B.Value) where
 -- |
 -- A generic array decoder.
 -- 
--- Here's how you can use it to produce a specific array column decoder:
+-- Here's how you can use it to produce a specific array value decoder:
 -- 
 -- @
 -- x :: Value [[Text]]
@@ -663,7 +663,7 @@ newtype Array a =
 -- 
 -- * An implementation of the @replicateM@ function
 -- (@Control.Monad.'Control.Monad.replicateM'@, @Data.Vector.'Data.Vector.replicateM'@),
--- which determines the output column.
+-- which determines the output value.
 -- 
 -- * A decoder of its components, which can be either another 'dimension',
 -- 'element' or 'nullableElement'.
@@ -674,14 +674,14 @@ dimension replicateM (Array imp) =
   Array (Array.dimension replicateM imp)
 
 -- |
--- Lift a 'Value' decoder into an 'Array' decoder for parsing of non-nullable leaf columns.
+-- Lift a 'Value' decoder into an 'Array' decoder for parsing of non-nullable leaf values.
 {-# INLINABLE element #-}
 element :: Value a -> Array a
 element (Value imp) =
   Array (Array.nonNullValue (Value.run imp))
 
 -- |
--- Lift a 'Value' decoder into an 'Array' decoder for parsing of nullable leaf columns.
+-- Lift a 'Value' decoder into an 'Array' decoder for parsing of nullable leaf values.
 {-# INLINABLE nullableElement #-}
 nullableElement :: Value a -> Array (Maybe a)
 nullableElement (Value imp) =
@@ -692,20 +692,20 @@ nullableElement (Value imp) =
 -------------------------
 
 -- |
--- Composable decoder of composite columns (rows, records).
+-- Composable decoder of composite values (rows, records).
 newtype Composite a =
   Composite (Composite.Composite a)
   deriving (Functor, Applicative, Monad)
 
 -- |
--- Lift a 'Value' decoder into a 'Composite' decoder for parsing of non-nullable leaf columns.
+-- Lift a 'Value' decoder into a 'Composite' decoder for parsing of non-nullable leaf values.
 {-# INLINABLE field #-}
 field :: Value a -> Composite a
 field (Value imp) =
   Composite (Composite.nonNullValue (Value.run imp))
 
 -- |
--- Lift a 'Value' decoder into a 'Composite' decoder for parsing of nullable leaf columns.
+-- Lift a 'Value' decoder into a 'Composite' decoder for parsing of nullable leaf values.
 {-# INLINABLE nullableField #-}
 nullableField :: Value a -> Composite (Maybe a)
 nullableField (Value imp) =
