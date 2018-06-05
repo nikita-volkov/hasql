@@ -1,7 +1,8 @@
 env:
-  - ghc=7.10.1 cabal=1.22 lower_bound_dependencies=1
-  - ghc=8.0.2  cabal=1.24
-  - ghc=8.2.1  cabal=1.24 benchmarks=1 tests=1
+  - ghc=7.10.1 cabal=1.24 lower_bound_dependencies=1
+  - ghc=8.0.3  cabal=1.24
+  - ghc=8.2.3  cabal=2.2
+  - ghc=8.4.3  cabal=2.2 benchmarks=1 tests=1
 
 install:
   # Set up the Shell to treat the semicolon as &&
