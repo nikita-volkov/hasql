@@ -24,7 +24,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 ### Benefits of being an ecosystem
 
-* **Simplicity.** Each library in isolation provides a simple API, which is trivial to comprehend.
+* **Simplicity.** Each library in isolation provides a simple API, which is hopefully easier to comprehend.
 
 * **Flexibility and composability.** The user picks and chooses the features, thus precisely matching the level of abstraction that he needs for his task.
 
