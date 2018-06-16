@@ -12,9 +12,7 @@ import qualified Text.Builder as E
 -- Encoder of some representation of a parameters product.
 newtype Params a =
   Params (Op (DList (A.Oid, A.Format, Bool -> Maybe ByteString, Text)) a)
-  deriving (Contravariant, Divisible, Decidable, Monoid)
-
-instance Semigroup (Params a)
+  deriving (Contravariant, Divisible, Decidable, Semigroup, Monoid)
 
 value :: C.Value a -> Params a
 value =
