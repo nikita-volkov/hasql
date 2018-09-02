@@ -1,6 +1,50 @@
 # What Hasql is
 
+
+[![Build Status](https://travis-ci.org/nikita-volkov/hasql.svg?branch=master)](https://travis-ci.org/nikita-volkov/hasql)
+[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
+
 Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both the users, who need a low level of abstraction, and the users, who face the typical tasks of DB-powered applications, providing them with higher-level APIs.
+
+## Getting started
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+import Data.Text                  (Text)
+import Data.Functor.Contravariant (contramap)
+import Hasql.Connection           (acquire)
+import Hasql.Session              (run, statement)
+import Hasql.Statement            (Statement(..))
+import qualified Hasql.Decoders as HD
+import qualified Hasql.Encoders as HE
+
+data User = User
+  { uId :: Integer
+  , uName :: Text
+  } deriving (Show)
+
+getUser :: Statement Integer User
+getUser = Statement sql encoder (HD.singleRow decoder) True
+  where
+    sql = "SELECT id, name FROM users"
+
+    encoder =
+      contramap fromIntegral (HE.param HE.int8)
+
+    decoder = User
+      <$> fmap fromIntegral (HD.column HD.int8)
+      <*> HD.column HD.text
+
+go :: IO ()
+go = do
+  Right conn <- acquire "postgresql:///mydb"
+  result <- Hasql.Session.run (statement 42 getUser) conn
+  print result
+
+
+main = return ()
+```
+
 
 ## Ecosystem
 

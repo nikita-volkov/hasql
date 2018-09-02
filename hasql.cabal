@@ -85,7 +85,7 @@ library
     vector >= 0.10 && < 0.13,
     hashtables >= 1.1 && < 2,
     text >= 1 && < 2,
-    text-builder >= 0.6.1.2 && < 0.7,
+    text-builder >= 0.5.1.1 && < 0.7,
     bytestring >= 0.10 && < 0.11,
     hashable >= 1.2 && < 1.3,
     -- control:
@@ -203,3 +203,10 @@ test-suite profiling
     hasql,
     bug == 1.*,
     rerebase == 1.*
+
+test-suite readme
+  type:           exitcode-stdio-1.0
+  main-is:        README.lhs
+  build-depends:  base, hasql, text, contravariant
+  ghc-options:    -pgmL markdown-unlit
+  build-tool-depends: markdown-unlit:markdown-unlit
