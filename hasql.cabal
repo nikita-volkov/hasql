@@ -207,6 +207,6 @@ test-suite profiling
 test-suite readme
   type:           exitcode-stdio-1.0
   main-is:        README.lhs
-  build-depends:  base, hasql, text, contravariant
+  build-depends:  base, hasql, text, contravariant, markdown-unlit
   ghc-options:    -pgmL markdown-unlit
   build-tool-depends: markdown-unlit:markdown-unlit
