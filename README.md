@@ -1,6 +1,11 @@
 # What Hasql is
 
+
+[![Build Status](https://travis-ci.org/nikita-volkov/hasql.svg?branch=master)](https://travis-ci.org/nikita-volkov/hasql)
+[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
+
 Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both the users, who need a low level of abstraction, and the users, who face the typical tasks of DB-powered applications, providing them with higher-level APIs.
+
 
 ## Ecosystem
 
@@ -34,8 +39,78 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * **Horizontal scalability of the ecosystem.** Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical one, where some core-team is responsible for everything. One is scalable, the other is not.
 
----
 
-# NOTICE
+# Example
 
-With the recent releases and more to come still, the Hasql ecosystem has undergone a major revision. It is now expected that the users will need a thorough introduction. Hence this notice is to inform you that the documentation with tutorials targeted at both the newcomers and the users who need to migrate from the older versions of the ecosystem are coming soon.
+Following is a complete application, which performs some arithmetic in Postgres using Hasql.
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+import Prelude
+import Data.Int
+import Data.Functor.Contravariant
+import Hasql.Session (Session)
+import Hasql.Statement (Statement(..))
+import qualified Hasql.Session as Session
+import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Encoders as Encoders
+import qualified Hasql.Connection as Connection
+
+
+main :: IO ()
+main = do
+  Right connection <- Connection.acquire connectionSettings
+  result <- Session.run (sumAndDivModSession 3 8 3) connection
+  print result
+  where
+    connectionSettings = Connection.settings "localhost" 5432 "postgres" "" "postgres"
+
+
+-- * Sessions
+-- 
+-- Session is an abstraction over the database connection and all possible errors.
+-- It is used to execute statements.
+-- It is composable and has a Monad instance.
+-- 
+-- It's recommended to define sessions in a dedicated 'Sessions'
+-- submodule of your project.
+-------------------------
+
+sumAndDivModSession :: Int64 -> Int64 -> Int64 -> Session (Int64, Int64)
+sumAndDivModSession a b c = do
+  -- Get the sum of a and b
+  sumOfAAndB <- Session.statement (a, b) sumStatement
+  -- Divide the sum by c and get the modulo as well
+  Session.statement (sumOfAAndB, c) divModStatement
+
+
+-- * Statements
+-- 
+-- Statement is a definition of an individual SQL-statement,
+-- accompanied by a specification of how to encode its parameters and
+-- decode its result.
+-- 
+-- It's recommended to define statements in a dedicated 'Statements'
+-- submodule of your project.
+-------------------------
+
+sumStatement :: Statement (Int64, Int64) Int64
+sumStatement = Statement sql encoder decoder True where
+  sql = "select $1 + $2"
+  encoder =
+    (fst >$< Encoders.param Encoders.int8) <>
+    (snd >$< Encoders.param Encoders.int8)
+  decoder = Decoders.singleRow (Decoders.column Decoders.int8)
+
+divModStatement :: Statement (Int64, Int64) (Int64, Int64)
+divModStatement = Statement sql encoder decoder True where
+  sql = "select $1 / $2, $1 % $2"
+  encoder =
+    (fst >$< Encoders.param Encoders.int8) <>
+    (snd >$< Encoders.param Encoders.int8)
+  decoder = Decoders.singleRow row where
+    row =
+      (,) <$>
+      Decoders.column Decoders.int8 <*>
+      Decoders.column Decoders.int8
+```
