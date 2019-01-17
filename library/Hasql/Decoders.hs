@@ -47,6 +47,7 @@ module Hasql.Decoders
   hstore,
   enum,
   custom,
+  refine,
   -- * Array
   Array,
   dimension,
@@ -462,6 +463,14 @@ jsonbBytes fn =
 custom :: (Bool -> ByteString -> Either Text a) -> Value a
 custom fn =
   Value (Value.decoderFn fn)
+
+-- |
+-- Maps a custom decoding over an existing 'Value' decoder.
+--
+{-# INLINABLE refine #-}
+refine :: (a -> Either Text b) -> Value a -> Value b
+refine fn (Value v) =
+  Value (Value.Value (ask >>= \b -> lift (A.refine fn (Value.run v b))))
 
 
 -- ** Composite value decoders
