@@ -15,7 +15,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
-* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over the database transactions with the automated conflict resolution.
+* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over the database transactions with automated conflict resolution.
 
 * ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
 
