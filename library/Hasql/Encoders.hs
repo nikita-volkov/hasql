@@ -553,7 +553,7 @@ dimension foldl (Array imp) =
 --         contrazip3 (vector Encoders.uuid) (vector Encoders.float8) (vector Encoders.float8)
 --         where
 --           vector value =
---             Encoders.value (Encoders.array (Encoders.dimension foldl' (Encoders.element value)))
+--             Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element value)))
 --       decoder =
 --         Decoders.unit
 -- @
