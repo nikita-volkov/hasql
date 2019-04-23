@@ -67,7 +67,7 @@ import qualified Hasql.Private.Prelude as Prelude
 -- @
 -- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contramap' 'fst' ('value' 'int8') '<>'
+--   'contramap' 'fst' ('param' 'int8') '<>'
 --   'contramap' 'snd' ('nullableParam' 'text')
 -- @
 -- 
@@ -79,7 +79,7 @@ import qualified Hasql.Private.Prelude as Prelude
 -- @
 -- someParamsEncoder :: 'Params' (Int64, Maybe Text)
 -- someParamsEncoder =
---   'contrazip2' ('value' 'int8') ('nullableParam' 'text')
+--   'contrazip2' ('param' 'int8') ('nullableParam' 'text')
 -- @
 -- 
 -- Here's how you can implement encoders for custom composite types:
@@ -93,9 +93,9 @@ import qualified Hasql.Private.Prelude as Prelude
 -- 
 -- personParams :: 'Params' Person
 -- personParams =
---   'contramap' name ('value' 'text') '<>'
---   'contramap' gender ('value' genderValue) '<>'
---   'contramap' (fromIntegral . age) ('value' 'int8')
+--   'contramap' name ('param' 'text') '<>'
+--   'contramap' gender ('param' genderValue) '<>'
+--   'contramap' (fromIntegral . age) ('param' 'int8')
 -- 
 -- genderValue :: 'Value' Gender
 -- genderValue =
