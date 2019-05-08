@@ -53,3 +53,14 @@ instance Profunctor Statement where
   {-# INLINE dimap #-}
   dimap f1 f2 (Statement template encoder decoder preparable) =
     Statement template (contramap f1 encoder) (fmap f2 decoder) preparable
+
+data MultiParamStatement a b =
+  MultiParamStatement ByteString [Encoders.Params a] (Decoders.Result b) Bool
+
+instance Functor (MultiParamStatement a) where
+  {-# INLINE fmap #-}
+  fmap = rmap
+instance Profunctor MultiParamStatement where
+  {-# INLINE dimap #-}
+  dimap f1 f2 (MultiParamStatement template encoders decoder preparable) =
+    MultiParamStatement template (contramap f1 <$> encoders) (fmap f2 decoder) preparable

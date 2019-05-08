@@ -12,7 +12,7 @@ import qualified Hasql.Private.Decoders.Result as ResultDecoders
 import qualified Hasql.Private.Decoders.Results as ResultsDecoders
 import qualified Hasql.Private.Encoders.Params as ParamsEncoders
 import qualified Data.DList as DList
-
+import Data.List.Extra (concatUnzip)
 
 {-# INLINE acquireConnection #-}
 acquireConnection :: ByteString -> IO LibPQ.Connection
@@ -145,6 +145,46 @@ sendUnpreparedParametricStatement connection integerDatetimes template (ParamsEn
         in foldr step [] (encoderOp input)
     in checkedSend connection $ LibPQ.sendQueryParams connection template params LibPQ.Binary
 
+
+deconstruct (ParamsEncoders.Params (Op encoderOp)) = encoderOp
+
+{-# INLINE sendUnpreparedMultiParametricStatement #-}
+sendUnpreparedMultiParametricStatement ::
+  LibPQ.Connection ->
+  Bool ->
+  ByteString ->
+  [ParamsEncoders.Params a] ->
+  [a] ->
+  IO (Either CommandError ())
+sendUnpreparedMultiParametricStatement connection integerDatetimes template encoderOps input =
+  checkedSend connection $ LibPQ.sendQueryParams connection template genparams LibPQ.Binary
+  where
+    genparams = concat $ zipWith params (deconstruct <$> encoderOps) input
+    params encoderOp i = foldr step [] (encoderOp i)
+    step (oid, format, encoder, _) acc =
+      ((,,) <$> pure oid <*> encoder integerDatetimes <*> pure format) : acc
+
+{-# INLINE sendPreparedMultiParametricStatement #-}
+sendPreparedMultiParametricStatement ::
+  LibPQ.Connection ->
+  PreparedStatementRegistry.PreparedStatementRegistry ->
+  Bool ->
+  ByteString ->
+  [ParamsEncoders.Params a] ->
+  [a] ->
+  IO (Either CommandError ())
+sendPreparedMultiParametricStatement connection registry integerDatetimes template encoderOps input = runExceptT $ do
+  let (oidList, valueAndFormatList) = genparams
+  key <- ExceptT $ getPreparedStatementKey connection registry template oidList
+  ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+  where
+    genparams = concatUnzip $ zipWith params (deconstruct <$> encoderOps) input
+    params encoderOp i = foldr step ([], []) (encoderOp i)
+    step (oid, format, encoder, _) ~(oidList, bytesAndFormatList) =
+      (,)
+        (oid : oidList)
+        (fmap (\bytes -> (bytes, format)) (encoder integerDatetimes) : bytesAndFormatList)
+
 {-# INLINE sendParametricStatement #-}
 sendParametricStatement ::
   LibPQ.Connection ->
@@ -160,6 +200,22 @@ sendParametricStatement connection integerDatetimes registry template encoder pr
   if prepared
     then sendPreparedParametricStatement connection registry integerDatetimes template encoder params
     else sendUnpreparedParametricStatement connection integerDatetimes template encoder params
+
+{-# INLINE sendMultiParametricStatement #-}
+sendMultiParametricStatement ::
+  LibPQ.Connection ->
+  Bool -> 
+  PreparedStatementRegistry.PreparedStatementRegistry ->
+  ByteString ->
+  [ParamsEncoders.Params a] ->
+  Bool ->
+  [a] ->
+  IO (Either CommandError ())
+sendMultiParametricStatement connection integerDatetimes registry template encoder prepared params =
+  {-# SCC "sendParametricStatement" #-} 
+  if prepared
+    then sendPreparedMultiParametricStatement connection registry integerDatetimes template encoder params
+    else sendUnpreparedMultiParametricStatement connection integerDatetimes template encoder params
 
 {-# INLINE sendNonparametricStatement #-}
 sendNonparametricStatement :: LibPQ.Connection -> ByteString -> IO (Either CommandError ())

@@ -3,6 +3,7 @@ module Hasql.Session
   Session,
   sql,
   statement,
+  multiParamStatement,
   -- * Execution
   run,
   -- * Errors

@@ -57,3 +57,20 @@ statement input (Statement.Statement template encoder decoder preparable) =
         step (_, _, _, rendering) acc =
           rendering : acc
         in foldr step [] (encoderOp input)
+
+-- |
+-- Parameters and a specification of a multi parametric single-statement query to apply them to.
+multiParamStatement :: [params] -> Statement.MultiParamStatement params result -> Session result
+multiParamStatement input (Statement.MultiParamStatement template encoders decoder preparable) =
+  Session $ ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+    ExceptT $ fmap (mapLeft (QueryError template inputReps)) $ withMVar pqConnectionRef $ \pqConnection -> do
+      r1 <- IO.sendMultiParametricStatement pqConnection integerDatetimes registry template coercedEncoders preparable input
+      r2 <- IO.getResults pqConnection integerDatetimes (unsafeCoerce decoder)
+      return $ r1 *> r2
+  where
+    coercedEncoders = unsafeCoerce <$> encoders
+    deconstruct (Encoders.Params.Params (Op encoderOp)) = encoderOp
+    encoderOps = deconstruct <$> coercedEncoders
+    step (_, _, _, rendering) acc = rendering : acc
+    inputReps = concat $ zipWith inputRep encoderOps input
+    inputRep e i = foldr step [] (e i)
