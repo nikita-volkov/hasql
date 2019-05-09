@@ -462,6 +462,35 @@ tree =
     let
       actualIO =
         DSL.session $ DSL.statement () $ Statements.selectList
-      in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO 
+      in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
+    ,
+    testCase "Multi param statement query" $
+    let
+      filters = [TextFilter "some text", IntegerFilter 42]
+      filterEnc = [contramap (\(TextFilter t) -> t) (Encoders.param Encoders.text), contramap (\(IntegerFilter i) -> fromIntegral i) (Encoders.param Encoders.int4)]
+      actualIO =
+        DSL.session $ do
+          DSL.statement () $ Statements.plain $ "drop table if exists s_s"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_p"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_i"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_t"
+          DSL.statement () $ Statements.plain $ "create table s_s (id int4 not null, s text null)"
+          DSL.statement () $ Statements.plain $ "create table s_t (id int4 not null, t text null)"
+          DSL.statement () $ Statements.plain $ "create table s_i (id int4 not null, i integer null)"
+          DSL.statement () $ Statements.plain $ "create table s_p (sid int4 not null, pid int4 not null)"
+          DSL.statement () $ Statements.plain $ "insert into s_s values (1, 'subject') returning id"
+          DSL.statement () $ Statements.plain $ "insert into s_t values (2, 'some text') returning id"
+          DSL.statement () $ Statements.plain $ "insert into s_i values (3, 42) returning id"
+          DSL.statement () $ Statements.plain $ "insert into s_p(sid, pid) values(1,2)"
+          DSL.statement () $ Statements.plain $ "insert into s_p(sid, pid) values(1,3)" 
+          txt <- Session.multiParamStatement filters $ Statement.MultiParamStatement "with o1 as (select id from s_t where t like $1), o2 as (select id from s_i where i = $2), s1 as (select sid from s_p join o1 on s_p.pid = o1.id), s2 as (select sid from s_p join o2 on s_p.pid = o2.id) select s from s_s, s1, s2 where s_s.id =s1.sid and s_s.id = s2.sid" 
+                                                  filterEnc (Decoders.singleRow (Decoders.column Decoders.text)) False
+          DSL.statement () $ Statements.plain $ "drop table if exists s_s"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_p"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_i"
+          DSL.statement () $ Statements.plain $ "drop table if exists s_t"
+          pure txt
+      in assertEqual "" (Right ("subject")) =<< actualIO
   ]
 
+data Fitler = TextFilter Text | IntegerFilter Integer
