@@ -1,15 +1,11 @@
 module Main.Statements where
 
-import Main.Prelude hiding (def)
+import Main.Prelude
 import qualified Hasql.Statement as HQ
 import qualified Hasql.Encoders as HE
 import qualified Hasql.Decoders as HD
 import qualified Main.Prelude as Prelude
 
-
-def :: ByteString -> HQ.Statement () ()
-def sql =
-  HQ.Statement sql Prelude.def Prelude.def False
 
 plain :: ByteString -> HQ.Statement () ()
 plain sql =

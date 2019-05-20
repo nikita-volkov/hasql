@@ -438,7 +438,7 @@ tree =
             DSL.statement () $ Statements.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.statement () $ Statement.Statement sql def decoder False
+            DSL.statement () $ Statement.Statement sql mempty decoder False
             where
               sql =
                 "delete from a"
@@ -452,8 +452,8 @@ tree =
         DSL.session $ do
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           DSL.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
-          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
+          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow (Decoders.column Decoders.int4)) False
+          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow (Decoders.column Decoders.int4)) False
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO
