@@ -22,6 +22,26 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testGroup "Roundtrips" $ let
+      roundtrip encoder decoder input = let
+        session = let
+          statement = Statement.Statement "select $1" encoder decoder True
+          in Session.statement input statement
+        in unsafePerformIO $ do
+          x <- Connection.with (Session.run session)
+          return (Right (Right input) === x)
+      in [
+          testProperty "Array" $ let
+            encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
+            decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))))
+            in roundtrip encoder decoder
+          ,
+          testProperty "2D Array" $ let
+            encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+            decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))))
+            in \ list -> list /= [] ==> roundtrip encoder decoder (replicate 3 list)
+        ]
+    ,
     testCase "Failed query" $
     let
       statement =
