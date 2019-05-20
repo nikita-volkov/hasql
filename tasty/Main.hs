@@ -32,7 +32,7 @@ tree =
               (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
               (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.text)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         Session.statement ([3, 7], "a") statement
       in do
@@ -49,7 +49,7 @@ tree =
           encoder =
             Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         do
           result1 <- Session.statement [1, 2] statement
@@ -67,7 +67,7 @@ tree =
           encoder =
             Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         do
           result1 <- Session.statement [1, 2] statement
@@ -87,7 +87,7 @@ tree =
           encoder = 
             mempty
           decoder =
-            Decoders.singleRow (Decoders.column (Decoders.composite ((,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool)))
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.composite ((,) <$> (Decoders.field . Decoders.nonNullable) Decoders.int8 <*> (Decoders.field . Decoders.nonNullable) Decoders.bool)))
       session =
         Session.statement () statement
       in do
@@ -105,14 +105,14 @@ tree =
             mempty
           decoder =
             Decoders.singleRow $
-            (,) <$> Decoders.column entity1 <*> Decoders.column entity2
+            (,) <$> (Decoders.column . Decoders.nonNullable) entity1 <*> (Decoders.column . Decoders.nonNullable) entity2
             where
               entity1 =
                 Decoders.composite $
-                (,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool
+                (,) <$> (Decoders.field . Decoders.nonNullable) Decoders.int8 <*> (Decoders.field . Decoders.nonNullable) Decoders.bool
               entity2 =
                 Decoders.composite $
-                (,) <$> Decoders.field Decoders.text <*> Decoders.field Decoders.int8
+                (,) <$> (Decoders.field . Decoders.nonNullable) Decoders.text <*> (Decoders.field . Decoders.nonNullable) Decoders.int8
       session =
         Session.statement () statement
       in do
@@ -137,7 +137,7 @@ tree =
                   encoder =
                     mempty
                   decoder =
-                    Decoders.singleRow (Decoders.column (Decoders.array (Decoders.dimension replicateM (Decoders.element Decoders.int8))))
+                    Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))
       in io
     ,
     testCase "Failing prepared statements" $
@@ -187,7 +187,7 @@ tree =
                       encoder =
                         Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))
                       decoder =
-                        Decoders.singleRow $ Decoders.column Decoders.int8
+                        Decoders.singleRow $ (Decoders.column . Decoders.nonNullable) Decoders.int8
               fail =
                 catchError (Session.sql "absurd") (const (pure ()))
       in io
@@ -204,7 +204,7 @@ tree =
             contramap fst (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))) <>
             contramap snd (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8)))
           decoder =
-            Decoders.singleRow (Decoders.column Decoders.int8)
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8)
       sumSession :: Session.Session Int64
       sumSession =
         Session.sql "begin" *> Session.statement (1, 1) sumStatement <* Session.sql "end"
@@ -229,7 +229,7 @@ tree =
             contramap fst (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))) <>
             contramap snd (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8)))
           decoder =
-            Decoders.singleRow (Decoders.column Decoders.int8)
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8)
       session :: Session.Session Int64
       session =
         do
@@ -253,7 +253,7 @@ tree =
                 sql =
                   "select $1 = interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                 encoder =
                   Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
@@ -270,7 +270,7 @@ tree =
                 sql =
                   "select interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                 encoder =
                   Encoders.noParams
             in DSL.statement () statement
@@ -287,7 +287,7 @@ tree =
                 sql =
                   "select $1"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                 encoder =
                   Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
@@ -318,7 +318,7 @@ tree =
                 sql =
                   "select $1 = ('ok' :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                 encoder =
                   Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.unknown))
             in DSL.statement "ok" statement
@@ -349,7 +349,7 @@ tree =
                 sql =
                   "select overloaded($1, $2) || overloaded($3, $4, $5)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.text)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
                 encoder =
                   contramany (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.unknown)))
             in DSL.statement ["1", "2", "4", "5", "6"] statement
@@ -380,7 +380,7 @@ tree =
                 sql =
                   "select ($1 :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.enum (Just . id))))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.enum (Just . id))))
                 encoder =
                   Encoders.param (Encoders.nonNullable (Encoders.primitive (Encoders.enum id)))
             in DSL.statement "ok" statement
@@ -402,7 +402,7 @@ tree =
                     encoder =
                       Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.text))
                     decoder =
-                      (Decoders.singleRow (Decoders.column (Decoders.text)))
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
             effect2 =
               DSL.statement 1 statement
               where
@@ -414,7 +414,7 @@ tree =
                     encoder =
                       Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))
                     decoder =
-                      (Decoders.singleRow (Decoders.column Decoders.int8))
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8))
             in (,) <$> effect1 <*> effect2
       in actualIO >>= assertEqual "" (Right ("ok", 1))
     ,
@@ -452,8 +452,8 @@ tree =
         DSL.session $ do
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           DSL.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow (Decoders.column Decoders.int4)) False
-          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow (Decoders.column Decoders.int4)) False
+          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
+          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO
