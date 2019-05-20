@@ -29,8 +29,8 @@ tree =
         where
           encoder =
             contrazip2
-              (Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8))))
-              (Encoders.param Encoders.text)
+              (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+              (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.text)))
           decoder =
             fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
@@ -47,7 +47,7 @@ tree =
         Statement.Statement "select true where 1 = any ($1)" encoder decoder True
         where
           encoder =
-            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
+            Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
             fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
@@ -65,7 +65,7 @@ tree =
         Statement.Statement "select true where 3 <> all ($1)" encoder decoder True
         where
           encoder =
-            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
+            Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
             fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
       session =
@@ -85,7 +85,7 @@ tree =
           sql =
             "select (1, true)"
           encoder = 
-            Encoders.unit
+            mempty
           decoder =
             Decoders.singleRow (Decoders.column (Decoders.composite ((,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool)))
       session =
@@ -102,7 +102,7 @@ tree =
           sql =
             "select (1, true) as entity1, ('hello', 3) as entity2"
           encoder =
-            Encoders.unit
+            mempty
           decoder =
             Decoders.singleRow $
             (,) <$> Decoders.column entity1 <*> Decoders.column entity2
@@ -135,7 +135,7 @@ tree =
                   sql =
                     "select array[]::int8[]"
                   encoder =
-                    Encoders.unit
+                    mempty
                   decoder =
                     Decoders.singleRow (Decoders.column (Decoders.array (Decoders.dimension replicateM (Decoders.element Decoders.int8))))
       in io
@@ -162,7 +162,7 @@ tree =
                       sql =
                         "absurd"
                       encoder =
-                        Encoders.unit
+                        mempty
                       decoder =
                         Decoders.unit
       in io
@@ -185,7 +185,7 @@ tree =
                       sql =
                         "select $1 :: int8"
                       encoder =
-                        Encoders.param Encoders.int8
+                        Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))
                       decoder =
                         Decoders.singleRow $ Decoders.column Decoders.int8
               fail =
@@ -201,8 +201,8 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.param Encoders.int8) <>
-            contramap snd (Encoders.param Encoders.int8)
+            contramap fst (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))) <>
+            contramap snd (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8)))
           decoder =
             Decoders.singleRow (Decoders.column Decoders.int8)
       sumSession :: Session.Session Int64
@@ -226,8 +226,8 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.param Encoders.int8) <>
-            contramap snd (Encoders.param Encoders.int8)
+            contramap fst (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))) <>
+            contramap snd (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8)))
           decoder =
             Decoders.singleRow (Decoders.column Decoders.int8)
       session :: Session.Session Int64
@@ -255,7 +255,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.bool)))
                 encoder =
-                  Encoders.param (Encoders.interval)
+                  Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
       in actualIO >>= \x -> assertEqual (show x) (Right True) x
     ,
@@ -272,7 +272,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.interval)))
                 encoder =
-                  Encoders.unit
+                  Encoders.noParams
             in DSL.statement () statement
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
@@ -289,7 +289,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.interval)))
                 encoder =
-                  Encoders.param (Encoders.interval)
+                  Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
@@ -320,7 +320,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.bool)))
                 encoder =
-                  Encoders.param (Encoders.unknown)
+                  Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.unknown))
             in DSL.statement "ok" statement
       in actualIO >>= assertEqual "" (Right True)
     ,
@@ -351,7 +351,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.text)))
                 encoder =
-                  contramany (Encoders.param Encoders.unknown)
+                  contramany (Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.unknown)))
             in DSL.statement ["1", "2", "4", "5", "6"] statement
       in actualIO >>= assertEqual "" (Right "3456")
     ,
@@ -382,7 +382,7 @@ tree =
                 decoder =
                   (Decoders.singleRow (Decoders.column (Decoders.enum (Just . id))))
                 encoder =
-                  Encoders.param (Encoders.enum id)
+                  Encoders.param (Encoders.nonNullable (Encoders.primitive (Encoders.enum id)))
             in DSL.statement "ok" statement
       in actualIO >>= assertEqual "" (Right "ok")
     ,
@@ -400,7 +400,7 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.param Encoders.text
+                      Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.text))
                     decoder =
                       (Decoders.singleRow (Decoders.column (Decoders.text)))
             effect2 =
@@ -412,7 +412,7 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.param Encoders.int8
+                      Encoders.param (Encoders.nonNullable (Encoders.primitive Encoders.int8))
                     decoder =
                       (Decoders.singleRow (Decoders.column Decoders.int8))
             in (,) <$> effect1 <*> effect2

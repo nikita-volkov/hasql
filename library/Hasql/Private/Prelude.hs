@@ -81,6 +81,10 @@ import Development.Placeholders as Exports
 -------------------------
 import Debug.Trace.LocationTH as Exports
 
+-- postgresql-binary
+-------------------------
+import PostgreSQL.Binary.Data as Exports (UUID)
+
 -- custom
 -------------------------
 import qualified Debug.Trace.LocationTH

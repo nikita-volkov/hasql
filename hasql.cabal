@@ -46,6 +46,7 @@ library
     Hasql.Private.Decoders.Row
     Hasql.Private.Decoders.Result
     Hasql.Private.Decoders.Results
+    Hasql.Private.Encoders
     Hasql.Private.Encoders.Array
     Hasql.Private.Encoders.Value
     Hasql.Private.Encoders.Params
