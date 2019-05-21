@@ -445,7 +445,7 @@ newtype Composite a = Composite (Composite.Composite a)
   deriving (Functor, Applicative, Monad)
 
 {-|
-Lift a 'Value' decoder into a 'Composite' decoder for parsing of non-nullable leaf values.
+Lift a 'Value' decoder into a 'Composite' decoder for parsing of component values.
 -}
 field :: NullableOrNot Value a -> Composite a
 field = \ case
