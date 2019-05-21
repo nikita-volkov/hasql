@@ -39,7 +39,7 @@ import qualified Hasql.Encoders as Encoders
 
 
 -- |
--- A specification of a strictly single-statement query, which can be parameterized and prepared.
+-- Specification of a strictly single-statement query, which can be parameterized and prepared.
 -- 
 -- Consists of the following:
 -- 
@@ -51,11 +51,12 @@ import qualified Hasql.Encoders as Encoders
 -- The SQL template must be formatted according to Postgres' standard,
 -- with any non-ASCII characters of the template encoded using UTF-8.
 -- According to the format,
--- parameters must be referred to using the positional notation, as in the following:
+-- parameters must be referred to using a positional notation, as in the following:
 -- @$1@, @$2@, @$3@ and etc.
--- Those references must be used to refer to the values of the 'Encoders.Params' encoder.
+-- Those references must be used in accordance to the order in which the according
+-- value encoders are specified in 'Encoders.Params'.
 -- 
--- Following is an example of the declaration of a prepared statement with its associated codecs.
+-- Following is an example of a declaration of a prepared statement with its associated codecs.
 -- 
 -- @
 -- selectSum :: 'Statement' (Int64, Int64) Int64
