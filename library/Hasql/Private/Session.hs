@@ -40,7 +40,7 @@ sql sql =
       return $ r1 *> r2
   where
     decoder =
-      Decoders.Results.single Decoders.Result.unit
+      Decoders.Results.single Decoders.Result.noResult
 
 -- |
 -- Parameters and a specification of a parametric single-statement query to apply them to.

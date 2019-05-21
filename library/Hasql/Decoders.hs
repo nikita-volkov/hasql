@@ -5,7 +5,7 @@ module Hasql.Decoders
 (
   -- * Result
   Result,
-  unit,
+  noResult,
   rowsAffected,
   singleRow,
   -- ** Specialized multi-row results

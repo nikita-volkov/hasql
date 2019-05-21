@@ -15,6 +15,6 @@ selectSleep =
     encoder =
       E.param (E.nonNullable E.float8)
     decoder =
-      D.unit
+      D.noResult
 
 

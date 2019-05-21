@@ -25,7 +25,7 @@ module Hasql.Statement
   --         Encoders.'Encoders.foldableDimension' .
   --         Encoders.'Encoders.element' .
   --         Encoders.'Encoders.nonNullable'
-  --   decoder = Decoders.'Decoders.unit'
+  --   decoder = Decoders.'Decoders.noResult'
   -- @
   -- 
   -- This approach is much more efficient than executing a single-row Insert

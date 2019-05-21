@@ -29,9 +29,9 @@ Decode no value from the result.
 
 Useful for statements like @INSERT@ or @CREATE@.
 -}
-{-# INLINABLE unit #-}
-unit :: Result ()
-unit = Result (Results.single Result.unit)
+{-# INLINABLE noResult #-}
+noResult :: Result ()
+noResult = Result (Results.single Result.noResult)
 
 {-|
 Get the amount of rows affected by such statements as

@@ -184,7 +184,7 @@ tree =
                       encoder =
                         mempty
                       decoder =
-                        Decoders.unit
+                        Decoders.noResult
       in io
     ,
     testCase "Prepared statements after error" $
@@ -319,14 +319,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
@@ -350,14 +350,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create or replace function overloaded(a int, b int) returns int as $$ select a + b $$ language sql;"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create or replace function overloaded(a text, b text, c text) returns text as $$ select a || b || c $$ language sql;"
@@ -381,14 +381,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"

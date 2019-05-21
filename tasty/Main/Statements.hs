@@ -9,7 +9,7 @@ import qualified Main.Prelude as Prelude
 
 plain :: ByteString -> HQ.Statement () ()
 plain sql =
-  HQ.Statement sql mempty HD.unit False
+  HQ.Statement sql mempty HD.noResult False
 
 dropType :: ByteString -> HQ.Statement () ()
 dropType name =
