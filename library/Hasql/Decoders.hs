@@ -47,6 +47,8 @@ module Hasql.Decoders
   jsonb,
   jsonbBytes,
   array,
+  listArray,
+  vectorArray,
   composite,
   hstore,
   enum,

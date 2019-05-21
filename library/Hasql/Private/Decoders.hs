@@ -15,6 +15,7 @@ import qualified Hasql.Private.Decoders.Value as Value
 import qualified Hasql.Private.Decoders.Array as Array
 import qualified Hasql.Private.Decoders.Composite as Composite
 import qualified Hasql.Private.Prelude as Prelude
+import qualified Data.Vector.Generic as GenericVector
 
 -- * Result
 -------------------------
@@ -357,6 +358,32 @@ Lift an 'Array' decoder to a 'Value' decoder.
 {-# INLINABLE array #-}
 array :: Array a -> Value a
 array (Array imp) = Value (Value.decoder (Array.run imp))
+
+{-|
+Lift a value decoder of element into a unidimensional array decoder producing a list.
+
+This function is merely a shortcut to the following expression:
+
+@
+('array' . 'dimension' Control.Monad.'replicateM' . 'element')
+@
+-}
+{-# INLINE listArray #-}
+listArray :: NullableOrNot Value element -> Value [element]
+listArray = array . dimension replicateM . element
+
+{-|
+Lift a value decoder of element into a unidimensional array decoder producing a generic vector.
+
+This function is merely a shortcut to the following expression:
+
+@
+('array' . 'dimension' Data.Vector.Generic.'GenericVector.replicateM' . 'element')
+@
+-}
+{-# INLINE vectorArray #-}
+vectorArray :: GenericVector.Vector vector element => NullableOrNot Value element -> Value (vector element)
+vectorArray = array . dimension GenericVector.replicateM . element
 
 {-|
 Lift a 'Composite' decoder to a 'Value' decoder.
