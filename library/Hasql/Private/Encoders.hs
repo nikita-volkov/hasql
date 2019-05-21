@@ -115,34 +115,6 @@ newtype Value a = Value (Value.Value a)
   deriving (Contravariant)
 
 {-|
-Lift an array encoder into a parameter encoder.
--}
-array :: Array a -> Value a
-array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) = let
-  encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
-  in Value (Value.Value arrayOID arrayOID encoder renderer)
-
-{-|
-Lift a value encoder of element into a unidimensional array encoder of a foldable value.
-
-E.g.,
-
-@
-vectorOfInts :: Value (Vector Int64)
-vectorOfInts = 'foldableArray' ('nonNullable' 'int8')
-@
-
-This function is merely a shortcut for the following expression:
-
-@
-('array' . 'dimension' 'foldl'' . 'element')
-@
--}
-{-# INLINE foldableArray #-}
-foldableArray :: Foldable foldable => NullableOrNot Value a -> Value (foldable a)
-foldableArray = array . dimension foldl' . element
-
-{-|
 Encoder of @BOOL@ values.
 -}
 {-# INLINABLE bool #-}
@@ -319,6 +291,34 @@ section of the Postgres' documentation.
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
 unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
+
+{-|
+Lift an array encoder into a parameter encoder.
+-}
+array :: Array a -> Value a
+array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) = let
+  encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
+  in Value (Value.Value arrayOID arrayOID encoder renderer)
+
+{-|
+Lift a value encoder of element into a unidimensional array encoder of a foldable value.
+
+E.g.,
+
+@
+vectorOfInts :: Value (Vector Int64)
+vectorOfInts = 'foldableArray' ('nonNullable' 'int8')
+@
+
+This function is merely a shortcut for the following expression:
+
+@
+('array' . 'dimension' 'foldl'' . 'element')
+@
+-}
+{-# INLINE foldableArray #-}
+foldableArray :: Foldable foldable => NullableOrNot Value a -> Value (foldable a)
+foldableArray = array . dimension foldl' . element
 
 
 -- * Array

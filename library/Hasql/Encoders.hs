@@ -16,8 +16,6 @@ module Hasql.Encoders
   nullable,
   -- * Value
   Value,
-  array,
-  foldableArray,
   bool,
   int2,
   int4,
@@ -42,6 +40,8 @@ module Hasql.Encoders
   jsonbBytes,
   enum,
   unknown,
+  array,
+  foldableArray,
   -- * Array
   Array,
   element,
