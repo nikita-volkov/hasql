@@ -359,8 +359,7 @@ Accepts:
 such as @Data.Foldable.'foldl''@,
 which determines the input value.
 
-* A component encoder, which can be either another 'dimension',
-'element' or 'nullableElement'.
+* A component encoder, which can be either another 'dimension' or 'element'.
 -}
 {-# INLINABLE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c

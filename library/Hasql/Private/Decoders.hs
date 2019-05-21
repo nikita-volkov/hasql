@@ -419,8 +419,7 @@ Accepts:
 (@Control.Monad.'Control.Monad.replicateM'@, @Data.Vector.'Data.Vector.replicateM'@),
 which determines the output value.
 
-* A decoder of its components, which can be either another 'dimension',
-'element' or 'nullableElement'.
+* A decoder of its components, which can be either another 'dimension' or 'element'.
 -}
 {-# INLINABLE dimension #-}
 dimension :: (forall m. Monad m => Int -> m a -> m b) -> Array a -> Array b
