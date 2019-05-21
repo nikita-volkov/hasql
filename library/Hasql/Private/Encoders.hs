@@ -310,7 +310,7 @@ vectorOfInts :: Value (Vector Int64)
 vectorOfInts = 'foldableArray' ('nonNullable' 'int8')
 @
 
-This function is merely a shortcut for the following expression:
+This function is merely a shortcut to the following expression:
 
 @
 ('array' . 'dimension' 'foldl'' . 'element')

@@ -324,7 +324,7 @@ jsonbBytes :: (ByteString -> Either Text a) -> Value a
 jsonbBytes fn = Value (Value.decoder (const (A.jsonb_bytes fn)))
 
 {-|
-Lifts a custom value decoder function to a 'Value' decoder.
+Lift a custom value decoder function to a 'Value' decoder.
 -}
 {-# INLINABLE custom #-}
 custom :: (Bool -> ByteString -> Either Text a) -> Value a
@@ -352,14 +352,14 @@ enum :: (Text -> Maybe a) -> Value a
 enum mapping = Value (Value.decoder (const (A.enum mapping)))
 
 {-|
-Lifts the 'Array' decoder to a 'Value' decoder.
+Lift an 'Array' decoder to a 'Value' decoder.
 -}
 {-# INLINABLE array #-}
 array :: Array a -> Value a
 array (Array imp) = Value (Value.decoder (Array.run imp))
 
 {-|
-Lifts the 'Composite' decoder to a 'Value' decoder.
+Lift a 'Composite' decoder to a 'Value' decoder.
 -}
 {-# INLINABLE composite #-}
 composite :: Composite a -> Value a
