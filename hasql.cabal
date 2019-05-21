@@ -40,12 +40,14 @@ library
     Hasql.Private.PreparedStatementRegistry
     Hasql.Private.Settings
     Hasql.Private.Commands
+    Hasql.Private.Decoders
     Hasql.Private.Decoders.Array
     Hasql.Private.Decoders.Composite
     Hasql.Private.Decoders.Value
     Hasql.Private.Decoders.Row
     Hasql.Private.Decoders.Result
     Hasql.Private.Decoders.Results
+    Hasql.Private.Encoders
     Hasql.Private.Encoders.Array
     Hasql.Private.Encoders.Value
     Hasql.Private.Encoders.Params

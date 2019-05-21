@@ -9,7 +9,7 @@ import qualified Main.Prelude as Prelude
 
 plain :: ByteString -> HQ.Statement () ()
 plain sql =
-  HQ.Statement sql mempty HD.unit False
+  HQ.Statement sql mempty HD.noResult False
 
 dropType :: ByteString -> HQ.Statement () ()
 dropType name =
@@ -29,4 +29,4 @@ selectList =
     sql =
       "values (1,2), (3,4), (5,6)"
     decoder =
-      HD.rowList ((,) <$> HD.column HD.int8 <*> HD.column HD.int8)
+      HD.rowList ((,) <$> (HD.column . HD.nonNullable) HD.int8 <*> (HD.column . HD.nonNullable) HD.int8)

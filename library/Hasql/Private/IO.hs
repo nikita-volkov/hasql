@@ -88,7 +88,7 @@ getPreparedStatementKey connection registry template oidList =
         sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
         let resultsDecoder = 
               if sent
-                then ResultsDecoders.single ResultDecoders.unit
+                then ResultsDecoders.single ResultDecoders.noResult
                 else ResultsDecoders.clientError
         fmap resultsMapping $ getResults connection undefined resultsDecoder
       where
