@@ -17,6 +17,7 @@ module Hasql.Encoders
   -- * Value
   Value,
   array,
+  foldableArray,
   bool,
   int2,
   int4,
