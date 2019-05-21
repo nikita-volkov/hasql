@@ -14,12 +14,9 @@ module Hasql.Encoders
   NullableOrNot,
   nonNullable,
   nullable,
-  -- * Param
-  Param,
-  primitive,
+  -- * Value
+  Value,
   array,
-  -- * Primitive
-  Primitive,
   bool,
   int2,
   int4,

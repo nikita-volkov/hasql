@@ -53,11 +53,11 @@ data Gender = Male | Female
 personParams :: 'Params' Person
 personParams =
   (name '>$<' 'param' ('nonNullable' ('primitive' 'text'))) '<>'
-  (gender '>$<' 'param' ('nonNullable' ('primitive' genderPrimitive))) '<>'
+  (gender '>$<' 'param' ('nonNullable' ('primitive' genderValue))) '<>'
   ('fromIntegral' . age '>$<' 'param' ('nonNullable' ('primitive' 'int8')))
 
-genderPrimitive :: 'Primitive' Gender
-genderPrimitive = 'enum' genderText 'text' where
+genderValue :: 'Value' Gender
+genderValue = 'enum' genderText 'text' where
   genderText gender = case gender of
     Male -> "male"
     Female -> "female"
@@ -73,12 +73,13 @@ noParams :: Params ()
 noParams = mempty
 
 {-|
-Lift a single parameter, with its nullability specified.
+Lift a single parameter encoder, with its nullability specified,
+associating it with a single placeholder.
 -}
-param :: NullableOrNot Param a -> Params a
+param :: NullableOrNot Value a -> Params a
 param = \ case
-  NonNullable (Param valueEnc) -> Params (Params.value valueEnc)
-  Nullable (Param valueEnc) -> Params (Params.nullableValue valueEnc)
+  NonNullable (Value valueEnc) -> Params (Params.value valueEnc)
+  Nullable (Value valueEnc) -> Params (Params.nullableValue valueEnc)
 
 
 -- * Nullability
@@ -104,88 +105,71 @@ nullable :: encoder a -> NullableOrNot encoder (Maybe a)
 nullable = Nullable
 
 
--- * Param
+-- * Value
 -------------------------
 
 {-|
-An individual parameter encoder.
-Will be mapped to a single placeholder in the statement.
+Value encoder.
 -}
-newtype Param a = Param (Value.Value a)
+newtype Value a = Value (Value.Value a)
   deriving (Contravariant)
-
-{-|
-Lift a primitive value encoder into a parameter encoder.
--}
-primitive :: Primitive a -> Param a
-primitive (Primitive valueEnc) = Param valueEnc
 
 {-|
 Lift an array encoder into a parameter encoder.
 -}
-array :: Array a -> Param a
+array :: Array a -> Value a
 array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) = let
   encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
-  in Param (Value.Value arrayOID arrayOID encoder renderer)
-
-
--- * Primitive
--------------------------
-
-{-|
-Primitive value encoder.
--}
-newtype Primitive a = Primitive (Value.Value a)
-  deriving (Contravariant)
+  in Value (Value.Value arrayOID arrayOID encoder renderer)
 
 {-|
 Encoder of @BOOL@ values.
 -}
 {-# INLINABLE bool #-}
-bool :: Primitive Bool
-bool = Primitive (Value.unsafePTIWithShow PTI.bool (const A.bool))
+bool :: Value Bool
+bool = Value (Value.unsafePTIWithShow PTI.bool (const A.bool))
 
 {-|
 Encoder of @INT2@ values.
 -}
 {-# INLINABLE int2 #-}
-int2 :: Primitive Int16
-int2 = Primitive (Value.unsafePTIWithShow PTI.int2 (const A.int2_int16))
+int2 :: Value Int16
+int2 = Value (Value.unsafePTIWithShow PTI.int2 (const A.int2_int16))
 
 {-|
 Encoder of @INT4@ values.
 -}
 {-# INLINABLE int4 #-}
-int4 :: Primitive Int32
-int4 = Primitive (Value.unsafePTIWithShow PTI.int4 (const A.int4_int32))
+int4 :: Value Int32
+int4 = Value (Value.unsafePTIWithShow PTI.int4 (const A.int4_int32))
 
 {-|
 Encoder of @INT8@ values.
 -}
 {-# INLINABLE int8 #-}
-int8 :: Primitive Int64
-int8 = Primitive (Value.unsafePTIWithShow PTI.int8 (const A.int8_int64))
+int8 :: Value Int64
+int8 = Value (Value.unsafePTIWithShow PTI.int8 (const A.int8_int64))
 
 {-|
 Encoder of @FLOAT4@ values.
 -}
 {-# INLINABLE float4 #-}
-float4 :: Primitive Float
-float4 = Primitive (Value.unsafePTIWithShow PTI.float4 (const A.float4))
+float4 :: Value Float
+float4 = Value (Value.unsafePTIWithShow PTI.float4 (const A.float4))
 
 {-|
 Encoder of @FLOAT8@ values.
 -}
 {-# INLINABLE float8 #-}
-float8 :: Primitive Double
-float8 = Primitive (Value.unsafePTIWithShow PTI.float8 (const A.float8))
+float8 :: Value Double
+float8 = Value (Value.unsafePTIWithShow PTI.float8 (const A.float8))
 
 {-|
 Encoder of @NUMERIC@ values.
 -}
 {-# INLINABLE numeric #-}
-numeric :: Primitive B.Scientific
-numeric = Primitive (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
+numeric :: Value B.Scientific
+numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 
 {-|
 Encoder of @CHAR@ values.
@@ -193,106 +177,106 @@ Encoder of @CHAR@ values.
 -- Note that it supports UTF-8 values and
 -- identifies itself under the @TEXT@ OID because of that.
 {-# INLINABLE char #-}
-char :: Primitive Char
-char = Primitive (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
+char :: Value Char
+char = Value (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
 
 {-|
 Encoder of @TEXT@ values.
 -}
 {-# INLINABLE text #-}
-text :: Primitive Text
-text = Primitive (Value.unsafePTIWithShow PTI.text (const A.text_strict))
+text :: Value Text
+text = Value (Value.unsafePTIWithShow PTI.text (const A.text_strict))
 
 {-|
 Encoder of @BYTEA@ values.
 -}
 {-# INLINABLE bytea #-}
-bytea :: Primitive ByteString
-bytea = Primitive (Value.unsafePTIWithShow PTI.bytea (const A.bytea_strict))
+bytea :: Value ByteString
+bytea = Value (Value.unsafePTIWithShow PTI.bytea (const A.bytea_strict))
 
 {-|
 Encoder of @DATE@ values.
 -}
 {-# INLINABLE date #-}
-date :: Primitive B.Day
-date = Primitive (Value.unsafePTIWithShow PTI.date (const A.date))
+date :: Value B.Day
+date = Value (Value.unsafePTIWithShow PTI.date (const A.date))
 
 {-|
 Encoder of @TIMESTAMP@ values.
 -}
 {-# INLINABLE timestamp #-}
-timestamp :: Primitive B.LocalTime
-timestamp = Primitive (Value.unsafePTIWithShow PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
+timestamp :: Value B.LocalTime
+timestamp = Value (Value.unsafePTIWithShow PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
 
 {-|
 Encoder of @TIMESTAMPTZ@ values.
 -}
 {-# INLINABLE timestamptz #-}
-timestamptz :: Primitive B.UTCTime
-timestamptz = Primitive (Value.unsafePTIWithShow PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
+timestamptz :: Value B.UTCTime
+timestamptz = Value (Value.unsafePTIWithShow PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 {-|
 Encoder of @TIME@ values.
 -}
 {-# INLINABLE time #-}
-time :: Primitive B.TimeOfDay
-time = Primitive (Value.unsafePTIWithShow PTI.time (Prelude.bool A.time_float A.time_int))
+time :: Value B.TimeOfDay
+time = Value (Value.unsafePTIWithShow PTI.time (Prelude.bool A.time_float A.time_int))
 
 {-|
 Encoder of @TIMETZ@ values.
 -}
 {-# INLINABLE timetz #-}
-timetz :: Primitive (B.TimeOfDay, B.TimeZone)
-timetz = Primitive (Value.unsafePTIWithShow PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
+timetz :: Value (B.TimeOfDay, B.TimeZone)
+timetz = Value (Value.unsafePTIWithShow PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
 
 {-|
 Encoder of @INTERVAL@ values.
 -}
 {-# INLINABLE interval #-}
-interval :: Primitive B.DiffTime
-interval = Primitive (Value.unsafePTIWithShow PTI.interval (Prelude.bool A.interval_float A.interval_int))
+interval :: Value B.DiffTime
+interval = Value (Value.unsafePTIWithShow PTI.interval (Prelude.bool A.interval_float A.interval_int))
 
 {-|
 Encoder of @UUID@ values.
 -}
 {-# INLINABLE uuid #-}
-uuid :: Primitive B.UUID
-uuid = Primitive (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
+uuid :: Value B.UUID
+uuid = Value (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
 
 {-|
 Encoder of @INET@ values.
 -}
 {-# INLINABLE inet #-}
-inet :: Primitive (B.NetAddr B.IP)
-inet = Primitive (Value.unsafePTIWithShow PTI.inet (const A.inet))
+inet :: Value (B.NetAddr B.IP)
+inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 
 {-|
 Encoder of @JSON@ values from JSON AST.
 -}
 {-# INLINABLE json #-}
-json :: Primitive B.Value
-json = Primitive (Value.unsafePTIWithShow PTI.json (const A.json_ast))
+json :: Value B.Value
+json = Value (Value.unsafePTIWithShow PTI.json (const A.json_ast))
 
 {-|
 Encoder of @JSON@ values from raw JSON.
 -}
 {-# INLINABLE jsonBytes #-}
-jsonBytes :: Primitive ByteString
-jsonBytes = Primitive (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
+jsonBytes :: Value ByteString
+jsonBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
 
 {-|
 Encoder of @JSONB@ values from JSON AST.
 -}
 {-# INLINABLE jsonb #-}
-jsonb :: Primitive B.Value
-jsonb = Primitive (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
+jsonb :: Value B.Value
+jsonb = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
 
 {-|
 Encoder of @JSONB@ values from raw JSON.
 -}
 {-# INLINABLE jsonbBytes #-}
-jsonbBytes :: Primitive ByteString
-jsonbBytes = Primitive (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
+jsonbBytes :: Value ByteString
+jsonbBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
 
 {-|
 Given a function,
@@ -300,8 +284,8 @@ which maps a value into a textual enum label used on the DB side,
 produces an encoder of that value.
 -}
 {-# INLINABLE enum #-}
-enum :: (a -> Text) -> Primitive a
-enum mapping = Primitive (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
+enum :: (a -> Text) -> Value a
+enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
 
 {-|
 Identifies the value with the PostgreSQL's \"unknown\" type,
@@ -313,8 +297,8 @@ For reference, see the
 section of the Postgres' documentation.
 -}
 {-# INLINABLE unknown #-}
-unknown :: Primitive ByteString
-unknown = Primitive (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
+unknown :: Value ByteString
+unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
 
 
 -- * Array
@@ -336,13 +320,13 @@ values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condit
 newtype Array a = Array (Array.Array a)
 
 {-|
-Lifts a 'Primitive' encoder into an 'Array' encoder.
+Lifts a 'Value' encoder into an 'Array' encoder.
 -}
-element :: NullableOrNot Primitive a -> Array a
+element :: NullableOrNot Value a -> Array a
 element = \ case
-  NonNullable (Primitive (Value.Value elementOID arrayOID encoder renderer)) ->
+  NonNullable (Value (Value.Value elementOID arrayOID encoder renderer)) ->
     Array (Array.value elementOID arrayOID encoder renderer)
-  Nullable (Primitive (Value.Value elementOID arrayOID encoder renderer)) ->
+  Nullable (Value (Value.Value elementOID arrayOID encoder renderer)) ->
     Array (Array.nullableValue elementOID arrayOID encoder renderer)
 
 {-|
