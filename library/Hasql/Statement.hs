@@ -22,7 +22,7 @@ module Hasql.Statement
   --         Encoders.'Encoders.param' .
   --         Encoders.'Encoders.nonNullable' .
   --         Encoders.'Encoders.array' .
-  --         Encoders.'Encoders.foldableDimension' .
+  --         Encoders.'Encoders.dimension' 'foldl'' .
   --         Encoders.'Encoders.element' .
   --         Encoders.'Encoders.nonNullable'
   --   decoder = Decoders.'Decoders.noResult'

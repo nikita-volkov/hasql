@@ -311,7 +311,7 @@ Here's an example of its usage:
 
 @
 someParamsEncoder :: 'Params' [[Int64]]
-someParamsEncoder = 'param' ('nonNullable' ('array' ('foldableDimension' ('foldableDimension' ('element' ('nonNullable' 'int8'))))))
+someParamsEncoder = 'param' ('nonNullable' ('array' ('dimension' 'foldl'' ('dimension' 'foldl'' ('element' ('nonNullable' 'int8'))))))
 @
 
 Please note that the PostgreSQL __IN__ keyword does not accept an array, but rather a syntactical list of
@@ -345,11 +345,3 @@ which determines the input value.
 {-# INLINABLE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
 dimension foldl (Array imp) = Array (Array.dimension foldl imp)
-
-{-|
-Same as 'dimension', but specialized to 'Foldable' values,
-which includes such structures as list and 'Vector'.
--}
-{-# INLINE foldableDimension #-}
-foldableDimension :: Foldable foldable => Array a -> Array (foldable a)
-foldableDimension = dimension foldl'

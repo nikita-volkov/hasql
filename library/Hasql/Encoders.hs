@@ -45,7 +45,6 @@ module Hasql.Encoders
   Array,
   element,
   dimension,
-  foldableDimension,
 )
 where
 
