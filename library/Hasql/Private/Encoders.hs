@@ -314,7 +314,7 @@ someParamsEncoder :: 'Params' [[Int64]]
 someParamsEncoder = 'param' ('nonNullable' ('array' ('dimension' 'foldl'' ('dimension' 'foldl'' ('element' ('nonNullable' 'int8'))))))
 @
 
-Please note that the PostgreSQL __IN__ keyword does not accept an array, but rather a syntactical list of
+Please note that the PostgreSQL @IN@ keyword does not accept an array, but rather a syntactical list of
 values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condition instead.
 -}
 newtype Array a = Array (Array.Array a)
