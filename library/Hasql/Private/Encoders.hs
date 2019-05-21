@@ -317,7 +317,7 @@ This function is merely a shortcut for the following expression:
 @
 -}
 {-# INLINE foldableArray #-}
-foldableArray :: Foldable foldable => NullableOrNot Value a -> Value (foldable a)
+foldableArray :: Foldable foldable => NullableOrNot Value element -> Value (foldable element)
 foldableArray = array . dimension foldl' . element
 
 
