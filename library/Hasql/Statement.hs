@@ -62,9 +62,9 @@ import qualified Hasql.Encoders as Encoders
 -- selectSum = 'Statement' sql encoder decoder True where
 --   sql = "select ($1 + $2)"
 --   encoder =
---     ('fst' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nonNullable' (Encoders.'Hasql.Encoders.primitive' Encoders.'Hasql.Encoders.int8'))) '<>'
---     ('snd' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nullable' (Encoders.'Hasql.Encoders.primitive' Encoders.'Hasql.Encoders.text')))
---   decoder = Decoders.'Hasql.Decoders.singleRow' (Decoders.'Hasql.Decoders.column' Decoders.'Hasql.Decoders.int8')
+--     ('fst' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nonNullable' Encoders.'Hasql.Encoders.int8')) '<>'
+--     ('snd' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nullable' Encoders.'Hasql.Encoders.text'))
+--   decoder = Decoders.'Hasql.Decoders.singleRow' (Decoders.'Hasql.Decoders.column' (Decoders.'Hasql.Decoders.nonNullable' Decoders.'Hasql.Decoders.int8'))
 -- @
 -- 
 -- The statement above accepts a product of two parameters of type 'Int64'

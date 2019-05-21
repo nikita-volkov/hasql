@@ -103,12 +103,12 @@ which gets composed of column value decoders.
 
 E.g.:
 
->x :: Row (Maybe Int64, Text, TimeOfDay)
->x =
->  (,,) <$> nullableColumn int8 <*> column text <*> column time
+@
+x :: 'Row' (Maybe Int64, Text, TimeOfDay)
+x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
+@
 -}
-newtype Row a =
-  Row (Row.Row a)
+newtype Row a = Row (Row.Row a)
   deriving (Functor, Applicative, Monad)
 
 {-|
@@ -375,9 +375,8 @@ A generic array decoder.
 Here's how you can use it to produce a specific array value decoder:
 
 @
-x :: Value [[Text]]
-x =
-  array (dimension 'replicateM' (dimension 'replicateM' (element text)))
+x :: 'Value' [[Text]]
+x = 'array' ('dimension' 'replicateM' ('dimension' 'replicateM' ('element' ('nonNullable' 'text'))))
 @
 -}
 newtype Array a = Array (Array.Array a)

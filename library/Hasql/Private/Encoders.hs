@@ -28,8 +28,8 @@ E.g.,
 @
 someParamsEncoder :: 'Params' (Int64, Maybe Text)
 someParamsEncoder =
-  ('fst' '>$<' 'param' ('nonNullable' ('primitive' 'int8'))) '<>'
-  ('snd' '>$<' 'param' ('nullable' ('primitive' 'text')))
+  ('fst' '>$<' 'param' ('nonNullable' 'int8')) '<>'
+  ('snd' '>$<' 'param' ('nullable' 'text'))
 @
 
 As a general solution for tuples of any arity, instead of 'fst' and 'snd',
@@ -40,7 +40,7 @@ E.g., here's how you can achieve the same as the above:
 @
 someParamsEncoder :: 'Params' (Int64, Maybe Text)
 someParamsEncoder =
-  'contrazip2' ('param' ('nonNullable' ('primitive' 'int8'))) ('param' ('nullable' ('primitive' 'text')))
+  'contrazip2' ('param' ('nonNullable' 'int8')) ('param' ('nullable' 'text'))
 @
 
 Here's how you can implement encoders for custom composite types:
@@ -52,9 +52,9 @@ data Gender = Male | Female
 
 personParams :: 'Params' Person
 personParams =
-  (name '>$<' 'param' ('nonNullable' ('primitive' 'text'))) '<>'
-  (gender '>$<' 'param' ('nonNullable' ('primitive' genderValue))) '<>'
-  ('fromIntegral' . age '>$<' 'param' ('nonNullable' ('primitive' 'int8')))
+  (name '>$<' 'param' ('nonNullable' 'text')) '<>'
+  (gender '>$<' 'param' ('nonNullable' genderValue)) '<>'
+  ('fromIntegral' . age '>$<' 'param' ('nonNullable' 'int8'))
 
 genderValue :: 'Value' Gender
 genderValue = 'enum' genderText 'text' where
