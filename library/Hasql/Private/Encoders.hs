@@ -165,9 +165,10 @@ numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 
 {-|
 Encoder of @CHAR@ values.
+
+Note that it supports UTF-8 values and
+identifies itself under the @TEXT@ OID because of that.
 -}
--- Note that it supports UTF-8 values and
--- identifies itself under the @TEXT@ OID because of that.
 {-# INLINABLE char #-}
 char :: Value Char
 char = Value (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
