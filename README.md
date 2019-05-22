@@ -98,19 +98,19 @@ sumStatement :: Statement (Int64, Int64) Int64
 sumStatement = Statement sql encoder decoder True where
   sql = "select $1 + $2"
   encoder =
-    (fst >$< Encoders.param Encoders.int8) <>
-    (snd >$< Encoders.param Encoders.int8)
-  decoder = Decoders.singleRow (Decoders.column Decoders.int8)
+    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
+    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+  decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
 divModStatement = Statement sql encoder decoder True where
   sql = "select $1 / $2, $1 % $2"
   encoder =
-    (fst >$< Encoders.param Encoders.int8) <>
-    (snd >$< Encoders.param Encoders.int8)
+    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
+    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
   decoder = Decoders.singleRow row where
     row =
       (,) <$>
-      Decoders.column Decoders.int8 <*>
-      Decoders.column Decoders.int8
+      Decoders.column (Decoders.nonNullable Decoders.int8) <*>
+      Decoders.column (Decoders.nonNullable Decoders.int8)
 ```
