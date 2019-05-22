@@ -23,7 +23,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
 
-* "hasql-migration" - an abstraction over the migration strategies. *Yet to be released.*
+* ["hasql-migration"](https://github.com/tvh/hasql-migration) - A port of postgresql-simple-migration for use with hasql.
 
 * ["hasql-optparse-applicative"](https://github.com/sannsyn/hasql-optparse-applicative) - "optparse-applicative" parsers for Hasql.
 
