@@ -206,7 +206,7 @@ numeric = Value (Value.decoder (const A.numeric))
 
 {-|
 Decoder of the @CHAR@ values.
-Note that it supports UTF-8 values.
+Note that it supports Unicode values.
 -}
 {-# INLINABLE char #-}
 char :: Value Char

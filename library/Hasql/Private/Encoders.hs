@@ -166,7 +166,7 @@ numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 {-|
 Encoder of @CHAR@ values.
 
-Note that it supports UTF-8 values and
+Note that it supports Unicode values and
 identifies itself under the @TEXT@ OID because of that.
 -}
 {-# INLINABLE char #-}
