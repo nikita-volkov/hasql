@@ -9,6 +9,10 @@ import qualified Text.Builder as C
 data Array a =
   Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.Builder)
 
+instance Contravariant Array where
+  contramap fn (Array valueOid arrayOid encoder renderer) =
+    Array valueOid arrayOid (\ intDateTimes -> encoder intDateTimes . fn) (renderer . fn)
+
 {-# INLINE value #-}
 value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.Builder) -> Array a
 value valueOID arrayOID encoder =

@@ -339,6 +339,7 @@ Please note that the PostgreSQL @IN@ keyword does not accept an array, but rathe
 values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condition instead.
 -}
 newtype Array a = Array (Array.Array a)
+  deriving (Contravariant)
 
 {-|
 Lifts a 'Value' encoder into an 'Array' encoder.
