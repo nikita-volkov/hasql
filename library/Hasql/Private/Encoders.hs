@@ -316,6 +316,9 @@ This function is merely a shortcut to the following expression:
 @
 ('array' . 'dimension' 'foldl'' . 'element')
 @
+
+Please notice that in case of multidimensional arrays nesting 'foldableArray' encoder
+won't work. You have to explicitly construct the array encoder using 'array'.
 -}
 {-# INLINE foldableArray #-}
 foldableArray :: Foldable foldable => NullableOrNot Value element -> Value (foldable element)

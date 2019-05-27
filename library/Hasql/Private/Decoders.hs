@@ -367,6 +367,9 @@ This function is merely a shortcut to the following expression:
 @
 ('array' . 'dimension' Control.Monad.'replicateM' . 'element')
 @
+
+Please notice that in case of multidimensional arrays nesting 'listArray' decoder
+won't work. You have to explicitly construct the array decoder using 'array'.
 -}
 {-# INLINE listArray #-}
 listArray :: NullableOrNot Value element -> Value [element]
@@ -380,6 +383,9 @@ This function is merely a shortcut to the following expression:
 @
 ('array' . 'dimension' Data.Vector.Generic.'GenericVector.replicateM' . 'element')
 @
+
+Please notice that in case of multidimensional arrays nesting 'vectorArray' decoder
+won't work. You have to explicitly construct the array decoder using 'array'.
 -}
 {-# INLINE vectorArray #-}
 vectorArray :: GenericVector.Vector vector element => NullableOrNot Value element -> Value (vector element)
