@@ -304,17 +304,17 @@ array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) = let
 {-|
 Lift a value encoder of element into a unidimensional array encoder of a foldable value.
 
-E.g.,
-
-@
-vectorOfInts :: Value (Vector Int64)
-vectorOfInts = 'foldableArray' ('nonNullable' 'int8')
-@
-
 This function is merely a shortcut to the following expression:
 
 @
 ('array' . 'dimension' 'foldl'' . 'element')
+@
+
+You can use it like this:
+
+@
+vectorOfInts :: Value (Vector Int64)
+vectorOfInts = 'foldableArray' ('nonNullable' 'int8')
 @
 
 Please notice that in case of multidimensional arrays nesting 'foldableArray' encoder
