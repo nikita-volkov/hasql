@@ -22,6 +22,26 @@ tree =
   localOption (NumThreads 1) $
   testGroup "All tests"
   [
+    testGroup "Roundtrips" $ let
+      roundtrip encoder decoder input = let
+        session = let
+          statement = Statement.Statement "select $1" encoder decoder True
+          in Session.statement input statement
+        in unsafePerformIO $ do
+          x <- Connection.with (Session.run session)
+          return (Right (Right input) === x)
+      in [
+          testProperty "Array" $ let
+            encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
+            decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))))
+            in roundtrip encoder decoder
+          ,
+          testProperty "2D Array" $ let
+            encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+            decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))))
+            in \ list -> list /= [] ==> roundtrip encoder decoder (replicate 3 list)
+        ]
+    ,
     testCase "Failed query" $
     let
       statement =
@@ -29,10 +49,10 @@ tree =
         where
           encoder =
             contrazip2
-              (Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8))))
-              (Encoders.param Encoders.text)
+              (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+              (Encoders.param (Encoders.nonNullable (Encoders.text)))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         Session.statement ([3, 7], "a") statement
       in do
@@ -47,9 +67,9 @@ tree =
         Statement.Statement "select true where 1 = any ($1)" encoder decoder True
         where
           encoder =
-            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
+            Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         do
           result1 <- Session.statement [1, 2] statement
@@ -65,9 +85,9 @@ tree =
         Statement.Statement "select true where 3 <> all ($1)" encoder decoder True
         where
           encoder =
-            Encoders.param (Encoders.array (Encoders.dimension foldl' (Encoders.element Encoders.int8)))
+            Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))
           decoder =
-            fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column Decoders.bool))
+            fmap (maybe False (const True)) (Decoders.rowMaybe ((Decoders.column . Decoders.nonNullable) Decoders.bool))
       session =
         do
           result1 <- Session.statement [1, 2] statement
@@ -85,9 +105,9 @@ tree =
           sql =
             "select (1, true)"
           encoder = 
-            Encoders.unit
+            mempty
           decoder =
-            Decoders.singleRow (Decoders.column (Decoders.composite ((,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool)))
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.composite ((,) <$> (Decoders.field . Decoders.nonNullable) Decoders.int8 <*> (Decoders.field . Decoders.nonNullable) Decoders.bool)))
       session =
         Session.statement () statement
       in do
@@ -102,17 +122,17 @@ tree =
           sql =
             "select (1, true) as entity1, ('hello', 3) as entity2"
           encoder =
-            Encoders.unit
+            mempty
           decoder =
             Decoders.singleRow $
-            (,) <$> Decoders.column entity1 <*> Decoders.column entity2
+            (,) <$> (Decoders.column . Decoders.nonNullable) entity1 <*> (Decoders.column . Decoders.nonNullable) entity2
             where
               entity1 =
                 Decoders.composite $
-                (,) <$> Decoders.field Decoders.int8 <*> Decoders.field Decoders.bool
+                (,) <$> (Decoders.field . Decoders.nonNullable) Decoders.int8 <*> (Decoders.field . Decoders.nonNullable) Decoders.bool
               entity2 =
                 Decoders.composite $
-                (,) <$> Decoders.field Decoders.text <*> Decoders.field Decoders.int8
+                (,) <$> (Decoders.field . Decoders.nonNullable) Decoders.text <*> (Decoders.field . Decoders.nonNullable) Decoders.int8
       session =
         Session.statement () statement
       in do
@@ -135,9 +155,9 @@ tree =
                   sql =
                     "select array[]::int8[]"
                   encoder =
-                    Encoders.unit
+                    mempty
                   decoder =
-                    Decoders.singleRow (Decoders.column (Decoders.array (Decoders.dimension replicateM (Decoders.element Decoders.int8))))
+                    Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))
       in io
     ,
     testCase "Failing prepared statements" $
@@ -162,9 +182,9 @@ tree =
                       sql =
                         "absurd"
                       encoder =
-                        Encoders.unit
+                        mempty
                       decoder =
-                        Decoders.unit
+                        Decoders.noResult
       in io
     ,
     testCase "Prepared statements after error" $
@@ -185,9 +205,9 @@ tree =
                       sql =
                         "select $1 :: int8"
                       encoder =
-                        Encoders.param Encoders.int8
+                        Encoders.param (Encoders.nonNullable (Encoders.int8))
                       decoder =
-                        Decoders.singleRow $ Decoders.column Decoders.int8
+                        Decoders.singleRow $ (Decoders.column . Decoders.nonNullable) Decoders.int8
               fail =
                 catchError (Session.sql "absurd") (const (pure ()))
       in io
@@ -201,10 +221,10 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.param Encoders.int8) <>
-            contramap snd (Encoders.param Encoders.int8)
+            contramap fst (Encoders.param (Encoders.nonNullable (Encoders.int8))) <>
+            contramap snd (Encoders.param (Encoders.nonNullable (Encoders.int8)))
           decoder =
-            Decoders.singleRow (Decoders.column Decoders.int8)
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8)
       sumSession :: Session.Session Int64
       sumSession =
         Session.sql "begin" *> Session.statement (1, 1) sumStatement <* Session.sql "end"
@@ -226,10 +246,10 @@ tree =
           sql =
             "select ($1 + $2)"
           encoder =
-            contramap fst (Encoders.param Encoders.int8) <>
-            contramap snd (Encoders.param Encoders.int8)
+            contramap fst (Encoders.param (Encoders.nonNullable (Encoders.int8))) <>
+            contramap snd (Encoders.param (Encoders.nonNullable (Encoders.int8)))
           decoder =
-            Decoders.singleRow (Decoders.column Decoders.int8)
+            Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8)
       session :: Session.Session Int64
       session =
         do
@@ -253,9 +273,9 @@ tree =
                 sql =
                   "select $1 = interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                 encoder =
-                  Encoders.param (Encoders.interval)
+                  Encoders.param (Encoders.nonNullable (Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
       in actualIO >>= \x -> assertEqual (show x) (Right True) x
     ,
@@ -270,9 +290,9 @@ tree =
                 sql =
                   "select interval '10 seconds'"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                 encoder =
-                  Encoders.unit
+                  Encoders.noParams
             in DSL.statement () statement
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
@@ -287,9 +307,9 @@ tree =
                 sql =
                   "select $1"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.interval)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                 encoder =
-                  Encoders.param (Encoders.interval)
+                  Encoders.param (Encoders.nonNullable (Encoders.interval))
             in DSL.statement (10 :: DiffTime) statement
       in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x
     ,
@@ -299,14 +319,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
@@ -318,9 +338,9 @@ tree =
                 sql =
                   "select $1 = ('ok' :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.bool)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                 encoder =
-                  Encoders.param (Encoders.unknown)
+                  Encoders.param (Encoders.nonNullable (Encoders.unknown))
             in DSL.statement "ok" statement
       in actualIO >>= assertEqual "" (Right True)
     ,
@@ -330,14 +350,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create or replace function overloaded(a int, b int) returns int as $$ select a + b $$ language sql;"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create or replace function overloaded(a text, b text, c text) returns text as $$ select a || b || c $$ language sql;"
@@ -349,9 +369,9 @@ tree =
                 sql =
                   "select overloaded($1, $2) || overloaded($3, $4, $5)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.text)))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
                 encoder =
-                  contramany (Encoders.param Encoders.unknown)
+                  contramany (Encoders.param (Encoders.nonNullable (Encoders.unknown)))
             in DSL.statement ["1", "2", "4", "5", "6"] statement
       in actualIO >>= assertEqual "" (Right "3456")
     ,
@@ -361,14 +381,14 @@ tree =
         DSL.session $ do
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "drop type if exists mood"
             in DSL.statement () statement
           let
             statement =
-              Statement.Statement sql mempty Decoders.unit True
+              Statement.Statement sql mempty Decoders.noResult True
               where
                 sql =
                   "create type mood as enum ('sad', 'ok', 'happy')"
@@ -380,9 +400,9 @@ tree =
                 sql =
                   "select ($1 :: mood)"
                 decoder =
-                  (Decoders.singleRow (Decoders.column (Decoders.enum (Just . id))))
+                  (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.enum (Just . id))))
                 encoder =
-                  Encoders.param (Encoders.enum id)
+                  Encoders.param (Encoders.nonNullable ((Encoders.enum id)))
             in DSL.statement "ok" statement
       in actualIO >>= assertEqual "" (Right "ok")
     ,
@@ -400,9 +420,9 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.param Encoders.text
+                      Encoders.param (Encoders.nonNullable (Encoders.text))
                     decoder =
-                      (Decoders.singleRow (Decoders.column (Decoders.text)))
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
             effect2 =
               DSL.statement 1 statement
               where
@@ -412,9 +432,9 @@ tree =
                     sql =
                       "select $1"
                     encoder =
-                      Encoders.param Encoders.int8
+                      Encoders.param (Encoders.nonNullable (Encoders.int8))
                     decoder =
-                      (Decoders.singleRow (Decoders.column Decoders.int8))
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8))
             in (,) <$> effect1 <*> effect2
       in actualIO >>= assertEqual "" (Right ("ok", 1))
     ,
@@ -438,7 +458,7 @@ tree =
             DSL.statement () $ Statements.plain $
             "insert into a (name) values ('a')"  
           deleteRows =
-            DSL.statement () $ Statement.Statement sql def decoder False
+            DSL.statement () $ Statement.Statement sql mempty decoder False
             where
               sql =
                 "delete from a"
@@ -452,8 +472,8 @@ tree =
         DSL.session $ do
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           DSL.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
-          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" def (Decoders.singleRow (Decoders.column Decoders.int4)) False
+          id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
+          id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
           DSL.statement () $ Statements.plain $ "drop table if exists a"
           pure (id1, id2)
       in assertEqual "" (Right (1, 2)) =<< actualIO

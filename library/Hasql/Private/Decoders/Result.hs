@@ -20,9 +20,9 @@ run :: Result a -> (Bool, LibPQ.Result) -> IO (Either ResultError a)
 run (Result reader) env =
   runExceptT (runReaderT reader env)
 
-{-# INLINE unit #-}
-unit :: Result ()
-unit =
+{-# INLINE noResult #-}
+noResult :: Result ()
+noResult =
   checkExecStatus $ \case
     LibPQ.CommandOk -> True
     LibPQ.TuplesOk -> True

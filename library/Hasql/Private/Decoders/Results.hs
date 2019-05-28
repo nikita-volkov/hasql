@@ -81,4 +81,4 @@ dropRemainders =
           loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
-              ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.unit (integerDatetimes, result)
+              ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.noResult (integerDatetimes, result)

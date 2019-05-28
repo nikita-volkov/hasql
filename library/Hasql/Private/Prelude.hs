@@ -36,10 +36,6 @@ import Data.Functor.Identity as Exports
 -------------------------
 import Control.Monad.Error.Class as Exports (MonadError (..))
 
--- data-default-class
--------------------------
-import Data.Default.Class as Exports
-
 -- profunctors
 -------------------------
 import Data.Profunctor.Unsafe as Exports
@@ -84,6 +80,10 @@ import Development.Placeholders as Exports
 -- loch-th
 -------------------------
 import Debug.Trace.LocationTH as Exports
+
+-- postgresql-binary
+-------------------------
+import PostgreSQL.Binary.Data as Exports (UUID)
 
 -- custom
 -------------------------

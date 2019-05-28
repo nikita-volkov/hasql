@@ -70,7 +70,7 @@ statementWithSingleRow =
       D.singleRow row
       where
         row =
-          tuple <$> D.column D.int8 <*> D.column D.int8
+          tuple <$> (D.column . D.nonNullable) D.int8 <*> (D.column . D.nonNullable) D.int8
           where
             tuple !a !b =
               (a, b)
@@ -84,7 +84,7 @@ statementWithManyRows decoder =
     encoder =
       conquer
     rowDecoder =
-      tuple <$> D.column D.int8 <*> D.column D.int8
+      tuple <$> (D.column . D.nonNullable) D.int8 <*> (D.column . D.nonNullable) D.int8
       where
         tuple !a !b =
           (a, b)
