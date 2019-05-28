@@ -29,6 +29,8 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-optparse-applicative"](https://github.com/sannsyn/hasql-optparse-applicative) - "optparse-applicative" parsers for Hasql.
 
+* ["hasql-implicits"](https://github.com/nikita-volkov/hasql-implicits) - implicit definitions, such as default codecs for standard types.
+
 ### Benefits of being an ecosystem
 
 * **Simplicity.** Each library in isolation provides a simple API, which is hopefully easier to comprehend.
