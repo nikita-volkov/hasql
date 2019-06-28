@@ -11,7 +11,7 @@ Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both
 
 Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple.
 
-* ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything revolves around that library.
+* ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything else revolves around that library.
 
 * ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
