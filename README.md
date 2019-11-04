@@ -43,8 +43,11 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * **Horizontal scalability of the ecosystem.** Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical one, where some core-team is responsible for everything. One is scalable, the other is not.
 
+# Tutorials
 
-# Example
+- [Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1)
+
+# Short Example
 
 Following is a complete application, which performs some arithmetic in Postgres using Hasql.
 
