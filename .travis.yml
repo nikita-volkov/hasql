@@ -7,8 +7,9 @@ env:
   - ghc=8.6.5 benchmarks=1 tests=1
   - ghc=8.8.1
 
-allow_failures:
-  - ghc=8.8.1
+jobs:
+  allow_failures:
+    - ghc=8.8.1
 
 services:
   - postgresql
