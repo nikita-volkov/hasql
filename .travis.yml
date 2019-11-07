@@ -9,7 +9,7 @@ env:
 
 jobs:
   allow_failures:
-    - ghc=8.8.1
+    - env: ghc=8.8.1
 
 services:
   - postgresql
