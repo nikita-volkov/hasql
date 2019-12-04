@@ -1,6 +1,5 @@
 # What Hasql is
 
-
 [![Build Status](https://travis-ci.org/nikita-volkov/hasql.svg?branch=master)](https://travis-ci.org/nikita-volkov/hasql)
 [![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
 
@@ -13,6 +12,8 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything else revolves around that library.
 
+* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, providing compile-time syntax checking and easy statement declaration. 
+
 * ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
 * ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over the database transactions with automated conflict resolution.
@@ -22,8 +23,6 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 * ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
 
 * ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-transaction) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
-
-* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
 
 * ["hasql-migration"](https://github.com/tvh/hasql-migration) - A port of postgresql-simple-migration for use with hasql.
 
@@ -57,11 +56,10 @@ import Prelude
 import Data.Int
 import Data.Functor.Contravariant
 import Hasql.Session (Session)
-import Hasql.Statement (Statement(..))
+import Hasql.Statement (Statement)
 import qualified Hasql.Session as Session
-import qualified Hasql.Decoders as Decoders
-import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Connection as Connection
+import qualified Hasql.TH as TH -- from "hasql-th"
 
 
 main :: IO ()
@@ -102,22 +100,16 @@ sumAndDivModSession a b c = do
 -------------------------
 
 sumStatement :: Statement (Int64, Int64) Int64
-sumStatement = Statement sql encoder decoder True where
-  sql = "select $1 + $2"
-  encoder =
-    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
-    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
-  decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))
+sumStatement =
+  [TH.singletonStatement|
+    select $1 :: int8 + $2 :: int8
+    |]
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
-divModStatement = Statement sql encoder decoder True where
-  sql = "select $1 / $2, $1 % $2"
-  encoder =
-    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
-    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
-  decoder = Decoders.singleRow row where
-    row =
-      (,) <$>
-      Decoders.column (Decoders.nonNullable Decoders.int8) <*>
-      Decoders.column (Decoders.nonNullable Decoders.int8)
+divModStatement =
+  [TH.singletonStatement|
+    select
+      ($1 :: int8) / ($2 :: int8),
+      ($1 :: int8) % ($2 :: int8)
+    |]
 ```
