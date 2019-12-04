@@ -96,6 +96,10 @@ sumAndDivModSession a b c = do
 -- 
 -- It's recommended to define statements in a dedicated 'Statements'
 -- submodule of your project.
+-- 
+-- In the following code we use the extension library "hasql-th",
+-- which generates statement definitions from SQL,
+-- compile-time checking the syntax on the way.
 -------------------------
 
 sumStatement :: Statement (Int64, Int64) Int64
