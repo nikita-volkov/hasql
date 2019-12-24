@@ -32,6 +32,7 @@ library
     Hasql.Connection
     Hasql.Statement
     Hasql.Session
+    Hasql.TestUtils
   other-modules:
     Hasql.Private.Prelude
     Hasql.Private.Errors
@@ -53,6 +54,7 @@ library
     Hasql.Private.Encoders.Array
     Hasql.Private.Encoders.Value
     Hasql.Private.Encoders.Params
+    Hasql.Private.TestUtils
   build-depends:
     attoparsec >=0.10 && <0.14,
     base >=4.9 && <5,
