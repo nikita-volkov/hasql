@@ -53,6 +53,7 @@ module Hasql.Decoders
   hstore,
   enum,
   custom,
+  refine,
   -- * Array
   Array,
   dimension,

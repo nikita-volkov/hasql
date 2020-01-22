@@ -332,6 +332,13 @@ custom :: (Bool -> ByteString -> Either Text a) -> Value a
 custom fn = Value (Value.decoderFn fn)
 
 {-|
+Refine a value decoder, lifting the possible error to the session level.
+-}
+{-# INLINABLE refine #-}
+refine :: (a -> Either Text b) -> Value a -> Value b
+refine fn (Value v) = Value (Value.Value (ask >>= \b -> lift (A.refine fn (Value.run v b))))
+
+{-|
 A generic decoder of @HSTORE@ values.
 
 Here's how you can use it to construct a specific value:

@@ -67,7 +67,7 @@ library
     loch-th ==0.2.*,
     mtl >=2 && <3,
     placeholders ==0.1.*,
-    postgresql-binary >=0.12.1 && <0.13,
+    postgresql-binary >=0.12.2 && <0.13,
     postgresql-libpq ==0.9.*,
     profunctors >=5.1 && <6,
     text >=1 && <2,
