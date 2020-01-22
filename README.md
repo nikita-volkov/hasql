@@ -1,6 +1,5 @@
 # What Hasql is
 
-
 [![Build Status](https://travis-ci.org/nikita-volkov/hasql.svg?branch=master)](https://travis-ci.org/nikita-volkov/hasql)
 [![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
 
@@ -11,21 +10,24 @@ Hasql is a highly efficient PostgreSQL driver and a mapping API. It targets both
 
 Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple.
 
-* ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything revolves around that library.
+* ["hasql"](https://github.com/nikita-volkov/hasql) - the root of the ecosystem, which provides the essential abstraction over the PostgreSQL client functionality and mapping of values. Everything else revolves around that library.
 
-* ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
+* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, providing compile-time syntax checking and easy statement declaration. 
+* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over database transactions providing automated conflict resolution.
 
-* ["hasql-transaction"](https://github.com/nikita-volkov/hasql-transaction) - an STM-inspired composable abstraction over the database transactions with the automated conflict resolution.
+* ["hasql-dynamic-statements"](https://github.com/nikita-volkov/hasql-dynamic-statements) - a toolkit for generating statements based on the parameters.
 
 * ["hasql-cursor-query"](https://github.com/nikita-volkov/hasql-cursor-query) - a declarative abstraction over cursors.
 
 * ["hasql-cursor-transaction"](https://github.com/nikita-volkov/hasql-cursor-transaction) - a lower-level abstraction over cursors, which however allows to fetch from multiple cursors simultaneously. Generally though "hasql-cursor-query" is the recommended alternative.
 
-* ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, such as getting SQL from external files at compile-time. It's planned to extend this library to provide a compile-time checking of the SQL-syntax correctness.
+* ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
-* "hasql-migration" - an abstraction over the migration strategies. *Yet to be released.*
+* ["hasql-migration"](https://github.com/tvh/hasql-migration) - A port of postgresql-simple-migration for use with hasql.
 
 * ["hasql-optparse-applicative"](https://github.com/sannsyn/hasql-optparse-applicative) - "optparse-applicative" parsers for Hasql.
+
+* ["hasql-implicits"](https://github.com/nikita-volkov/hasql-implicits) - implicit definitions, such as default codecs for standard types.
 
 ### Benefits of being an ecosystem
 
@@ -39,8 +41,11 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * **Horizontal scalability of the ecosystem.** Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical one, where some core-team is responsible for everything. One is scalable, the other is not.
 
+# Tutorials
 
-# Example
+- [Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1)
+
+# Short Example
 
 Following is a complete application, which performs some arithmetic in Postgres using Hasql.
 
@@ -50,11 +55,10 @@ import Prelude
 import Data.Int
 import Data.Functor.Contravariant
 import Hasql.Session (Session)
-import Hasql.Statement (Statement(..))
+import Hasql.Statement (Statement)
 import qualified Hasql.Session as Session
-import qualified Hasql.Decoders as Decoders
-import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Connection as Connection
+import qualified Hasql.TH as TH -- from "hasql-th"
 
 
 main :: IO ()
@@ -92,25 +96,23 @@ sumAndDivModSession a b c = do
 -- 
 -- It's recommended to define statements in a dedicated 'Statements'
 -- submodule of your project.
+-- 
+-- In the following code we use the extension library "hasql-th",
+-- which generates statement definitions from SQL,
+-- compile-time checking the syntax on the way.
 -------------------------
 
 sumStatement :: Statement (Int64, Int64) Int64
-sumStatement = Statement sql encoder decoder True where
-  sql = "select $1 + $2"
-  encoder =
-    (fst >$< Encoders.param Encoders.int8) <>
-    (snd >$< Encoders.param Encoders.int8)
-  decoder = Decoders.singleRow (Decoders.column Decoders.int8)
+sumStatement =
+  [TH.singletonStatement|
+    select $1 :: int8 + $2 :: int8
+    |]
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
-divModStatement = Statement sql encoder decoder True where
-  sql = "select $1 / $2, $1 % $2"
-  encoder =
-    (fst >$< Encoders.param Encoders.int8) <>
-    (snd >$< Encoders.param Encoders.int8)
-  decoder = Decoders.singleRow row where
-    row =
-      (,) <$>
-      Decoders.column Decoders.int8 <*>
-      Decoders.column Decoders.int8
+divModStatement =
+  [TH.singletonStatement|
+    select
+      ($1 :: int8) / ($2 :: int8),
+      ($1 :: int8) % ($2 :: int8)
+    |]
 ```

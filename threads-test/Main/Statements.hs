@@ -13,8 +13,8 @@ selectSleep =
     sql =
       "select pg_sleep($1)"
     encoder =
-      E.param E.float8
+      E.param (E.nonNullable E.float8)
     decoder =
-      D.unit
+      D.noResult
 
 

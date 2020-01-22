@@ -1,13 +1,25 @@
+if: tag IS blank
+
 env:
-  - ghc=8.0.1  cabal=2.2
-  - ghc=8.2.1  cabal=2.2
-  - ghc=8.4.3  cabal=2.2 benchmarks=1 tests=1
+  - ghc=8.0.2
+  - ghc=8.2.2
+  - ghc=8.4.2
+  - ghc=8.6.5 benchmarks=1 tests=1
+  - ghc=8.8.1
+
+jobs:
+  allow_failures:
+    - env: ghc=8.8.1
+
+services:
+  - postgresql
 
 install:
   # Set up the Shell to treat the semicolon as &&
   - set -o pipefail && set -e
   # Install GHC and Cabal
   -
+    cabal=${cabal=2.4};
     travis_retry sudo add-apt-repository -y ppa:hvr/ghc;
     travis_retry sudo apt-get update;
     travis_retry sudo apt-get install cabal-install-$cabal ghc-$ghc;
@@ -28,8 +40,6 @@ install:
       constraint_options=(
       );
     fi;
-  # Install the "haskell-src-exts" implicit dependency
-  - cabal install happy --reorder-goals --force-reinstalls ${constraint_options[@]}
   # Install the library dependencies
   - cabal install --only-dependencies --reorder-goals --force-reinstalls
       ${constraint_options[@]}
