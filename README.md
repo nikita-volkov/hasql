@@ -50,7 +50,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 Following is a complete application, which performs some arithmetic in Postgres using Hasql.
 
 ```haskell
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 import Prelude
 import Data.Int
 import Data.Functor.Contravariant
@@ -105,14 +105,14 @@ sumAndDivModSession a b c = do
 sumStatement :: Statement (Int64, Int64) Int64
 sumStatement =
   [TH.singletonStatement|
-    select $1 :: int8 + $2 :: int8
+    select ($1 :: int8 + $2 :: int8) :: int8
     |]
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
 divModStatement =
   [TH.singletonStatement|
     select
-      ($1 :: int8) / ($2 :: int8),
-      ($1 :: int8) % ($2 :: int8)
+      (($1 :: int8) / ($2 :: int8)) :: int8,
+      (($1 :: int8) % ($2 :: int8)) :: int8
     |]
 ```
