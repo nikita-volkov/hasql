@@ -19,7 +19,9 @@ import Hasql.Private.Prelude
 -- Comes packed with the query template and a textual representation of the provided params.
 data QueryError =
   QueryError ByteString [Text] CommandError
-  deriving (Show, Eq)
+  deriving (Show, Eq, Typeable)
+
+instance Exception QueryError
 
 -- |
 -- An error of some command in the session.
