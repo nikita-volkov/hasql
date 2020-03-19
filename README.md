@@ -25,6 +25,8 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-migration"](https://github.com/tvh/hasql-migration) - A port of postgresql-simple-migration for use with hasql.
 
+* ["hasql-notifications"](https://github.com/diogob/hasql-notifications) - Support for PostgreSQL asynchronous notifications.
+
 * ["hasql-optparse-applicative"](https://github.com/sannsyn/hasql-optparse-applicative) - "optparse-applicative" parsers for Hasql.
 
 * ["hasql-implicits"](https://github.com/nikita-volkov/hasql-implicits) - implicit definitions, such as default codecs for standard types.
