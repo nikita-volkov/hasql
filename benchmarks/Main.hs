@@ -51,7 +51,7 @@ sessionWithManyLargeResults :: B.Session [Vector (Int64, Int64)]
 sessionWithManyLargeResults =
   replicateM 1000 (B.statement () statementWithManyRowsInVector)
 
-sessionWithSingleLargeResultInList :: B.Session (List (Int64, Int64))
+sessionWithSingleLargeResultInList :: B.Session [(Int64, Int64)]
 sessionWithSingleLargeResultInList =
   B.statement () statementWithManyRowsInList
 
@@ -102,6 +102,6 @@ statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
 statementWithManyRowsInVector =
   statementWithManyRows D.rowVector
 
-statementWithManyRowsInList :: C.Statement () (List (Int64, Int64))
+statementWithManyRowsInList :: C.Statement () [(Int64, Int64)]
 statementWithManyRowsInList =
   statementWithManyRows D.rowList
