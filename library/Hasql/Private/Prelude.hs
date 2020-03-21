@@ -17,7 +17,7 @@ where
 
 -- base-prelude
 -------------------------
-import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, fromLeft, fromRight, error, (<>), First(..), Last(..), new)
+import BasePrelude as Exports hiding (assert, left, right, isLeft, isRight, fromLeft, fromRight, (<>), First(..), Last(..), new)
 
 -- transformers
 -------------------------

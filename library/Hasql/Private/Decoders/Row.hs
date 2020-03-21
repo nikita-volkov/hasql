@@ -1,6 +1,6 @@
 module Hasql.Private.Decoders.Row where
 
-import Hasql.Private.Prelude
+import Hasql.Private.Prelude hiding (error)
 import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified PostgreSQL.Binary.Decoding as A

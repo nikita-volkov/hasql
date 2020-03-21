@@ -82,3 +82,8 @@ dropRemainders =
           where
             checkErrors =
               ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.noResult (integerDatetimes, result)
+
+refine :: (a -> Either Text b) -> Results a -> Results b
+refine refiner results = Results $ ReaderT $ \ env -> ExceptT $ do
+  resultEither <- run results env
+  return $ resultEither >>= mapLeft (ResultError . UnexpectedResult) . refiner

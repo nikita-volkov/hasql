@@ -1,6 +1,7 @@
 module Hasql.Statement
 (
   Statement(..),
+  refineResult,
   -- * Recipies
 
   -- ** Insert many
@@ -14,6 +15,7 @@ where
 import Hasql.Private.Prelude
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
+import qualified Hasql.Private.Decoders as Decoders
 
 {-|
 Specification of a strictly single-statement query, which can be parameterized and prepared.
@@ -59,6 +61,17 @@ instance Profunctor Statement where
   {-# INLINE dimap #-}
   dimap f1 f2 (Statement template encoder decoder preparable) =
     Statement template (contramap f1 encoder) (fmap f2 decoder) preparable
+
+{-|
+Refine a result of a statement,
+causing the running session to fail with the `UnexpectedResult` error in case of refinement failure.
+
+This function is especially useful for refining the results of statements produced with
+<http://hackage.haskell.org/package/hasql-th the \"hasql-th\" library>.
+-}
+refineResult :: (a -> Either Text b) -> Statement params a -> Statement params b
+refineResult refiner (Statement template encoder decoder preparable) =
+  Statement template encoder (Decoders.refineResult refiner decoder) preparable
 
 
 {- $insertMany

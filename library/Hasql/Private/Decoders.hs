@@ -50,6 +50,9 @@ Will raise the 'Hasql.Errors.UnexpectedAmountOfRows' error if it's any other.
 singleRow :: Row a -> Result a
 singleRow (Row row) = Result (Results.single (Result.single row))
 
+refineResult :: (a -> Either Text b) -> Result a -> Result b
+refineResult refiner (Result results) = Result (Results.refine refiner results)
+
 -- ** Multi-row traversers
 -------------------------
 
