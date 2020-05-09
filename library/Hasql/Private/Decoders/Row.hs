@@ -3,13 +3,18 @@ module Hasql.Private.Decoders.Row where
 import Hasql.Private.Prelude hiding (error)
 import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
+import qualified Data.Text as T
 import qualified PostgreSQL.Binary.Decoding as A
 import qualified Hasql.Private.Decoders.Value as Value
+import Control.Monad.Fail (MonadFail(..))
 
 
 newtype Row a =
   Row (ReaderT Env (ExceptT RowError IO) a)
   deriving (Functor, Applicative, Monad)
+
+instance MonadFail Row where
+  fail = error . ValueError . T.pack
 
 data Env =
   Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
@@ -35,14 +40,14 @@ error x =
 {-# INLINE value #-}
 value :: Value.Value a -> Row (Maybe a)
 value valueDec =
-  {-# SCC "value" #-} 
+  {-# SCC "value" #-}
   Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
     col <- readIORef columnRef
     writeIORef columnRef (succ col)
     if col < columnsAmount
       then do
         valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
-        pure $ 
+        pure $
           case valueMaybe of
             Nothing ->
               Right Nothing
@@ -56,5 +61,5 @@ value valueDec =
 {-# INLINE nonNullValue #-}
 nonNullValue :: Value.Value a -> Row a
 nonNullValue valueDec =
-  {-# SCC "nonNullValue" #-} 
+  {-# SCC "nonNullValue" #-}
   value valueDec >>= maybe (error UnexpectedNull) pure
