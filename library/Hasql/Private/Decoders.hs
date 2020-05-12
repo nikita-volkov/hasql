@@ -113,7 +113,7 @@ x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') '
 @
 -}
 newtype Row a = Row (Row.Row a)
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadFail)
 
 {-|
 Lift an individual non-nullable value decoder to a composable row decoder.
@@ -268,7 +268,7 @@ time = Value (Value.decoder (Prelude.bool A.time_float A.time_int))
 {-|
 Decoder of the @TIMETZ@ values.
 
-Unlike in case of @TIMESTAMPTZ@, 
+Unlike in case of @TIMESTAMPTZ@,
 Postgres does store the timezone information for @TIMETZ@.
 However the Haskell's \"time\" library does not contain any composite type,
 that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
