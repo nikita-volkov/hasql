@@ -69,10 +69,10 @@ serverError :: Result ()
 serverError =
   Result $ ReaderT $ \(_, result) -> ExceptT $ do
     code <- 
-      fmap (fromMaybe ($bug "No code")) $
+      fmap fold $
       LibPQ.resultErrorField result LibPQ.DiagSqlstate
     message <- 
-      fmap (fromMaybe ($bug "No message")) $
+      fmap fold $
       LibPQ.resultErrorField result LibPQ.DiagMessagePrimary
     detail <- 
       LibPQ.resultErrorField result LibPQ.DiagMessageDetail
