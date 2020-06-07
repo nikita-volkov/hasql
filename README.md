@@ -57,10 +57,11 @@ import Prelude
 import Data.Int
 import Data.Functor.Contravariant
 import Hasql.Session (Session)
-import Hasql.Statement (Statement)
+import Hasql.Statement (Statement(..))
 import qualified Hasql.Session as Session
+import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Connection as Connection
-import qualified Hasql.TH as TH -- from "hasql-th"
 
 
 main :: IO ()
@@ -98,11 +99,33 @@ sumAndDivModSession a b c = do
 -- 
 -- It's recommended to define statements in a dedicated 'Statements'
 -- submodule of your project.
--- 
--- In the following code we use the extension library "hasql-th",
--- which generates statement definitions from SQL,
--- compile-time checking the syntax on the way.
 -------------------------
+
+sumStatement :: Statement (Int64, Int64) Int64
+sumStatement = Statement sql encoder decoder True where
+  sql = "select $1 + $2"
+  encoder =
+    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
+    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+  decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))
+
+divModStatement :: Statement (Int64, Int64) (Int64, Int64)
+divModStatement = Statement sql encoder decoder True where
+  sql = "select $1 / $2, $1 % $2"
+  encoder =
+    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
+    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+  decoder = Decoders.singleRow row where
+    row =
+      (,) <$>
+      Decoders.column (Decoders.nonNullable Decoders.int8) <*>
+      Decoders.column (Decoders.nonNullable Decoders.int8)
+```
+
+For the general use-case it is advised to prefer declaring statements using the "hasql-th" library, which validates the statements at compile-time and generates codecs automatically. So the above two statements could be implemented the following way:
+
+```haskell
+import qualified Hasql.TH as TH -- from "hasql-th"
 
 sumStatement :: Statement (Int64, Int64) Int64
 sumStatement =
