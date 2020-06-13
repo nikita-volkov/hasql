@@ -6,7 +6,7 @@ import qualified PostgreSQL.Binary.Decoding as A
 
 newtype Composite a =
   Composite (ReaderT Bool A.Composite a)
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadFail)
 
 {-# INLINE run #-}
 run :: Composite a -> Bool -> A.Value a

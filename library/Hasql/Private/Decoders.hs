@@ -458,7 +458,7 @@ element = \ case
 Composable decoder of composite values (rows, records).
 -}
 newtype Composite a = Composite (Composite.Composite a)
-  deriving (Functor, Applicative, Monad)
+  deriving (Functor, Applicative, Monad, MonadFail)
 
 {-|
 Lift a 'Value' decoder into a 'Composite' decoder for parsing of component values.
