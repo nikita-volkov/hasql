@@ -3,10 +3,8 @@ module Hasql.Private.Decoders.Row where
 import Hasql.Private.Prelude hiding (error)
 import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Data.Text as T
 import qualified PostgreSQL.Binary.Decoding as A
 import qualified Hasql.Private.Decoders.Value as Value
-import Control.Monad.Fail (MonadFail(..))
 
 
 newtype Row a =
@@ -14,7 +12,7 @@ newtype Row a =
   deriving (Functor, Applicative, Monad)
 
 instance MonadFail Row where
-  fail = error . ValueError . T.pack
+  fail = error . ValueError . fromString
 
 data Env =
   Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
