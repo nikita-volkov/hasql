@@ -1,9 +1,8 @@
 module Main where
 
 import Prelude
-import Bug
-import Criterion
-import Criterion.Main
+import Gauge
+import Gauge.Main
 import qualified Hasql.Connection as A
 import qualified Hasql.Session as B
 import qualified Hasql.Statement as C
@@ -41,7 +40,7 @@ main =
 
 sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
 sessionWithManySmallParameters =
-  $(todo "sessionWithManySmallParameters")
+  error "TODO: sessionWithManySmallParameters"
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
@@ -65,7 +64,7 @@ sessionWithManySmallResults =
 
 statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
 statementWithManyParameters =
-  $(todo "statementWithManyParameters")
+  error "TODO: statementWithManyParameters"
 
 statementWithSingleRow :: C.Statement () (Int64, Int64)
 statementWithSingleRow =
