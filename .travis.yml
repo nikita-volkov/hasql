@@ -4,8 +4,12 @@ env:
   - ghc=8.4.2
   - ghc=8.6.1
   - ghc=8.8.1
-  - ghc=8.10.2
-  - ghc=9.0.1 benchmarks=1 tests=1
+  - ghc=8.10.2 benchmarks=1 tests=1
+  - ghc=9.0.1
+
+matrix:
+  allow_failures:
+    - ghc=9.0.1
 
 services:
   - postgresql
