@@ -17,7 +17,7 @@ instance Contravariant Value where
 {-# INLINE unsafePTI #-}
 unsafePTI :: PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.Builder) -> Value a
 unsafePTI pti =
-  Value (PTI.ptiOID pti) (fromMaybe ($bug "No array OID") (PTI.ptiArrayOID pti))
+  Value (PTI.ptiOID pti) (fromMaybe (error "No array OID") (PTI.ptiArrayOID pti))
 
 {-# INLINE unsafePTIWithShow #-}
 unsafePTIWithShow :: Show a => PTI.PTI -> (Bool -> a -> B.Encoding) -> Value a

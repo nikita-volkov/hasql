@@ -33,7 +33,7 @@ main =
       where
         sessionBench :: NFData a => String -> B.Session a -> Benchmark
         sessionBench name session =
-          bench name (nfIO (fmap (either ($bug "") id) (B.run session connection)))
+          bench name (nfIO (fmap (either (error "") id) (B.run session connection)))
 
 
 -- * Sessions

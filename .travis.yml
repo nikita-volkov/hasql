@@ -1,18 +1,18 @@
 if: tag IS blank
 
 env:
-  - ghc=8.0.2
-  - ghc=8.2.2
   - ghc=8.4.2
-  - ghc=8.6.5
-  - ghc=8.8.3 benchmarks=1 tests=1
+  - ghc=8.6.1
+  - ghc=8.8.1
+  - ghc=8.10.2
+  - ghc=9.0.1 benchmarks=1 tests=1
 
 services:
   - postgresql
 
 install:
   # Set up the Shell to treat the semicolon as &&
-  - set -o pipefail && set -e
+  - set -eo pipefail
   # Install GHC and Cabal
   -
     cabal=${cabal=2.4};
@@ -37,23 +37,22 @@ install:
       );
     fi;
   # Install the library dependencies
-  - cabal install --only-dependencies --reorder-goals --force-reinstalls
+  - cabal v1-install --only-dependencies --reorder-goals --force-reinstalls
       ${constraint_options[@]}
       $([ "$tests" = "1" ] && echo "--enable-tests")
       $([ "$benchmarks" = "1" ] && echo "--enable-benchmarks")
   # Build the library
-  - cabal build
+  - cabal v1-build
   # Configure and build the remaining stuff
-  - cabal configure 
+  - cabal v1-configure 
       $([ "$tests" = "1" ] && echo "--enable-tests")
       $([ "$benchmarks" = "1" ] && echo "--enable-benchmarks")
       -f doctest
-  - cabal build
+  - cabal v1-build
 
 script:
   - |
     if [ "$tests" = "1" ];
     then
-      cabal clean;
-      cabal test --show-details=always;
+      cabal v1-test --show-details=always;
     fi;
