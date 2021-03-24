@@ -83,6 +83,7 @@ test-suite tasty
     Main.Statements
     Main.Prelude
   build-depends:
+    contravariant-extras >=0.3.5.2 && <0.4,
     hasql,
     QuickCheck >=2.8.1 && <3,
     quickcheck-instances >=0.3.11 && <0.4,
@@ -107,7 +108,7 @@ test-suite threads-test
     "-with-rtsopts=-N"
   build-depends:
     hasql,
-    rebase
+    rerebase
 
 benchmark benchmarks
   type: exitcode-stdio-1.0

@@ -6,6 +6,7 @@ import Test.Tasty
 import Test.Tasty.Runners
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
+import Contravariant.Extras
 import qualified Test.QuickCheck as QuickCheck
 import qualified Main.Statements as Statements
 import qualified Main.DSL as DSL

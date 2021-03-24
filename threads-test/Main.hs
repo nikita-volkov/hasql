@@ -1,6 +1,6 @@
 module Main where
 
-import Rebase.Prelude
+import Prelude
 import qualified Hasql.Connection
 import qualified Hasql.Statement
 import qualified Hasql.Encoders
