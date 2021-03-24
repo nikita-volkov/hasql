@@ -157,6 +157,8 @@ Decoder of a value.
 newtype Value a = Value (Value.Value a)
   deriving (Functor)
 
+type role Value representational
+
 {-|
 Decoder of the @BOOL@ values.
 -}
@@ -339,7 +341,7 @@ Refine a value decoder, lifting the possible error to the session level.
 -}
 {-# INLINABLE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value v) = Value (Value.Value (ask >>= \b -> lift (A.refine fn (Value.run v b))))
+refine fn (Value v) = Value (Value.Value (\b -> A.refine fn (Value.run v b)))
 
 {-|
 A generic decoder of @HSTORE@ values.
