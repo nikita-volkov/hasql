@@ -109,10 +109,6 @@ import Data.Profunctor.Unsafe as Exports
 -------------------------
 import Data.Functor.Contravariant.Divisible as Exports
 
--- contravariant-extras
--------------------------
-import Contravariant.Extras as Exports
-
 -- hashable
 -------------------------
 import Data.Hashable as Exports (Hashable(..))
