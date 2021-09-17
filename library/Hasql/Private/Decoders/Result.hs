@@ -164,7 +164,7 @@ foldl step init rowDec =
         rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
         case rowResult of
           Left !x -> writeIORef failureRef (Just (RowError rowIndex x))
-          Right !x -> modifyIORef accRef (\acc -> step acc x)
+          Right !x -> modifyIORef' accRef (\acc -> step acc x)
       readIORef failureRef >>= \case
         Nothing -> Right <$> readIORef accRef
         Just x -> pure (Left x)
