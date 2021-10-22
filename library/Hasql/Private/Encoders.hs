@@ -7,7 +7,7 @@ where
 import Hasql.Private.Prelude hiding (bool)
 import qualified PostgreSQL.Binary.Encoding as A
 import qualified PostgreSQL.Binary.Data as B
-import qualified Text.Builder as C
+import qualified TextBuilder as C
 import qualified Hasql.Private.Encoders.Params as Params
 import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.Encoders.Array as Array

@@ -5,7 +5,7 @@ import qualified Database.PostgreSQL.LibPQ as A
 import qualified PostgreSQL.Binary.Encoding as B
 import qualified Hasql.Private.Encoders.Value as C
 import qualified Hasql.Private.PTI as D
-import qualified Text.Builder as E
+import qualified TextBuilder as E
 
 
 -- |
@@ -27,5 +27,5 @@ nullableValue (C.Value valueOID arrayOID encode render) =
     encoder env =
       fmap (B.encodingBytes . encode env) input
     rendering =
-      maybe "null" (E.run . render) input
+      maybe "null" (E.buildText . render) input
     in pure (pqOid, format, encoder, rendering)

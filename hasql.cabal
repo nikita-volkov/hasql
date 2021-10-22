@@ -67,7 +67,7 @@ library
     postgresql-libpq ==0.9.*,
     profunctors >=5.1 && <6,
     text >=1 && <2,
-    text-builder >=0.6.1.2 && <0.7,
+    text-builder >=0.7 && <0.8,
     transformers >=0.3 && <0.6,
     vector >=0.10 && <0.13
 
