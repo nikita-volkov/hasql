@@ -116,7 +116,7 @@ newtype Row a = Row (Row.Row a)
   deriving (Functor, Applicative, Monad, MonadFail)
 
 {-|
-Lift an individual non-nullable value decoder to a composable row decoder.
+Lift an individual value decoder to a composable row decoder.
 -}
 {-# INLINABLE column #-}
 column :: NullableOrNot Value a -> Row a
