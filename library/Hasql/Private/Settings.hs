@@ -2,8 +2,7 @@ module Hasql.Private.Settings where
 
 import Hasql.Private.Prelude
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy.Builder as BB
-import qualified Data.ByteString.Lazy.Builder.ASCII as BB
+import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BL
 
 
