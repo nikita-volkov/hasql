@@ -1,4 +1,0 @@
-resolver: nightly-2021-10-18
-extra-deps:
-  - git: https://github.com/nikita-volkov/text-builder
-    commit: c13872edc976fac70231af5cc3bd13763c001f20

@@ -3,23 +3,23 @@ module Hasql.Private.Encoders.Array where
 import Hasql.Private.Prelude
 import qualified PostgreSQL.Binary.Encoding as A
 import qualified Hasql.Private.PTI as B
-import qualified TextBuilder as C
+import qualified Text.Builder as C
 
 
 data Array a =
-  Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.TextBuilder)
+  Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.Builder)
 
 instance Contravariant Array where
   contramap fn (Array valueOid arrayOid encoder renderer) =
     Array valueOid arrayOid (\ intDateTimes -> encoder intDateTimes . fn) (renderer . fn)
 
 {-# INLINE value #-}
-value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> Array a
+value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.Builder) -> Array a
 value valueOID arrayOID encoder =
   Array valueOID arrayOID (\params -> A.encodingArray . encoder params)
 
 {-# INLINE nullableValue #-}
-nullableValue :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> Array (Maybe a)
+nullableValue :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.Builder) -> Array (Maybe a)
 nullableValue valueOID arrayOID encoder renderer =
   let
     maybeEncoder params =
