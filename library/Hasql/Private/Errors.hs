@@ -67,8 +67,8 @@ data ResultError =
   -- Indicates an improper statement or a schema mismatch.
   UnexpectedResult Text |
   -- |
-  -- An error of the row reader, preceded by the index of the row.
-  RowError Int RowError |
+  -- An error of the row reader, preceded by the indexes of the row and column.
+  RowError Int Int RowError |
   -- |
   -- An unexpected amount of rows.
   UnexpectedAmountOfRows Int
