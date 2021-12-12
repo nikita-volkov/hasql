@@ -22,11 +22,16 @@ data Env =
 -------------------------
 
 {-# INLINE run #-}
-run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either RowError a)
+run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either (Int, RowError) a)
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
-    runExceptT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef))
+    runExceptT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef)) >>= \case
+      Left e -> do
+        LibPQ.Col col <- readIORef columnRef
+        -- -1 because succ is applied before the error is returned
+        pure $ Left (fromIntegral col - 1, e)
+      Right x -> pure $ Right x
 
 {-# INLINE error #-}
 error :: RowError -> Row a
