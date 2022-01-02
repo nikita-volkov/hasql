@@ -18,7 +18,7 @@ import qualified Hasql.Private.Connection as Connection
 -- A batch of actions to be executed in the context of a database connection.
 newtype Session a =
   Session (ReaderT Connection.Connection (ExceptT QueryError IO) a)
-  deriving (Functor, Applicative, Monad, MonadError QueryError, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadError QueryError, MonadIO, MonadReader Connection.Connection)
 
 -- |
 -- Executes a bunch of commands on the provided connection.
