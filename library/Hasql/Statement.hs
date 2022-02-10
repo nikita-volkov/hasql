@@ -32,8 +32,8 @@ with any non-ASCII characters of the template encoded using UTF-8.
 According to the format,
 parameters must be referred to using a positional notation, as in the following:
 @$1@, @$2@, @$3@ and etc.
-Those references must be used in accordance to the order in which the according
-value encoders are specified in 'Encoders.Params'.
+Those references must be used in accordance with the order in which
+the value encoders are specified in 'Encoders.Params'.
 
 Following is an example of a declaration of a prepared statement with its associated codecs.
 
@@ -43,7 +43,7 @@ selectSum = 'Statement' sql encoder decoder True where
   sql = "select ($1 + $2)"
   encoder =
     ('fst' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nonNullable' Encoders.'Hasql.Encoders.int8')) '<>'
-    ('snd' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nullable' Encoders.'Hasql.Encoders.text'))
+    ('snd' '>$<' Encoders.'Hasql.Encoders.param' (Encoders.'Hasql.Encoders.nonNullable' Encoders.'Hasql.Encoders.int8'))
   decoder = Decoders.'Hasql.Decoders.singleRow' (Decoders.'Hasql.Decoders.column' (Decoders.'Hasql.Decoders.nonNullable' Decoders.'Hasql.Decoders.int8'))
 @
 
