@@ -14,6 +14,7 @@ import qualified Hasql.Private.Decoders.Row as Row
 import qualified Hasql.Private.Decoders.Value as Value
 import qualified Hasql.Private.Decoders.Array as Array
 import qualified Hasql.Private.Decoders.Composite as Composite
+import qualified Hasql.Private.Errors as Errors
 import qualified Hasql.Private.Prelude as Prelude
 import qualified Data.Vector.Generic as GenericVector
 
@@ -44,7 +45,7 @@ rowsAffected = Result (Results.single Result.rowsAffected)
 
 {-|
 Exactly one row.
-Will raise the 'Hasql.Errors.UnexpectedAmountOfRows' error if it's any other.
+Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
 -}
 {-# INLINABLE singleRow #-}
 singleRow :: Row a -> Result a
