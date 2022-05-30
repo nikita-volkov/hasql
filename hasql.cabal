@@ -1,5 +1,5 @@
 name: hasql
-version: 1.5.0.2
+version: 1.5.0.3
 category: Hasql, Database, PostgreSQL
 synopsis: An efficient PostgreSQL driver with a flexible mapping API
 description:
