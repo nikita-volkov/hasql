@@ -13,7 +13,7 @@ import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.PTI as PTI
 import qualified Hasql.Private.Prelude as Prelude
-
+import qualified Data.ByteString.Lazy as LBS
 
 -- * Parameters Product Encoder
 -------------------------
@@ -280,6 +280,10 @@ produces an encoder of that value.
 enum :: (a -> Text) -> Value a
 enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
 
+{-# INLINABLE unknown' #-}
+unknown' :: Show a => (a -> A.Encoding) -> Value a
+unknown' enc = Value (Value.unsafePTIWithShow PTI.unknown (const enc))
+
 {-|
 Identifies the value with the PostgreSQL's \"unknown\" type,
 thus leaving it up to Postgres to infer the actual type of the value.
@@ -291,7 +295,11 @@ section of the Postgres' documentation.
 -}
 {-# INLINABLE unknown #-}
 unknown :: Value ByteString
-unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
+unknown = unknown' A.bytea_strict
+
+{-# INLINABLE unknownLazy #-}
+unknownLazy :: Value LBS.ByteString
+unknownLazy = unknown' A.bytea_lazy
 
 {-|
 Lift an array encoder into a parameter encoder.
