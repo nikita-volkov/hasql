@@ -1,19 +1,17 @@
 -- |
 -- This module provides a low-level effectful API dealing with the connections to the database.
-module Hasql.Private.Connection
-where
+module Hasql.Private.Connection where
 
-import Hasql.Private.Prelude
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Private.IO as IO
+import Hasql.Private.Prelude
+import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
 import qualified Hasql.Private.Settings as Settings
-
 
 -- |
 -- A single connection to the database.
-data Connection =
-  Connection !(MVar LibPQ.Connection) !Bool !PreparedStatementRegistry.PreparedStatementRegistry
+data Connection
+  = Connection !(MVar LibPQ.Connection) !Bool !PreparedStatementRegistry.PreparedStatementRegistry
 
 -- |
 -- Possible details of the connection acquistion error.

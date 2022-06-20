@@ -1,26 +1,24 @@
 module Hasql.Private.PreparedStatementRegistry
-(
-  PreparedStatementRegistry,
-  new,
-  update,
-  LocalKey(..),
-)
+  ( PreparedStatementRegistry,
+    new,
+    update,
+    LocalKey (..),
+  )
 where
 
-import Hasql.Private.Prelude hiding (lookup)
-import qualified Data.HashTable.IO as A
 import qualified ByteString.StrictBuilder as B
+import qualified Data.HashTable.IO as A
+import Hasql.Private.Prelude hiding (lookup)
 
+data PreparedStatementRegistry
+  = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
 
-data PreparedStatementRegistry =
-  PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
-
-{-# INLINABLE new #-}
+{-# INLINEABLE new #-}
 new :: IO PreparedStatementRegistry
 new =
   PreparedStatementRegistry <$> A.new <*> newIORef 0
 
-{-# INLINABLE update #-}
+{-# INLINEABLE update #-}
 update :: LocalKey -> (ByteString -> IO (Bool, a)) -> (ByteString -> IO a) -> PreparedStatementRegistry -> IO a
 update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table counter) =
   lookup >>= maybe new old
@@ -43,11 +41,10 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table c
     old =
       onOldRemoteKey
 
-
 -- |
 -- Local statement key.
-data LocalKey =
-  LocalKey !ByteString ![Word32]
+data LocalKey
+  = LocalKey !ByteString ![Word32]
   deriving (Show, Eq)
 
 instance Hashable LocalKey where

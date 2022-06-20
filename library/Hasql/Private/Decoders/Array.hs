@@ -3,9 +3,8 @@ module Hasql.Private.Decoders.Array where
 import Hasql.Private.Prelude
 import qualified PostgreSQL.Binary.Decoding as A
 
-
-newtype Array a =
-  Array (ReaderT Bool A.Array a)
+newtype Array a
+  = Array (ReaderT Bool A.Array a)
   deriving (Functor)
 
 {-# INLINE run #-}
@@ -27,4 +26,3 @@ value decoder' =
 nonNullValue :: (Bool -> A.Value a) -> Array a
 nonNullValue decoder' =
   Array $ ReaderT $ A.valueArray . decoder'
-

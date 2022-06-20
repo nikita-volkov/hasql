@@ -1,13 +1,12 @@
 module Hasql.Private.Encoders.Value where
 
+import qualified Hasql.Private.PTI as PTI
 import Hasql.Private.Prelude
 import qualified PostgreSQL.Binary.Encoding as B
-import qualified Hasql.Private.PTI as PTI
 import qualified Text.Builder as C
 
-
-data Value a =
-  Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.Builder)
+data Value a
+  = Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.Builder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}

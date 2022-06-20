@@ -1,13 +1,12 @@
 module Main where
 
-import Prelude
+import qualified Data.Vector as F
 import qualified Hasql.Connection as A
-import qualified Hasql.Session as B
-import qualified Hasql.Statement as C
 import qualified Hasql.Decoders as D
 import qualified Hasql.Encoders as E
-import qualified Data.Vector as F
-
+import qualified Hasql.Session as B
+import qualified Hasql.Statement as C
+import Prelude
 
 main =
   do
@@ -29,9 +28,7 @@ main =
             password = ""
             database = "postgres"
 
-
 -- * Sessions
--------------------------
 
 sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
 sessionWithManySmallParameters =
@@ -49,9 +46,7 @@ sessionWithManySmallResults :: B.Session (Vector (Int64, Int64))
 sessionWithManySmallResults =
   F.replicateM 1000 (B.statement () statementWithSingleRow)
 
-
 -- * Statements
--------------------------
 
 statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
 statementWithManyParameters =

@@ -1,11 +1,9 @@
-module Main.Connection
-where
+module Main.Connection where
 
-import Main.Prelude
 import qualified Hasql.Connection as HC
-import qualified Hasql.Statement as HQ
 import qualified Hasql.Session
-
+import qualified Hasql.Statement as HQ
+import Main.Prelude
 
 with :: (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)
 with handler =

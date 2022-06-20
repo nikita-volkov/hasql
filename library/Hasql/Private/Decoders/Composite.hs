@@ -3,9 +3,8 @@ module Hasql.Private.Decoders.Composite where
 import Hasql.Private.Prelude
 import qualified PostgreSQL.Binary.Decoding as A
 
-
-newtype Composite a =
-  Composite (ReaderT Bool A.Composite a)
+newtype Composite a
+  = Composite (ReaderT Bool A.Composite a)
   deriving (Functor, Applicative, Monad, MonadFail)
 
 {-# INLINE run #-}
@@ -22,4 +21,3 @@ value decoder' =
 nonNullValue :: (Bool -> A.Value a) -> Composite a
 nonNullValue decoder' =
   Composite $ ReaderT $ A.valueComposite . decoder'
-

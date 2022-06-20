@@ -3,9 +3,8 @@ module Hasql.Private.Decoders.Value where
 import Hasql.Private.Prelude
 import qualified PostgreSQL.Binary.Decoding as A
 
-
-newtype Value a =
-  Value (Bool -> A.Value a)
+newtype Value a
+  = Value (Bool -> A.Value a)
   deriving (Functor)
 
 {-# INLINE run #-}
@@ -16,7 +15,7 @@ run (Value imp) integerDatetimes =
 {-# INLINE decoder #-}
 decoder :: (Bool -> A.Value a) -> Value a
 decoder =
-  {-# SCC "decoder" #-} 
+  {-# SCC "decoder" #-}
   Value
 
 {-# INLINE decoderFn #-}

@@ -1,13 +1,12 @@
 module Main where
 
-import Prelude
 import qualified Hasql.Connection
-import qualified Hasql.Statement
-import qualified Hasql.Encoders
 import qualified Hasql.Decoders
+import qualified Hasql.Encoders
 import qualified Hasql.Session
+import qualified Hasql.Statement
 import qualified Main.Statements as Statements
-
+import Prelude
 
 main =
   acquire >>= use
@@ -17,8 +16,8 @@ main =
       where
         acquire =
           join $
-          fmap (either (fail . show) return) $
-          Hasql.Connection.acquire connectionSettings
+            fmap (either (fail . show) return) $
+              Hasql.Connection.acquire connectionSettings
           where
             connectionSettings =
               Hasql.Connection.settings "localhost" 5432 "postgres" "" "postgres"
@@ -41,5 +40,5 @@ main =
         bool exitFailure exitSuccess . traceShowId =<< takeMVar finishVar
       where
         session connection session =
-          Hasql.Session.run session connection >>=
-          either (fail . show) return
+          Hasql.Session.run session connection
+            >>= either (fail . show) return

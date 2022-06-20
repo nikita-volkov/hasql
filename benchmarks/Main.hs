@@ -1,15 +1,14 @@
 module Main where
 
-import Prelude
+import qualified Data.Vector as F
 import Gauge
 import Gauge.Main
 import qualified Hasql.Connection as A
-import qualified Hasql.Session as B
-import qualified Hasql.Statement as C
 import qualified Hasql.Decoders as D
 import qualified Hasql.Encoders as E
-import qualified Data.Vector as F
-
+import qualified Hasql.Session as B
+import qualified Hasql.Statement as C
+import Prelude
 
 main =
   do
@@ -20,22 +19,18 @@ main =
       A.acquire ""
     useConnection connection =
       defaultMain
-      [
-        sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector
-        ,
-        sessionBench "largeResultInList" sessionWithSingleLargeResultInList
-        ,
-        sessionBench "manyLargeResults" sessionWithManyLargeResults
-        ,
-        sessionBench "manySmallResults" sessionWithManySmallResults
-      ]
+        [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
+          sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
+          sessionBench "manyLargeResults" sessionWithManyLargeResults,
+          sessionBench "manySmallResults" sessionWithManySmallResults
+        ]
       where
         sessionBench :: NFData a => String -> B.Session a -> Benchmark
         sessionBench name session =
           bench name (nfIO (fmap (either (error "") id) (B.run session connection)))
 
-
 -- * Sessions
+
 -------------------------
 
 sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
@@ -58,8 +53,8 @@ sessionWithManySmallResults :: B.Session [(Int64, Int64)]
 sessionWithManySmallResults =
   replicateM 1000 (B.statement () statementWithSingleRow)
 
-
 -- * Statements
+
 -------------------------
 
 statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()

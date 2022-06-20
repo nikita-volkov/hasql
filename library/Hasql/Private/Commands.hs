@@ -1,20 +1,18 @@
 module Hasql.Private.Commands
-(
-  Commands,
-  asBytes,
-  setEncodersToUTF8,
-  setMinClientMessagesToWarning,
-)
+  ( Commands,
+    asBytes,
+    setEncodersToUTF8,
+    setMinClientMessagesToWarning,
+  )
 where
 
-import Hasql.Private.Prelude
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BL
+import Hasql.Private.Prelude
 
-
-newtype Commands =
-  Commands (DList BB.Builder)
+newtype Commands
+  = Commands (DList BB.Builder)
   deriving (Semigroup, Monoid)
 
 asBytes :: Commands -> ByteString

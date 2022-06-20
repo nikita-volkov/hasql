@@ -1,24 +1,23 @@
 module Hasql.Private.Decoders.Row where
 
-import Hasql.Private.Prelude hiding (error)
-import Hasql.Private.Errors
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified PostgreSQL.Binary.Decoding as A
 import qualified Hasql.Private.Decoders.Value as Value
+import Hasql.Private.Errors
+import Hasql.Private.Prelude hiding (error)
+import qualified PostgreSQL.Binary.Decoding as A
 
-
-newtype Row a =
-  Row (ReaderT Env (ExceptT RowError IO) a)
+newtype Row a
+  = Row (ReaderT Env (ExceptT RowError IO) a)
   deriving (Functor, Applicative, Monad)
 
 instance MonadFail Row where
   fail = error . ValueError . fromString
 
-data Env =
-  Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
-
+data Env
+  = Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
 
 -- * Functions
+
 -------------------------
 
 {-# INLINE run #-}
@@ -44,20 +43,22 @@ error x =
 value :: Value.Value a -> Row (Maybe a)
 value valueDec =
   {-# SCC "value" #-}
-  Row $ ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
-    col <- readIORef columnRef
-    writeIORef columnRef (succ col)
-    if col < columnsAmount
-      then do
-        valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
-        pure $
-          case valueMaybe of
-            Nothing ->
-              Right Nothing
-            Just value ->
-              fmap Just $ mapLeft ValueError $
-              {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
-      else pure (Left EndOfInput)
+  Row $
+    ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
+      col <- readIORef columnRef
+      writeIORef columnRef (succ col)
+      if col < columnsAmount
+        then do
+          valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
+          pure $
+            case valueMaybe of
+              Nothing ->
+                Right Nothing
+              Just value ->
+                fmap Just $
+                  mapLeft ValueError $
+                    {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
+        else pure (Left EndOfInput)
 
 -- |
 -- Next value, decoded using the provided value decoder.
