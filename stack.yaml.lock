@@ -3,10 +3,38 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/lock_files
 
-packages: []
+packages:
+- completed:
+    pantry-tree:
+      sha256: 61263e71050e1c895bb67e4c0f05497419818e8e79b8bff9e3eabf17759e3232
+      size: 4092
+    hackage: vector-0.13.0.0@sha256:ec337a1371bc306658e8338612e975f37a3f7700716441608b7afb66ae356d4c,8774
+  original:
+    hackage: vector-0.13.0.0
+- completed:
+    pantry-tree:
+      sha256: 99de0751367cf53df872999edfb9e3c24207cf946442ccccf7487d74c7f12c1d
+      size: 325
+    hackage: vector-stream-0.1.0.0@sha256:5500b39bd69ba5384638db0b451c8eaf40ef52544355741bd73436b0da9ec3a8,1336
+  original:
+    hackage: vector-stream-0.1.0.0
+- completed:
+    pantry-tree:
+      sha256: 416127fd578b11c2bbb3cabdce212d939f040ddf390c54caebf4ceda02222872
+      size: 38191
+    hackage: aeson-2.1.0.0@sha256:b0bdd457ff05f0924f6055e5265a5a70e8f719f6e92b3c98a6af922495539ef2,5937
+  original:
+    hackage: aeson-2.1.0.0
+- completed:
+    pantry-tree:
+      sha256: 302b140ee5ccf6754ab96154486051f9ab989d3cbaa7c9674e1e9f0de7cdd07b
+      size: 232
+    hackage: generically-0.1@sha256:16d54a08bcdf708395c2200a28ffcba55e90479dc96ed617dbb94f0411f7a7af,1024
+  original:
+    hackage: generically-0.1
 snapshots:
 - completed:
-    sha256: a7d2c450e7578825f80601b9d244f2107d9cc708430e070d2978e15a97b5c6dc
-    size: 590822
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2022/5/29.yaml
-  original: nightly-2022-05-29
+    sha256: 6935ec7d6f8306ab967fd8edcc9d0773dfeee59345103cb021ebedacd19c5c6b
+    size: 613125
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2022/6/20.yaml
+  original: nightly-2022-06-20

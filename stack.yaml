@@ -1,1 +1,6 @@
-resolver: nightly-2022-05-29
+resolver: nightly-2022-06-20
+extra-deps:
+  - vector-0.13.0.0
+  - vector-stream-0.1.0.0
+  - aeson-2.1.0.0
+  - generically-0.1
