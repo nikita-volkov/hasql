@@ -256,6 +256,9 @@ enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping))
 -- For reference, see the
 -- <https://www.postgresql.org/docs/10/static/protocol-overview.html#protocol-format-codes Formats and Format Codes>
 -- section of the Postgres' documentation.
+--
+-- __Warning:__ Do not use this as part of composite encoders like 'array' since
+-- it is the only encoder that doesn't use the binary format.
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
 unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
