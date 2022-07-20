@@ -1,6 +1,7 @@
 # 1.6
 
 - Added position to `ServerError` (breaking change).
+- Disabled failure on empty query.
 
 # 1.5
 
