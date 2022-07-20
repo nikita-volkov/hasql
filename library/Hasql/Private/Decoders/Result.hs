@@ -63,6 +63,7 @@ checkExecStatus predicate =
         LibPQ.BadResponse -> serverError
         LibPQ.NonfatalError -> serverError
         LibPQ.FatalError -> serverError
+        LibPQ.EmptyQuery -> return ()
         _ -> Result $ lift $ ExceptT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
 
 {-# INLINE serverError #-}
