@@ -88,6 +88,8 @@ test-suite tasty
   build-depends:
     contravariant-extras >=0.3.5.2 && <0.4,
     hasql,
+    postgresql-binary >=0.12.4 && <0.13,
+    postgresql-libpq ==0.9.*,
     QuickCheck >=2.8.1 && <3,
     quickcheck-instances >=0.3.11 && <0.4,
     rerebase <2,

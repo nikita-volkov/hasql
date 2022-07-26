@@ -40,6 +40,7 @@ module Hasql.Encoders
     jsonbBytes,
     enum,
     unknown,
+    value,
     array,
     foldableArray,
 

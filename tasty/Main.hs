@@ -1,6 +1,7 @@
 module Main where
 
 import Contravariant.Extras
+import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
@@ -9,6 +10,7 @@ import qualified Main.Connection as Connection
 import qualified Main.DSL as DSL
 import Main.Prelude hiding (assert)
 import qualified Main.Statements as Statements
+import qualified PostgreSQL.Binary.Encoding as Binary
 import qualified Test.QuickCheck as QuickCheck
 import Test.QuickCheck.Instances
 import Test.Tasty
@@ -38,7 +40,12 @@ tree =
                 testProperty "2D Array" $
                   let encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                       decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))))
-                   in \list -> list /= [] ==> roundtrip encoder decoder (replicate 3 list)
+                   in \list -> list /= [] ==> roundtrip encoder decoder (replicate 3 list),
+                testProperty "Array with generic element encoder" $
+                  let int8Encoder = Encoders.value (LibPQ.Oid 20) (LibPQ.Oid 1016) Binary.int8_int64
+                      encoder = Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable int8Encoder)))))
+                      decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))))
+                   in roundtrip encoder decoder
               ],
         testCase "Failed query" $
           let statement =

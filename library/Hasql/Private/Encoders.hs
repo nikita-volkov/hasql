@@ -2,6 +2,7 @@
 -- A DSL for declaration of query parameter encoders.
 module Hasql.Private.Encoders where
 
+import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.Encoders.Params as Params
 import qualified Hasql.Private.Encoders.Value as Value
@@ -262,6 +263,14 @@ enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping))
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
 unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
+
+-- |
+-- Generic binary encoder, given OIDs and an encoding function.
+value :: Show a => LibPQ.Oid -> LibPQ.Oid -> (a -> A.Encoding) -> Value a
+value oid aoid enc = Value (Value.unsafePTIWithShow pti (const enc))
+  where
+    fromOID (LibPQ.Oid x) = fromIntegral x
+    pti = PTI.mkPTI LibPQ.Binary (fromOID oid) (Just $ fromOID aoid)
 
 -- |
 -- Lift an array encoder into a parameter encoder.
