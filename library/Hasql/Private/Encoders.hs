@@ -2,6 +2,7 @@
 -- A DSL for declaration of query parameter encoders.
 module Hasql.Private.Encoders where
 
+import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.Encoders.Params as Params
 import qualified Hasql.Private.Encoders.Value as Value
@@ -229,6 +230,12 @@ jsonBytes :: Value ByteString
 jsonBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
 
 -- |
+-- Encoder of @JSON@ values from raw JSON as lazy ByteString.
+{-# INLINEABLE jsonLazyBytes #-}
+jsonLazyBytes :: Value ByteString
+jsonLazyBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes_lazy))
+
+-- |
 -- Encoder of @JSONB@ values from JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value B.Value
@@ -239,6 +246,12 @@ jsonb = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: Value ByteString
 jsonbBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
+
+-- |
+-- Encoder of @JSONB@ values from raw JSON as lazy ByteString.
+{-# INLINEABLE jsonbLazyBytes #-}
+jsonbLazyBytes :: Value ByteString
+jsonbLazyBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes_lazy))
 
 -- |
 -- Given a function,

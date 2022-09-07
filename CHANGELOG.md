@@ -1,3 +1,7 @@
+# 1.6.1
+
+- Added `jsonLazyBytes` and `jsonbLazyBytes`
+
 # 1.6
 
 - Added position to `ServerError` (breaking change).
