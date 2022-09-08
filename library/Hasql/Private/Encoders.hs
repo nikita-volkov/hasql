@@ -232,7 +232,7 @@ jsonBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
 -- |
 -- Encoder of @JSON@ values from raw JSON as lazy ByteString.
 {-# INLINEABLE jsonLazyBytes #-}
-jsonLazyBytes :: Value ByteString
+jsonLazyBytes :: Value LazyByteString.ByteString
 jsonLazyBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes_lazy))
 
 -- |
@@ -250,7 +250,7 @@ jsonbBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
 -- |
 -- Encoder of @JSONB@ values from raw JSON as lazy ByteString.
 {-# INLINEABLE jsonbLazyBytes #-}
-jsonbLazyBytes :: Value ByteString
+jsonbLazyBytes :: Value LazyByteString.ByteString
 jsonbLazyBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes_lazy))
 
 -- |
