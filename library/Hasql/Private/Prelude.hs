@@ -64,13 +64,16 @@ import Data.Profunctor.Unsafe as Exports
 import Data.Proxy as Exports
 import Data.Ratio as Exports
 import Data.STRef as Exports
+import Data.Scientific as Exports (Scientific)
 import Data.Semigroup as Exports hiding (First (..), Last (..))
 import Data.String as Exports
 import Data.Text as Exports (Text)
 import qualified Data.Text.Lazy
 import qualified Data.Text.Lazy.Builder
+import Data.Time as Exports
 import Data.Traversable as Exports
 import Data.Tuple as Exports
+import Data.UUID as Exports (UUID)
 import Data.Unique as Exports
 import Data.Vector as Exports (Vector)
 import Data.Version as Exports
@@ -87,7 +90,6 @@ import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Numeric as Exports
-import PostgreSQL.Binary.Data as Exports (UUID)
 import System.Environment as Exports
 import System.Exit as Exports
 import System.IO as Exports (Handle, hClose)

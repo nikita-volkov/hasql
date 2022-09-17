@@ -2,6 +2,7 @@
 -- A DSL for declaration of query parameter encoders.
 module Hasql.Private.Encoders where
 
+import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Hasql.Private.Encoders.Array as Array
 import qualified Hasql.Private.Encoders.Params as Params
@@ -9,7 +10,7 @@ import qualified Hasql.Private.Encoders.Value as Value
 import qualified Hasql.Private.PTI as PTI
 import Hasql.Private.Prelude hiding (bool)
 import qualified Hasql.Private.Prelude as Prelude
-import qualified PostgreSQL.Binary.Data as B
+import qualified Network.IP.Addr as NetworkIp
 import qualified PostgreSQL.Binary.Encoding as A
 import qualified Text.Builder as C
 
@@ -145,7 +146,7 @@ float8 = Value (Value.unsafePTIWithShow PTI.float8 (const A.float8))
 -- |
 -- Encoder of @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
-numeric :: Value B.Scientific
+numeric :: Value Scientific
 numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 
 -- |
@@ -172,55 +173,55 @@ bytea = Value (Value.unsafePTIWithShow PTI.bytea (const A.bytea_strict))
 -- |
 -- Encoder of @DATE@ values.
 {-# INLINEABLE date #-}
-date :: Value B.Day
+date :: Value Day
 date = Value (Value.unsafePTIWithShow PTI.date (const A.date))
 
 -- |
 -- Encoder of @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
-timestamp :: Value B.LocalTime
+timestamp :: Value LocalTime
 timestamp = Value (Value.unsafePTIWithShow PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINEABLE timestamptz #-}
-timestamptz :: Value B.UTCTime
+timestamptz :: Value UTCTime
 timestamptz = Value (Value.unsafePTIWithShow PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINEABLE time #-}
-time :: Value B.TimeOfDay
+time :: Value TimeOfDay
 time = Value (Value.unsafePTIWithShow PTI.time (Prelude.bool A.time_float A.time_int))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINEABLE timetz #-}
-timetz :: Value (B.TimeOfDay, B.TimeZone)
+timetz :: Value (TimeOfDay, TimeZone)
 timetz = Value (Value.unsafePTIWithShow PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINEABLE interval #-}
-interval :: Value B.DiffTime
+interval :: Value DiffTime
 interval = Value (Value.unsafePTIWithShow PTI.interval (Prelude.bool A.interval_float A.interval_int))
 
 -- |
 -- Encoder of @UUID@ values.
 {-# INLINEABLE uuid #-}
-uuid :: Value B.UUID
+uuid :: Value UUID
 uuid = Value (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
 
 -- |
 -- Encoder of @INET@ values.
 {-# INLINEABLE inet #-}
-inet :: Value (B.NetAddr B.IP)
+inet :: Value (NetworkIp.NetAddr NetworkIp.IP)
 inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
 {-# INLINEABLE json #-}
-json :: Value B.Value
+json :: Value Aeson.Value
 json = Value (Value.unsafePTIWithShow PTI.json (const A.json_ast))
 
 -- |
@@ -238,7 +239,7 @@ jsonLazyBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes_lazy
 -- |
 -- Encoder of @JSONB@ values from JSON AST.
 {-# INLINEABLE jsonb #-}
-jsonb :: Value B.Value
+jsonb :: Value Aeson.Value
 jsonb = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
 
 -- |

@@ -2,6 +2,7 @@
 -- A DSL for declaration of result decoders.
 module Hasql.Private.Decoders where
 
+import qualified Data.Aeson as Aeson
 import qualified Data.Vector as Vector
 import qualified Data.Vector.Generic as GenericVector
 import qualified Hasql.Private.Decoders.Array as Array
@@ -13,7 +14,7 @@ import qualified Hasql.Private.Decoders.Value as Value
 import qualified Hasql.Private.Errors as Errors
 import Hasql.Private.Prelude hiding (bool, maybe)
 import qualified Hasql.Private.Prelude as Prelude
-import qualified PostgreSQL.Binary.Data as B
+import qualified Network.IP.Addr as NetworkIp
 import qualified PostgreSQL.Binary.Decoding as A
 
 -- * Result
@@ -187,7 +188,7 @@ float8 = Value (Value.decoder (const A.float8))
 -- |
 -- Decoder of the @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
-numeric :: Value B.Scientific
+numeric :: Value Scientific
 numeric = Value (Value.decoder (const A.numeric))
 
 -- |
@@ -212,13 +213,13 @@ bytea = Value (Value.decoder (const A.bytea_strict))
 -- |
 -- Decoder of the @DATE@ values.
 {-# INLINEABLE date #-}
-date :: Value B.Day
+date :: Value Day
 date = Value (Value.decoder (const A.date))
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
-timestamp :: Value B.LocalTime
+timestamp :: Value LocalTime
 timestamp = Value (Value.decoder (Prelude.bool A.timestamp_float A.timestamp_int))
 
 -- |
@@ -232,13 +233,13 @@ timestamp = Value (Value.decoder (Prelude.bool A.timestamp_float A.timestamp_int
 -- However this library bypasses the silent conversions
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINEABLE timestamptz #-}
-timestamptz :: Value B.UTCTime
+timestamptz :: Value UTCTime
 timestamptz = Value (Value.decoder (Prelude.bool A.timestamptz_float A.timestamptz_int))
 
 -- |
 -- Decoder of the @TIME@ values.
 {-# INLINEABLE time #-}
-time :: Value B.TimeOfDay
+time :: Value TimeOfDay
 time = Value (Value.decoder (Prelude.bool A.time_float A.time_int))
 
 -- |
@@ -250,31 +251,31 @@ time = Value (Value.decoder (Prelude.bool A.time_float A.time_int))
 -- that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
 -- to represent a value on the Haskell's side.
 {-# INLINEABLE timetz #-}
-timetz :: Value (B.TimeOfDay, B.TimeZone)
+timetz :: Value (TimeOfDay, TimeZone)
 timetz = Value (Value.decoder (Prelude.bool A.timetz_float A.timetz_int))
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 {-# INLINEABLE interval #-}
-interval :: Value B.DiffTime
+interval :: Value DiffTime
 interval = Value (Value.decoder (Prelude.bool A.interval_float A.interval_int))
 
 -- |
 -- Decoder of the @UUID@ values.
 {-# INLINEABLE uuid #-}
-uuid :: Value B.UUID
+uuid :: Value UUID
 uuid = Value (Value.decoder (const A.uuid))
 
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
-inet :: Value (B.NetAddr B.IP)
+inet :: Value (NetworkIp.NetAddr NetworkIp.IP)
 inet = Value (Value.decoder (const A.inet))
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
-json :: Value B.Value
+json :: Value Aeson.Value
 json = Value (Value.decoder (const A.json_ast))
 
 -- |
@@ -286,7 +287,7 @@ jsonBytes fn = Value (Value.decoder (const (A.json_bytes fn)))
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
 {-# INLINEABLE jsonb #-}
-jsonb :: Value B.Value
+jsonb :: Value Aeson.Value
 jsonb = Value (Value.decoder (const A.jsonb_ast))
 
 -- |
