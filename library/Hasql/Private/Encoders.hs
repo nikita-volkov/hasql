@@ -272,11 +272,22 @@ unknown :: Value ByteString
 unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
 
 -- |
--- Lift an array encoder into a parameter encoder.
+-- Lift an array encoder into a value encoder.
 array :: Array a -> Value a
 array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
   let encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
    in Value (Value.Value arrayOID arrayOID encoder renderer)
+
+-- |
+-- Lift a composite encoder into a value encoder.
+composite :: Composite a -> Value a
+composite (Composite encode print) =
+  Value (Value.unsafePTI PTI.unknown encodeValue printValue)
+  where
+    encodeValue idt val =
+      A.composite $ encode val idt
+    printValue val =
+      "ROW (" <> C.intercalate ", " (print val) <> ")"
 
 -- |
 -- Lift a value encoder of element into a unidimensional array encoder of a foldable value.
@@ -340,3 +351,51 @@ element = \case
 {-# INLINEABLE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
 dimension foldl (Array imp) = Array (Array.dimension foldl imp)
+
+-- * Composite
+
+-- |
+-- Composite or row-types encoder.
+data Composite a
+  = Composite
+      (a -> Bool -> A.Composite)
+      (a -> [C.Builder])
+
+instance Contravariant Composite where
+  contramap f (Composite encode print) =
+    Composite (encode . f) (print . f)
+
+instance Divisible Composite where
+  divide f (Composite encodeL printL) (Composite encodeR printR) =
+    Composite
+      (\val idt -> case f val of (lVal, rVal) -> encodeL lVal idt <> encodeR rVal idt)
+      (\val -> case f val of (lVal, rVal) -> printL lVal <> printR rVal)
+  conquer = mempty
+
+instance Semigroup (Composite a) where
+  Composite encodeL printL <> Composite encodeR printR =
+    Composite
+      (\val idt -> encodeL val idt <> encodeR val idt)
+      (\val -> printL val <> printR val)
+
+instance Monoid (Composite a) where
+  mempty = Composite mempty mempty
+
+-- | Single field of a row-type.
+field :: NullableOrNot Value a -> Composite a
+field = \case
+  NonNullable (Value (Value.Value elementOID arrayOID encode print)) ->
+    Composite
+      (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
+      (\val -> [print val])
+  Nullable (Value (Value.Value elementOID arrayOID encode print)) ->
+    Composite
+      ( \val idt -> case val of
+          Nothing -> A.nullField (PTI.oidWord32 elementOID)
+          Just val -> A.field (PTI.oidWord32 elementOID) (encode idt val)
+      )
+      ( \val ->
+          case val of
+            Nothing -> ["NULL"]
+            Just val -> [print val]
+      )

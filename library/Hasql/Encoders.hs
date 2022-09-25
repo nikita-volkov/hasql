@@ -44,11 +44,16 @@ module Hasql.Encoders
     unknown,
     array,
     foldableArray,
+    composite,
 
     -- * Array
     Array,
     element,
     dimension,
+
+    -- * Composite
+    Composite,
+    field,
   )
 where
 
