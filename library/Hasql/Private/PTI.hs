@@ -19,8 +19,6 @@ mkPTI format oid arrayOID =
 
 -- * Constants
 
--------------------------
-
 abstime = mkPTI LibPQ.Binary 702 (Just 1023)
 
 aclitem = mkPTI LibPQ.Binary 1033 (Just 1034)

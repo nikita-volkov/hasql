@@ -16,8 +16,6 @@ import qualified Text.Builder as C
 
 -- * Parameters Product Encoder
 
--------------------------
-
 -- |
 -- Encoder of some representation of a parameters product.
 --
@@ -80,8 +78,6 @@ param = \case
 
 -- * Nullability
 
--------------------------
-
 -- |
 -- Extensional specification of nullability over a generic encoder.
 data NullableOrNot encoder a where
@@ -99,8 +95,6 @@ nullable :: encoder a -> NullableOrNot encoder (Maybe a)
 nullable = Nullable
 
 -- * Value
-
--------------------------
 
 -- |
 -- Value encoder.
@@ -307,8 +301,6 @@ foldableArray :: Foldable foldable => NullableOrNot Value element -> Value (fold
 foldableArray = array . dimension foldl' . element
 
 -- * Array
-
--------------------------
 
 -- |
 -- Generic array encoder.

@@ -19,8 +19,6 @@ import qualified PostgreSQL.Binary.Decoding as A
 
 -- * Result
 
--------------------------
-
 -- |
 -- Decoder of a query result.
 newtype Result a = Result (Results.Results a) deriving (Functor)
@@ -52,8 +50,6 @@ refineResult refiner (Result results) = Result (Results.refine refiner results)
 
 -- ** Multi-row traversers
 
--------------------------
-
 -- |
 -- Foldl multiple rows.
 {-# INLINEABLE foldlRows #-}
@@ -67,8 +63,6 @@ foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
 foldrRows step init (Row row) = Result (Results.single (Result.foldr step init row))
 
 -- ** Specialized multi-row results
-
--------------------------
 
 -- |
 -- Maybe one row or none.
@@ -93,8 +87,6 @@ rowList = foldrRows strictCons []
 
 -- * Row
 
--------------------------
-
 -- |
 -- Decoder of an individual row,
 -- which gets composed of column value decoders.
@@ -118,8 +110,6 @@ column = \case
 
 -- * Nullability
 
--------------------------
-
 -- |
 -- Extensional specification of nullability over a generic decoder.
 data NullableOrNot decoder a where
@@ -137,8 +127,6 @@ nullable :: decoder a -> NullableOrNot decoder (Maybe a)
 nullable = Nullable
 
 -- * Value
-
--------------------------
 
 -- |
 -- Decoder of a value.
@@ -371,8 +359,6 @@ composite (Composite imp) = Value (Value.decoder (Composite.run imp))
 
 -- * Array decoders
 
--------------------------
-
 -- |
 -- A generic array decoder.
 --
@@ -409,8 +395,6 @@ element = \case
   Nullable (Value imp) -> Array (Array.value (Value.run imp))
 
 -- * Composite decoders
-
--------------------------
 
 -- |
 -- Composable decoder of composite values (rows, records).

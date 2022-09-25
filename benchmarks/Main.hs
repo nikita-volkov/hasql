@@ -31,8 +31,6 @@ main =
 
 -- * Sessions
 
--------------------------
-
 sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
 sessionWithManySmallParameters =
   error "TODO: sessionWithManySmallParameters"
@@ -54,8 +52,6 @@ sessionWithManySmallResults =
   replicateM 1000 (B.statement () statementWithSingleRow)
 
 -- * Statements
-
--------------------------
 
 statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
 statementWithManyParameters =

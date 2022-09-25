@@ -18,8 +18,6 @@ data Env
 
 -- * Functions
 
--------------------------
-
 {-# INLINE run #-}
 run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either (Int, RowError) a)
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
