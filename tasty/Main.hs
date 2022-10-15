@@ -127,6 +127,26 @@ tree =
            in do
                 x <- Connection.with (Session.run session)
                 assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x,
+        testCase "Array of composites" $ do
+          let value =
+                (123, Just "abc")
+          res <-
+            let statement =
+                  Statement.Statement sql encoder decoder True
+                  where
+                    sql =
+                      "select $1"
+                    encoder =
+                      Encoders.param . Encoders.nonNullable . Encoders.composite . mconcat $
+                        [ contramap fst . Encoders.field . Encoders.nonNullable $ Encoders.int4,
+                          contramap snd . Encoders.field . Encoders.nullable $ Encoders.text
+                        ]
+                    decoder =
+                      Decoders.singleRow $
+                        (,) <$> (Decoders.column . Decoders.nonNullable) Decoders.int4
+                          <*> (Decoders.column . Decoders.nullable) Decoders.text
+             in Connection.with $ Session.run $ Session.statement value statement
+          assertEqual "" (Right (Right value)) res,
         testCase "Empty array" $
           let io =
                 do
