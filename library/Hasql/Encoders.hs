@@ -16,6 +16,8 @@ module Hasql.Encoders
 
     -- * Value
     Value,
+    name,
+    oid,
     bool,
     int2,
     int4,

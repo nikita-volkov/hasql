@@ -102,6 +102,18 @@ newtype Value a = Value (Value.Value a)
   deriving (Contravariant)
 
 -- |
+-- Encoder of @OID@ values.
+{-# INLINEABLE oid #-}
+oid :: Value Int32
+oid = Value (Value.unsafePTIWithShow PTI.oid (const A.int4_int32))
+
+-- |
+-- Encoder of @NAME@ values.
+{-# INLINEABLE name #-}
+name :: Value Text
+name = Value (Value.unsafePTIWithShow PTI.name (const A.text_strict))
+
+-- |
 -- Encoder of @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool

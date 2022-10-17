@@ -127,24 +127,31 @@ tree =
            in do
                 x <- Connection.with (Session.run session)
                 assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x,
-        testCase "Array of composites" $ do
+        testCase "Composite encoding" $ do
           let value =
-                (123, Just "abc")
+                (123, 456, 789, "abc")
           res <-
             let statement =
                   Statement.Statement sql encoder decoder True
                   where
                     sql =
-                      "select $1"
+                      "select $1 :: pg_enum"
                     encoder =
                       Encoders.param . Encoders.nonNullable . Encoders.composite . mconcat $
-                        [ contramap fst . Encoders.field . Encoders.nonNullable $ Encoders.int4,
-                          contramap snd . Encoders.field . Encoders.nullable $ Encoders.text
+                        [ contramap (\(a, _, _, _) -> a) . Encoders.field . Encoders.nonNullable $ Encoders.oid,
+                          contramap (\(_, a, _, _) -> a) . Encoders.field . Encoders.nonNullable $ Encoders.oid,
+                          contramap (\(_, _, a, _) -> a) . Encoders.field . Encoders.nonNullable $ Encoders.float4,
+                          contramap (\(_, _, _, a) -> a) . Encoders.field . Encoders.nonNullable $ Encoders.name
                         ]
                     decoder =
                       Decoders.singleRow $
-                        (,) <$> (Decoders.column . Decoders.nonNullable) Decoders.int4
-                          <*> (Decoders.column . Decoders.nullable) Decoders.text
+                        (Decoders.column . Decoders.nonNullable . Decoders.composite)
+                          ( (,,,)
+                              <$> (Decoders.field . Decoders.nonNullable) Decoders.int4
+                              <*> (Decoders.field . Decoders.nonNullable) Decoders.int4
+                              <*> (Decoders.field . Decoders.nonNullable) Decoders.float4
+                              <*> (Decoders.field . Decoders.nonNullable) Decoders.text
+                          )
              in Connection.with $ Session.run $ Session.statement value statement
           assertEqual "" (Right (Right value)) res,
         testCase "Empty array" $
