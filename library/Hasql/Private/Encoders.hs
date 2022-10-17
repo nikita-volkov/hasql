@@ -269,7 +269,7 @@ enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping))
 -- it is the only encoder that doesn't use the binary format.
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
-unknown = Value (Value.unsafePTIWithShow PTI.unknown (const A.bytea_strict))
+unknown = Value (Value.unsafePTIWithShow PTI.textUnknown (const A.bytea_strict))
 
 -- |
 -- Lift an array encoder into a value encoder.
@@ -282,7 +282,7 @@ array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
 -- Lift a composite encoder into a value encoder.
 composite :: Composite a -> Value a
 composite (Composite encode print) =
-  Value (Value.unsafePTI PTI.unknown encodeValue printValue)
+  Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
   where
     encodeValue idt val =
       A.composite $ encode val idt

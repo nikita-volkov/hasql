@@ -143,7 +143,9 @@ tsvector = mkPTI LibPQ.Binary 3614 (Just 3643)
 
 txid_snapshot = mkPTI LibPQ.Binary 2970 (Just 2949)
 
-unknown = mkPTI LibPQ.Text 705 (Just 705)
+textUnknown = mkPTI LibPQ.Text 705 (Just 705)
+
+binaryUnknown = mkPTI LibPQ.Binary 705 (Just 705)
 
 uuid = mkPTI LibPQ.Binary 2950 (Just 2951)
 
