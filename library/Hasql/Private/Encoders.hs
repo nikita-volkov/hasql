@@ -102,18 +102,6 @@ newtype Value a = Value (Value.Value a)
   deriving (Contravariant)
 
 -- |
--- Encoder of @OID@ values.
-{-# INLINEABLE oid #-}
-oid :: Value Int32
-oid = Value (Value.unsafePTIWithShow PTI.oid (const A.int4_int32))
-
--- |
--- Encoder of @NAME@ values.
-{-# INLINEABLE name #-}
-name :: Value Text
-name = Value (Value.unsafePTIWithShow PTI.name (const A.text_strict))
-
--- |
 -- Encoder of @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
@@ -259,6 +247,18 @@ jsonbBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
 {-# INLINEABLE jsonbLazyBytes #-}
 jsonbLazyBytes :: Value LazyByteString.ByteString
 jsonbLazyBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes_lazy))
+
+-- |
+-- Encoder of @OID@ values.
+{-# INLINEABLE oid #-}
+oid :: Value Int32
+oid = Value (Value.unsafePTIWithShow PTI.oid (const A.int4_int32))
+
+-- |
+-- Encoder of @NAME@ values.
+{-# INLINEABLE name #-}
+name :: Value Text
+name = Value (Value.unsafePTIWithShow PTI.name (const A.text_strict))
 
 -- |
 -- Given a function,

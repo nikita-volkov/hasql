@@ -16,8 +16,6 @@ module Hasql.Encoders
 
     -- * Value
     Value,
-    name,
-    oid,
     bool,
     int2,
     int4,
@@ -42,6 +40,8 @@ module Hasql.Encoders
     jsonb,
     jsonbBytes,
     jsonbLazyBytes,
+    name,
+    oid,
     enum,
     unknown,
     array,
