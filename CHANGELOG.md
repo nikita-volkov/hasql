@@ -1,3 +1,8 @@
+# 1.6.2
+
+- Added composite encoder
+- Added `oid` and `name` encoders
+
 # 1.6.1
 
 - Added `jsonLazyBytes` and `jsonbLazyBytes`

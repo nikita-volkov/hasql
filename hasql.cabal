@@ -1,5 +1,5 @@
 name: hasql
-version: 1.6.1.4
+version: 1.6.2
 category: Hasql, Database, PostgreSQL
 synopsis: An efficient PostgreSQL driver with a flexible mapping API
 description:
