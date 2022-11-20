@@ -61,3 +61,8 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) de
           step (_, _, _, rendering) acc =
             rendering : acc
        in foldr step [] (encoderOp input)
+
+-- |
+-- Returns the connection for the Session
+connection :: Session Connection.Connection
+connection = Session ask
