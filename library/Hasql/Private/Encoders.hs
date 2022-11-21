@@ -272,14 +272,8 @@ enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping))
 -- Variation of 'enum' with unknown OID.
 -- This function does not identify the type to Postgres,
 -- so Postgres must be able to derive the type from context.
---
--- Some queries do not contain enough context, e.g.,
---
--- > SELECT $1
---
--- In such cases you need to disambiguate the type on the query side like this:
---
--- > SELECT $1 :: your_enum_type
+-- When you find yourself in such situation just provide an explicit type in the query
+-- using the :: operator.
 {-# INLINEABLE unknownEnum #-}
 unknownEnum :: (a -> Text) -> Value a
 unknownEnum mapping = Value (Value.unsafePTI PTI.binaryUnknown (const (A.text_strict . mapping)) (C.text . mapping))
