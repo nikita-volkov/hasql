@@ -1,3 +1,7 @@
+# 1.6.3
+
+- Added `unknownEnum` encoder
+
 # 1.6.2
 
 - Added composite encoder
