@@ -127,6 +127,34 @@ tree =
            in do
                 x <- Connection.with (Session.run session)
                 assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x,
+        testGroup "unknownEnum" $
+          [ testCase "" $ do
+              res <- DSL.session $ do
+                let statement =
+                      Statement.Statement sql mempty Decoders.noResult True
+                      where
+                        sql =
+                          "drop type if exists mood"
+                 in DSL.statement () statement
+                let statement =
+                      Statement.Statement sql mempty Decoders.noResult True
+                      where
+                        sql =
+                          "create type mood as enum ('sad', 'ok', 'happy')"
+                 in DSL.statement () statement
+                let statement =
+                      Statement.Statement sql encoder decoder True
+                      where
+                        sql =
+                          "select $1"
+                        decoder =
+                          (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.enum (Just . id))))
+                        encoder =
+                          Encoders.param (Encoders.nonNullable (Encoders.unknownEnum id))
+                 in DSL.statement "ok" statement
+
+              assertEqual "" (Right "ok") res
+          ],
         testCase "Composite encoding" $ do
           let value =
                 (123, 456, 789, "abc")

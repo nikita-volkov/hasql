@@ -43,6 +43,7 @@ module Hasql.Encoders
     name,
     oid,
     enum,
+    unknownEnum,
     unknown,
     array,
     foldableArray,
