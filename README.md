@@ -36,6 +36,8 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 * ["hasql-implicits"](https://github.com/nikita-volkov/hasql-implicits) - implicit definitions, such as default codecs for standard types.
 
+* ["hasql-interpolate"](https://github.com/awkward-squad/hasql-interpolate) - a QuasiQuoter that supports interpolating Haskell expressions into Hasql queries.
+
 ### Benefits of being an ecosystem
 
 * **Simplicity.** Each library in isolation provides a simple API, which is hopefully easier to comprehend.
