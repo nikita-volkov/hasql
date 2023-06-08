@@ -6,7 +6,6 @@ Hasql also is one of the supported targets of the [pGenie](https://pgenie.io) co
 
 # Status
 
-[![Build Status](https://travis-ci.org/nikita-volkov/hasql.svg?branch=master)](https://travis-ci.org/nikita-volkov/hasql)
 [![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
 
 Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://postgrest.org/) project.
