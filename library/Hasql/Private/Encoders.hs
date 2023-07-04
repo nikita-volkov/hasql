@@ -284,7 +284,7 @@ unknownEnum mapping = Value (Value.unsafePTI PTI.binaryUnknown (const (A.text_st
 --
 -- The value transimitted is any value encoded in the Postgres' Text data format.
 -- For reference, see the
--- <https://www.postgresql.org/docs/10/static/protocol-overview.html#protocol-format-codes Formats and Format Codes>
+-- <https://www.postgresql.org/docs/10/static/protocol-overview.html#PROTOCOL-FORMAT-CODES Formats and Format Codes>
 -- section of the Postgres' documentation.
 --
 -- __Warning:__ Do not use this as part of composite encoders like 'array' since
