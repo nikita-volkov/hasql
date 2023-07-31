@@ -1,3 +1,7 @@
+# 1.6.3.1
+
+- Moved to "postgresql-libpq-0.10"
+
 # 1.6.3
 
 - Added `unknownEnum` encoder
