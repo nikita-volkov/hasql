@@ -2,7 +2,8 @@
 
 Hasql is a highly efficient PostgreSQL driver for Haskell with a typesafe yet flexible mapping API. It targets both the users, who need maximum control, and the users who face the typical tasks of DB-powered applications, providing them with higher-level APIs. Currently it is known to be [the fastest driver](https://nikita-volkov.github.io/hasql-benchmarks/) in the Haskell ecosystem.
 
-Hasql also is one of the supported targets of the [pGenie](https://pgenie.io) code generator, which empowers it with schema and query validation, and relieves you from boilerplate.
+> [!IMPORTANT]
+> Hasql is one of the supported targets of the [pGenie](https://pgenie.io) code generator, which empowers it with schema and query validation, and relieves you from boilerplate.
 
 # Status
 
