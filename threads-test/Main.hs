@@ -15,9 +15,9 @@ main =
       (,) <$> acquire <*> acquire
       where
         acquire =
-          join $
-            fmap (either (fail . show) return) $
-              Hasql.Connection.acquire connectionSettings
+          join
+            $ fmap (either (fail . show) return)
+            $ Hasql.Connection.acquire connectionSettings
           where
             connectionSettings =
               Hasql.Connection.settings "localhost" 5432 "postgres" "" "postgres"

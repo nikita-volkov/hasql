@@ -330,7 +330,7 @@ composite (Composite encode print) =
 -- Please notice that in case of multidimensional arrays nesting 'foldableArray' encoder
 -- won't work. You have to explicitly construct the array encoder using 'array'.
 {-# INLINE foldableArray #-}
-foldableArray :: Foldable foldable => NullableOrNot Value element -> Value (foldable element)
+foldableArray :: (Foldable foldable) => NullableOrNot Value element -> Value (foldable element)
 foldableArray = array . dimension foldl' . element
 
 -- * Array

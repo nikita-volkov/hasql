@@ -34,10 +34,12 @@ rowsAffected =
     checkExecStatus $ \case
       LibPQ.CommandOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(_, result) ->
-        ExceptT $
-          LibPQ.cmdTuples result & fmap cmdTuplesReader
+    Result
+      $ ReaderT
+      $ \(_, result) ->
+        ExceptT
+          $ LibPQ.cmdTuples result
+          & fmap cmdTuplesReader
   where
     cmdTuplesReader =
       notNothing >=> notEmpty >=> decimal
@@ -49,8 +51,8 @@ rowsAffected =
             then Left (UnexpectedResult "Empty bytes")
             else Right bytes
         decimal bytes =
-          mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m)) $
-            Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
+          mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m))
+            $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
 checkExecStatus :: (LibPQ.ExecStatus -> Bool) -> Result ()
@@ -69,14 +71,15 @@ checkExecStatus predicate =
 {-# INLINE serverError #-}
 serverError :: Result ()
 serverError =
-  Result $
-    ReaderT $ \(_, result) -> ExceptT $ do
+  Result
+    $ ReaderT
+    $ \(_, result) -> ExceptT $ do
       code <-
-        fmap fold $
-          LibPQ.resultErrorField result LibPQ.DiagSqlstate
+        fmap fold
+          $ LibPQ.resultErrorField result LibPQ.DiagSqlstate
       message <-
-        fmap fold $
-          LibPQ.resultErrorField result LibPQ.DiagMessagePrimary
+        fmap fold
+          $ LibPQ.resultErrorField result LibPQ.DiagMessagePrimary
       detail <-
         LibPQ.resultErrorField result LibPQ.DiagMessageDetail
       hint <-
@@ -99,8 +102,9 @@ maybe rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
+    Result
+      $ ReaderT
+      $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- LibPQ.ntuples result
         case maxRows of
           0 -> return (Right Nothing)
@@ -122,8 +126,9 @@ single rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
+    Result
+      $ ReaderT
+      $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- LibPQ.ntuples result
         case maxRows of
           1 -> do
@@ -144,8 +149,9 @@ vector rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
+    Result
+      $ ReaderT
+      $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- LibPQ.ntuples result
         maxCols <- LibPQ.nfields result
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
@@ -172,10 +178,11 @@ foldl step init rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(integerDatetimes, result) ->
-        ExceptT $
-          {-# SCC "traversal" #-}
+    Result
+      $ ReaderT
+      $ \(integerDatetimes, result) ->
+        ExceptT
+          $ {-# SCC "traversal" #-}
           do
             maxRows <- LibPQ.ntuples result
             maxCols <- LibPQ.nfields result
@@ -203,8 +210,9 @@ foldr step init rowDec =
     checkExecStatus $ \case
       LibPQ.TuplesOk -> True
       _ -> False
-    Result $
-      ReaderT $ \(integerDatetimes, result) -> ExceptT $ do
+    Result
+      $ ReaderT
+      $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- LibPQ.ntuples result
         maxCols <- LibPQ.nfields result
         accRef <- newIORef init

@@ -306,7 +306,7 @@ refine fn (Value v) = Value (Value.Value (\b -> A.refine fn (Value.run v b)))
 -- x = hstore 'replicateM'
 -- @
 {-# INLINEABLE hstore #-}
-hstore :: (forall m. Monad m => Int -> m (Text, Maybe Text) -> m a) -> Value a
+hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM = Value (Value.decoder (const (A.hstore replicateM A.text_strict A.text_strict)))
 
 -- |
@@ -348,7 +348,7 @@ listArray = array . dimension replicateM . element
 -- Please notice that in case of multidimensional arrays nesting 'vectorArray' decoder
 -- won't work. You have to explicitly construct the array decoder using 'array'.
 {-# INLINE vectorArray #-}
-vectorArray :: GenericVector.Vector vector element => NullableOrNot Value element -> Value (vector element)
+vectorArray :: (GenericVector.Vector vector element) => NullableOrNot Value element -> Value (vector element)
 vectorArray = array . dimension GenericVector.replicateM . element
 
 -- |
@@ -383,7 +383,7 @@ newtype Array a = Array (Array.Array a)
 --
 -- * A decoder of its components, which can be either another 'dimension' or 'element'.
 {-# INLINEABLE dimension #-}
-dimension :: (forall m. Monad m => Int -> m a -> m b) -> Array a -> Array b
+dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
 dimension replicateM (Array imp) = Array (Array.dimension replicateM imp)
 
 -- |

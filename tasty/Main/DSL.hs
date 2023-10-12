@@ -38,8 +38,8 @@ session session =
             password = ""
             database = "postgres"
     use connection =
-      ExceptT $
-        fmap (mapLeft SessionError) $
-          Hasql.Session.run session connection
+      ExceptT
+        $ fmap (mapLeft SessionError)
+        $ Hasql.Session.run session connection
     release connection =
       lift $ HC.release connection

@@ -22,8 +22,8 @@ newtype Session a
 -- Executes a bunch of commands on the provided connection.
 run :: Session a -> Connection.Connection -> IO (Either QueryError a)
 run (Session impl) connection =
-  runExceptT $
-    runReaderT impl connection
+  runExceptT
+    $ runReaderT impl connection
 
 -- |
 -- Possibly a multi-statement query,
@@ -31,14 +31,16 @@ run (Session impl) connection =
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  Session $
-    ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
-      ExceptT $
-        fmap (mapLeft (QueryError sql [])) $
-          withMVar pqConnectionRef $ \pqConnection -> do
-            r1 <- IO.sendNonparametricStatement pqConnection sql
-            r2 <- IO.getResults pqConnection integerDatetimes decoder
-            return $ r1 *> r2
+  Session
+    $ ReaderT
+    $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+      ExceptT
+        $ fmap (mapLeft (QueryError sql []))
+        $ withMVar pqConnectionRef
+        $ \pqConnection -> do
+          r1 <- IO.sendNonparametricStatement pqConnection sql
+          r2 <- IO.getResults pqConnection integerDatetimes decoder
+          return $ r1 *> r2
   where
     decoder =
       Decoders.Results.single Decoders.Result.noResult
@@ -47,14 +49,16 @@ sql sql =
 -- Parameters and a specification of a parametric single-statement query to apply them to.
 statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement template (Encoders.Params paramsEncoder) decoder preparable) =
-  Session $
-    ReaderT $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
-      ExceptT $
-        fmap (mapLeft (QueryError template inputReps)) $
-          withMVar pqConnectionRef $ \pqConnection -> do
-            r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input
-            r2 <- IO.getResults pqConnection integerDatetimes (unsafeCoerce decoder)
-            return $ r1 *> r2
+  Session
+    $ ReaderT
+    $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+      ExceptT
+        $ fmap (mapLeft (QueryError template inputReps))
+        $ withMVar pqConnectionRef
+        $ \pqConnection -> do
+          r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input
+          r2 <- IO.getResults pqConnection integerDatetimes (unsafeCoerce decoder)
+          return $ r1 *> r2
   where
     inputReps =
       let Encoders.Params.Params (Op encoderOp) = paramsEncoder

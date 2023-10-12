@@ -19,6 +19,6 @@ unsafePTI pti =
   Value (PTI.ptiOID pti) (fromMaybe (error "No array OID") (PTI.ptiArrayOID pti))
 
 {-# INLINE unsafePTIWithShow #-}
-unsafePTIWithShow :: Show a => PTI.PTI -> (Bool -> a -> B.Encoding) -> Value a
+unsafePTIWithShow :: (Show a) => PTI.PTI -> (Bool -> a -> B.Encoding) -> Value a
 unsafePTIWithShow pti encode =
   unsafePTI pti encode (C.string . show)

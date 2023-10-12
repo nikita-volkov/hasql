@@ -29,18 +29,20 @@ run (Results stack) env =
 {-# INLINE clientError #-}
 clientError :: Results a
 clientError =
-  Results $
-    ReaderT $ \(_, connection) ->
-      ExceptT $
-        fmap (Left . ClientError) (LibPQ.errorMessage connection)
+  Results
+    $ ReaderT
+    $ \(_, connection) ->
+      ExceptT
+        $ fmap (Left . ClientError) (LibPQ.errorMessage connection)
 
 -- |
 -- Parse a single result.
 {-# INLINE single #-}
 single :: Result.Result a -> Results a
 single resultDec =
-  Results $
-    ReaderT $ \(integerDatetimes, connection) -> ExceptT $ do
+  Results
+    $ ReaderT
+    $ \(integerDatetimes, connection) -> ExceptT $ do
       resultMaybe <- LibPQ.getResult connection
       case resultMaybe of
         Just result ->
@@ -53,8 +55,9 @@ single resultDec =
 {-# INLINE getResult #-}
 getResult :: Results LibPQ.Result
 getResult =
-  Results $
-    ReaderT $ \(_, connection) -> ExceptT $ do
+  Results
+    $ ReaderT
+    $ \(_, connection) -> ExceptT $ do
       resultMaybe <- LibPQ.getResult connection
       case resultMaybe of
         Just result -> pure (Right result)
@@ -85,7 +88,8 @@ dropRemainders =
               ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.noResult (integerDatetimes, result)
 
 refine :: (a -> Either Text b) -> Results a -> Results b
-refine refiner results = Results $
-  ReaderT $ \env -> ExceptT $ do
+refine refiner results = Results
+  $ ReaderT
+  $ \env -> ExceptT $ do
     resultEither <- run results env
     return $ resultEither >>= mapLeft (ResultError . UnexpectedResult) . refiner

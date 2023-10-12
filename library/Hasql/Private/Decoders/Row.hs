@@ -41,21 +41,22 @@ error x =
 value :: Value.Value a -> Row (Maybe a)
 value valueDec =
   {-# SCC "value" #-}
-  Row $
-    ReaderT $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
+  Row
+    $ ReaderT
+    $ \(Env result row columnsAmount integerDatetimes columnRef) -> ExceptT $ do
       col <- readIORef columnRef
       writeIORef columnRef (succ col)
       if col < columnsAmount
         then do
           valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
-          pure $
-            case valueMaybe of
+          pure
+            $ case valueMaybe of
               Nothing ->
                 Right Nothing
               Just value ->
-                fmap Just $
-                  mapLeft ValueError $
-                    {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
+                fmap Just
+                  $ mapLeft ValueError
+                  $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
         else pure (Left EndOfInput)
 
 -- |

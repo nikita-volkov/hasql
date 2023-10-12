@@ -19,8 +19,9 @@ value =
 
 nullableValue :: C.Value a -> Params (Maybe a)
 nullableValue (C.Value valueOID arrayOID encode render) =
-  Params $
-    Op $ \input ->
+  Params
+    $ Op
+    $ \input ->
       let D.OID _ pqOid format =
             valueOID
           encoder env =

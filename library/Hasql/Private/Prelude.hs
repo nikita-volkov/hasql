@@ -117,12 +117,12 @@ type TextBuilder =
   Data.Text.Lazy.Builder.Builder
 
 {-# INLINE forMToZero_ #-}
-forMToZero_ :: Applicative m => Int -> (Int -> m a) -> m ()
+forMToZero_ :: (Applicative m) => Int -> (Int -> m a) -> m ()
 forMToZero_ !startN f =
   ($ pred startN) $ fix $ \loop !n -> if n >= 0 then f n *> loop (pred n) else pure ()
 
 {-# INLINE forMFromZero_ #-}
-forMFromZero_ :: Applicative m => Int -> (Int -> m a) -> m ()
+forMFromZero_ :: (Applicative m) => Int -> (Int -> m a) -> m ()
 forMFromZero_ !endN f =
   ($ 0) $ fix $ \loop !n -> if n < endN then f n *> loop (succ n) else pure ()
 

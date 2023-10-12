@@ -13,7 +13,7 @@ run (Array imp) env =
   A.array (runReaderT imp env)
 
 {-# INLINE dimension #-}
-dimension :: (forall m. Monad m => Int -> m a -> m b) -> Array a -> Array b
+dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
 dimension replicateM (Array imp) =
   Array $ ReaderT $ \env -> A.dimensionArray replicateM (runReaderT imp env)
 

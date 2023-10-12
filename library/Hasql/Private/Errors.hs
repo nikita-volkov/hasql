@@ -39,24 +39,24 @@ data CommandError
 data ResultError
   = -- | An error reported by the DB.
     ServerError
-      ByteString
-      -- ^ __Code__. The SQLSTATE code for the error. It's recommended to use
+      -- | __Code__. The SQLSTATE code for the error. It's recommended to use
       -- <http://hackage.haskell.org/package/postgresql-error-codes
       -- the "postgresql-error-codes" package> to work with those.
       ByteString
-      -- ^ __Message__. The primary human-readable error message(typically one
+      -- | __Message__. The primary human-readable error message(typically one
       -- line). Always present.
-      (Maybe ByteString)
-      -- ^ __Details__. An optional secondary error message carrying more
+      ByteString
+      -- | __Details__. An optional secondary error message carrying more
       -- detail about the problem. Might run to multiple lines.
       (Maybe ByteString)
-      -- ^ __Hint__. An optional suggestion on what to do about the problem.
+      -- | __Hint__. An optional suggestion on what to do about the problem.
       -- This is intended to differ from detail in that it offers advice
       -- (potentially inappropriate) rather than hard facts. Might run to
       -- multiple lines.
-      (Maybe Int)
-      -- ^ __Position__. Error cursor position as an index into the original
+      (Maybe ByteString)
+      -- | __Position__. Error cursor position as an index into the original
       -- statement string. Positions are measured in characters not bytes.
+      (Maybe Int)
   | -- |
     -- The database returned an unexpected result.
     -- Indicates an improper statement or a schema mismatch.

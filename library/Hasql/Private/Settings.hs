@@ -16,19 +16,24 @@ type Settings =
 {-# INLINE settings #-}
 settings :: ByteString -> Word16 -> ByteString -> ByteString -> ByteString -> Settings
 settings host port user password database =
-  BL.toStrict $
-    BB.toLazyByteString $
-      mconcat $
-        intersperse (BB.char7 ' ') $
-          catMaybes $
-            [ mappend (BB.string7 "host=") . BB.byteString
-                <$> mfilter (not . B.null) (pure host),
-              mappend (BB.string7 "port=") . BB.word16Dec
-                <$> mfilter (/= 0) (pure port),
-              mappend (BB.string7 "user=") . BB.byteString
-                <$> mfilter (not . B.null) (pure user),
-              mappend (BB.string7 "password=") . BB.byteString
-                <$> mfilter (not . B.null) (pure password),
-              mappend (BB.string7 "dbname=") . BB.byteString
-                <$> mfilter (not . B.null) (pure database)
-            ]
+  BL.toStrict
+    $ BB.toLazyByteString
+    $ mconcat
+    $ intersperse (BB.char7 ' ')
+    $ catMaybes
+    $ [ mappend (BB.string7 "host=")
+          . BB.byteString
+          <$> mfilter (not . B.null) (pure host),
+        mappend (BB.string7 "port=")
+          . BB.word16Dec
+          <$> mfilter (/= 0) (pure port),
+        mappend (BB.string7 "user=")
+          . BB.byteString
+          <$> mfilter (not . B.null) (pure user),
+        mappend (BB.string7 "password=")
+          . BB.byteString
+          <$> mfilter (not . B.null) (pure password),
+        mappend (BB.string7 "dbname=")
+          . BB.byteString
+          <$> mfilter (not . B.null) (pure database)
+      ]
