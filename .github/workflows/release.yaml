@@ -1,0 +1,21 @@
+name: Release the lib to Hackage
+
+on:
+  push:
+    branches:
+      - supermajor
+      - major
+      - minor
+      - patch
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+
+  release:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/release-stage.yaml@7e8df8d36f4b50ec4c3585aaaed4bf3892f313f2
+    secrets: inherit
+    with:
+      prefix-tag-with-v: false

@@ -1,0 +1,13 @@
+name: Compile, test and check the docs
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+
+  test:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/test-stage.yaml@3558cf3b1acae6a3a872253e02aeda95a411617d
+    secrets: inherit
