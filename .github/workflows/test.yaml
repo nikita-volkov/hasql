@@ -9,5 +9,5 @@ on:
 jobs:
 
   test:
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/test-stage.yaml@3558cf3b1acae6a3a872253e02aeda95a411617d
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/test-stage.yaml@v1.0.0
     secrets: inherit
