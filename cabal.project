@@ -1,0 +1,8 @@
+packages: .
+allow-newer:
+  , *:base
+  , *:primitive
+  , *:text
+  , *:bytestring
+  , *:deepseq
+  , *:pretty
