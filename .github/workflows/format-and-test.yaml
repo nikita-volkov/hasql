@@ -9,9 +9,9 @@ on:
 jobs:
 
   format:
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/format.yaml@v1.1.2
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/format.yaml@v1
     secrets: inherit
 
   test:
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/test-with-postgres.yaml@2d3d247058c0b80a6dabcabf27330a083e025cb2
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/test-with-postgres.yaml@v1
     secrets: inherit
