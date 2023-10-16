@@ -25,7 +25,7 @@ main =
             host = "localhost"
             port = 5432
             user = "postgres"
-            password = ""
+            password = "postgres"
             database = "postgres"
 
 -- * Sessions
