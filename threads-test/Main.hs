@@ -1,13 +1,11 @@
 module Main where
 
 import qualified Hasql.Connection
-import qualified Hasql.Decoders
-import qualified Hasql.Encoders
 import qualified Hasql.Session
-import qualified Hasql.Statement
 import qualified Main.Statements as Statements
 import Prelude
 
+main :: IO ()
 main =
   acquire >>= use
   where

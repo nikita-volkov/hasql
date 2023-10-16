@@ -9,16 +9,17 @@ import qualified Main.Connection as Connection
 import qualified Main.DSL as DSL
 import Main.Prelude hiding (assert)
 import qualified Main.Statements as Statements
-import qualified Test.QuickCheck as QuickCheck
-import Test.QuickCheck.Instances
+import Test.QuickCheck.Instances ()
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 import Test.Tasty.Runners
 
+main :: IO ()
 main =
   defaultMain tree
 
+tree :: TestTree
 tree =
   localOption (NumThreads 1)
     $ testGroup

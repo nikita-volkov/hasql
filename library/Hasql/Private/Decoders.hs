@@ -3,7 +3,6 @@
 module Hasql.Private.Decoders where
 
 import qualified Data.Aeson as Aeson
-import qualified Data.Vector as Vector
 import qualified Data.Vector.Generic as GenericVector
 import qualified Hasql.Private.Decoders.Array as Array
 import qualified Hasql.Private.Decoders.Composite as Composite
@@ -11,7 +10,6 @@ import qualified Hasql.Private.Decoders.Result as Result
 import qualified Hasql.Private.Decoders.Results as Results
 import qualified Hasql.Private.Decoders.Row as Row
 import qualified Hasql.Private.Decoders.Value as Value
-import qualified Hasql.Private.Errors as Errors
 import Hasql.Private.Prelude hiding (bool, maybe)
 import qualified Hasql.Private.Prelude as Prelude
 import qualified Network.IP.Addr as NetworkIp

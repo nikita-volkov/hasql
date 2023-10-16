@@ -172,7 +172,6 @@ test-suite tasty
   build-depends:
     , contravariant-extras >=0.3.5.2 && <0.4
     , hasql
-    , QuickCheck >=2.8.1 && <3
     , quickcheck-instances >=0.3.11 && <0.4
     , rerebase <2
     , tasty >=0.12 && <2

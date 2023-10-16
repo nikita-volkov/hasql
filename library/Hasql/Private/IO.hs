@@ -2,7 +2,6 @@
 -- An API of low-level IO operations.
 module Hasql.Private.IO where
 
-import qualified Data.DList as DList
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Commands as Commands
 import qualified Hasql.Private.Decoders.Result as ResultDecoders

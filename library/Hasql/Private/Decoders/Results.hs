@@ -12,7 +12,6 @@ module Hasql.Private.Decoders.Results where
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Decoders.Result as Result
-import qualified Hasql.Private.Decoders.Row as Row
 import Hasql.Private.Errors
 import Hasql.Private.Prelude hiding (many, maybe)
 import qualified Hasql.Private.Prelude as Prelude

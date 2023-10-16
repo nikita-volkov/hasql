@@ -116,8 +116,6 @@ maybe rowDec =
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
-    intToRow =
-      LibPQ.Row . fromIntegral
 
 {-# INLINE single #-}
 single :: Row.Row a -> Result a
@@ -139,8 +137,6 @@ single rowDec =
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
-    intToRow =
-      LibPQ.Row . fromIntegral
 
 {-# INLINE vector #-}
 vector :: Row.Row a -> Result (Vector a)

@@ -8,10 +8,7 @@ module Main.DSL
 where
 
 import qualified Hasql.Connection as HC
-import qualified Hasql.Decoders as HD
-import qualified Hasql.Encoders as HE
 import qualified Hasql.Session
-import qualified Hasql.Statement as HQ
 import Main.Prelude
 
 type Session =

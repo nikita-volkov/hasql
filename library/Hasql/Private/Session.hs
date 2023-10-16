@@ -1,6 +1,5 @@
 module Hasql.Private.Session where
 
-import qualified Database.PostgreSQL.LibPQ as LibPQ
 import qualified Hasql.Private.Connection as Connection
 import qualified Hasql.Private.Decoders.Result as Decoders.Result
 import qualified Hasql.Private.Decoders.Results as Decoders.Results
@@ -9,7 +8,6 @@ import qualified Hasql.Private.Encoders.Params as Encoders.Params
 import Hasql.Private.Errors
 import qualified Hasql.Private.IO as IO
 import Hasql.Private.Prelude
-import qualified Hasql.Private.Settings as Settings
 import qualified Hasql.Statement as Statement
 
 -- |
