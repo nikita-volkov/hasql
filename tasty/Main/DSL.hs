@@ -32,7 +32,7 @@ session session =
             host = "localhost"
             port = 5432
             user = "postgres"
-            password = ""
+            password = "postgres"
             database = "postgres"
     use connection =
       ExceptT
