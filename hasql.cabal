@@ -99,7 +99,7 @@ library
   build-depends:
     , aeson >=2 && <3
     , attoparsec >=0.10 && <0.15
-    , base >=4.12 && <5
+    , base >=4.13 && <5
     , bytestring >=0.10 && <0.12
     , bytestring-strict-builder >=0.4.5.1 && <0.5
     , contravariant >=1.3 && <2
