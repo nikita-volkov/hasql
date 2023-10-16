@@ -1,5 +1,3 @@
-name: Release the lib to Hackage
-
 on:
   push:
     branches:
@@ -19,7 +17,7 @@ jobs:
     secrets: inherit
   
   check:
-    uses: ./.github/workflows/build-and-test.yaml
+    uses: ./.github/workflows/check.yaml
     secrets: inherit
   
   release:
