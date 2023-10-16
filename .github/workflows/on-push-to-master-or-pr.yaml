@@ -12,6 +12,6 @@ jobs:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/format.yaml@v1
     secrets: inherit
 
-  test:
+  check:
     uses: ./.github/workflows/build-and-test.yaml
     secrets: inherit
