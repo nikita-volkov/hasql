@@ -304,7 +304,7 @@ array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
 -- Lift a composite encoder into a value encoder.
 composite :: Composite a -> Value a
 composite (Composite encode print) =
-  Value (Value.unsafePTI PTI.record encodeValue printValue)
+  Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
   where
     encodeValue idt val =
       A.composite $ encode val idt
