@@ -7,7 +7,6 @@ description:
   Root of the \"hasql\" ecosystem.
   For details and tutorials see
   <https://github.com/nikita-volkov/hasql the readme>.
-  .
   The API comes free from all kinds of exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 
 homepage:           https://github.com/nikita-volkov/hasql
