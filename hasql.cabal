@@ -73,7 +73,7 @@ common executable
 
 common test
   import:      base
-  ghc-options: -O2 -threaded -with-rtsopts=-N
+  ghc-options: -threaded -with-rtsopts=-N
 
 library
   import:          base
@@ -131,7 +131,7 @@ library
     , vector >=0.10 && <0.14
 
 test-suite tasty
-  import:         test
+  import:         base
   type:           exitcode-stdio-1.0
   hs-source-dirs: tasty
   main-is:        Main.hs
