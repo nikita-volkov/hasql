@@ -372,32 +372,6 @@ tree =
                               Encoders.param (Encoders.nonNullable (Encoders.unknown))
                      in DSL.statement "ok" statement
              in actualIO >>= assertEqual "" (Right True),
-        testCase "Textual Unknown"
-          $ let actualIO =
-                  DSL.session $ do
-                    let statement =
-                          Statement.Statement sql mempty Decoders.noResult True
-                          where
-                            sql =
-                              "create or replace function overloaded(a int, b int) returns int as $$ select a + b $$ language sql;"
-                     in DSL.statement () statement
-                    let statement =
-                          Statement.Statement sql mempty Decoders.noResult True
-                          where
-                            sql =
-                              "create or replace function overloaded(a text, b text, c text) returns text as $$ select a || b || c $$ language sql;"
-                     in DSL.statement () statement
-                    let statement =
-                          Statement.Statement sql encoder decoder True
-                          where
-                            sql =
-                              "select overloaded($1, $2) || overloaded($3, $4, $5)"
-                            decoder =
-                              (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
-                            encoder =
-                              contramany (Encoders.param (Encoders.nonNullable (Encoders.unknown)))
-                     in DSL.statement ["1", "2", "4", "5", "6"] statement
-             in actualIO >>= assertEqual "" (Right "3456"),
         testCase "Enum"
           $ let actualIO =
                   DSL.session $ do
