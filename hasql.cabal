@@ -106,6 +106,8 @@ library
     Hasql.PTI
     Hasql.Session.Core
     Hasql.Settings
+    Hasql.Statement.Function
+    Hasql.Statement.Function.SqlBuilder
 
   build-depends:
     , aeson >=2 && <3
