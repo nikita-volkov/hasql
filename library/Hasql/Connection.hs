@@ -11,5 +11,5 @@ module Hasql.Connection
   )
 where
 
-import Hasql.Private.Connection
-import Hasql.Private.Settings
+import Hasql.Connection.Core
+import Hasql.Settings

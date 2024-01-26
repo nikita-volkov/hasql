@@ -1,9 +1,9 @@
-module Hasql.Private.Encoders.Params where
+module Hasql.Encoders.Params where
 
 import qualified Database.PostgreSQL.LibPQ as A
-import qualified Hasql.Private.Encoders.Value as C
-import qualified Hasql.Private.PTI as D
-import Hasql.Private.Prelude
+import qualified Hasql.Encoders.Value as C
+import qualified Hasql.PTI as D
+import Hasql.Prelude
 import qualified PostgreSQL.Binary.Encoding as B
 import qualified Text.Builder as E
 

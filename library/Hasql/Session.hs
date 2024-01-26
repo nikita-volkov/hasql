@@ -7,9 +7,9 @@ module Hasql.Session
     run,
 
     -- * Errors
-    module Hasql.Private.Errors,
+    module Hasql.Errors,
   )
 where
 
-import Hasql.Private.Errors
-import Hasql.Private.Session
+import Hasql.Errors
+import Hasql.Session.Core

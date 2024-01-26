@@ -1,15 +1,14 @@
 module Main where
 
-import qualified Data.Vector as F
-import Gauge
-import Gauge.Main
+import Criterion
+import Criterion.Main
 import qualified Hasql.Connection as A
 import qualified Hasql.Decoders as D
-import qualified Hasql.Encoders as E
 import qualified Hasql.Session as B
 import qualified Hasql.Statement as C
 import Prelude
 
+main :: IO ()
 main =
   do
     Right connection <- acquireConnection

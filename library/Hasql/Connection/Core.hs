@@ -1,12 +1,12 @@
 -- |
 -- This module provides a low-level effectful API dealing with the connections to the database.
-module Hasql.Private.Connection where
+module Hasql.Connection.Core where
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Private.IO as IO
-import Hasql.Private.Prelude
-import qualified Hasql.Private.PreparedStatementRegistry as PreparedStatementRegistry
-import qualified Hasql.Private.Settings as Settings
+import qualified Hasql.IO as IO
+import Hasql.Prelude
+import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
+import qualified Hasql.Settings as Settings
 
 -- |
 -- A single connection to the database.

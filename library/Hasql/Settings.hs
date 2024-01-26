@@ -1,9 +1,9 @@
-module Hasql.Private.Settings where
+module Hasql.Settings where
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Builder as BB
 import qualified Data.ByteString.Lazy as BL
-import Hasql.Private.Prelude
+import Hasql.Prelude
 
 -- |
 -- All settings encoded in a single byte-string according to

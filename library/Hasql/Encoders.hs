@@ -60,4 +60,4 @@ module Hasql.Encoders
   )
 where
 
-import Hasql.Private.Encoders
+import Hasql.Encoders.All

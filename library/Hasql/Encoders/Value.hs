@@ -1,7 +1,7 @@
-module Hasql.Private.Encoders.Value where
+module Hasql.Encoders.Value where
 
-import qualified Hasql.Private.PTI as PTI
-import Hasql.Private.Prelude
+import qualified Hasql.PTI as PTI
+import Hasql.Prelude
 import qualified PostgreSQL.Binary.Encoding as B
 import qualified Text.Builder as C
 
