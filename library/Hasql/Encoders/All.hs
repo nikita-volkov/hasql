@@ -1,15 +1,15 @@
 -- |
 -- A DSL for declaration of query parameter encoders.
-module Hasql.Private.Encoders where
+module Hasql.Encoders.All where
 
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString.Lazy as LazyByteString
-import qualified Hasql.Private.Encoders.Array as Array
-import qualified Hasql.Private.Encoders.Params as Params
-import qualified Hasql.Private.Encoders.Value as Value
-import qualified Hasql.Private.PTI as PTI
-import Hasql.Private.Prelude hiding (bool)
-import qualified Hasql.Private.Prelude as Prelude
+import qualified Hasql.Encoders.Array as Array
+import qualified Hasql.Encoders.Params as Params
+import qualified Hasql.Encoders.Value as Value
+import qualified Hasql.PTI as PTI
+import Hasql.Prelude hiding (bool)
+import qualified Hasql.Prelude as Prelude
 import qualified Network.IP.Addr as NetworkIp
 import qualified PostgreSQL.Binary.Encoding as A
 import qualified Text.Builder as C

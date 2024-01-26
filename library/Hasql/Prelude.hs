@@ -1,4 +1,4 @@
-module Hasql.Private.Prelude
+module Hasql.Prelude
   ( module Exports,
     LazyByteString,
     ByteStringBuilder,

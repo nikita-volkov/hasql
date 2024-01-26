@@ -1,17 +1,17 @@
 -- |
 -- A DSL for declaration of result decoders.
-module Hasql.Private.Decoders where
+module Hasql.Decoders.All where
 
 import qualified Data.Aeson as Aeson
 import qualified Data.Vector.Generic as GenericVector
-import qualified Hasql.Private.Decoders.Array as Array
-import qualified Hasql.Private.Decoders.Composite as Composite
-import qualified Hasql.Private.Decoders.Result as Result
-import qualified Hasql.Private.Decoders.Results as Results
-import qualified Hasql.Private.Decoders.Row as Row
-import qualified Hasql.Private.Decoders.Value as Value
-import Hasql.Private.Prelude hiding (bool, maybe)
-import qualified Hasql.Private.Prelude as Prelude
+import qualified Hasql.Decoders.Array as Array
+import qualified Hasql.Decoders.Composite as Composite
+import qualified Hasql.Decoders.Result as Result
+import qualified Hasql.Decoders.Results as Results
+import qualified Hasql.Decoders.Row as Row
+import qualified Hasql.Decoders.Value as Value
+import Hasql.Prelude hiding (bool, maybe)
+import qualified Hasql.Prelude as Prelude
 import qualified Network.IP.Addr as NetworkIp
 import qualified PostgreSQL.Binary.Decoding as A
 

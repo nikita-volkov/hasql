@@ -69,4 +69,4 @@ module Hasql.Decoders
   )
 where
 
-import Hasql.Private.Decoders
+import Hasql.Decoders.All

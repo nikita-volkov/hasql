@@ -8,13 +8,13 @@
 -- with the help of "Applicative" and "Monad",
 --
 -- * Row-by-row fetching.
-module Hasql.Private.Decoders.Results where
+module Hasql.Decoders.Results where
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Private.Decoders.Result as Result
-import Hasql.Private.Errors
-import Hasql.Private.Prelude hiding (many, maybe)
-import qualified Hasql.Private.Prelude as Prelude
+import qualified Hasql.Decoders.Result as Result
+import Hasql.Errors
+import Hasql.Prelude hiding (many, maybe)
+import qualified Hasql.Prelude as Prelude
 
 newtype Results a
   = Results (ReaderT (Bool, LibPQ.Connection) (ExceptT CommandError IO) a)

@@ -1,9 +1,9 @@
-module Hasql.Private.Decoders.Row where
+module Hasql.Decoders.Row where
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Private.Decoders.Value as Value
-import Hasql.Private.Errors
-import Hasql.Private.Prelude hiding (error)
+import qualified Hasql.Decoders.Value as Value
+import Hasql.Errors
+import Hasql.Prelude hiding (error)
 import qualified PostgreSQL.Binary.Decoding as A
 
 newtype Row a

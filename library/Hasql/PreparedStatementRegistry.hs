@@ -1,4 +1,4 @@
-module Hasql.Private.PreparedStatementRegistry
+module Hasql.PreparedStatementRegistry
   ( PreparedStatementRegistry,
     new,
     update,
@@ -8,7 +8,7 @@ where
 
 import qualified ByteString.StrictBuilder as B
 import qualified Data.HashTable.IO as A
-import Hasql.Private.Prelude hiding (lookup)
+import Hasql.Prelude hiding (lookup)
 
 data PreparedStatementRegistry
   = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)

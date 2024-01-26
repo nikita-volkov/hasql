@@ -8,10 +8,10 @@
 -- with the help of "Applicative" and "Monad",
 --
 -- * Row-by-row fetching.
-module Hasql.Private.Errors where
+module Hasql.Errors where
 
 import qualified Data.ByteString.Char8 as BC
-import Hasql.Private.Prelude
+import Hasql.Prelude
 
 -- |
 -- An error during the execution of a query.

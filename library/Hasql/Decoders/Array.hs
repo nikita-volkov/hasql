@@ -1,6 +1,6 @@
-module Hasql.Private.Decoders.Array where
+module Hasql.Decoders.Array where
 
-import Hasql.Private.Prelude
+import Hasql.Prelude
 import qualified PostgreSQL.Binary.Decoding as A
 
 newtype Array a

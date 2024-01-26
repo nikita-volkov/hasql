@@ -1,7 +1,7 @@
-module Hasql.Private.PTI where
+module Hasql.PTI where
 
 import qualified Database.PostgreSQL.LibPQ as LibPQ
-import Hasql.Private.Prelude hiding (bool)
+import Hasql.Prelude hiding (bool)
 
 -- | A Postgresql type info
 data PTI = PTI {ptiOID :: !OID, ptiArrayOID :: !(Maybe OID)}

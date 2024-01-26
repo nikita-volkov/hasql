@@ -1,13 +1,13 @@
-module Hasql.Private.Session where
+module Hasql.Session.Core where
 
-import qualified Hasql.Private.Connection as Connection
-import qualified Hasql.Private.Decoders.Result as Decoders.Result
-import qualified Hasql.Private.Decoders.Results as Decoders.Results
-import qualified Hasql.Private.Encoders as Encoders
-import qualified Hasql.Private.Encoders.Params as Encoders.Params
-import Hasql.Private.Errors
-import qualified Hasql.Private.IO as IO
-import Hasql.Private.Prelude
+import qualified Hasql.Connection.Core as Connection
+import qualified Hasql.Decoders.Result as Decoders.Result
+import qualified Hasql.Decoders.Results as Decoders.Results
+import qualified Hasql.Encoders.All as Encoders
+import qualified Hasql.Encoders.Params as Encoders.Params
+import Hasql.Errors
+import qualified Hasql.IO as IO
+import Hasql.Prelude
 import qualified Hasql.Statement as Statement
 
 -- |

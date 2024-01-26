@@ -13,9 +13,9 @@ module Hasql.Statement
 where
 
 import qualified Hasql.Decoders as Decoders
+import qualified Hasql.Decoders.All as Decoders
 import qualified Hasql.Encoders as Encoders
-import qualified Hasql.Private.Decoders as Decoders
-import Hasql.Private.Prelude
+import Hasql.Prelude
 
 -- |
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.
