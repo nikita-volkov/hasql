@@ -1,8 +1,8 @@
 module Main where
 
+import Criterion
+import Criterion.Main
 import qualified Data.Vector as F
-import Gauge
-import Gauge.Main
 import qualified Hasql.Connection as A
 import qualified Hasql.Decoders as D
 import qualified Hasql.Encoders as E

@@ -24,8 +24,7 @@ source-repository head
   type:     git
   location: git://github.com/nikita-volkov/hasql.git
 
-library
-  hs-source-dirs:     library
+common base
   default-extensions:
     NoImplicitPrelude
     NoMonomorphismRestriction
@@ -66,6 +65,19 @@ library
     UnboxedTuples
 
   default-language:   Haskell2010
+
+common executable
+  import:      base
+  ghc-options:
+    -O2 -threaded -with-rtsopts=-N -rtsopts -funbox-strict-fields
+
+common test
+  import:      base
+  ghc-options: -O2 -threaded -with-rtsopts=-N
+
+library
+  import:          base
+  hs-source-dirs:  library
   exposed-modules:
     Hasql.Connection
     Hasql.Decoders
@@ -119,49 +131,10 @@ library
     , vector >=0.10 && <0.14
 
 test-suite tasty
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     tasty
-  main-is:            Main.hs
-  default-extensions:
-    NoImplicitPrelude
-    NoMonomorphismRestriction
-    Arrows
-    BangPatterns
-    ConstraintKinds
-    DataKinds
-    DefaultSignatures
-    DeriveDataTypeable
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    EmptyDataDecls
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    GADTs
-    GeneralizedNewtypeDeriving
-    LambdaCase
-    LiberalTypeSynonyms
-    MagicHash
-    MultiParamTypeClasses
-    MultiWayIf
-    OverloadedStrings
-    ParallelListComp
-    PatternGuards
-    QuasiQuotes
-    RankNTypes
-    RecordWildCards
-    RoleAnnotations
-    ScopedTypeVariables
-    StandaloneDeriving
-    TemplateHaskell
-    TupleSections
-    TypeFamilies
-    TypeOperators
-    UnboxedTuples
-
-  default-language:   Haskell2010
+  import:         test
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: tasty
+  main-is:        Main.hs
   other-modules:
     Main.Connection
     Main.DSL
@@ -178,152 +151,31 @@ test-suite tasty
     , tasty-quickcheck >=0.9 && <0.11
 
 test-suite threads-test
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     threads-test
-  main-is:            Main.hs
-  default-extensions:
-    NoImplicitPrelude
-    NoMonomorphismRestriction
-    Arrows
-    BangPatterns
-    ConstraintKinds
-    DataKinds
-    DefaultSignatures
-    DeriveDataTypeable
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    EmptyDataDecls
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    GADTs
-    GeneralizedNewtypeDeriving
-    LambdaCase
-    LiberalTypeSynonyms
-    MagicHash
-    MultiParamTypeClasses
-    MultiWayIf
-    OverloadedStrings
-    ParallelListComp
-    PatternGuards
-    QuasiQuotes
-    RankNTypes
-    RecordWildCards
-    RoleAnnotations
-    ScopedTypeVariables
-    StandaloneDeriving
-    TemplateHaskell
-    TupleSections
-    TypeFamilies
-    TypeOperators
-    UnboxedTuples
-
-  default-language:   Haskell2010
-  other-modules:      Main.Statements
-  ghc-options:        -O2 -threaded -with-rtsopts=-N
+  import:         test
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: threads-test
+  main-is:        Main.hs
+  other-modules:  Main.Statements
   build-depends:
     , hasql
     , rerebase
 
 benchmark benchmarks
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     benchmarks
-  main-is:            Main.hs
-  default-extensions:
-    NoImplicitPrelude
-    NoMonomorphismRestriction
-    Arrows
-    BangPatterns
-    ConstraintKinds
-    DataKinds
-    DefaultSignatures
-    DeriveDataTypeable
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    EmptyDataDecls
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    GADTs
-    GeneralizedNewtypeDeriving
-    LambdaCase
-    LiberalTypeSynonyms
-    MagicHash
-    MultiParamTypeClasses
-    MultiWayIf
-    OverloadedStrings
-    ParallelListComp
-    PatternGuards
-    QuasiQuotes
-    RankNTypes
-    RecordWildCards
-    RoleAnnotations
-    ScopedTypeVariables
-    StandaloneDeriving
-    TemplateHaskell
-    TupleSections
-    TypeFamilies
-    TypeOperators
-    UnboxedTuples
-
-  default-language:   Haskell2010
-  ghc-options:
-    -O2 -threaded -with-rtsopts=-N -rtsopts -funbox-strict-fields
-
+  import:         executable
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: benchmarks
+  main-is:        Main.hs
   build-depends:
-    , gauge >=0.2.5 && <0.3
+    , criterion >=1.6 && <2
     , hasql
     , rerebase <2
 
 test-suite profiling
-  type:               exitcode-stdio-1.0
-  hs-source-dirs:     profiling
-  main-is:            Main.hs
-  default-extensions:
-    NoImplicitPrelude
-    NoMonomorphismRestriction
-    Arrows
-    BangPatterns
-    ConstraintKinds
-    DataKinds
-    DefaultSignatures
-    DeriveDataTypeable
-    DeriveFoldable
-    DeriveFunctor
-    DeriveGeneric
-    DeriveTraversable
-    EmptyDataDecls
-    FlexibleContexts
-    FlexibleInstances
-    FunctionalDependencies
-    GADTs
-    GeneralizedNewtypeDeriving
-    LambdaCase
-    LiberalTypeSynonyms
-    MagicHash
-    MultiParamTypeClasses
-    MultiWayIf
-    OverloadedStrings
-    ParallelListComp
-    PatternGuards
-    QuasiQuotes
-    RankNTypes
-    RecordWildCards
-    RoleAnnotations
-    ScopedTypeVariables
-    StandaloneDeriving
-    TemplateHaskell
-    TupleSections
-    TypeFamilies
-    TypeOperators
-    UnboxedTuples
-
-  default-language:   Haskell2010
-  ghc-options:        -O2 -threaded -rtsopts
+  import:         base
+  type:           exitcode-stdio-1.0
+  hs-source-dirs: profiling
+  main-is:        Main.hs
+  ghc-options:    -O2 -threaded -rtsopts
   build-depends:
     , hasql
     , rerebase >=1 && <2
