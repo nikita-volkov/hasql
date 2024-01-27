@@ -1,5 +1,6 @@
 module Hasql.Statement
   ( Statement (..),
+    function,
     refineResult,
 
     -- * Recipies
@@ -16,6 +17,7 @@ import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Decoders.All as Decoders
 import qualified Hasql.Encoders as Encoders
 import Hasql.Prelude
+import qualified Hasql.Statement.Function as Function
 
 -- |
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.
@@ -117,3 +119,24 @@ refineResult refiner (Statement template encoder decoder preparable) =
 --
 -- For details see
 -- <https://www.postgresql.org/docs/9.6/static/functions-comparisons.html#AEN20944 the Postgresql docs>.
+
+-- |
+-- Utility for execution of stored procedures and functions, which automates the SQL generation.
+--
+-- Produces SQL like the following:
+--
+-- > SELECT function_name($1, $2, ..)
+--
+-- with the amount of parameter placeholders derived from the encoder.
+function ::
+  -- | Function name.
+  --
+  -- Will get automatically escaped for injection-safety.
+  Text ->
+  Encoders.Params a ->
+  Decoders.Result b ->
+  -- | Whether the statement should be prepared.
+  Bool ->
+  Statement a b
+function functionName encoders =
+  Statement (Function.sql functionName encoders) encoders

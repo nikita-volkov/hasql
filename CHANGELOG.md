@@ -1,3 +1,8 @@
+# 1.7
+
+- Added `Statement.function` for easier integration with stored procedures.
+- Decidable instance on `Encoders.Params` removed. It was useless and limited the design.
+
 # 1.6.3.1
 
 - Moved to "postgresql-libpq-0.10"

@@ -61,7 +61,7 @@ import qualified Text.Builder as C
 --     Female -> "female"
 -- @
 newtype Params a = Params (Params.Params a)
-  deriving (Contravariant, Divisible, Decidable, Monoid, Semigroup)
+  deriving (Contravariant, Divisible, Monoid, Semigroup)
 
 -- |
 -- No parameters. Same as `mempty` and `conquered`.
