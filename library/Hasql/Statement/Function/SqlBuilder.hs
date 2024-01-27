@@ -11,7 +11,7 @@ sql name size =
 
 functionName :: Text -> Builder
 functionName =
-  bytes . Text.encodeUtf8 . Text.replace "\"" ""
+  mappend "\"" . flip mappend "\"" . bytes . Text.encodeUtf8 . Text.replace "\"" ""
 
 arguments :: Int -> Builder
 arguments size =
