@@ -97,7 +97,7 @@ refineResult refiner (Statement template encoder decoder preparable) =
 --       "insert into location (id, x, y) select * from unnest ($1, $2, $3)"
 --     encoder =
 --       Data.Vector.'Data.Vector.unzip3' '>$<'
---         Contravariant.Extras.'Contravariant.Extras.contrazip3'
+--         Contravariant.Extras.contrazip3
 --           (Encoders.'Encoders.param' $ Encoders.'Encoders.nonNullable' $ Encoders.'Encoders.foldableArray' $ Encoders.'Encoders.nonNullable' Encoders.'Encoders.uuid')
 --           (Encoders.'Encoders.param' $ Encoders.'Encoders.nonNullable' $ Encoders.'Encoders.foldableArray' $ Encoders.'Encoders.nonNullable' Encoders.'Encoders.float8')
 --           (Encoders.'Encoders.param' $ Encoders.'Encoders.nonNullable' $ Encoders.'Encoders.foldableArray' $ Encoders.'Encoders.nonNullable' Encoders.'Encoders.float8')
