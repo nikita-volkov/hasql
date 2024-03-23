@@ -38,7 +38,7 @@ import Hasql.Prelude
 --
 -- The statement above accepts a product of two parameters of type 'Int64'
 -- and produces a single result of type 'Int64'.
-data Statement a b
+data Statement params result
   = Statement
       -- | SQL template.
       --
@@ -50,9 +50,9 @@ data Statement a b
       -- the value encoders are specified in the parameters encoder.
       ByteString
       -- | Parameters encoder.
-      (Encoders.Params a)
+      (Encoders.Params params)
       -- | Decoder of result.
-      (Decoders.Result b)
+      (Decoders.Result result)
       -- | Flag, determining whether it should be prepared.
       --
       -- Set it to 'True' if your application has a limited amount of queries and doesn't generate the SQL dynamically.
@@ -63,7 +63,7 @@ data Statement a b
       -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
       Bool
 
-instance Functor (Statement a) where
+instance Functor (Statement params) where
   {-# INLINE fmap #-}
   fmap = rmap
 
