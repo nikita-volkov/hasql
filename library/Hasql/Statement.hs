@@ -117,8 +117,8 @@ refineResult refiner (Statement template encoder decoder preparable) =
 --
 -- Fortunately, Postgres does provide the expected functionality for arrays with other operators:
 --
--- * Use @something = ANY($1)@ instead of @something IN ($1)@
--- * Use @something <> ALL($1)@ instead of @something NOT IN ($1)@
+-- * Use @some_expression = ANY($1)@ instead of @some_expression IN ($1)@
+-- * Use @some_expression <> ALL($1)@ instead of @some_expression NOT IN ($1)@
 --
 -- For details refer to
 -- <https://www.postgresql.org/docs/9.6/static/functions-comparisons.html#AEN20944 the PostgreSQL docs>.
