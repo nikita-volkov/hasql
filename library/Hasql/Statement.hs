@@ -18,7 +18,8 @@ import qualified Hasql.Encoders as Encoders
 import Hasql.Prelude
 
 -- |
--- Specification of a strictly single-statement query, which can be parameterized and prepared, encapsulating the mapping of parameters and results.
+-- Specification of a strictly single-statement query, which can be parameterized and prepared.
+-- It encapsulates the mapping of parameters and results in association with an SQL template.
 --
 -- Following is an example of a declaration of a prepared statement with its associated codecs.
 --
