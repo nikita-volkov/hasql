@@ -52,6 +52,15 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 # Tutorials
 
+## Videos
+
+There's several videos on Hasql done as part of a nice intro-level series of live Haskell+Bazel coding by the "Ants Are Everywhere" YouTube channel:
+
+- [Coding Day 20: Switching from postgresql-simple to Hasql](https://youtu.be/ce7bGKETtoA?si=RmY_yDG24EX6i38I)
+- [Coding Day 21: Refactoring the Hasql code](https://youtu.be/a9mPNXbT-qw?si=RTtXe6BXnZSQZzh-)
+
+## Articles
+
 - [Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1)
 
 # Short Example
