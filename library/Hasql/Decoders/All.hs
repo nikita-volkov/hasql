@@ -2,18 +2,18 @@
 -- A DSL for declaration of result decoders.
 module Hasql.Decoders.All where
 
-import qualified Data.Aeson as Aeson
-import qualified Data.Vector.Generic as GenericVector
-import qualified Hasql.Decoders.Array as Array
-import qualified Hasql.Decoders.Composite as Composite
-import qualified Hasql.Decoders.Result as Result
-import qualified Hasql.Decoders.Results as Results
-import qualified Hasql.Decoders.Row as Row
-import qualified Hasql.Decoders.Value as Value
+import Data.Aeson qualified as Aeson
+import Data.Vector.Generic qualified as GenericVector
+import Hasql.Decoders.Array qualified as Array
+import Hasql.Decoders.Composite qualified as Composite
+import Hasql.Decoders.Result qualified as Result
+import Hasql.Decoders.Results qualified as Results
+import Hasql.Decoders.Row qualified as Row
+import Hasql.Decoders.Value qualified as Value
 import Hasql.Prelude hiding (bool, maybe)
-import qualified Hasql.Prelude as Prelude
-import qualified Network.IP.Addr as NetworkIp
-import qualified PostgreSQL.Binary.Decoding as A
+import Hasql.Prelude qualified as Prelude
+import Network.IP.Addr qualified as NetworkIp
+import PostgreSQL.Binary.Decoding qualified as A
 
 -- * Result
 

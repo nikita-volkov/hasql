@@ -6,8 +6,8 @@ module Hasql.PreparedStatementRegistry
   )
 where
 
-import qualified ByteString.StrictBuilder as B
-import qualified Data.HashTable.IO as A
+import ByteString.StrictBuilder qualified as B
+import Data.HashTable.IO qualified as A
 import Hasql.Prelude hiding (lookup)
 
 data PreparedStatementRegistry

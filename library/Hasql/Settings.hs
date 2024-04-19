@@ -1,8 +1,8 @@
 module Hasql.Settings where
 
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Builder as BB
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString qualified as B
+import Data.ByteString.Builder qualified as BB
+import Data.ByteString.Lazy qualified as BL
 import Hasql.Prelude
 
 -- |

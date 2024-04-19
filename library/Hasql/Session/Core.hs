@@ -1,14 +1,14 @@
 module Hasql.Session.Core where
 
-import qualified Hasql.Connection.Core as Connection
-import qualified Hasql.Decoders.Result as Decoders.Result
-import qualified Hasql.Decoders.Results as Decoders.Results
-import qualified Hasql.Encoders.All as Encoders
-import qualified Hasql.Encoders.Params as Encoders.Params
+import Hasql.Connection.Core qualified as Connection
+import Hasql.Decoders.Result qualified as Decoders.Result
+import Hasql.Decoders.Results qualified as Decoders.Results
+import Hasql.Encoders.All qualified as Encoders
+import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
-import qualified Hasql.IO as IO
+import Hasql.IO qualified as IO
 import Hasql.Prelude
-import qualified Hasql.Statement as Statement
+import Hasql.Statement qualified as Statement
 
 -- |
 -- A batch of actions to be executed in the context of a database connection.

@@ -1,6 +1,6 @@
 module Hasql.PostgresTypeInfo where
 
-import qualified Database.PostgreSQL.LibPQ as LibPQ
+import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.Prelude hiding (bool)
 
 -- | A Postgresql type info

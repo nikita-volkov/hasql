@@ -1,7 +1,7 @@
 module Hasql.Decoders.Composite where
 
 import Hasql.Prelude
-import qualified PostgreSQL.Binary.Decoding as A
+import PostgreSQL.Binary.Decoding qualified as A
 
 newtype Composite a
   = Composite (ReaderT Bool A.Composite a)

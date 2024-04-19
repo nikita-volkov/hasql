@@ -10,7 +10,7 @@
 -- * Row-by-row fetching.
 module Hasql.Errors where
 
-import qualified Data.ByteString.Char8 as BC
+import Data.ByteString.Char8 qualified as BC
 import Hasql.Prelude
 
 -- |

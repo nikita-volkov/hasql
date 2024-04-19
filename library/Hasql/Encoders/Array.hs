@@ -1,9 +1,9 @@
 module Hasql.Encoders.Array where
 
-import qualified Hasql.PostgresTypeInfo as B
+import Hasql.PostgresTypeInfo qualified as B
 import Hasql.Prelude
-import qualified PostgreSQL.Binary.Encoding as A
-import qualified Text.Builder as C
+import PostgreSQL.Binary.Encoding qualified as A
+import Text.Builder qualified as C
 
 data Array a
   = Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.Builder)

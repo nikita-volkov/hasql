@@ -1,6 +1,6 @@
 module Main.Connection where
 
-import qualified Hasql.Connection as HC
+import Hasql.Connection qualified as HC
 import Main.Prelude
 
 with :: (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)

@@ -12,9 +12,9 @@ module Hasql.Statement
   )
 where
 
-import qualified Hasql.Decoders as Decoders
-import qualified Hasql.Decoders.All as Decoders
-import qualified Hasql.Encoders as Encoders
+import Hasql.Decoders qualified as Decoders
+import Hasql.Decoders.All qualified as Decoders
+import Hasql.Encoders qualified as Encoders
 import Hasql.Prelude
 
 -- |

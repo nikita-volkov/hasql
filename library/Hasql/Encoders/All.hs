@@ -2,17 +2,17 @@
 -- A DSL for declaration of query parameter encoders.
 module Hasql.Encoders.All where
 
-import qualified Data.Aeson as Aeson
-import qualified Data.ByteString.Lazy as LazyByteString
-import qualified Hasql.Encoders.Array as Array
-import qualified Hasql.Encoders.Params as Params
-import qualified Hasql.Encoders.Value as Value
-import qualified Hasql.PostgresTypeInfo as PTI
+import Data.Aeson qualified as Aeson
+import Data.ByteString.Lazy qualified as LazyByteString
+import Hasql.Encoders.Array qualified as Array
+import Hasql.Encoders.Params qualified as Params
+import Hasql.Encoders.Value qualified as Value
+import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool)
-import qualified Hasql.Prelude as Prelude
-import qualified Network.IP.Addr as NetworkIp
-import qualified PostgreSQL.Binary.Encoding as A
-import qualified Text.Builder as C
+import Hasql.Prelude qualified as Prelude
+import Network.IP.Addr qualified as NetworkIp
+import PostgreSQL.Binary.Encoding qualified as A
+import Text.Builder qualified as C
 
 -- * Parameters Product Encoder
 

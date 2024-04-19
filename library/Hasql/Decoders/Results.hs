@@ -10,11 +10,11 @@
 -- * Row-by-row fetching.
 module Hasql.Decoders.Results where
 
-import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Decoders.Result as Result
+import Database.PostgreSQL.LibPQ qualified as LibPQ
+import Hasql.Decoders.Result qualified as Result
 import Hasql.Errors
 import Hasql.Prelude hiding (many, maybe)
-import qualified Hasql.Prelude as Prelude
+import Hasql.Prelude qualified as Prelude
 
 newtype Results a
   = Results (ReaderT (Bool, LibPQ.Connection) (ExceptT CommandError IO) a)

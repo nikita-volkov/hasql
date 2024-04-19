@@ -7,8 +7,8 @@ module Main.DSL
   )
 where
 
-import qualified Hasql.Connection as HC
-import qualified Hasql.Session
+import Hasql.Connection qualified as HC
+import Hasql.Session qualified
 import Main.Prelude
 
 type Session =

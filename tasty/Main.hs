@@ -1,14 +1,14 @@
 module Main where
 
 import Contravariant.Extras
-import qualified Hasql.Decoders as Decoders
-import qualified Hasql.Encoders as Encoders
-import qualified Hasql.Session as Session
-import qualified Hasql.Statement as Statement
-import qualified Main.Connection as Connection
-import qualified Main.DSL as DSL
+import Hasql.Decoders qualified as Decoders
+import Hasql.Encoders qualified as Encoders
+import Hasql.Session qualified as Session
+import Hasql.Statement qualified as Statement
+import Main.Connection qualified as Connection
+import Main.DSL qualified as DSL
 import Main.Prelude hiding (assert)
-import qualified Main.Statements as Statements
+import Main.Statements qualified as Statements
 import Test.QuickCheck.Instances ()
 import Test.Tasty
 import Test.Tasty.HUnit

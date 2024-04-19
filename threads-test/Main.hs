@@ -1,8 +1,8 @@
 module Main where
 
-import qualified Hasql.Connection
-import qualified Hasql.Session
-import qualified Main.Statements as Statements
+import Hasql.Connection qualified
+import Hasql.Session qualified
+import Main.Statements qualified as Statements
 import Prelude
 
 main :: IO ()

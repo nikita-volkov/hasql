@@ -1,14 +1,14 @@
 module Hasql.Decoders.Result where
 
-import qualified Data.Attoparsec.ByteString.Char8 as Attoparsec
-import qualified Data.ByteString as ByteString
-import qualified Data.Vector as Vector
-import qualified Data.Vector.Mutable as MutableVector
-import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Decoders.Row as Row
+import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
+import Data.ByteString qualified as ByteString
+import Data.Vector qualified as Vector
+import Data.Vector.Mutable qualified as MutableVector
+import Database.PostgreSQL.LibPQ qualified as LibPQ
+import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
 import Hasql.Prelude hiding (many, maybe)
-import qualified Hasql.Prelude as Prelude
+import Hasql.Prelude qualified as Prelude
 
 newtype Result a
   = Result (ReaderT (Bool, LibPQ.Result) (ExceptT ResultError IO) a)

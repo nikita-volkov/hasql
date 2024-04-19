@@ -2,14 +2,14 @@
 -- An API of low-level IO operations.
 module Hasql.IO where
 
-import qualified Database.PostgreSQL.LibPQ as LibPQ
-import qualified Hasql.Commands as Commands
-import qualified Hasql.Decoders.Result as ResultDecoders
-import qualified Hasql.Decoders.Results as ResultsDecoders
-import qualified Hasql.Encoders.Params as ParamsEncoders
+import Database.PostgreSQL.LibPQ qualified as LibPQ
+import Hasql.Commands qualified as Commands
+import Hasql.Decoders.Result qualified as ResultDecoders
+import Hasql.Decoders.Results qualified as ResultsDecoders
+import Hasql.Encoders.Params qualified as ParamsEncoders
 import Hasql.Errors
 import Hasql.Prelude
-import qualified Hasql.PreparedStatementRegistry as PreparedStatementRegistry
+import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 
 {-# INLINE acquireConnection #-}
 acquireConnection :: ByteString -> IO LibPQ.Connection

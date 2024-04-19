@@ -1,11 +1,11 @@
 module Hasql.Encoders.Params where
 
-import qualified Database.PostgreSQL.LibPQ as A
-import qualified Hasql.Encoders.Value as C
-import qualified Hasql.PostgresTypeInfo as D
+import Database.PostgreSQL.LibPQ qualified as A
+import Hasql.Encoders.Value qualified as C
+import Hasql.PostgresTypeInfo qualified as D
 import Hasql.Prelude
-import qualified PostgreSQL.Binary.Encoding as B
-import qualified Text.Builder as E
+import PostgreSQL.Binary.Encoding qualified as B
+import Text.Builder qualified as E
 
 -- |
 -- Encoder of some representation of a parameters product.

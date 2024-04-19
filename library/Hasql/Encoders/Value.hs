@@ -1,9 +1,9 @@
 module Hasql.Encoders.Value where
 
-import qualified Hasql.PostgresTypeInfo as PTI
+import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude
-import qualified PostgreSQL.Binary.Encoding as B
-import qualified Text.Builder as C
+import PostgreSQL.Binary.Encoding qualified as B
+import Text.Builder qualified as C
 
 data Value a
   = Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.Builder)

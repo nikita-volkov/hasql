@@ -6,8 +6,8 @@ module Hasql.Commands
   )
 where
 
-import qualified Data.ByteString.Builder as BB
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Builder qualified as BB
+import Data.ByteString.Lazy qualified as BL
 import Hasql.Prelude
 
 newtype Commands
