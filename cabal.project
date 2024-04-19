@@ -1,1 +1,9 @@
 packages: .
+
+source-repository-package
+  type: git
+  location: https://github.com/GulinSS/postgresql-libpq/
+  tag: 30b69e55855cabf3356e186c30a1756b4b0c6c95
+
+allow-newer:
+  postgresql-libpq:base
