@@ -25,6 +25,7 @@ noResult =
   checkExecStatus $ \case
     LibPQ.CommandOk -> True
     LibPQ.TuplesOk -> True
+    LibPQ.PipelineSync -> True
     _ -> False
 
 {-# INLINE rowsAffected #-}
@@ -66,7 +67,11 @@ checkExecStatus predicate =
         LibPQ.NonfatalError -> serverError
         LibPQ.FatalError -> serverError
         LibPQ.EmptyQuery -> return ()
-        _ -> Result $ lift $ ExceptT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
+        _ -> unexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
+
+unexpectedResult :: Text -> Result a
+unexpectedResult =
+  Result . lift . ExceptT . pure . Left . UnexpectedResult
 
 {-# INLINE serverError #-}
 serverError :: Result ()

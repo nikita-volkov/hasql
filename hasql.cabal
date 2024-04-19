@@ -31,6 +31,7 @@ common base
     NoMonomorphismRestriction
     Arrows
     BangPatterns
+    BlockArguments
     ConstraintKinds
     DataKinds
     DefaultSignatures
@@ -82,6 +83,7 @@ library
     Hasql.Connection
     Hasql.Decoders
     Hasql.Encoders
+    Hasql.Pipeline
     Hasql.Session
     Hasql.Statement
 
@@ -101,6 +103,7 @@ library
     Hasql.Encoders.Value
     Hasql.Errors
     Hasql.IO
+    Hasql.Pipeline.Core
     Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry

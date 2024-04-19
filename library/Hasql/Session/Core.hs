@@ -1,12 +1,14 @@
 module Hasql.Session.Core where
 
 import Hasql.Connection.Core qualified as Connection
+import Hasql.Decoders.All qualified as Decoders
 import Hasql.Decoders.Result qualified as Decoders.Result
 import Hasql.Decoders.Results qualified as Decoders.Results
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
 import Hasql.IO qualified as IO
+import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
 import Hasql.Statement qualified as Statement
 
@@ -46,20 +48,18 @@ sql sql =
 -- |
 -- Parameters and a specification of a parametric single-statement query to apply them to.
 statement :: params -> Statement.Statement params result -> Session result
-statement input (Statement.Statement template (Encoders.Params paramsEncoder) decoder preparable) =
+statement input (Statement.Statement template (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
   Session
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (mapLeft (QueryError template inputReps))
+        $ fmap (mapLeft (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input
-          r2 <- IO.getResults pqConnection integerDatetimes (unsafeCoerce decoder)
+          r2 <- IO.getResults pqConnection integerDatetimes decoder
           return $ r1 *> r2
-  where
-    inputReps =
-      let Encoders.Params.Params (Op encoderOp) = paramsEncoder
-          step (_, _, _, rendering) acc =
-            rendering : acc
-       in foldr step [] (encoderOp input)
+
+pipeline :: Pipeline.Pipeline result -> Session result
+pipeline pipeline =
+  Session $ ReaderT $ ExceptT . Pipeline.run pipeline

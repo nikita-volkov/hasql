@@ -7,6 +7,13 @@ import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import Text.Builder qualified as E
 
+renderReadable :: Params a -> a -> [Text]
+renderReadable (Params (Op encoderOp)) params =
+  foldr step [] (encoderOp params)
+  where
+    step (_, _, _, rendering) acc =
+      rendering : acc
+
 -- |
 -- Encoder of some representation of a parameters product.
 newtype Params a
