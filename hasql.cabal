@@ -101,9 +101,9 @@ library
     Hasql.Encoders.Value
     Hasql.Errors
     Hasql.IO
+    Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
-    Hasql.PTI
     Hasql.Session.Core
     Hasql.Settings
 

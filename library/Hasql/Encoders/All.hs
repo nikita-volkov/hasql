@@ -7,7 +7,7 @@ import qualified Data.ByteString.Lazy as LazyByteString
 import qualified Hasql.Encoders.Array as Array
 import qualified Hasql.Encoders.Params as Params
 import qualified Hasql.Encoders.Value as Value
-import qualified Hasql.PTI as PTI
+import qualified Hasql.PostgresTypeInfo as PTI
 import Hasql.Prelude hiding (bool)
 import qualified Hasql.Prelude as Prelude
 import qualified Network.IP.Addr as NetworkIp
