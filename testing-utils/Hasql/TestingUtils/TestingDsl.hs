@@ -3,7 +3,7 @@ module Hasql.TestingUtils.TestingDsl
     SessionError (..),
     Session.QueryError (..),
     Session.CommandError (..),
-    runSession,
+    runSessionOnLocalDb,
     runStatementInSession,
   )
 where
@@ -19,8 +19,8 @@ data SessionError
   | SessionError (Session.QueryError)
   deriving (Show, Eq)
 
-runSession :: Session.Session a -> IO (Either SessionError a)
-runSession session =
+runSessionOnLocalDb :: Session.Session a -> IO (Either SessionError a)
+runSessionOnLocalDb session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =

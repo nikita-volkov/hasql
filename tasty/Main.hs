@@ -136,7 +136,7 @@ tree =
                   assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x,
         testGroup "unknownEnum"
           $ [ testCase "" $ do
-                res <- Session.runSession $ do
+                res <- Session.runSessionOnLocalDb $ do
                   let statement =
                         Statement.Statement sql mempty Decoders.noResult True
                         where
@@ -301,12 +301,12 @@ tree =
                     s <- Session.statement (1, 1) sumStatement
                     Session.sql "end;"
                     return s
-             in Session.runSession session >>= \x -> assertEqual (show x) (Right 2) x,
+             in Session.runSessionOnLocalDb session >>= \x -> assertEqual (show x) (Right 2) x,
         testCase "Executing the same query twice"
           $ pure (),
         testCase "Interval Encoding"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -320,7 +320,7 @@ tree =
              in actualIO >>= \x -> assertEqual (show x) (Right True) x,
         testCase "Interval Decoding"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -334,7 +334,7 @@ tree =
              in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x,
         testCase "Interval Encoding/Decoding"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -348,7 +348,7 @@ tree =
              in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x,
         testCase "Unknown"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
@@ -374,7 +374,7 @@ tree =
              in actualIO >>= assertEqual "" (Right True),
         testCase "Textual Unknown"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
@@ -400,7 +400,7 @@ tree =
              in actualIO >>= assertEqual "" (Right "3456"),
         testCase "Enum"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
@@ -426,7 +426,7 @@ tree =
              in actualIO >>= assertEqual "" (Right "ok"),
         testCase "The same prepared statement used on different types"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     let effect1 =
                           Session.statement "ok" statement
                           where
@@ -456,7 +456,7 @@ tree =
         testCase "Affected rows counting"
           $ replicateM_ 13
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     dropTable
                     createTable
                     replicateM_ 100 insertRow
@@ -484,7 +484,7 @@ tree =
              in actualIO >>= assertEqual "" (Right 100),
         testCase "Result of an auto-incremented column"
           $ let actualIO =
-                  Session.runSession $ do
+                  Session.runSessionOnLocalDb $ do
                     Session.statement () $ Statements.plain $ "drop table if exists a"
                     Session.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
                     id1 <- Session.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
@@ -494,6 +494,6 @@ tree =
              in assertEqual "" (Right (1, 2)) =<< actualIO,
         testCase "List decoding"
           $ let actualIO =
-                  Session.runSession $ Session.statement () $ Statements.selectList
+                  Session.runSessionOnLocalDb $ Session.statement () $ Statements.selectList
              in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
       ]
