@@ -3,12 +3,17 @@ module Hasql.TestingUtils.TestingDsl
     SessionError (..),
     Session.QueryError (..),
     Session.CommandError (..),
+    Pipeline.Pipeline,
+    Statement.Statement (..),
     runSessionOnLocalDb,
+    runPipelineOnLocalDb,
     runStatementInSession,
+    runPipelineInSession,
   )
 where
 
 import Hasql.Connection qualified as Connection
+import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hasql.TestingUtils.Constants qualified as Constants
@@ -32,6 +37,14 @@ runSessionOnLocalDb session =
     release connection =
       lift $ Connection.release connection
 
+runPipelineOnLocalDb :: Pipeline.Pipeline a -> IO (Either SessionError a)
+runPipelineOnLocalDb =
+  runSessionOnLocalDb . Session.pipeline
+
 runStatementInSession :: Statement.Statement a b -> a -> Session.Session b
 runStatementInSession statement params =
   Session.statement params statement
+
+runPipelineInSession :: Pipeline.Pipeline a -> Session.Session a
+runPipelineInSession =
+  Session.pipeline
