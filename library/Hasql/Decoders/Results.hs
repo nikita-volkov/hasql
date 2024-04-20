@@ -21,9 +21,9 @@ newtype Results a
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either CommandError a)
-run (Results stack) env =
-  runExceptT (runReaderT stack env)
+run :: Results a -> LibPQ.Connection -> Bool -> IO (Either CommandError a)
+run (Results stack) conn idt =
+  runExceptT (runReaderT stack (idt, conn))
 
 {-# INLINE clientError #-}
 clientError :: Results a
@@ -87,8 +87,8 @@ dropRemainders =
               ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.noResult (integerDatetimes, result)
 
 refine :: (a -> Either Text b) -> Results a -> Results b
-refine refiner results = Results
+refine refiner (Results stack) = Results
   $ ReaderT
   $ \env -> ExceptT $ do
-    resultEither <- run results env
+    resultEither <- runExceptT $ runReaderT stack env
     return $ resultEither >>= mapLeft (ResultError . UnexpectedResult) . refiner

@@ -3,6 +3,7 @@ module Hasql.Pipeline.Core where
 import Database.PostgreSQL.LibPQ qualified as Pq
 import Hasql.Connection.Core qualified as Connection
 import Hasql.Decoders.All qualified as Decoders
+import Hasql.Decoders.Results qualified as Decoders.Results
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
@@ -10,16 +11,33 @@ import Hasql.IO qualified as IO
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
+import System.IO (BufferMode (NoBuffering), hSetBuffering, stdout)
 
 run :: Pipeline a -> Connection.Connection -> IO (Either QueryError a)
-run (Pipeline send recv) (Connection.Connection pqConnectionRef integerDatetimes registry) =
+run (Pipeline send recv) (Connection.Connection pqConnectionRef integerDatetimes registry) = do
+  hSetBuffering stdout NoBuffering
   withMVar pqConnectionRef \pqConnection -> do
-    Pq.enterPipelineMode pqConnection
+    putStrLn "enterPipelineMode"
+    runCommandFailing pqConnection $ Pq.enterPipelineMode pqConnection
+    putStrLn "send"
     sendResult <- send pqConnection integerDatetimes registry
-    Pq.pipelineSync pqConnection
+    putStrLn "pipelineSync"
+    runCommandFailing pqConnection $ Pq.pipelineSync pqConnection
+    putStrLn "recv"
     recvResult <- recv pqConnection integerDatetimes
-    Pq.exitPipelineMode pqConnection
+    putStrLn "exitPipelineMode"
+    handleEither =<< Decoders.Results.run Decoders.Results.dropRemainders pqConnection integerDatetimes
+    putStrLn "exitPipelineMode"
+    runCommandFailing pqConnection $ Pq.exitPipelineMode pqConnection
+    putStrLn "return"
     pure (sendResult *> recvResult)
+  where
+    runCommandFailing :: Pq.Connection -> IO Bool -> IO ()
+    runCommandFailing pqConn runCmd =
+      IO.checkedSend pqConn runCmd >>= handleEither
+    handleEither = \case
+      Right a -> pure a
+      Left err -> fail $ show err
 
 data Pipeline a
   = Pipeline
@@ -60,6 +78,7 @@ statement params (Statement.Statement template (Encoders.Params paramsEncoder) (
 
     recv pqConnection integerDatetimes =
       mapLeft commandToQueryError
+        -- <$> Decoders.Results.run decoder (integerDatetimes, pqConnection)
         <$> IO.getResults pqConnection integerDatetimes decoder
 
     commandToQueryError =

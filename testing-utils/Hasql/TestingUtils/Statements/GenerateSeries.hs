@@ -12,7 +12,7 @@ data Params = Params
     end :: Int64
   }
 
-type Result = Vector Int64
+type Result = [Int64]
 
 session :: Bool -> Params -> Session.Session Result
 session prepared params =
@@ -39,6 +39,6 @@ encoder =
 
 decoder :: Decoders.Result Result
 decoder =
-  Decoders.rowVector
+  Decoders.rowList
     ( Decoders.column (Decoders.nonNullable Decoders.int8)
     )

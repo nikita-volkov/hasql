@@ -62,9 +62,9 @@ getResults connection integerDatetimes decoder =
   (<*) <$> get <*> dropRemainders
   where
     get =
-      ResultsDecoders.run decoder (integerDatetimes, connection)
+      ResultsDecoders.run decoder connection integerDatetimes
     dropRemainders =
-      ResultsDecoders.run ResultsDecoders.dropRemainders (integerDatetimes, connection)
+      ResultsDecoders.run ResultsDecoders.dropRemainders connection integerDatetimes
 
 {-# INLINE getPreparedStatementKey #-}
 getPreparedStatementKey ::
@@ -85,12 +85,12 @@ getPreparedStatementKey connection registry template oidList =
     onNewRemoteKey key =
       do
         sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
-        let resultsDecoder =
-              if sent
-                then ResultsDecoders.single ResultDecoders.noResult
-                else ResultsDecoders.clientError
-        fmap resultsMapping $ getResults connection undefined resultsDecoder
+        fmap resultsMapping $ getResults connection undefined (resultsDecoder sent)
       where
+        resultsDecoder sent =
+          if sent
+            then ResultsDecoders.single ResultDecoders.noResult
+            else ResultsDecoders.clientError
         resultsMapping =
           \case
             Left x -> (False, Left x)
