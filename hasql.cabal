@@ -1,34 +1,32 @@
-cabal-version:      3.0
-name:               hasql
-version:            1.6.4.3
-category:           Hasql, Database, PostgreSQL
-synopsis:           An efficient PostgreSQL driver with a flexible mapping API
+cabal-version: 3.0
+name: hasql
+version: 1.6.4.3
+category: Hasql, Database, PostgreSQL
+synopsis: An efficient PostgreSQL driver with a flexible mapping API
 description:
   Root of the \"hasql\" ecosystem.
   For details and tutorials see
   <https://github.com/nikita-volkov/hasql the readme>.
   The API comes free from all kinds of exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 
-homepage:           https://github.com/nikita-volkov/hasql
-bug-reports:        https://github.com/nikita-volkov/hasql/issues
-author:             Nikita Volkov <nikita.y.volkov@mail.ru>
-maintainer:         Nikita Volkov <nikita.y.volkov@mail.ru>
-copyright:          (c) 2014, Nikita Volkov
-license:            MIT
-license-file:       LICENSE
+homepage: https://github.com/nikita-volkov/hasql
+bug-reports: https://github.com/nikita-volkov/hasql/issues
+author: Nikita Volkov <nikita.y.volkov@mail.ru>
+maintainer: Nikita Volkov <nikita.y.volkov@mail.ru>
+copyright: (c) 2014, Nikita Volkov
+license: MIT
+license-file: LICENSE
 extra-source-files:
   CHANGELOG.md
   README.md
 
 source-repository head
-  type:     git
+  type: git
   location: git://github.com/nikita-volkov/hasql.git
 
 common base
-  default-language:   Haskell2010
+  default-language: Haskell2010
   default-extensions:
-    NoImplicitPrelude
-    NoMonomorphismRestriction
     Arrows
     BangPatterns
     BlockArguments
@@ -52,6 +50,8 @@ common base
     MagicHash
     MultiParamTypeClasses
     MultiWayIf
+    NoImplicitPrelude
+    NoMonomorphismRestriction
     OverloadedStrings
     ParallelListComp
     PatternGuards
@@ -68,17 +68,23 @@ common base
     UnboxedTuples
 
 common executable
-  import:      base
+  import: base
   ghc-options:
-    -O2 -threaded -with-rtsopts=-N -rtsopts -funbox-strict-fields
+    -O2
+    -threaded
+    -with-rtsopts=-N
+    -rtsopts
+    -funbox-strict-fields
 
 common test
-  import:      base
-  ghc-options: -threaded -with-rtsopts=-N
+  import: base
+  ghc-options:
+    -threaded
+    -with-rtsopts=-N
 
 library
-  import:          base
-  hs-source-dirs:  library
+  import: base
+  hs-source-dirs: library
   exposed-modules:
     Hasql.Connection
     Hasql.Decoders
@@ -111,74 +117,88 @@ library
     Hasql.Settings
 
   build-depends:
-    , aeson >=2 && <3
-    , attoparsec >=0.10 && <0.15
-    , base >=4.14 && <5
-    , bytestring >=0.10 && <0.13
-    , bytestring-strict-builder >=0.4.5.1 && <0.5
-    , contravariant >=1.3 && <2
-    , dlist >=0.8 && <0.9 || >=1 && <2
-    , hashable >=1.2 && <2
-    , hashtables >=1.1 && <2
-    , mtl >=2 && <3
-    , network-ip >=0.3.0.3 && <0.4
-    , postgresql-binary >=0.13.1 && <0.14
-    , postgresql-libpq >=0.9 && <0.11
-    , profunctors >=5.1 && <6
-    , scientific >=0.3 && <0.4
-    , text >=1 && <3
-    , text-builder >=0.6.7 && <0.7
-    , time >=1.9 && <2
-    , transformers >=0.3 && <0.7
-    , uuid >=1.3 && <2
-    , vector >=0.10 && <0.14
+    aeson >=2 && <3,
+    attoparsec >=0.10 && <0.15,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.1 && <0.5,
+    contravariant >=1.3 && <2,
+    dlist >=0.8 && <0.9 || >=1 && <2,
+    hashable >=1.2 && <2,
+    hashtables >=1.1 && <2,
+    mtl >=2 && <3,
+    network-ip >=0.3.0.3 && <0.4,
+    postgresql-binary >=0.13.1 && <0.14,
+    postgresql-libpq >=0.9 && <0.11,
+    profunctors >=5.1 && <6,
+    scientific >=0.3 && <0.4,
+    text >=1 && <3,
+    text-builder >=0.6.7 && <0.7,
+    time >=1.9 && <2,
+    transformers >=0.3 && <0.7,
+    uuid >=1.3 && <2,
+    vector >=0.10 && <0.14,
+
+library testing-utils
+  import: base
+  hs-source-dirs: testing-utils
+  exposed-modules:
+    Hasql.TestingUtils.Session
+
+  build-depends:
+    hasql,
+    rerebase <2,
 
 test-suite tasty
-  import:         base
-  type:           exitcode-stdio-1.0
+  import: base
+  type: exitcode-stdio-1.0
   hs-source-dirs: tasty
-  main-is:        Main.hs
+  main-is: Main.hs
   other-modules:
     Main.Connection
-    Main.DSL
     Main.Prelude
     Main.Statements
 
   build-depends:
-    , contravariant-extras >=0.3.5.2 && <0.4
-    , hasql
-    , quickcheck-instances >=0.3.11 && <0.4
-    , rerebase <2
-    , tasty >=0.12 && <2
-    , tasty-hunit >=0.9 && <0.11
-    , tasty-quickcheck >=0.9 && <0.11
+    contravariant-extras >=0.3.5.2 && <0.4,
+    hasql,
+    hasql:testing-utils,
+    quickcheck-instances >=0.3.11 && <0.4,
+    rerebase <2,
+    tasty >=0.12 && <2,
+    tasty-hunit >=0.9 && <0.11,
+    tasty-quickcheck >=0.9 && <0.11,
 
 test-suite threads-test
-  import:         test
-  type:           exitcode-stdio-1.0
+  import: test
+  type: exitcode-stdio-1.0
   hs-source-dirs: threads-test
-  main-is:        Main.hs
-  other-modules:  Main.Statements
+  main-is: Main.hs
+  other-modules: Main.Statements
   build-depends:
-    , hasql
-    , rerebase
+    hasql,
+    rerebase,
 
 benchmark benchmarks
-  import:         executable
-  type:           exitcode-stdio-1.0
+  import: executable
+  type: exitcode-stdio-1.0
   hs-source-dirs: benchmarks
-  main-is:        Main.hs
+  main-is: Main.hs
   build-depends:
-    , criterion >=1.6 && <2
-    , hasql
-    , rerebase <2
+    criterion >=1.6 && <2,
+    hasql,
+    rerebase <2,
 
 test-suite profiling
-  import:         base
-  type:           exitcode-stdio-1.0
+  import: base
+  type: exitcode-stdio-1.0
   hs-source-dirs: profiling
-  main-is:        Main.hs
-  ghc-options:    -O2 -threaded -rtsopts
+  main-is: Main.hs
+  ghc-options:
+    -O2
+    -threaded
+    -rtsopts
+
   build-depends:
-    , hasql
-    , rerebase >=1 && <2
+    hasql,
+    rerebase >=1 && <2,
