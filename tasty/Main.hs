@@ -5,8 +5,8 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Hasql.TestingUtils.Session qualified as Session
 import Main.Connection qualified as Connection
-import Main.DSL qualified as DSL
 import Main.Prelude hiding (assert)
 import Main.Statements qualified as Statements
 import Test.QuickCheck.Instances ()
@@ -136,19 +136,19 @@ tree =
                   assertEqual (show x) (Right (Right ((1, True), ("hello", 3)))) x,
         testGroup "unknownEnum"
           $ [ testCase "" $ do
-                res <- DSL.session $ do
+                res <- Session.runSession $ do
                   let statement =
                         Statement.Statement sql mempty Decoders.noResult True
                         where
                           sql =
                             "drop type if exists mood"
-                   in DSL.statement () statement
+                   in Session.statement () statement
                   let statement =
                         Statement.Statement sql mempty Decoders.noResult True
                         where
                           sql =
                             "create type mood as enum ('sad', 'ok', 'happy')"
-                   in DSL.statement () statement
+                   in Session.statement () statement
                   let statement =
                         Statement.Statement sql encoder decoder True
                         where
@@ -158,7 +158,7 @@ tree =
                             (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.enum (Just . id))))
                           encoder =
                             Encoders.param (Encoders.nonNullable (Encoders.unknownEnum id))
-                   in DSL.statement "ok" statement
+                   in Session.statement "ok" statement
 
                 assertEqual "" (Right "ok") res
             ],
@@ -301,12 +301,12 @@ tree =
                     s <- Session.statement (1, 1) sumStatement
                     Session.sql "end;"
                     return s
-             in DSL.session session >>= \x -> assertEqual (show x) (Right 2) x,
+             in Session.runSession session >>= \x -> assertEqual (show x) (Right 2) x,
         testCase "Executing the same query twice"
           $ pure (),
         testCase "Interval Encoding"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -316,11 +316,11 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                             encoder =
                               Encoders.param (Encoders.nonNullable (Encoders.interval))
-                     in DSL.statement (10 :: DiffTime) statement
+                     in Session.statement (10 :: DiffTime) statement
              in actualIO >>= \x -> assertEqual (show x) (Right True) x,
         testCase "Interval Decoding"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -330,11 +330,11 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                             encoder =
                               Encoders.noParams
-                     in DSL.statement () statement
+                     in Session.statement () statement
              in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x,
         testCase "Interval Encoding/Decoding"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -344,23 +344,23 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.interval)))
                             encoder =
                               Encoders.param (Encoders.nonNullable (Encoders.interval))
-                     in DSL.statement (10 :: DiffTime) statement
+                     in Session.statement (10 :: DiffTime) statement
              in actualIO >>= \x -> assertEqual (show x) (Right (10 :: DiffTime)) x,
         testCase "Unknown"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "drop type if exists mood"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "create type mood as enum ('sad', 'ok', 'happy')"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -370,23 +370,23 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.bool)))
                             encoder =
                               Encoders.param (Encoders.nonNullable (Encoders.unknown))
-                     in DSL.statement "ok" statement
+                     in Session.statement "ok" statement
              in actualIO >>= assertEqual "" (Right True),
         testCase "Textual Unknown"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "create or replace function overloaded(a int, b int) returns int as $$ select a + b $$ language sql;"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "create or replace function overloaded(a text, b text, c text) returns text as $$ select a || b || c $$ language sql;"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -396,23 +396,23 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
                             encoder =
                               contramany (Encoders.param (Encoders.nonNullable (Encoders.unknown)))
-                     in DSL.statement ["1", "2", "4", "5", "6"] statement
+                     in Session.statement ["1", "2", "4", "5", "6"] statement
              in actualIO >>= assertEqual "" (Right "3456"),
         testCase "Enum"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "drop type if exists mood"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql mempty Decoders.noResult True
                           where
                             sql =
                               "create type mood as enum ('sad', 'ok', 'happy')"
-                     in DSL.statement () statement
+                     in Session.statement () statement
                     let statement =
                           Statement.Statement sql encoder decoder True
                           where
@@ -422,13 +422,13 @@ tree =
                               (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.enum (Just . id))))
                             encoder =
                               Encoders.param (Encoders.nonNullable ((Encoders.enum id)))
-                     in DSL.statement "ok" statement
+                     in Session.statement "ok" statement
              in actualIO >>= assertEqual "" (Right "ok"),
         testCase "The same prepared statement used on different types"
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     let effect1 =
-                          DSL.statement "ok" statement
+                          Session.statement "ok" statement
                           where
                             statement =
                               Statement.Statement sql encoder decoder True
@@ -440,7 +440,7 @@ tree =
                                 decoder =
                                   (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) (Decoders.text)))
                         effect2 =
-                          DSL.statement 1 statement
+                          Session.statement 1 statement
                           where
                             statement =
                               Statement.Statement sql encoder decoder True
@@ -456,26 +456,26 @@ tree =
         testCase "Affected rows counting"
           $ replicateM_ 13
           $ let actualIO =
-                  DSL.session $ do
+                  Session.runSession $ do
                     dropTable
                     createTable
                     replicateM_ 100 insertRow
                     deleteRows <* dropTable
                   where
                     dropTable =
-                      DSL.statement ()
+                      Session.statement ()
                         $ Statements.plain
                         $ "drop table if exists a"
                     createTable =
-                      DSL.statement ()
+                      Session.statement ()
                         $ Statements.plain
                         $ "create table a (id bigserial not null, name varchar not null, primary key (id))"
                     insertRow =
-                      DSL.statement ()
+                      Session.statement ()
                         $ Statements.plain
                         $ "insert into a (name) values ('a')"
                     deleteRows =
-                      DSL.statement () $ Statement.Statement sql mempty decoder False
+                      Session.statement () $ Statement.Statement sql mempty decoder False
                       where
                         sql =
                           "delete from a"
@@ -484,16 +484,16 @@ tree =
              in actualIO >>= assertEqual "" (Right 100),
         testCase "Result of an auto-incremented column"
           $ let actualIO =
-                  DSL.session $ do
-                    DSL.statement () $ Statements.plain $ "drop table if exists a"
-                    DSL.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
-                    id1 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
-                    id2 <- DSL.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
-                    DSL.statement () $ Statements.plain $ "drop table if exists a"
+                  Session.runSession $ do
+                    Session.statement () $ Statements.plain $ "drop table if exists a"
+                    Session.statement () $ Statements.plain $ "create table a (id serial not null, v char not null, primary key (id))"
+                    id1 <- Session.statement () $ Statement.Statement "insert into a (v) values ('a') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
+                    id2 <- Session.statement () $ Statement.Statement "insert into a (v) values ('b') returning id" mempty (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int4)) False
+                    Session.statement () $ Statements.plain $ "drop table if exists a"
                     pure (id1, id2)
              in assertEqual "" (Right (1, 2)) =<< actualIO,
         testCase "List decoding"
           $ let actualIO =
-                  DSL.session $ DSL.statement () $ Statements.selectList
+                  Session.runSession $ Session.statement () $ Statements.selectList
              in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
       ]
