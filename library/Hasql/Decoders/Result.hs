@@ -15,9 +15,9 @@ newtype Result a
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Result a -> (Bool, LibPQ.Result) -> IO (Either ResultError a)
-run (Result reader) env =
-  runExceptT (runReaderT reader env)
+run :: Result a -> Bool -> LibPQ.Result -> IO (Either ResultError a)
+run (Result reader) idt result =
+  runExceptT (runReaderT reader (idt, result))
 
 {-# INLINE noResult #-}
 noResult :: Result ()
