@@ -114,16 +114,17 @@ sendPreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendPreparedParametricStatement connection registry integerDatetimes template (ParamsEncoders.Params (Op encoderOp)) input =
-  let (oidList, valueAndFormatList) =
-        let step (oid, format, encoder, _) ~(oidList, bytesAndFormatList) =
-              (,)
-                (oid : oidList)
-                (fmap (\bytes -> (bytes, format)) (encoder integerDatetimes) : bytesAndFormatList)
-         in foldr step ([], []) (encoderOp input)
-   in runExceptT $ do
-        key <- ExceptT $ getPreparedStatementKey connection registry template oidList
-        ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+sendPreparedParametricStatement connection registry integerDatetimes template (ParamsEncoders.Params size columnsMetadata serializer _) input =
+  runExceptT $ do
+    key <- ExceptT $ getPreparedStatementKey connection registry template oidList
+    ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
+  where
+    (oidList, formatList) =
+      columnsMetadata & toList & unzip
+    valueAndFormatList =
+      serializer integerDatetimes input
+        & toList
+        & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
 {-# INLINE sendUnpreparedParametricStatement #-}
 sendUnpreparedParametricStatement ::
@@ -133,11 +134,14 @@ sendUnpreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendUnpreparedParametricStatement connection integerDatetimes template (ParamsEncoders.Params (Op encoderOp)) input =
+sendUnpreparedParametricStatement connection integerDatetimes template (ParamsEncoders.Params _ columnsMetadata serializer printer) input =
   let params =
-        let step (oid, format, encoder, _) acc =
-              ((,,) <$> pure oid <*> encoder integerDatetimes <*> pure format) : acc
-         in foldr step [] (encoderOp input)
+        zipWith
+          ( \(oid, format) encoding ->
+              (,,) <$> pure oid <*> encoding <*> pure format
+          )
+          (toList columnsMetadata)
+          (toList (serializer integerDatetimes input))
    in checkedSend connection $ LibPQ.sendQueryParams connection template params LibPQ.Binary
 
 {-# INLINE sendParametricStatement #-}

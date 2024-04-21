@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hasql
-version: 1.6.4.3
+version: 1.6.4.4
 category: Hasql, Database, PostgreSQL
 synopsis: An efficient PostgreSQL driver with a flexible mapping API
 description:
@@ -27,8 +27,8 @@ source-repository head
 common base
   default-language: Haskell2010
   default-extensions:
-    Arrows
     ApplicativeDo
+    Arrows
     BangPatterns
     BlockArguments
     ConstraintKinds
@@ -53,8 +53,8 @@ common base
     MultiWayIf
     NoImplicitPrelude
     NoMonomorphismRestriction
-    OverloadedStrings
     OverloadedRecordDot
+    OverloadedStrings
     ParallelListComp
     PatternGuards
     QuasiQuotes
@@ -146,8 +146,9 @@ library testing-utils
   hs-source-dirs: testing-utils
   exposed-modules:
     Hasql.TestingUtils.Constants
-    Hasql.TestingUtils.TestingDsl
     Hasql.TestingUtils.Statements.GenerateSeries
+    Hasql.TestingUtils.TestingDsl
+
   build-depends:
     hasql,
     rerebase <2,
@@ -213,7 +214,6 @@ test-suite hspec
   main-is: Main.hs
   other-modules:
     Hasql.PipelineSpec
-    
 
   build-tool-depends: hspec-discover:hspec-discover
   build-depends:
