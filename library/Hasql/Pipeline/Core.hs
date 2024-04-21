@@ -14,29 +14,20 @@ import Hasql.IO qualified as IO
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
-import System.IO (BufferMode (NoBuffering), hSetBuffering, stdout)
 
 run :: Pipeline a -> Connection.Connection -> IO (Either QueryError a)
-run (Pipeline send) (Connection.Connection pqConnectionRef integerDatetimes registry) = do
-  hSetBuffering stdout NoBuffering
+run (Pipeline send) (Connection.Connection pqConnectionRef integerDatetimes registry) =
   withMVar pqConnectionRef \pqConnection -> do
-    putStrLn "enterPipelineMode"
     runCommandFailing pqConnection $ Pq.enterPipelineMode pqConnection
-    putStrLn "send"
     sendResult <- send pqConnection registry integerDatetimes
     case sendResult of
       Left err -> do
         pure (Left err)
       Right recv -> do
-        putStrLn "pipelineSync"
         runCommandFailing pqConnection $ Pq.pipelineSync pqConnection
-        putStrLn "recv"
         recvResult <- recv
-        putStrLn "pipelineSync"
         handleEither =<< Decoders.Results.run (Decoders.Results.single Decoders.Result.pipelineSync) pqConnection integerDatetimes
-        putStrLn "exitPipelineMode"
         runCommandFailing pqConnection $ Pq.exitPipelineMode pqConnection
-        putStrLn "return"
         pure recvResult
   where
     runCommandFailing :: Pq.Connection -> IO Bool -> IO ()
