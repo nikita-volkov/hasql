@@ -1,3 +1,7 @@
+# 1.7
+
+- Decidable instance on `Encoders.Params` removed. It was useless and limited the design.
+
 # 1.6.3.1
 
 - Moved to "postgresql-libpq-0.10"
