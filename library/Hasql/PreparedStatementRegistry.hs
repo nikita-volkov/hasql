@@ -9,6 +9,7 @@ where
 import ByteString.StrictBuilder qualified as B
 import Data.HashTable.IO qualified as A
 import Hasql.Prelude hiding (lookup)
+import qualified Database.PostgreSQL.LibPQ as Pq
 
 data PreparedStatementRegistry
   = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
@@ -44,7 +45,7 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table c
 -- |
 -- Local statement key.
 data LocalKey
-  = LocalKey !ByteString ![Word32]
+  = LocalKey !ByteString ![Pq.Oid]
   deriving (Show, Eq)
 
 instance Hashable LocalKey where

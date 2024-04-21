@@ -78,10 +78,7 @@ getPreparedStatementKey connection registry template oidList =
   PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
   where
     localKey =
-      PreparedStatementRegistry.LocalKey template wordOIDList
-      where
-        wordOIDList =
-          map (\(LibPQ.Oid x) -> fromIntegral x) oidList
+      PreparedStatementRegistry.LocalKey template oidList
     onNewRemoteKey key =
       do
         sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
