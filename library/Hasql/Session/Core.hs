@@ -46,7 +46,7 @@ sql sql =
 -- |
 -- Parameters and a specification of a parametric single-statement query to apply them to.
 statement :: params -> Statement.Statement params result -> Session result
-statement input (Statement.Statement template (Encoders.Params paramsEncoder) decoder preparable) =
+statement input (Statement.Statement template (Encoders.Params paramsEncoder@(Encoders.Params.Params _ _ _ printer)) decoder preparable) =
   Session
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
@@ -59,7 +59,5 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) de
           return $ r1 *> r2
   where
     inputReps =
-      let Encoders.Params.Params (Op encoderOp) = paramsEncoder
-          step (_, _, _, rendering) acc =
-            rendering : acc
-       in foldr step [] (encoderOp input)
+      printer input
+        & toList
