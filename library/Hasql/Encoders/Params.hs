@@ -12,6 +12,26 @@ renderReadable (Params _ _ _ printer) params =
   printer params
     & toList
 
+compilePreparedStatementData :: Params a -> Bool -> a -> ([A.Oid], [Maybe (ByteString, A.Format)])
+compilePreparedStatementData (Params _ columnsMetadata serializer _) integerDatetimes input =
+  (oidList, valueAndFormatList)
+  where
+    (oidList, formatList) =
+      columnsMetadata & toList & unzip
+    valueAndFormatList =
+      serializer integerDatetimes input
+        & toList
+        & zipWith (\format encoding -> (,format) <$> encoding) formatList
+
+compileUnpreparedStatementData :: Params a -> Bool -> a -> [Maybe (A.Oid, ByteString, A.Format)]
+compileUnpreparedStatementData (Params _ columnsMetadata serializer printer) integerDatetimes input =
+  zipWith
+    ( \(oid, format) encoding ->
+        (,,) <$> pure oid <*> encoding <*> pure format
+    )
+    (toList columnsMetadata)
+    (toList (serializer integerDatetimes input))
+
 -- |
 -- Encoder of some representation of a parameters product.
 data Params a = Params

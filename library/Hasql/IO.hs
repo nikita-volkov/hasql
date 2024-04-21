@@ -111,17 +111,13 @@ sendPreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendPreparedParametricStatement connection registry integerDatetimes template (ParamsEncoders.Params size columnsMetadata serializer _) input =
+sendPreparedParametricStatement connection registry integerDatetimes template encoder input =
   runExceptT $ do
     key <- ExceptT $ getPreparedStatementKey connection registry template oidList
     ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
   where
-    (oidList, formatList) =
-      columnsMetadata & toList & unzip
-    valueAndFormatList =
-      serializer integerDatetimes input
-        & toList
-        & zipWith (\format encoding -> (,format) <$> encoding) formatList
+    (oidList, valueAndFormatList) =
+      ParamsEncoders.compilePreparedStatementData encoder integerDatetimes input
 
 {-# INLINE sendUnpreparedParametricStatement #-}
 sendUnpreparedParametricStatement ::
@@ -131,15 +127,13 @@ sendUnpreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendUnpreparedParametricStatement connection integerDatetimes template (ParamsEncoders.Params _ columnsMetadata serializer printer) input =
-  let params =
-        zipWith
-          ( \(oid, format) encoding ->
-              (,,) <$> pure oid <*> encoding <*> pure format
-          )
-          (toList columnsMetadata)
-          (toList (serializer integerDatetimes input))
-   in checkedSend connection $ LibPQ.sendQueryParams connection template params LibPQ.Binary
+sendUnpreparedParametricStatement connection integerDatetimes template encoder input =
+  checkedSend connection
+    $ LibPQ.sendQueryParams
+      connection
+      template
+      (ParamsEncoders.compileUnpreparedStatementData encoder integerDatetimes input)
+      LibPQ.Binary
 
 {-# INLINE sendParametricStatement #-}
 sendParametricStatement ::
