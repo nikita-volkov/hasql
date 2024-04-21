@@ -22,18 +22,13 @@ run (Result reader) idt result =
 {-# INLINE noResult #-}
 noResult :: Result ()
 noResult =
-  checkExecStatus $ \case
-    LibPQ.CommandOk -> True
-    LibPQ.TuplesOk -> True
-    _ -> False
+  checkExecStatus [LibPQ.CommandOk, LibPQ.TuplesOk]
 
 {-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
   do
-    checkExecStatus $ \case
-      LibPQ.CommandOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.CommandOk]
     Result
       $ ReaderT
       $ \(_, result) ->
@@ -55,18 +50,18 @@ rowsAffected =
             $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
-checkExecStatus :: (LibPQ.ExecStatus -> Bool) -> Result ()
-checkExecStatus predicate =
+checkExecStatus :: [LibPQ.ExecStatus] -> Result ()
+checkExecStatus expectedList =
   {-# SCC "checkExecStatus" #-}
   do
     status <- Result $ ReaderT $ \(_, result) -> lift $ LibPQ.resultStatus result
-    unless (predicate status) $ do
+    unless (elem status expectedList) $ do
       case status of
         LibPQ.BadResponse -> serverError
         LibPQ.NonfatalError -> serverError
         LibPQ.FatalError -> serverError
         LibPQ.EmptyQuery -> return ()
-        _ -> unexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
+        _ -> unexpectedResult $ "Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList)
 
 unexpectedResult :: Text -> Result a
 unexpectedResult =
@@ -103,9 +98,7 @@ serverError =
 maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -125,9 +118,7 @@ maybe rowDec =
 single :: Row.Row a -> Result a
 single rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -146,9 +137,7 @@ single rowDec =
 vector :: Row.Row a -> Result (Vector a)
 vector rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -175,9 +164,7 @@ foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
 foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) ->
@@ -207,9 +194,7 @@ foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
