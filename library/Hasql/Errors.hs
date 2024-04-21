@@ -13,15 +13,16 @@ module Hasql.Errors where
 import Data.ByteString.Char8 qualified as BC
 import Hasql.Prelude
 
--- |
--- An error during the execution of a query.
--- Comes packed with the query template and a textual representation of the provided params.
-data QueryError
-  = QueryError ByteString [Text] CommandError
+-- | Error during execution of a session.
+data SessionError
+  = -- |
+    -- An error during the execution of a query.
+    -- Comes packed with the query template and a textual representation of the provided params.
+    QuerySessionError ByteString [Text] CommandError
   deriving (Show, Eq, Typeable)
 
-instance Exception QueryError where
-  displayException (QueryError query params commandError) =
+instance Exception SessionError where
+  displayException (QuerySessionError query params commandError) =
     let queryContext :: Maybe (ByteString, Int)
         queryContext = case commandError of
           ClientError _ -> Nothing
@@ -59,7 +60,7 @@ instance Exception QueryError where
         prettyQuery = case queryContext of
           Nothing -> query
           Just (message, pos) -> formatErrorContext query message pos
-     in "QueryError!\n"
+     in "QuerySessionError!\n"
           <> "\n  Query:\n"
           <> BC.unpack prettyQuery
           <> "\n"

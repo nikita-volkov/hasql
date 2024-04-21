@@ -15,12 +15,12 @@ import Hasql.Statement qualified as Statement
 -- |
 -- A batch of actions to be executed in the context of a database connection.
 newtype Session a
-  = Session (ReaderT Connection.Connection (ExceptT QueryError IO) a)
-  deriving (Functor, Applicative, Monad, MonadError QueryError, MonadIO, MonadReader Connection.Connection)
+  = Session (ReaderT Connection.Connection (ExceptT SessionError IO) a)
+  deriving (Functor, Applicative, Monad, MonadError SessionError, MonadIO, MonadReader Connection.Connection)
 
 -- |
 -- Executes a bunch of commands on the provided connection.
-run :: Session a -> Connection.Connection -> IO (Either QueryError a)
+run :: Session a -> Connection.Connection -> IO (Either SessionError a)
 run (Session impl) connection =
   runExceptT
     $ runReaderT impl connection
@@ -35,7 +35,7 @@ sql sql =
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (mapLeft (QueryError sql []))
+        $ fmap (mapLeft (QuerySessionError sql []))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <- IO.sendNonparametricStatement pqConnection sql
@@ -53,7 +53,7 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (mapLeft (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
+        $ fmap (mapLeft (QuerySessionError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input

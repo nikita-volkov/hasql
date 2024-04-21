@@ -1,7 +1,7 @@
 module Hasql.TestingUtils.TestingDsl
   ( Session.Session,
-    SessionError (..),
-    Session.QueryError (..),
+    Error (..),
+    Session.SessionError (..),
     Session.CommandError (..),
     Pipeline.Pipeline,
     Statement.Statement (..),
@@ -19,12 +19,12 @@ import Hasql.Statement qualified as Statement
 import Hasql.TestingUtils.Constants qualified as Constants
 import Prelude
 
-data SessionError
+data Error
   = ConnectionError (Connection.ConnectionError)
-  | SessionError (Session.QueryError)
+  | SessionError (Session.SessionError)
   deriving (Show, Eq)
 
-runSessionOnLocalDb :: Session.Session a -> IO (Either SessionError a)
+runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
 runSessionOnLocalDb session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
@@ -37,7 +37,7 @@ runSessionOnLocalDb session =
     release connection =
       lift $ Connection.release connection
 
-runPipelineOnLocalDb :: Pipeline.Pipeline a -> IO (Either SessionError a)
+runPipelineOnLocalDb :: Pipeline.Pipeline a -> IO (Either Error a)
 runPipelineOnLocalDb =
   runSessionOnLocalDb . Session.pipeline
 

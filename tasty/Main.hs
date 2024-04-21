@@ -56,7 +56,7 @@ tree =
              in do
                   x <- Connection.with (Session.run session)
                   assertBool (show x) $ case x of
-                    Right (Left (Session.QueryError "select true where 1 = any ($1) and $2" ["[3, 7]", "\"a\""] _)) -> True
+                    Right (Left (Session.QuerySessionError "select true where 1 = any ($1) and $2" ["[3, 7]", "\"a\""] _)) -> True
                     _ -> False,
         testCase "IN simulation"
           $ let statement =
@@ -218,7 +218,7 @@ tree =
                   where
                     resultTest =
                       \case
-                        Right (Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "26000" _ _ _ _)))) -> False
+                        Right (Left (Session.QuerySessionError _ _ (Session.ResultError (Session.ServerError "26000" _ _ _ _)))) -> False
                         _ -> True
                     session =
                       catchError session (const (pure ())) *> session

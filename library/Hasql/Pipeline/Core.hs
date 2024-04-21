@@ -15,7 +15,7 @@ import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
 
-run :: Pipeline a -> Connection.Connection -> IO (Either QueryError a)
+run :: Pipeline a -> Connection.Connection -> IO (Either SessionError a)
 run (Pipeline send) (Connection.Connection pqConnectionRef integerDatetimes registry) =
   withMVar pqConnectionRef \pqConnection -> do
     runCommandFailing pqConnection $ Pq.enterPipelineMode pqConnection
@@ -42,7 +42,7 @@ newtype Pipeline a
       ( Pq.Connection ->
         PreparedStatementRegistry.PreparedStatementRegistry ->
         Bool ->
-        IO (Either QueryError (IO (Either QueryError a)))
+        IO (Either SessionError (IO (Either SessionError a)))
       )
   deriving (Functor)
 
@@ -89,10 +89,10 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                     sent <- Pq.sendPrepare connection key sql (mfilter (not . null) (Just oidList))
                     if sent
                       then pure (True, Right (key, recv))
-                      else (False,) . Left . commandToQueryError . ClientError <$> Pq.errorMessage connection
+                      else (False,) . Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
                   where
                     recv =
-                      fmap (mapLeft commandToQueryError)
+                      fmap (mapLeft commandToSessionError)
                         $ (<*)
                         <$> Decoders.Results.run (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
                         <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
@@ -101,25 +101,25 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
 
             sendQuery key =
               Pq.sendQueryPrepared connection key valueAndFormatList Pq.Binary >>= \case
-                False -> Left . commandToQueryError . ClientError <$> Pq.errorMessage connection
+                False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
                 True -> pure (Right recv)
               where
                 recv =
-                  fmap (mapLeft commandToQueryError)
+                  fmap (mapLeft commandToSessionError)
                     $ (<*)
                     <$> Decoders.Results.run decoder connection integerDatetimes
                     <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
 
         runUnprepared =
           Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary >>= \case
-            False -> Left . commandToQueryError . ClientError <$> Pq.errorMessage connection
+            False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
             True -> pure (Right recv)
           where
             recv =
-              fmap (mapLeft commandToQueryError)
+              fmap (mapLeft commandToSessionError)
                 $ (<*)
                 <$> Decoders.Results.run decoder connection integerDatetimes
                 <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
 
-    commandToQueryError =
-      QueryError sql (Encoders.Params.renderReadable encoder params)
+    commandToSessionError =
+      QuerySessionError sql (Encoders.Params.renderReadable encoder params)
