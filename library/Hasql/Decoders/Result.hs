@@ -25,7 +25,6 @@ noResult =
   checkExecStatus $ \case
     LibPQ.CommandOk -> True
     LibPQ.TuplesOk -> True
-    LibPQ.PipelineSync -> True
     _ -> False
 
 {-# INLINE rowsAffected #-}

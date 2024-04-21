@@ -9,14 +9,14 @@ spec :: Spec
 spec = do
   describe "Single-statement" do
     describe "Unprepared" do
-      it "Collects results and sends params" do
+      fit "Collects results and sends params" do
         result <-
           Dsl.runPipelineOnLocalDb
             $ GenerateSeries.pipeline False GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [0 .. 2])
 
-    describe "Prepared and sends params" do
-      fit "Collects results and sends params" do
+    describe "Prepared" do
+      it "Collects results and sends params" do
         result <-
           Dsl.runPipelineOnLocalDb
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
