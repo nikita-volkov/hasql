@@ -1,13 +1,3 @@
--- |
--- An API for retrieval of multiple results.
--- Can be used to handle:
---
--- * A single result,
---
--- * Individual results of a multi-statement query
--- with the help of "Applicative" and "Monad",
---
--- * Row-by-row fetching.
 module Hasql.Errors where
 
 import Data.ByteString.Char8 qualified as BC
@@ -18,90 +8,97 @@ data SessionError
   = -- |
     -- An error during the execution of a query.
     -- Comes packed with the query template and a textual representation of the provided params.
-    QuerySessionError ByteString [Text] CommandError
+    QuerySessionError
+      -- | SQL template.
+      ByteString
+      -- | Parameters rendered as human-readable SQL literals.
+      [Text]
+      -- | Error details
+      QueryError
   deriving (Show, Eq, Typeable)
 
 instance Exception SessionError where
-  displayException (QuerySessionError query params commandError) =
-    let queryContext :: Maybe (ByteString, Int)
-        queryContext = case commandError of
-          ClientError _ -> Nothing
-          ResultError resultError -> case resultError of
-            ServerError _ message _ _ (Just position) -> Just (message, position)
-            _ -> Nothing
+  displayException = \case
+    QuerySessionError query params commandError ->
+      let queryContext :: Maybe (ByteString, Int)
+          queryContext = case commandError of
+            ClientQueryError _ -> Nothing
+            ResultQueryError resultError -> case resultError of
+              ServerResultError _ message _ _ (Just position) -> Just (message, position)
+              _ -> Nothing
 
-        -- find the line number and position of the error
-        findLineAndPos :: ByteString -> Int -> (Int, Int)
-        findLineAndPos byteString errorPos =
-          let (_, line, pos) =
-                BC.foldl'
-                  ( \(total, line, pos) c ->
-                      case total + 1 of
-                        0 -> (total, line, pos)
-                        cursor
-                          | cursor == errorPos -> (-1, line, pos + 1)
-                          | c == '\n' -> (total + 1, line + 1, 0)
-                          | otherwise -> (total + 1, line, pos + 1)
-                  )
-                  (0, 1, 0)
-                  byteString
-           in (line, pos)
+          -- find the line number and position of the error
+          findLineAndPos :: ByteString -> Int -> (Int, Int)
+          findLineAndPos byteString errorPos =
+            let (_, line, pos) =
+                  BC.foldl'
+                    ( \(total, line, pos) c ->
+                        case total + 1 of
+                          0 -> (total, line, pos)
+                          cursor
+                            | cursor == errorPos -> (-1, line, pos + 1)
+                            | c == '\n' -> (total + 1, line + 1, 0)
+                            | otherwise -> (total + 1, line, pos + 1)
+                    )
+                    (0, 1, 0)
+                    byteString
+             in (line, pos)
 
-        formatErrorContext :: ByteString -> ByteString -> Int -> ByteString
-        formatErrorContext query message errorPos =
-          let lines = BC.lines query
-              (lineNum, linePos) = findLineAndPos query errorPos
-           in BC.unlines (take lineNum lines)
-                <> BC.replicate (linePos - 1) ' '
-                <> "^ "
-                <> message
+          formatErrorContext :: ByteString -> ByteString -> Int -> ByteString
+          formatErrorContext query message errorPos =
+            let lines = BC.lines query
+                (lineNum, linePos) = findLineAndPos query errorPos
+             in BC.unlines (take lineNum lines)
+                  <> BC.replicate (linePos - 1) ' '
+                  <> "^ "
+                  <> message
 
-        prettyQuery :: ByteString
-        prettyQuery = case queryContext of
-          Nothing -> query
-          Just (message, pos) -> formatErrorContext query message pos
-     in "QuerySessionError!\n"
-          <> "\n  Query:\n"
-          <> BC.unpack prettyQuery
-          <> "\n"
-          <> "\n  Params: "
-          <> show params
-          <> "\n  Error: "
-          <> case commandError of
-            ClientError (Just message) -> "Client error: " <> show message
-            ClientError Nothing -> "Unknown client error"
-            ResultError resultError -> case resultError of
-              ServerError code message details hint position ->
-                "Server error "
-                  <> BC.unpack code
-                  <> ": "
-                  <> BC.unpack message
-                  <> maybe "" (\d -> "\n  Details: " <> BC.unpack d) details
-                  <> maybe "" (\h -> "\n  Hint: " <> BC.unpack h) hint
-              UnexpectedResult message -> "Unexpected result: " <> show message
-              RowError row column rowError ->
-                "Row error: " <> show row <> ":" <> show column <> " " <> show rowError
-              UnexpectedAmountOfRows amount ->
-                "Unexpected amount of rows: " <> show amount
+          prettyQuery :: ByteString
+          prettyQuery = case queryContext of
+            Nothing -> query
+            Just (message, pos) -> formatErrorContext query message pos
+       in "QuerySessionError!\n"
+            <> "\n  Query:\n"
+            <> BC.unpack prettyQuery
+            <> "\n"
+            <> "\n  Params: "
+            <> show params
+            <> "\n  Error: "
+            <> case commandError of
+              ClientQueryError (Just message) -> "Client error: " <> show message
+              ClientQueryError Nothing -> "Client error without details"
+              ResultQueryError resultError -> case resultError of
+                ServerResultError code message details hint position ->
+                  "Server error "
+                    <> BC.unpack code
+                    <> ": "
+                    <> BC.unpack message
+                    <> maybe "" (\d -> "\n  Details: " <> BC.unpack d) details
+                    <> maybe "" (\h -> "\n  Hint: " <> BC.unpack h) hint
+                UnexpectedResultError message -> "Unexpected result: " <> show message
+                RowResultError row (ColumnRowError column rowError) ->
+                  "Row error: " <> show row <> ":" <> show column <> " " <> show rowError
+                UnexpectedAmountOfRowsResultError amount ->
+                  "Unexpected amount of rows: " <> show amount
 
 -- |
 -- An error of some command in the session.
-data CommandError
+data QueryError
   = -- |
     -- An error on the client-side,
-    -- with a message generated by the \"libpq\" library.
+    -- with a message generated by the \"libpq\" driver.
     -- Usually indicates problems with connection.
-    ClientError (Maybe ByteString)
+    ClientQueryError (Maybe ByteString)
   | -- |
     -- Some error with a command result.
-    ResultError ResultError
+    ResultQueryError ResultError
   deriving (Show, Eq)
 
 -- |
 -- An error with a command result.
 data ResultError
   = -- | An error reported by the DB.
-    ServerError
+    ServerResultError
       -- | __Code__. The SQLSTATE code for the error. It's recommended to use
       -- <http://hackage.haskell.org/package/postgresql-error-codes
       -- the "postgresql-error-codes" package> to work with those.
@@ -120,29 +117,43 @@ data ResultError
       -- | __Position__. Error cursor position as an index into the original
       -- statement string. Positions are measured in characters not bytes.
       (Maybe Int)
-  | -- |
-    -- The database returned an unexpected result.
+  | -- | The database returned an unexpected result.
     -- Indicates an improper statement or a schema mismatch.
-    UnexpectedResult Text
-  | -- |
-    -- An error of the row reader, preceded by the indexes of the row and column.
-    RowError Int Int RowError
-  | -- |
-    -- An unexpected amount of rows.
-    UnexpectedAmountOfRows Int
+    UnexpectedResultError
+      -- | Details.
+      Text
+  | -- | Error decoding a specific row.
+    RowResultError
+      -- | Row index.
+      Int
+      -- | Details.
+      RowError
+  | -- | Unexpected amount of rows.
+    UnexpectedAmountOfRowsResultError
+      -- | Actual amount of rows in the result.
+      Int
+  deriving (Show, Eq)
+
+data RowError
+  = -- | Error at a specific column.
+    ColumnRowError
+      -- | Column index.
+      Int
+      -- | Error details.
+      ColumnError
   deriving (Show, Eq)
 
 -- |
--- An error during the decoding of a specific row.
-data RowError
+-- Error during the decoding of a specific column.
+data ColumnError
   = -- |
     -- Appears on the attempt to parse more columns than there are in the result.
-    EndOfInput
+    EndOfInputColumnError
   | -- |
     -- Appears on the attempt to parse a @NULL@ as some value.
-    UnexpectedNull
+    UnexpectedNullColumnError
   | -- |
     -- Appears when a wrong value parser is used.
     -- Comes with the error details.
-    ValueError Text
+    ValueColumnError Text
   deriving (Show, Eq)

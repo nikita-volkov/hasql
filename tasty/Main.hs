@@ -218,7 +218,7 @@ tree =
                   where
                     resultTest =
                       \case
-                        Right (Left (Session.QuerySessionError _ _ (Session.ResultError (Session.ServerError "26000" _ _ _ _)))) -> False
+                        Right (Left (Session.QuerySessionError _ _ (Session.ResultQueryError (Session.ServerResultError "26000" _ _ _ _)))) -> False
                         _ -> True
                     session =
                       catchError session (const (pure ())) *> session

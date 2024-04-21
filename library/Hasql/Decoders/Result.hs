@@ -45,13 +45,13 @@ rowsAffected =
       notNothing >=> notEmpty >=> decimal
       where
         notNothing =
-          Prelude.maybe (Left (UnexpectedResult "No bytes")) Right
+          Prelude.maybe (Left (UnexpectedResultError "No bytes")) Right
         notEmpty bytes =
           if ByteString.null bytes
-            then Left (UnexpectedResult "Empty bytes")
+            then Left (UnexpectedResultError "Empty bytes")
             else Right bytes
         decimal bytes =
-          mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m))
+          mapLeft (\m -> UnexpectedResultError ("Decimal parsing failure: " <> fromString m))
             $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
@@ -70,7 +70,7 @@ checkExecStatus expectedList =
 
 unexpectedResult :: Text -> Result a
 unexpectedResult =
-  Result . lift . ExceptT . pure . Left . UnexpectedResult
+  Result . lift . ExceptT . pure . Left . UnexpectedResultError
 
 {-# INLINE serverError #-}
 serverError :: Result ()
@@ -90,7 +90,7 @@ serverError =
         LibPQ.resultErrorField result LibPQ.DiagMessageHint
       position <-
         parsePosition <$> LibPQ.resultErrorField result LibPQ.DiagStatementPosition
-      pure $ Left $ ServerError code message detail hint position
+      pure $ Left $ ServerResultError code message detail hint position
   where
     parsePosition = \case
       Nothing -> Nothing
@@ -112,9 +112,8 @@ maybe rowDec =
           0 -> return (Right Nothing)
           1 -> do
             maxCols <- LibPQ.nfields result
-            let fromRowError (col, err) = RowError 0 col err
-            fmap (fmap Just . mapLeft fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
-          _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
+            fmap (fmap Just . mapLeft (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+          _ -> return (Left (UnexpectedAmountOfRowsResultError (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
@@ -131,9 +130,8 @@ single rowDec =
         case maxRows of
           1 -> do
             maxCols <- LibPQ.nfields result
-            let fromRowError (col, err) = RowError 0 col err
-            fmap (mapLeft fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
-          _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
+            fmap (mapLeft (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+          _ -> return (Left (UnexpectedAmountOfRowsResultError (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
       fromIntegral n
@@ -153,7 +151,7 @@ vector rowDec =
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
           rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
           case rowResult of
-            Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
+            Left !rowError -> writeIORef failureRef (Just (RowResultError rowIndex rowError))
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
         readIORef failureRef >>= \case
           Nothing -> Right <$> Vector.unsafeFreeze mvector
@@ -183,7 +181,7 @@ foldl step init rowDec =
             forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
               rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
               case rowResult of
-                Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
+                Left !rowError -> writeIORef failureRef (Just (RowResultError rowIndex rowError))
                 Right !x -> modifyIORef' accRef (\acc -> step acc x)
             readIORef failureRef >>= \case
               Nothing -> Right <$> readIORef accRef
@@ -210,7 +208,7 @@ foldr step init rowDec =
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
           rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
           case rowResult of
-            Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
+            Left !rowError -> writeIORef failureRef (Just (RowResultError rowIndex rowError))
             Right !x -> modifyIORef accRef (\acc -> step x acc)
         readIORef failureRef >>= \case
           Nothing -> Right <$> readIORef accRef

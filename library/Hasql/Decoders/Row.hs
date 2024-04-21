@@ -7,11 +7,11 @@ import Hasql.Prelude hiding (error)
 import PostgreSQL.Binary.Decoding qualified as A
 
 newtype Row a
-  = Row (ReaderT Env (ExceptT RowError IO) a)
+  = Row (ReaderT Env (ExceptT ColumnError IO) a)
   deriving (Functor, Applicative, Monad)
 
 instance MonadFail Row where
-  fail = error . ValueError . fromString
+  fail = error . ValueColumnError . fromString
 
 data Env
   = Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
@@ -19,7 +19,7 @@ data Env
 -- * Functions
 
 {-# INLINE run #-}
-run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either (Int, RowError) a)
+run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either RowError a)
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
@@ -27,11 +27,11 @@ run (Row impl) (result, row, columnsAmount, integerDatetimes) =
       Left e -> do
         LibPQ.Col col <- readIORef columnRef
         -- -1 because succ is applied before the error is returned
-        pure $ Left (fromIntegral col - 1, e)
+        pure $ Left (ColumnRowError (fromIntegral col - 1) e)
       Right x -> pure $ Right x
 
 {-# INLINE error #-}
-error :: RowError -> Row a
+error :: ColumnError -> Row a
 error x =
   Row (ReaderT (const (ExceptT (pure (Left x)))))
 
@@ -55,9 +55,9 @@ value valueDec =
                 Right Nothing
               Just value ->
                 fmap Just
-                  $ mapLeft ValueError
+                  $ mapLeft ValueColumnError
                   $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
-        else pure (Left EndOfInput)
+        else pure (Left EndOfInputColumnError)
 
 -- |
 -- Next value, decoded using the provided value decoder.
@@ -65,4 +65,4 @@ value valueDec =
 nonNullValue :: Value.Value a -> Row a
 nonNullValue valueDec =
   {-# SCC "nonNullValue" #-}
-  value valueDec >>= maybe (error UnexpectedNull) pure
+  value valueDec >>= maybe (error UnexpectedNullColumnError) pure

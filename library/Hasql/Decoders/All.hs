@@ -38,7 +38,7 @@ rowsAffected = Result (Results.single Result.rowsAffected)
 
 -- |
 -- Exactly one row.
--- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
+-- Will raise the 'Errors.UnexpectedAmountOfRowsResultError' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow (Row row) = Result (Results.single (Result.single row))

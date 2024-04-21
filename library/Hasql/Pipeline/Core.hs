@@ -89,7 +89,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                     sent <- Pq.sendPrepare connection key sql (mfilter (not . null) (Just oidList))
                     if sent
                       then pure (True, Right (key, recv))
-                      else (False,) . Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
+                      else (False,) . Left . commandToSessionError . ClientQueryError <$> Pq.errorMessage connection
                   where
                     recv =
                       fmap (mapLeft commandToSessionError)
@@ -101,7 +101,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
 
             sendQuery key =
               Pq.sendQueryPrepared connection key valueAndFormatList Pq.Binary >>= \case
-                False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
+                False -> Left . commandToSessionError . ClientQueryError <$> Pq.errorMessage connection
                 True -> pure (Right recv)
               where
                 recv =
@@ -112,7 +112,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
 
         runUnprepared =
           Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary >>= \case
-            False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
+            False -> Left . commandToSessionError . ClientQueryError <$> Pq.errorMessage connection
             True -> pure (Right recv)
           where
             recv =

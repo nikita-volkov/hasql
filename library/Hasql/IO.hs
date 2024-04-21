@@ -56,7 +56,7 @@ initConnection c =
   void $ LibPQ.exec c (Commands.asBytes (Commands.setEncodersToUTF8 <> Commands.setMinClientMessagesToWarning))
 
 {-# INLINE getResults #-}
-getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either CommandError a)
+getResults :: LibPQ.Connection -> Bool -> ResultsDecoders.Results a -> IO (Either QueryError a)
 getResults connection integerDatetimes decoder =
   {-# SCC "getResults" #-}
   (<*) <$> get <*> dropRemainders
@@ -72,7 +72,7 @@ getPreparedStatementKey ::
   PreparedStatementRegistry.PreparedStatementRegistry ->
   ByteString ->
   [LibPQ.Oid] ->
-  IO (Either CommandError ByteString)
+  IO (Either QueryError ByteString)
 getPreparedStatementKey connection registry template oidList =
   {-# SCC "getPreparedStatementKey" #-}
   PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
@@ -96,10 +96,10 @@ getPreparedStatementKey connection registry template oidList =
       pure (pure key)
 
 {-# INLINE checkedSend #-}
-checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either CommandError ())
+checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either QueryError ())
 checkedSend connection send =
   send >>= \case
-    False -> fmap (Left . ClientError) $ LibPQ.errorMessage connection
+    False -> fmap (Left . ClientQueryError) $ LibPQ.errorMessage connection
     True -> pure (Right ())
 
 {-# INLINE sendPreparedParametricStatement #-}
@@ -110,7 +110,7 @@ sendPreparedParametricStatement ::
   ByteString ->
   ParamsEncoders.Params a ->
   a ->
-  IO (Either CommandError ())
+  IO (Either QueryError ())
 sendPreparedParametricStatement connection registry integerDatetimes template encoder input =
   runExceptT $ do
     key <- ExceptT $ getPreparedStatementKey connection registry template oidList
@@ -126,7 +126,7 @@ sendUnpreparedParametricStatement ::
   ByteString ->
   ParamsEncoders.Params a ->
   a ->
-  IO (Either CommandError ())
+  IO (Either QueryError ())
 sendUnpreparedParametricStatement connection integerDatetimes template encoder input =
   checkedSend connection
     $ LibPQ.sendQueryParams
@@ -144,7 +144,7 @@ sendParametricStatement ::
   ParamsEncoders.Params a ->
   Bool ->
   a ->
-  IO (Either CommandError ())
+  IO (Either QueryError ())
 sendParametricStatement connection integerDatetimes registry template encoder prepared params =
   {-# SCC "sendParametricStatement" #-}
   if prepared
@@ -152,6 +152,6 @@ sendParametricStatement connection integerDatetimes registry template encoder pr
     else sendUnpreparedParametricStatement connection integerDatetimes template encoder params
 
 {-# INLINE sendNonparametricStatement #-}
-sendNonparametricStatement :: LibPQ.Connection -> ByteString -> IO (Either CommandError ())
+sendNonparametricStatement :: LibPQ.Connection -> ByteString -> IO (Either QueryError ())
 sendNonparametricStatement connection sql =
   checkedSend connection $ LibPQ.sendQuery connection sql
