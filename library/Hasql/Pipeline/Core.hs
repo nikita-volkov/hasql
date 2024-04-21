@@ -32,8 +32,8 @@ run (Pipeline send) (Connection.Connection pqConnectionRef integerDatetimes regi
         runCommandFailing pqConnection $ Pq.pipelineSync pqConnection
         putStrLn "recv"
         recvResult <- recv
-        putStrLn "dropRemainders"
-        handleEither =<< Decoders.Results.run Decoders.Results.dropRemainders pqConnection integerDatetimes
+        putStrLn "pipelineSync"
+        handleEither =<< Decoders.Results.run (Decoders.Results.single Decoders.Result.pipelineSync) pqConnection integerDatetimes
         putStrLn "exitPipelineMode"
         runCommandFailing pqConnection $ Pq.exitPipelineMode pqConnection
         putStrLn "return"
@@ -100,14 +100,11 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                       then pure (True, Right (key, recv))
                       else (False,) . Left . commandToQueryError . ClientError <$> Pq.errorMessage connection
                   where
-                    recv :: IO (Either QueryError ())
-                    recv = do
-                      Pq.getResult connection >>= \case
-                        Nothing ->
-                          Left . commandToQueryError . ClientError <$> Pq.errorMessage connection
-                        Just result ->
-                          mapLeft (commandToQueryError . ResultError)
-                            <$> Decoders.Result.run Decoders.Result.noResult integerDatetimes result
+                    recv =
+                      fmap (mapLeft commandToQueryError)
+                        $ (<*)
+                        <$> Decoders.Results.run (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
+                        <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
                 onOldRemoteKey key =
                   pure (Right (key, pure (Right ())))
 
