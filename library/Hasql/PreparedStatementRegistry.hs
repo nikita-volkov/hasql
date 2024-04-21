@@ -8,8 +8,8 @@ where
 
 import ByteString.StrictBuilder qualified as B
 import Data.HashTable.IO qualified as A
+import Database.PostgreSQL.LibPQ qualified as Pq
 import Hasql.Prelude hiding (lookup)
-import qualified Database.PostgreSQL.LibPQ as Pq
 
 data PreparedStatementRegistry
   = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
