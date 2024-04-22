@@ -5,8 +5,7 @@ import Hasql.Prelude
 
 -- | Error during execution of a session.
 data SessionError
-  = -- |
-    -- An error during the execution of a query.
+  = -- | Error during the execution of a query.
     -- Comes packed with the query template and a textual representation of the provided params.
     QuerySessionError
       -- | SQL template.

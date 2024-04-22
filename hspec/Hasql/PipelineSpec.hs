@@ -1,6 +1,8 @@
 module Hasql.PipelineSpec (spec) where
 
+import Hasql.TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
 import Hasql.TestingKit.Statements.GenerateSeries qualified as GenerateSeries
+import Hasql.TestingKit.Statements.WrongDecoder qualified as WrongDecoder
 import Hasql.TestingKit.TestingDsl qualified as Dsl
 import Test.Hspec
 import Prelude
@@ -22,7 +24,7 @@ spec = do
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [0 .. 2])
 
-  describe "Normally" do
+  describe "Multi-statement" do
     describe "On unprepared statements" do
       it "Collects results and sends params" do
         result <-
@@ -39,6 +41,51 @@ spec = do
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [[0 .. 2], [0 .. 2]])
 
-  describe "When some part fails" do
-    it "Works" do
-      pending
+    describe "When a part in the middle fails" do
+      describe "With query error" do
+        it "Captures the error" do
+          result <-
+            Dsl.runPipelineOnLocalDb
+              $ (,,)
+              <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
+              <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+          case result of
+            Left (Dsl.SessionError (Dsl.QuerySessionError _ _ _)) -> pure ()
+            _ -> expectationFailure $ "Unexpected result: " <> show result
+
+        it "Leaves the connection usable" do
+          result <-
+            Dsl.runSessionOnLocalDb do
+              tryError
+                $ Dsl.runPipelineInSession
+                $ (,,)
+                <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+                <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
+                <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              GenerateSeries.session True GenerateSeries.Params {start = 0, end = 0}
+          shouldBe result (Right [0])
+
+      describe "With decoding error" do
+        it "Captures the error" do
+          result <-
+            Dsl.runPipelineOnLocalDb
+              $ (,,)
+              <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
+              <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+          case result of
+            Left (Dsl.SessionError (Dsl.QuerySessionError _ _ _)) -> pure ()
+            _ -> expectationFailure $ "Unexpected result: " <> show result
+
+        it "Leaves the connection usable" do
+          result <-
+            Dsl.runSessionOnLocalDb do
+              tryError
+                $ Dsl.runPipelineInSession
+                $ (,,)
+                <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+                <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
+                <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              GenerateSeries.session True GenerateSeries.Params {start = 0, end = 0}
+          shouldBe result (Right [0])

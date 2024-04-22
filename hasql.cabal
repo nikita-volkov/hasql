@@ -147,7 +147,9 @@ library testing-kit
   hs-source-dirs: testing-kit
   exposed-modules:
     Hasql.TestingKit.Constants
+    Hasql.TestingKit.Statements.BrokenSyntax
     Hasql.TestingKit.Statements.GenerateSeries
+    Hasql.TestingKit.Statements.WrongDecoder
     Hasql.TestingKit.TestingDsl
 
   build-depends:

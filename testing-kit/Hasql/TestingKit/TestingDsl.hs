@@ -1,10 +1,18 @@
 module Hasql.TestingKit.TestingDsl
-  ( Session.Session,
+  ( -- * Errors
     Error (..),
     Session.SessionError (..),
     Session.CommandError (..),
+    Session.ResultError (..),
+    Session.RowError (..),
+    Session.ColumnError (..),
+
+    -- * Abstractions
+    Session.Session,
     Pipeline.Pipeline,
     Statement.Statement (..),
+
+    -- * Execution
     runSessionOnLocalDb,
     runPipelineOnLocalDb,
     runStatementInSession,
