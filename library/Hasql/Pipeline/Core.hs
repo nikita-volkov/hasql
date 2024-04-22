@@ -15,12 +15,14 @@ run :: forall a. Pipeline a -> Pq.Connection -> PreparedStatementRegistry.Prepar
 run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
   runExceptT do
     enterPipelineMode
-    flip finallyE exitPipelineMode do
-      recvQueries <- sendQueries
-      pipelineSync
-      queriesResult <- recvQueries
-      recvPipelineSync
-      pure queriesResult
+    finallyE
+      do
+        recvQueries <- sendQueries
+        pipelineSync
+        recvQueries
+      do
+        recvPipelineSync
+        exitPipelineMode
   where
     enterPipelineMode :: ExceptT SessionError IO ()
     enterPipelineMode =
@@ -40,9 +42,14 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
 
     recvPipelineSync :: ExceptT SessionError IO ()
     recvPipelineSync =
+      runResultsDecoder
+        $ Decoders.Results.single Decoders.Result.pipelineSync
+
+    runResultsDecoder :: forall a. Decoders.Results.Results a -> ExceptT SessionError IO a
+    runResultsDecoder decoder =
       ExceptT
         $ fmap (mapLeft PipelineSessionError)
-        $ Decoders.Results.run (Decoders.Results.single Decoders.Result.pipelineSync) connection integerDatetimes
+        $ Decoders.Results.run decoder connection integerDatetimes
 
     runCommand :: IO Bool -> ExceptT SessionError IO ()
     runCommand action =
