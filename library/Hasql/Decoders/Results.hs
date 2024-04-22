@@ -49,26 +49,6 @@ single resultDec =
         Nothing ->
           fmap (Left . ClientCommandError) (LibPQ.errorMessage connection)
 
--- |
--- Fetch a single result.
-{-# INLINE getResult #-}
-getResult :: Results LibPQ.Result
-getResult =
-  Results
-    $ ReaderT
-    $ \(_, connection) -> ExceptT $ do
-      resultMaybe <- LibPQ.getResult connection
-      case resultMaybe of
-        Just result -> pure (Right result)
-        Nothing -> fmap (Left . ClientCommandError) (LibPQ.errorMessage connection)
-
--- |
--- Fetch a single result.
-{-# INLINE getResultMaybe #-}
-getResultMaybe :: Results (Maybe LibPQ.Result)
-getResultMaybe =
-  Results $ ReaderT $ \(_, connection) -> lift $ LibPQ.getResult connection
-
 {-# INLINE dropRemainders #-}
 dropRemainders :: Results ()
 dropRemainders =
