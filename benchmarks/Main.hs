@@ -4,6 +4,7 @@ import Criterion
 import Criterion.Main
 import Hasql.Connection qualified as A
 import Hasql.Decoders qualified as D
+import Hasql.Pipeline qualified as E
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
 import Prelude
@@ -21,40 +22,42 @@ main =
         [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
           sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
           sessionBench "manyLargeResults" sessionWithManyLargeResults,
-          sessionBench "manySmallResults" sessionWithManySmallResults
+          sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
+          sessionBench "manySmallResults" sessionWithManySmallResults,
+          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline
         ]
       where
         sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
         sessionBench name session =
-          bench name (nfIO (fmap (either (error "") id) (B.run session connection)))
+          bench name (nfIO (B.run session connection >>= either (fail . show) pure))
 
 -- * Sessions
-
-sessionWithManySmallParameters :: Vector (Int64, Int64) -> B.Session ()
-sessionWithManySmallParameters =
-  error "TODO: sessionWithManySmallParameters"
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
 sessionWithSingleLargeResultInVector =
   B.statement () statementWithManyRowsInVector
 
-sessionWithManyLargeResults :: B.Session [Vector (Int64, Int64)]
-sessionWithManyLargeResults =
-  replicateM 1000 (B.statement () statementWithManyRowsInVector)
-
 sessionWithSingleLargeResultInList :: B.Session [(Int64, Int64)]
 sessionWithSingleLargeResultInList =
   B.statement () statementWithManyRowsInList
 
+sessionWithManyLargeResults :: B.Session [Vector (Int64, Int64)]
+sessionWithManyLargeResults =
+  replicateM 100 (B.statement () statementWithManyRowsInVector)
+
 sessionWithManySmallResults :: B.Session [(Int64, Int64)]
 sessionWithManySmallResults =
-  replicateM 1000 (B.statement () statementWithSingleRow)
+  replicateM 100 (B.statement () statementWithSingleRow)
+
+sessionWithManyLargeResultsViaPipeline :: B.Session [Vector (Int64, Int64)]
+sessionWithManyLargeResultsViaPipeline =
+  B.pipeline (replicateM 100 (E.statement () statementWithManyRowsInVector))
+
+sessionWithManySmallResultsViaPipeline :: B.Session [(Int64, Int64)]
+sessionWithManySmallResultsViaPipeline =
+  B.pipeline (replicateM 100 (E.statement () statementWithSingleRow))
 
 -- * Statements
-
-statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
-statementWithManyParameters =
-  error "TODO: statementWithManyParameters"
 
 statementWithSingleRow :: C.Statement () (Int64, Int64)
 statementWithSingleRow =
