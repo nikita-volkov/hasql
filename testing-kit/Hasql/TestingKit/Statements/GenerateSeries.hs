@@ -1,4 +1,4 @@
-module Hasql.TestingUtils.Statements.GenerateSeries where
+module Hasql.TestingKit.Statements.GenerateSeries where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders

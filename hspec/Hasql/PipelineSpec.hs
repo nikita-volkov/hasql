@@ -1,7 +1,7 @@
 module Hasql.PipelineSpec (spec) where
 
-import Hasql.TestingUtils.Statements.GenerateSeries qualified as GenerateSeries
-import Hasql.TestingUtils.TestingDsl qualified as Dsl
+import Hasql.TestingKit.Statements.GenerateSeries qualified as GenerateSeries
+import Hasql.TestingKit.TestingDsl qualified as Dsl
 import Test.Hspec
 import Prelude
 

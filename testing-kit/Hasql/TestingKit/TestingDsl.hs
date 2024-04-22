@@ -1,4 +1,4 @@
-module Hasql.TestingUtils.TestingDsl
+module Hasql.TestingKit.TestingDsl
   ( Session.Session,
     Error (..),
     Session.SessionError (..),
@@ -16,7 +16,7 @@ import Hasql.Connection qualified as Connection
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingUtils.Constants qualified as Constants
+import Hasql.TestingKit.Constants qualified as Constants
 import Prelude
 
 data Error
