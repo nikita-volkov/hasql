@@ -2,7 +2,7 @@ module Hasql.TestingUtils.TestingDsl
   ( Session.Session,
     Error (..),
     Session.SessionError (..),
-    Session.QueryError (..),
+    Session.CommandError (..),
     Pipeline.Pipeline,
     Statement.Statement (..),
     runSessionOnLocalDb,

@@ -62,4 +62,6 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
 
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
-  Session $ ReaderT $ ExceptT . Pipeline.run pipeline
+  Session $ ReaderT \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+    ExceptT $ withMVar pqConnectionRef \pqConnection ->
+      Pipeline.run pipeline pqConnection registry integerDatetimes
