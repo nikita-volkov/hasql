@@ -33,8 +33,8 @@ sql =
 encoder :: Encoders.Params Params
 encoder =
   mconcat
-    [ (.start) >$< Encoders.param (Encoders.nonNullable Encoders.int8),
-      (.end) >$< Encoders.param (Encoders.nonNullable Encoders.int8)
+    [ start >$< Encoders.param (Encoders.nonNullable Encoders.int8),
+      end >$< Encoders.param (Encoders.nonNullable Encoders.int8)
     ]
 
 decoder :: Decoders.Result Result
