@@ -15,14 +15,11 @@ run :: forall a. Pipeline a -> Pq.Connection -> PreparedStatementRegistry.Prepar
 run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
   runExceptT do
     enterPipelineMode
-    finallyE
-      do
-        recvQueries <- sendQueries
-        pipelineSync
-        recvQueries
-      do
-        recvPipelineSync
-        exitPipelineMode
+    recvQueries <- sendQueries
+    pipelineSync
+    finallyE recvQueries do
+      recvPipelineSync
+      exitPipelineMode
   where
     enterPipelineMode :: ExceptT SessionError IO ()
     enterPipelineMode =
