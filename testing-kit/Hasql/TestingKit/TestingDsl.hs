@@ -37,10 +37,10 @@ runSessionOnLocalDb session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ fmap (mapLeft ConnectionError) $ Connection.acquire Constants.localConnectionSettings
+      ExceptT $ fmap (first ConnectionError) $ Connection.acquire Constants.localConnectionSettings
     use connection =
       ExceptT
-        $ fmap (mapLeft SessionError)
+        $ fmap (first SessionError)
         $ Session.run session connection
     release connection =
       lift $ Connection.release connection

@@ -45,7 +45,7 @@ single resultDec =
       resultMaybe <- LibPQ.getResult connection
       case resultMaybe of
         Just result ->
-          mapLeft ResultCommandError <$> Result.run resultDec integerDatetimes result
+          first ResultCommandError <$> Result.run resultDec integerDatetimes result
         Nothing ->
           fmap (Left . ClientCommandError) (LibPQ.errorMessage connection)
 
@@ -64,11 +64,11 @@ dropRemainders =
           loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
-              ExceptT $ fmap (mapLeft ResultCommandError) $ Result.run Result.noResult integerDatetimes result
+              ExceptT $ fmap (first ResultCommandError) $ Result.run Result.noResult integerDatetimes result
 
 refine :: (a -> Either Text b) -> Results a -> Results b
 refine refiner (Results stack) = Results
   $ ReaderT
   $ \env -> ExceptT $ do
     resultEither <- runExceptT $ runReaderT stack env
-    return $ resultEither >>= mapLeft (ResultCommandError . UnexpectedResultError) . refiner
+    return $ resultEither >>= first (ResultCommandError . UnexpectedResultError) . refiner

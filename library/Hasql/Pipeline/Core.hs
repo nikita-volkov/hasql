@@ -45,7 +45,7 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
     runResultsDecoder :: forall a. Decoders.Results.Results a -> ExceptT SessionError IO a
     runResultsDecoder decoder =
       ExceptT
-        $ fmap (mapLeft PipelineSessionError)
+        $ fmap (first PipelineSessionError)
         $ Decoders.Results.run decoder connection integerDatetimes
 
     runCommand :: IO Bool -> ExceptT SessionError IO ()
@@ -109,7 +109,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                       else (False,) . Left . commandToSessionError . ClientCommandError <$> Pq.errorMessage connection
                   where
                     recv =
-                      fmap (mapLeft commandToSessionError)
+                      fmap (first commandToSessionError)
                         $ (<*)
                         <$> Decoders.Results.run (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
                         <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
@@ -122,7 +122,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                 True -> pure (Right recv)
               where
                 recv =
-                  fmap (mapLeft commandToSessionError)
+                  fmap (first commandToSessionError)
                     $ (<*)
                     <$> Decoders.Results.run decoder connection integerDatetimes
                     <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
@@ -133,7 +133,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
             True -> pure (Right recv)
           where
             recv =
-              fmap (mapLeft commandToSessionError)
+              fmap (first commandToSessionError)
                 $ (<*)
                 <$> Decoders.Results.run decoder connection integerDatetimes
                 <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes

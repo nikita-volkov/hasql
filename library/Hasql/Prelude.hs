@@ -7,7 +7,6 @@ module Hasql.Prelude
     forMToZero_,
     forMFromZero_,
     strictCons,
-    mapLeft,
   )
 where
 
@@ -130,8 +129,3 @@ forMFromZero_ !endN f =
 strictCons :: a -> [a] -> [a]
 strictCons !a b =
   let !c = a : b in c
-
-{-# INLINE mapLeft #-}
-mapLeft :: (a -> c) -> Either a b -> Either c b
-mapLeft f =
-  either (Left . f) Right

@@ -35,7 +35,7 @@ sql sql =
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (mapLeft (QuerySessionError sql []))
+        $ fmap (first (QuerySessionError sql []))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <- IO.sendNonparametricStatement pqConnection sql
@@ -53,7 +53,7 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
     $ ReaderT
     $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (mapLeft (QuerySessionError template (Encoders.Params.renderReadable paramsEncoder input)))
+        $ fmap (first (QuerySessionError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input

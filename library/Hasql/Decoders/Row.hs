@@ -55,7 +55,7 @@ value valueDec =
                 Right Nothing
               Just value ->
                 fmap Just
-                  $ mapLeft ValueColumnError
+                  $ first ValueColumnError
                   $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
         else pure (Left EndOfInputColumnError)
 

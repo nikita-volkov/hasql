@@ -51,7 +51,7 @@ rowsAffected =
             then Left (UnexpectedResultError "Empty bytes")
             else Right bytes
         decimal bytes =
-          mapLeft (\m -> UnexpectedResultError ("Decimal parsing failure: " <> fromString m))
+          first (\m -> UnexpectedResultError ("Decimal parsing failure: " <> fromString m))
             $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
@@ -112,7 +112,7 @@ maybe rowDec =
           0 -> return (Right Nothing)
           1 -> do
             maxCols <- LibPQ.nfields result
-            fmap (fmap Just . mapLeft (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (fmap Just . first (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRowsResultError (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
@@ -130,7 +130,7 @@ single rowDec =
         case maxRows of
           1 -> do
             maxCols <- LibPQ.nfields result
-            fmap (mapLeft (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (first (RowResultError 0)) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRowsResultError (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
