@@ -51,7 +51,7 @@ spec = do
               <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Dsl.SessionError (Dsl.QuerySessionError _ _ _)) -> pure ()
+            Left (Dsl.SessionError (Dsl.QueryError _ _ _)) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" do
@@ -75,7 +75,7 @@ spec = do
               <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Dsl.SessionError (Dsl.QuerySessionError _ _ _)) -> pure ()
+            Left (Dsl.SessionError (Dsl.QueryError _ _ _)) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" do

@@ -99,7 +99,7 @@ getPreparedStatementKey connection registry template oidList =
 checkedSend :: LibPQ.Connection -> IO Bool -> IO (Either CommandError ())
 checkedSend connection send =
   send >>= \case
-    False -> fmap (Left . ClientCommandError) $ LibPQ.errorMessage connection
+    False -> fmap (Left . ClientError) $ LibPQ.errorMessage connection
     True -> pure (Right ())
 
 {-# INLINE sendPreparedParametricStatement #-}

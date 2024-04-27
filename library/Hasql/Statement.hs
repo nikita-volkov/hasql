@@ -75,7 +75,7 @@ instance Profunctor Statement where
 
 -- |
 -- Refine the result of a statement,
--- causing the running session to fail with the `UnexpectedResultError` error in case of a refinement failure.
+-- causing the running session to fail with the `UnexpectedResult` error in case of a refinement failure.
 --
 -- This function is especially useful for refining the results of statements produced with
 -- <http://hackage.haskell.org/package/hasql-th the \"hasql-th\" library>.

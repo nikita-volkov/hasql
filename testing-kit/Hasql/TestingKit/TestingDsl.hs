@@ -5,7 +5,6 @@ module Hasql.TestingKit.TestingDsl
     Session.CommandError (..),
     Session.ResultError (..),
     Session.RowError (..),
-    Session.ColumnError (..),
 
     -- * Abstractions
     Session.Session,
