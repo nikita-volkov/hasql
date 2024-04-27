@@ -39,6 +39,7 @@ common base
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
+    DerivingVia
     EmptyDataDecls
     FlexibleContexts
     FlexibleInstances
