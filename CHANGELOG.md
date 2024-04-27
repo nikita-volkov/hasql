@@ -9,11 +9,11 @@
     - `ResultError` constructor got renamed to `ResultCommandError`
     - `ServerError` constructor got renamed to `ServerResultError`
     - `UnexpectedResult` constructor got renamed to `UnexpectedResultError`
-    - `RowResult` constructor got renamed to `RowResultError`
+    - `RowError` constructor got renamed to `RowResultError`
     - `RowError` type got renamed to `ColumnError`
     - `EndOfInput` constructor got renamed to `EndOfInputColumnError`
     - `UnexpectedNull` constructor got renamed to `UnexpectedNullColumnError`
-    - `ValueError` constructor got renamed to `UnexpectedNull`
+    - `ValueError` constructor got renamed to `ValueColumnError`
     - New `RowError` type got created
     - `RowResult` constructor's column field go transferred into the new `RowError` type
 
