@@ -1,8 +1,8 @@
 module Hasql.Decoders.Row where
 
-import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.Decoders.Value qualified as Value
 import Hasql.Errors
+import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude hiding (error)
 import PostgreSQL.Binary.Decoding qualified as A
 

@@ -8,7 +8,7 @@ where
 
 import ByteString.StrictBuilder qualified as B
 import Data.HashTable.IO qualified as A
-import Database.PostgreSQL.LibPQ qualified as Pq
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (lookup)
 
 data PreparedStatementRegistry

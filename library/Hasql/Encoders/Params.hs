@@ -1,7 +1,7 @@
 module Hasql.Encoders.Params where
 
-import Database.PostgreSQL.LibPQ qualified as A
 import Hasql.Encoders.Value qualified as C
+import Hasql.LibPq14 qualified as A
 import Hasql.PostgresTypeInfo qualified as D
 import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B

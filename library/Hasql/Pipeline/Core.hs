@@ -1,12 +1,12 @@
 module Hasql.Pipeline.Core where
 
-import Database.PostgreSQL.LibPQ qualified as Pq
 import Hasql.Decoders.All qualified as Decoders
 import Hasql.Decoders.Result qualified as Decoders.Result
 import Hasql.Decoders.Results qualified as Decoders.Results
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement

@@ -49,13 +49,11 @@ common base
     ImportQualifiedPost
     LambdaCase
     LiberalTypeSynonyms
-    MagicHash
     MultiParamTypeClasses
     MultiWayIf
     NoImplicitPrelude
     NoMonomorphismRestriction
     OverloadedStrings
-    ParallelListComp
     PatternGuards
     QuasiQuotes
     RankNTypes
@@ -64,11 +62,9 @@ common base
     ScopedTypeVariables
     StandaloneDeriving
     StrictData
-    TemplateHaskell
     TupleSections
     TypeFamilies
     TypeOperators
-    UnboxedTuples
 
 common executable
   import: base
@@ -112,6 +108,9 @@ library
     Hasql.Encoders.Value
     Hasql.Errors
     Hasql.IO
+    Hasql.LibPq14
+    Hasql.LibPq14.Ffi
+    Hasql.LibPq14.Mappings
     Hasql.Pipeline.Core
     Hasql.PostgresTypeInfo
     Hasql.Prelude
@@ -132,7 +131,7 @@ library
     mtl >=2 && <3,
     network-ip >=0.3.0.3 && <0.4,
     postgresql-binary >=0.13.1 && <0.14,
-    postgresql-libpq >=0.9 && <0.11,
+    postgresql-libpq ==0.10.1.0,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
