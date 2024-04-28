@@ -5,7 +5,7 @@ import Hasql.Encoders qualified as Encoders
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Prelude
+import Hasql.TestingKit.Preludes.Base
 
 data Params = Params
   { start :: Int64,

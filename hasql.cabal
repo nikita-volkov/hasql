@@ -151,14 +151,18 @@ library testing-kit
   hs-source-dirs: testing-kit
   exposed-modules:
     Hasql.TestingKit.Constants
+    Hasql.TestingKit.Preludes.Base
     Hasql.TestingKit.Statements.BrokenSyntax
     Hasql.TestingKit.Statements.GenerateSeries
     Hasql.TestingKit.Statements.WrongDecoder
     Hasql.TestingKit.TestingDsl
 
   build-depends:
+    base,
+    bytestring,
     hasql,
-    rerebase <2,
+    transformers,
+    uuid,
 
 test-suite tasty
   import: base
