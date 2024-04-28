@@ -24,7 +24,7 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.Constants qualified as Constants
-import Prelude
+import Hasql.TestingKit.Preludes.Base
 
 data Error
   = ConnectionError (Connection.ConnectionError)
