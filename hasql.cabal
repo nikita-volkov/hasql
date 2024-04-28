@@ -9,6 +9,11 @@ description:
   <https://github.com/nikita-volkov/hasql the readme>.
   The API comes free from all kinds of exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 
+  This library requires to have the \"libpq\" library installed on the running system.
+  It comes distributed with PostgreSQL.
+  To be able to use the \"Pipeline\" feature you'll need \"libpq\" of version >14.
+  This feature does not however put any requirements on the version of the PostgreSQL server.
+
 homepage: https://github.com/nikita-volkov/hasql
 bug-reports: https://github.com/nikita-volkov/hasql/issues
 author: Nikita Volkov <nikita.y.volkov@mail.ru>
@@ -27,8 +32,10 @@ source-repository head
 common base
   default-language: Haskell2010
   default-extensions:
+    ApplicativeDo
     Arrows
     BangPatterns
+    BlockArguments
     ConstraintKinds
     DataKinds
     DefaultSignatures
@@ -37,6 +44,7 @@ common base
     DeriveFunctor
     DeriveGeneric
     DeriveTraversable
+    DerivingVia
     EmptyDataDecls
     FlexibleContexts
     FlexibleInstances
@@ -46,13 +54,11 @@ common base
     ImportQualifiedPost
     LambdaCase
     LiberalTypeSynonyms
-    MagicHash
     MultiParamTypeClasses
     MultiWayIf
     NoImplicitPrelude
     NoMonomorphismRestriction
     OverloadedStrings
-    ParallelListComp
     PatternGuards
     QuasiQuotes
     RankNTypes
@@ -60,11 +66,10 @@ common base
     RoleAnnotations
     ScopedTypeVariables
     StandaloneDeriving
-    TemplateHaskell
+    StrictData
     TupleSections
     TypeFamilies
     TypeOperators
-    UnboxedTuples
 
 common executable
   import: base
@@ -88,6 +93,7 @@ library
     Hasql.Connection
     Hasql.Decoders
     Hasql.Encoders
+    Hasql.Pipeline
     Hasql.Session
     Hasql.Statement
 
@@ -107,6 +113,10 @@ library
     Hasql.Encoders.Value
     Hasql.Errors
     Hasql.IO
+    Hasql.LibPq14
+    Hasql.LibPq14.Ffi
+    Hasql.LibPq14.Mappings
+    Hasql.Pipeline.Core
     Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
@@ -126,22 +136,25 @@ library
     mtl >=2 && <3,
     network-ip >=0.3.0.3 && <0.4,
     postgresql-binary >=0.13.1 && <0.14,
-    postgresql-libpq >=0.9 && <0.11,
+    postgresql-libpq ==0.10.1.0,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
     text-builder >=0.6.7 && <0.7,
     time >=1.9 && <2,
-    transformers >=0.3 && <0.7,
+    transformers >=0.6 && <0.7,
     uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
 
-library testing-utils
+library testing-kit
   import: base
-  hs-source-dirs: testing-utils
+  hs-source-dirs: testing-kit
   exposed-modules:
-    Hasql.TestingUtils.Constants
-    Hasql.TestingUtils.TestingDsl
+    Hasql.TestingKit.Constants
+    Hasql.TestingKit.Statements.BrokenSyntax
+    Hasql.TestingKit.Statements.GenerateSeries
+    Hasql.TestingKit.Statements.WrongDecoder
+    Hasql.TestingKit.TestingDsl
 
   build-depends:
     hasql,
@@ -160,7 +173,7 @@ test-suite tasty
   build-depends:
     contravariant-extras >=0.3.5.2 && <0.4,
     hasql,
-    hasql:testing-utils,
+    hasql:testing-kit,
     quickcheck-instances >=0.3.11 && <0.4,
     rerebase <2,
     tasty >=0.12 && <2,
@@ -199,4 +212,18 @@ test-suite profiling
 
   build-depends:
     hasql,
+    rerebase >=1 && <2,
+
+test-suite hspec
+  import: test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: hspec
+  main-is: Main.hs
+  other-modules:
+    Hasql.PipelineSpec
+
+  build-tool-depends: hspec-discover:hspec-discover
+  build-depends:
+    hasql:testing-kit,
+    hspec,
     rerebase >=1 && <2,

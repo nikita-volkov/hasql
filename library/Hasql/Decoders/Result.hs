@@ -4,9 +4,9 @@ import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
-import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
+import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
 
@@ -15,25 +15,25 @@ newtype Result a
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Result a -> (Bool, LibPQ.Result) -> IO (Either ResultError a)
-run (Result reader) env =
-  runExceptT (runReaderT reader env)
+run :: Result a -> Bool -> LibPQ.Result -> IO (Either ResultError a)
+run (Result reader) idt result =
+  runExceptT (runReaderT reader (idt, result))
+
+{-# INLINE pipelineSync #-}
+pipelineSync :: Result ()
+pipelineSync =
+  checkExecStatus [LibPQ.PipelineSync]
 
 {-# INLINE noResult #-}
 noResult :: Result ()
 noResult =
-  checkExecStatus $ \case
-    LibPQ.CommandOk -> True
-    LibPQ.TuplesOk -> True
-    _ -> False
+  checkExecStatus [LibPQ.CommandOk, LibPQ.TuplesOk]
 
 {-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
   do
-    checkExecStatus $ \case
-      LibPQ.CommandOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.CommandOk]
     Result
       $ ReaderT
       $ \(_, result) ->
@@ -51,22 +51,26 @@ rowsAffected =
             then Left (UnexpectedResult "Empty bytes")
             else Right bytes
         decimal bytes =
-          mapLeft (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m))
+          first (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m))
             $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
-checkExecStatus :: (LibPQ.ExecStatus -> Bool) -> Result ()
-checkExecStatus predicate =
+checkExecStatus :: [LibPQ.ExecStatus] -> Result ()
+checkExecStatus expectedList =
   {-# SCC "checkExecStatus" #-}
   do
     status <- Result $ ReaderT $ \(_, result) -> lift $ LibPQ.resultStatus result
-    unless (predicate status) $ do
+    unless (elem status expectedList) $ do
       case status of
         LibPQ.BadResponse -> serverError
         LibPQ.NonfatalError -> serverError
         LibPQ.FatalError -> serverError
         LibPQ.EmptyQuery -> return ()
-        _ -> Result $ lift $ ExceptT $ pure $ Left $ UnexpectedResult $ "Unexpected result status: " <> (fromString $ show status)
+        _ -> unexpectedResult $ "Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList)
+
+unexpectedResult :: Text -> Result a
+unexpectedResult =
+  Result . lift . ExceptT . pure . Left . UnexpectedResult
 
 {-# INLINE serverError #-}
 serverError :: Result ()
@@ -99,9 +103,7 @@ serverError =
 maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -111,7 +113,7 @@ maybe rowDec =
           1 -> do
             maxCols <- LibPQ.nfields result
             let fromRowError (col, err) = RowError 0 col err
-            fmap (fmap Just . mapLeft fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (fmap Just . first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
@@ -121,9 +123,7 @@ maybe rowDec =
 single :: Row.Row a -> Result a
 single rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -132,7 +132,7 @@ single rowDec =
           1 -> do
             maxCols <- LibPQ.nfields result
             let fromRowError (col, err) = RowError 0 col err
-            fmap (mapLeft fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (LibPQ.Row n) =
@@ -142,9 +142,7 @@ single rowDec =
 vector :: Row.Row a -> Result (Vector a)
 vector rowDec =
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -171,9 +169,7 @@ foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
 foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) ->
@@ -203,9 +199,7 @@ foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
-    checkExecStatus $ \case
-      LibPQ.TuplesOk -> True
-      _ -> False
+    checkExecStatus [LibPQ.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do

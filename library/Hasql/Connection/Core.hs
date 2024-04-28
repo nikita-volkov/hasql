@@ -2,8 +2,8 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection.Core where
 
-import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.IO qualified as IO
+import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Settings qualified as Settings

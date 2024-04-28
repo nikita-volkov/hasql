@@ -1,0 +1,26 @@
+on:
+  pull_request:
+    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - master
+      - major
+      - minor
+      - patch
+
+jobs:
+
+  format:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/format.yaml@v3
+    secrets: inherit
+
+  check:
+    uses: ./.github/workflows/check.yaml
+    secrets: inherit
+
+  check-changelog:
+    name: Check Changelog Action
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: tarides/changelog-check-action@v2
+        with:
+          changelog: CHANGELOG.md

@@ -10,9 +10,9 @@
 -- * Row-by-row fetching.
 module Hasql.Decoders.Results where
 
-import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.Decoders.Result qualified as Result
 import Hasql.Errors
+import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
 
@@ -21,9 +21,9 @@ newtype Results a
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Results a -> (Bool, LibPQ.Connection) -> IO (Either CommandError a)
-run (Results stack) env =
-  runExceptT (runReaderT stack env)
+run :: Results a -> LibPQ.Connection -> Bool -> IO (Either CommandError a)
+run (Results stack) conn idt =
+  runExceptT (runReaderT stack (idt, conn))
 
 {-# INLINE clientError #-}
 clientError :: Results a
@@ -45,29 +45,9 @@ single resultDec =
       resultMaybe <- LibPQ.getResult connection
       case resultMaybe of
         Just result ->
-          mapLeft ResultError <$> Result.run resultDec (integerDatetimes, result)
+          first ResultError <$> Result.run resultDec integerDatetimes result
         Nothing ->
           fmap (Left . ClientError) (LibPQ.errorMessage connection)
-
--- |
--- Fetch a single result.
-{-# INLINE getResult #-}
-getResult :: Results LibPQ.Result
-getResult =
-  Results
-    $ ReaderT
-    $ \(_, connection) -> ExceptT $ do
-      resultMaybe <- LibPQ.getResult connection
-      case resultMaybe of
-        Just result -> pure (Right result)
-        Nothing -> fmap (Left . ClientError) (LibPQ.errorMessage connection)
-
--- |
--- Fetch a single result.
-{-# INLINE getResultMaybe #-}
-getResultMaybe :: Results (Maybe LibPQ.Result)
-getResultMaybe =
-  Results $ ReaderT $ \(_, connection) -> lift $ LibPQ.getResult connection
 
 {-# INLINE dropRemainders #-}
 dropRemainders :: Results ()
@@ -84,11 +64,11 @@ dropRemainders =
           loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
-              ExceptT $ fmap (mapLeft ResultError) $ Result.run Result.noResult (integerDatetimes, result)
+              ExceptT $ fmap (first ResultError) $ Result.run Result.noResult integerDatetimes result
 
 refine :: (a -> Either Text b) -> Results a -> Results b
-refine refiner results = Results
+refine refiner (Results stack) = Results
   $ ReaderT
   $ \env -> ExceptT $ do
-    resultEither <- run results env
-    return $ resultEither >>= mapLeft (ResultError . UnexpectedResult) . refiner
+    resultEither <- runExceptT $ runReaderT stack env
+    return $ resultEither >>= first (ResultError . UnexpectedResult) . refiner

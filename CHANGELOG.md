@@ -1,6 +1,8 @@
 # 1.7
 
 - Decidable instance on `Encoders.Params` removed. It was useless and limited the design.
+- `QueryError` type renamed to `SessionError`.
+- `PipelineError` constructor added to the `SessionError` type.
 
 # 1.6.3.1
 

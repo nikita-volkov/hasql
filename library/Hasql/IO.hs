@@ -2,12 +2,12 @@
 -- An API of low-level IO operations.
 module Hasql.IO where
 
-import Database.PostgreSQL.LibPQ qualified as LibPQ
 import Hasql.Commands qualified as Commands
 import Hasql.Decoders.Result qualified as ResultDecoders
 import Hasql.Decoders.Results qualified as ResultsDecoders
 import Hasql.Encoders.Params qualified as ParamsEncoders
 import Hasql.Errors
+import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 
@@ -62,9 +62,9 @@ getResults connection integerDatetimes decoder =
   (<*) <$> get <*> dropRemainders
   where
     get =
-      ResultsDecoders.run decoder (integerDatetimes, connection)
+      ResultsDecoders.run decoder connection integerDatetimes
     dropRemainders =
-      ResultsDecoders.run ResultsDecoders.dropRemainders (integerDatetimes, connection)
+      ResultsDecoders.run ResultsDecoders.dropRemainders connection integerDatetimes
 
 {-# INLINE getPreparedStatementKey #-}
 getPreparedStatementKey ::
@@ -78,19 +78,16 @@ getPreparedStatementKey connection registry template oidList =
   PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
   where
     localKey =
-      PreparedStatementRegistry.LocalKey template wordOIDList
-      where
-        wordOIDList =
-          map (\(LibPQ.Oid x) -> fromIntegral x) oidList
+      PreparedStatementRegistry.LocalKey template oidList
     onNewRemoteKey key =
       do
         sent <- LibPQ.sendPrepare connection key template (mfilter (not . null) (Just oidList))
-        let resultsDecoder =
-              if sent
-                then ResultsDecoders.single ResultDecoders.noResult
-                else ResultsDecoders.clientError
-        fmap resultsMapping $ getResults connection undefined resultsDecoder
+        fmap resultsMapping $ getResults connection undefined (resultsDecoder sent)
       where
+        resultsDecoder sent =
+          if sent
+            then ResultsDecoders.single ResultDecoders.noResult
+            else ResultsDecoders.clientError
         resultsMapping =
           \case
             Left x -> (False, Left x)
@@ -114,17 +111,13 @@ sendPreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendPreparedParametricStatement connection registry integerDatetimes template (ParamsEncoders.Params size columnsMetadata serializer _) input =
+sendPreparedParametricStatement connection registry integerDatetimes template encoder input =
   runExceptT $ do
     key <- ExceptT $ getPreparedStatementKey connection registry template oidList
     ExceptT $ checkedSend connection $ LibPQ.sendQueryPrepared connection key valueAndFormatList LibPQ.Binary
   where
-    (oidList, formatList) =
-      columnsMetadata & toList & unzip
-    valueAndFormatList =
-      serializer integerDatetimes input
-        & toList
-        & zipWith (\format encoding -> (,format) <$> encoding) formatList
+    (oidList, valueAndFormatList) =
+      ParamsEncoders.compilePreparedStatementData encoder integerDatetimes input
 
 {-# INLINE sendUnpreparedParametricStatement #-}
 sendUnpreparedParametricStatement ::
@@ -134,15 +127,13 @@ sendUnpreparedParametricStatement ::
   ParamsEncoders.Params a ->
   a ->
   IO (Either CommandError ())
-sendUnpreparedParametricStatement connection integerDatetimes template (ParamsEncoders.Params _ columnsMetadata serializer printer) input =
-  let params =
-        zipWith
-          ( \(oid, format) encoding ->
-              (,,) <$> pure oid <*> encoding <*> pure format
-          )
-          (toList columnsMetadata)
-          (toList (serializer integerDatetimes input))
-   in checkedSend connection $ LibPQ.sendQueryParams connection template params LibPQ.Binary
+sendUnpreparedParametricStatement connection integerDatetimes template encoder input =
+  checkedSend connection
+    $ LibPQ.sendQueryParams
+      connection
+      template
+      (ParamsEncoders.compileUnpreparedStatementData encoder integerDatetimes input)
+      LibPQ.Binary
 
 {-# INLINE sendParametricStatement #-}
 sendParametricStatement ::
