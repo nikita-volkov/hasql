@@ -9,6 +9,11 @@ description:
   <https://github.com/nikita-volkov/hasql the readme>.
   The API comes free from all kinds of exceptions. All error-reporting is explicit and is presented using the 'Either' type.
 
+  This library requires to have the \"libpq\" library installed on the running system.
+  It comes distributed with PostgreSQL.
+  To be able to use the \"Pipeline\" feature you'll need \"libpq\" of version >14.
+  This feature does not however put any requirements on the version of the PostgreSQL server.
+
 homepage: https://github.com/nikita-volkov/hasql
 bug-reports: https://github.com/nikita-volkov/hasql/issues
 author: Nikita Volkov <nikita.y.volkov@mail.ru>

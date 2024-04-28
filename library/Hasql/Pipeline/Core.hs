@@ -55,22 +55,67 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
         False -> ExceptT (Left . PipelineError . ClientError <$> Pq.errorMessage connection)
 
 -- |
--- Abstraction over the pipelining mode of execution of queries.
+-- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
 --
 -- It allows you to issue multiple queries to the server in much fewer network transactions.
--- If the amounts of sent and received data do not surpass the buffer sizes it will be just a single roundtrip.
--- Usually the buffer size is 8KB.
+-- If the amounts of sent and received data do not surpass the buffer sizes in the driver and on the server it will be just a single roundtrip.
+-- Typically the buffer size is 8KB.
 --
 -- This execution mode is much more efficient than running queries directly from 'Hasql.Session.Session', because in session every statement execution involves a dedicated network roundtrip.
 -- An obvious question rises then: why not execute all queries like that?
 --
--- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next query.
+-- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next.
 -- This reasoning is essentially the same as the one for the difference between 'Applicative' and 'Monad'.
 -- That\'s why 'Pipeline' does not have the 'Monad' instance.
 --
--- To execute 'Pipeline' lift it into 'Session' via 'Hasql.Session.pipeline'.
+-- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
 --
 -- __Attention__: using this feature requires \"libpq\" of version >14.
+--
+-- == __Examples__
+--
+-- === Insert-Many or Batch-Insert
+--
+-- You can use pipeline to turn a single-row insert query into an efficient multi-row insertion session.
+-- In effect this should be comparable in performance to issuing a single multi-row insert statement.
+--
+-- Given the following definition in a Statements module:
+--
+-- @
+-- insertOrder :: 'Hasql.Statement.Statement' OrderDetails OrderId
+-- @
+--
+-- You can lift it into the following session
+--
+-- @
+-- insertOrders :: [OrderDetails] -> 'Hasql.Session.Session' [OrderId]
+-- insertOrders songs =
+--   'Hasql.Session.pipeline' $
+--     forM songs $ \song ->
+--       'Hasql.Pipeline.statement' song Statements.insertOrder
+-- @
+--
+-- === Combining Queries
+--
+-- Given the following definitions in a Statements module:
+--
+-- @
+-- selectOrderDetails :: 'Hasql.Statement.Statement' OrderId (Maybe OrderDetails)
+-- selectOrderProducts :: 'Hasql.Statement.Statement' OrderId [OrderProduct]
+-- selectOrderFinancialTransactions :: 'Hasql.Statement.Statement' OrderId [FinancialTransaction]
+-- @
+--
+-- You can combine them into a session using the `ApplicativeDo` extension as follows:
+--
+-- @
+-- selectEverythingAboutOrder :: OrderId -> 'Hasql.Session.Session' (Maybe OrderDetails, [OrderProduct], [FinancialTransaction])
+-- selectEverythingAboutOrder orderId =
+--   'Hasql.Session.pipeline' $ do
+--     details <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderDetails
+--     products <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderProducts
+--     transactions <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderFinancialTransactions
+--     pure (details, products, transactions)
+-- @
 newtype Pipeline a
   = Pipeline
       ( Pq.Connection ->
