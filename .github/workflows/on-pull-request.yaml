@@ -3,6 +3,7 @@ on:
     types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
     branches:
       - master
+      - supermajor
       - major
       - minor
       - patch
@@ -10,10 +11,12 @@ on:
 jobs:
 
   format:
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/format.yaml@v3
+    if: ${{github.event.pull_request.changed_files > 0}}
+    uses: ./.github/workflows/format.yaml
     secrets: inherit
 
   check:
+    if: ${{github.event.pull_request.changed_files > 0}}
     uses: ./.github/workflows/check.yaml
     secrets: inherit
 
