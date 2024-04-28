@@ -1,8 +1,6 @@
 on:
   pull_request:
-    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
     branches:
-      - master
       - supermajor
       - major
       - minor
@@ -11,12 +9,10 @@ on:
 jobs:
 
   format:
-    if: ${{github.event.pull_request.changed_files > 0}}
     uses: ./.github/workflows/format.yaml
     secrets: inherit
 
   check:
-    if: ${{github.event.pull_request.changed_files > 0}}
     uses: ./.github/workflows/check.yaml
     secrets: inherit
 
