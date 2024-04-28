@@ -54,6 +54,23 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
         True -> pure ()
         False -> ExceptT (Left . PipelineError . ClientError <$> Pq.errorMessage connection)
 
+-- |
+-- Abstraction over the pipelining mode of execution of queries.
+--
+-- It allows you to issue multiple queries to the server in much fewer network transactions.
+-- If the amounts of sent and received data do not surpass the buffer sizes it will be just a single roundtrip.
+-- Usually the buffer size is 8KB.
+--
+-- This execution mode is much more efficient than running queries directly from 'Hasql.Session.Session', because in session every statement execution involves a dedicated network roundtrip.
+-- An obvious question rises then: why not execute all queries like that?
+--
+-- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next query.
+-- This reasoning is essentially the same as the one for the difference between 'Applicative' and 'Monad'.
+-- That\'s why 'Pipeline' does not have the 'Monad' instance.
+--
+-- To execute 'Pipeline' lift it into 'Session' via 'Hasql.Session.pipeline'.
+--
+-- __Attention__: using this feature requires \"libpq\" of version >14.
 newtype Pipeline a
   = Pipeline
       ( Pq.Connection ->
@@ -79,6 +96,8 @@ instance Applicative Pipeline where
             Right rRecv ->
               Right (liftA2 (<*>) lRecv rRecv)
 
+-- |
+-- Execute a statement in pipelining mode.
 statement :: params -> Statement.Statement params result -> Pipeline result
 statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Result decoder) preparable) =
   Pipeline run

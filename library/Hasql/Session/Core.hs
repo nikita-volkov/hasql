@@ -46,7 +46,7 @@ sql sql =
       Decoders.Results.single Decoders.Result.noResult
 
 -- |
--- Parameters and a specification of a parametric single-statement query to apply them to.
+-- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement template (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
   Session
@@ -60,6 +60,8 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
           r2 <- IO.getResults pqConnection integerDatetimes decoder
           return $ r1 *> r2
 
+-- |
+-- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
   Session $ ReaderT \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
