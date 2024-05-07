@@ -2,7 +2,7 @@ cabal-version: 3.0
 name: hasql
 version: 1.7
 category: Hasql, Database, PostgreSQL
-synopsis: An efficient PostgreSQL driver with a flexible mapping API
+synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
   Root of the \"hasql\" ecosystem.
   For details and tutorials see
