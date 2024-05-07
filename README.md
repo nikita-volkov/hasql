@@ -1,4 +1,4 @@
-# Summary
+# Fast PostgreSQL driver for Haskell with a flexible mapping API
 
 Hasql is a highly efficient PostgreSQL driver for Haskell with a typesafe yet flexible mapping API. It targets both the users, who need maximum control, and the users who face the typical tasks of DB-powered applications, providing them with higher-level APIs. Currently it is known to be [the fastest driver](https://nikita-volkov.github.io/hasql-benchmarks/) in the Haskell ecosystem.
 
@@ -7,7 +7,7 @@ Hasql is a highly efficient PostgreSQL driver for Haskell with a typesafe yet fl
 
 # Status
 
-[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
+[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql) [![Hackage Deps](https://img.shields.io/hackage-deps/v/hasql.svg)](http://packdeps.haskellers.com/reverse/hasql)
 
 Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://postgrest.org/) project.
 
