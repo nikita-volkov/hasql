@@ -5,14 +5,21 @@ category: Hasql, Database, PostgreSQL
 synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
   Root of the \"hasql\" ecosystem.
-  For details and tutorials see
-  <https://github.com/nikita-volkov/hasql the readme>.
-  The API comes free from all kinds of exceptions. All error-reporting is explicit and is presented using the 'Either' type.
+  This library provides connection management, execution of queries and mapping of parameters and results.
+  Extended functionality such as pooling, transactions and compile-time checking is provided by extension libraries.
+  For more details and tutorials see <https://github.com/nikita-volkov/hasql the readme>.
 
-  This library requires to have the \"libpq\" library installed on the running system.
-  It comes distributed with PostgreSQL.
-  To be able to use the \"Pipeline\" feature you'll need \"libpq\" of version >14.
-  This feature does not however put any requirements on the version of the PostgreSQL server.
+  The API comes free from all kinds of exceptions.
+  All error-reporting is explicit and is presented using the 'Either' type.
+
+  \"hasql\" requires you to have the "\libpq\" C-library installed to compile.
+  Starting from version 1.7 of \"hasql\" it requires \"libpq\" of at least version 14.
+  \"libpq\" comes distributed with PostgreSQL,
+  so typically all you need is just to install the latest PostgreSQL distro.
+
+  Despite the mentioned requirements for \"libpq\" \"hasql\" is compatible
+  with a wide range of PostgreSQL servers with tests having been conducted starting from
+  version 8.3.
 
 homepage: https://github.com/nikita-volkov/hasql
 bug-reports: https://github.com/nikita-volkov/hasql/issues

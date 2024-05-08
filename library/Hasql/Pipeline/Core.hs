@@ -70,8 +70,6 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
 --
 -- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
 --
--- __Attention__: using this feature requires \"libpq\" of version >14.
---
 -- == __Examples__
 --
 -- === Insert-Many or Batch-Insert
