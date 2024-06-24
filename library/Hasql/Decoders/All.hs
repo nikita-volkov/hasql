@@ -3,6 +3,7 @@
 module Hasql.Decoders.All where
 
 import Data.Aeson qualified as Aeson
+import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
 import Hasql.Decoders.Array qualified as Array
 import Hasql.Decoders.Composite qualified as Composite
@@ -12,7 +13,6 @@ import Hasql.Decoders.Row qualified as Row
 import Hasql.Decoders.Value qualified as Value
 import Hasql.Prelude hiding (bool, maybe)
 import Hasql.Prelude qualified as Prelude
-import Network.IP.Addr qualified as NetworkIp
 import PostgreSQL.Binary.Decoding qualified as A
 
 -- * Result
@@ -255,7 +255,7 @@ uuid = Value (Value.decoder (const A.uuid))
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
-inet :: Value (NetworkIp.NetAddr NetworkIp.IP)
+inet :: Value Iproute.IPRange
 inet = Value (Value.decoder (const A.inet))
 
 -- |
