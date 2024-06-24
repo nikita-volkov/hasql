@@ -4,13 +4,13 @@ module Hasql.Encoders.All where
 
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
+import Data.IP qualified as Iproute
 import Hasql.Encoders.Array qualified as Array
 import Hasql.Encoders.Params qualified as Params
 import Hasql.Encoders.Value qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool)
 import Hasql.Prelude qualified as Prelude
-import Network.IP.Addr qualified as NetworkIp
 import PostgreSQL.Binary.Encoding qualified as A
 import Text.Builder qualified as C
 
@@ -209,7 +209,7 @@ uuid = Value (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
 -- |
 -- Encoder of @INET@ values.
 {-# INLINEABLE inet #-}
-inet :: Value (NetworkIp.NetAddr NetworkIp.IP)
+inet :: Value Iproute.IPRange
 inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 
 -- |

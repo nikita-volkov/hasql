@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hasql
-version: 1.7.0.2
+version: 1.8
 category: Hasql, Database, PostgreSQL
 synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
@@ -140,9 +140,9 @@ library
     dlist >=0.8 && <0.9 || >=1 && <2,
     hashable >=1.2 && <2,
     hashtables >=1.1 && <2,
+    iproute >=1.7 && <1.8,
     mtl >=2 && <3,
-    network-ip >=0.3.0.3 && <0.4,
-    postgresql-binary >=0.13.1 && <0.14,
+    postgresql-binary >=0.14 && <0.15,
     postgresql-libpq ==0.10.1.0,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,

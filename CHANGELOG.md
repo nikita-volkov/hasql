@@ -1,3 +1,7 @@
+# 1.8
+
+- Move to "iproute" from "network-ip" for the "inet" datatype (#163).
+
 # 1.7
 
 - Decidable instance on `Encoders.Params` removed. It was useless and limited the design.
