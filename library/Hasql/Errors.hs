@@ -84,7 +84,7 @@ instance Exception SessionError where
               <> maybe "" (\h -> "\n  Hint: " <> BC.unpack h) hint
           UnexpectedResult message -> "Unexpected result: " <> show message
           RowError row column rowError ->
-            "Row error: " <> show row <> ":" <> show column <> " " <> show rowError
+            "Error in row " <> show row <> ", column " <> show column <> ": " <> show rowError
           UnexpectedAmountOfRows amount ->
             "Unexpected amount of rows: " <> show amount
 
