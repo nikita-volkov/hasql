@@ -15,7 +15,7 @@ module Hasql.LibPq14
   )
 where
 
-import Database.PostgreSQL.LibPQ as Base hiding (ExecStatus (..), resultStatus)
+import Database.PostgreSQL.LibPQ as Base hiding (ExecStatus (..), PipelineStatus (..), enterPipelineMode, exitPipelineMode, pipelineStatus, pipelineSync, resultStatus, sendFlushRequest)
 import Database.PostgreSQL.LibPQ.Internal qualified as BaseInternal
 import Hasql.LibPq14.Ffi qualified as Ffi
 import Hasql.LibPq14.Mappings qualified as Mappings
