@@ -2,6 +2,7 @@ module Hasql.PreparedStatementRegistry
   ( PreparedStatementRegistry,
     new,
     update,
+    reset,
     LocalKey (..),
   )
 where
@@ -9,7 +10,7 @@ where
 import ByteString.StrictBuilder qualified as B
 import Data.HashTable.IO qualified as A
 import Hasql.LibPq14 qualified as Pq
-import Hasql.Prelude hiding (lookup)
+import Hasql.Prelude hiding (lookup, reset)
 
 data PreparedStatementRegistry
   = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
@@ -41,6 +42,15 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table c
               B.builderBytes . B.asciiIntegral $ n
     old =
       onOldRemoteKey
+
+reset :: PreparedStatementRegistry -> IO ()
+reset (PreparedStatementRegistry table counter) = do
+  -- TODO: This is a temporary measure.
+  -- We should just move to a pure implementation.
+  do
+    entries <- A.toList table
+    forM_ entries \(k, _) -> A.delete table k
+  writeIORef counter 0
 
 -- |
 -- Local statement key.

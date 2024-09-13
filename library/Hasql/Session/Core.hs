@@ -11,6 +11,7 @@ import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
+import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
 
 -- |
@@ -29,11 +30,13 @@ run (Session impl) connection =
       runExceptT $ runReaderT impl connection
     handler =
       case connection of
-        Connection.Connection pqConnVar _ _ ->
+        Connection.Connection pqConnVar _ registry ->
           withMVar pqConnVar \pqConn ->
             Pq.transactionStatus pqConn >>= \case
               Pq.TransIdle -> pure ()
-              _ -> Pq.reset pqConn
+              _ -> do
+                PreparedStatementRegistry.reset registry
+                Pq.reset pqConn
 
 -- |
 -- Possibly a multi-statement query,
