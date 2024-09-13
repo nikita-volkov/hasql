@@ -1,3 +1,7 @@
+# 1.8.1
+
+- In case of exceptions thrown by user from inside of Session, the connection status gets checked to be out of transaction and unless it is the connection gets reset.
+
 # 1.8
 
 - Move to "iproute" from "network-ip" for the "inet" datatype (#163).
