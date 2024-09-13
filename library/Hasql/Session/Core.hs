@@ -23,20 +23,17 @@ newtype Session a
 -- Executes a bunch of commands on the provided connection.
 run :: Session a -> Connection.Connection -> IO (Either SessionError a)
 run (Session impl) connection =
-  handle @SomeException onExc
-    $ runExceptT
-    $ runReaderT impl connection
+  mask $ \restore -> onException (restore main) handler
   where
-    onExc exc =
+    main =
+      runExceptT $ runReaderT impl connection
+    handler =
       case connection of
         Connection.Connection pqConnVar _ _ ->
-          withMVar pqConnVar onPqConn
-      where
-        onPqConn pqConn = do
-          Pq.transactionStatus pqConn >>= \case
-            Pq.TransIdle -> pure ()
-            _ -> Pq.reset pqConn
-          throwIO exc
+          withMVar pqConnVar \pqConn ->
+            Pq.transactionStatus pqConn >>= \case
+              Pq.TransIdle -> pure ()
+              _ -> Pq.reset pqConn
 
 -- |
 -- Possibly a multi-statement query,
