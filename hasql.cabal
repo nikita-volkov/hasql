@@ -75,6 +75,7 @@ common base
     StandaloneDeriving
     StrictData
     TupleSections
+    TypeApplications
     TypeFamilies
     TypeOperators
 

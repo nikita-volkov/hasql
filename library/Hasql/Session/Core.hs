@@ -8,6 +8,7 @@ import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
 import Hasql.IO qualified as IO
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
 import Hasql.Statement qualified as Statement
@@ -22,8 +23,20 @@ newtype Session a
 -- Executes a bunch of commands on the provided connection.
 run :: Session a -> Connection.Connection -> IO (Either SessionError a)
 run (Session impl) connection =
-  runExceptT
+  handle @SomeException onExc
+    $ runExceptT
     $ runReaderT impl connection
+  where
+    onExc exc =
+      case connection of
+        Connection.Connection pqConnVar _ _ ->
+          withMVar pqConnVar onPqConn
+      where
+        onPqConn pqConn = do
+          Pq.transactionStatus pqConn >>= \case
+            Pq.TransIdle -> pure ()
+            _ -> Pq.reset pqConn
+          throwIO exc
 
 -- |
 -- Possibly a multi-statement query,
