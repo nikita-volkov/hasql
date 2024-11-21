@@ -18,6 +18,16 @@ data Connection
 type ConnectionError =
   Maybe ByteString
 
+
+-- |
+-- Acquire a connection and ensure that it is released if an exception is thrown.
+-- For more complicated uses, you probably want the @hasql-pool@ package.
+withConnection :: Settings.Settings -> (Connection -> IO a) -> IO (Either ConnectionError a)
+withConnection settings f = bracket (acquire settings) cleanup $
+  either (pure . Left) (fmap Right . f)
+  where
+    cleanup = either (const $ pure ()) release
+
 -- |
 -- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
 acquire :: Settings.Settings -> IO (Either ConnectionError Connection)
