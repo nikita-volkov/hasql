@@ -106,7 +106,7 @@ refineResult refiner (Statement template encoder decoder preparable) =
 --       Decoders.'Decoders.noResult'
 -- @
 --
--- This approach is much more efficient than executing a single-row insert-statement multiple times.
+-- While this approach is much more efficient than executing a single-row insert-statement multiple times from within 'Session', a comparable performance can also be achieved by executing a single-insert statement from within a 'Pipeline'.
 
 -- $inAndNotIn
 --
