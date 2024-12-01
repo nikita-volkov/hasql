@@ -156,6 +156,7 @@ library
 
 library testing-kit
   import: base
+  visibility: private
   hs-source-dirs: testing-kit
   exposed-modules:
     Hasql.TestingKit.Constants
