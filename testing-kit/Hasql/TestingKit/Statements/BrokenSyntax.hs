@@ -40,5 +40,4 @@ encoder =
 decoder :: Decoders.Result Result
 decoder =
   Decoders.rowList
-    ( Decoders.column (Decoders.nonNullable Decoders.int8)
-    )
+    (Decoders.column (Decoders.nonNullable Decoders.int8))
