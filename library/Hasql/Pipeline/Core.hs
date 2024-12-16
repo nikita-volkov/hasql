@@ -89,7 +89,7 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
 -- insertOrders :: [OrderDetails] -> 'Hasql.Session.Session' [OrderId]
 -- insertOrders orders =
 --   'Hasql.Session.pipeline' $
---     forM orders $ \\order ->
+--     for orders $ \\order ->
 --       'Hasql.Pipeline.statement' order Statements.insertOrder
 -- @
 --
