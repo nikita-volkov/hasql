@@ -54,14 +54,10 @@ data Statement params result
       (Encoders.Params params)
       -- | Decoder of result.
       (Decoders.Result result)
-      -- | Flag, determining whether it should be prepared.
+      -- | Flag, determining whether it can be prepared.
       --
       -- Set it to 'True' if your application has a limited amount of queries and doesn't generate the SQL dynamically.
       -- This will boost the performance by allowing Postgres to avoid reconstructing the execution plan each time the query gets executed.
-      --
-      -- Note that if you're using proxying applications like @pgbouncer@, such tools may be incompatible with prepared statements.
-      -- So do consult their docs or just set it to 'False' to stay on the safe side.
-      -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
       Bool
 
 instance Functor (Statement params) where

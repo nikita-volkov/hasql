@@ -11,7 +11,15 @@ import Hasql.Settings qualified as Settings
 -- |
 -- A single connection to the database.
 data Connection
-  = Connection !(MVar LibPQ.Connection) !Bool !PreparedStatementRegistry.PreparedStatementRegistry
+  = Connection
+      -- | Whether prepared statements are allowed.
+      !Bool
+      -- | Lower level libpq connection.
+      !(MVar LibPQ.Connection)
+      -- | Integer datetimes.
+      !Bool
+      -- | Prepared statement registry.
+      !PreparedStatementRegistry.PreparedStatementRegistry
 
 -- |
 -- Possible details of the connection acquistion error.
@@ -20,8 +28,18 @@ type ConnectionError =
 
 -- |
 -- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
-acquire :: Settings.Settings -> IO (Either ConnectionError Connection)
-acquire settings =
+acquire ::
+  -- | Whether prepared statements are allowed.
+  --
+  -- When 'False', even the statements marked as preparable will be executed without preparation.
+  --
+  -- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
+  -- Consult their docs or just set it to 'False' to stay on the safe side.
+  -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
+  Bool ->
+  Settings.Settings ->
+  IO (Either ConnectionError Connection)
+acquire usePreparedStatements settings =
   {-# SCC "acquire" #-}
   runExceptT $ do
     pqConnection <- lift (IO.acquireConnection settings)
@@ -30,12 +48,12 @@ acquire settings =
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
     registry <- lift (IO.acquirePreparedStatementRegistry)
     pqConnectionRef <- lift (newMVar pqConnection)
-    pure (Connection pqConnectionRef integerDatetimes registry)
+    pure (Connection usePreparedStatements pqConnectionRef integerDatetimes registry)
 
 -- |
 -- Release the connection.
 release :: Connection -> IO ()
-release (Connection pqConnectionRef _ _) =
+release (Connection _ pqConnectionRef _ _) =
   mask_ $ do
     nullConnection <- LibPQ.newNullConnection
     pqConnection <- swapMVar pqConnectionRef nullConnection
@@ -46,5 +64,5 @@ release (Connection pqConnectionRef _ _) =
 --
 -- The access to the connection is exclusive.
 withLibPQConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
-withLibPQConnection (Connection pqConnectionRef _ _) =
+withLibPQConnection (Connection _ pqConnectionRef _ _) =
   withMVar pqConnectionRef

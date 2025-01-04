@@ -11,8 +11,8 @@ import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
 
-run :: forall a. Pipeline a -> Pq.Connection -> PreparedStatementRegistry.PreparedStatementRegistry -> Bool -> IO (Either SessionError a)
-run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> PreparedStatementRegistry.PreparedStatementRegistry -> Bool -> IO (Either SessionError a)
+run (Pipeline sendQueriesInIO) usePreparedStatements connection registry integerDatetimes = do
   runExceptT do
     enterPipelineMode
     recvQueries <- sendQueries
@@ -31,7 +31,7 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
 
     sendQueries :: ExceptT SessionError IO (ExceptT SessionError IO a)
     sendQueries =
-      fmap ExceptT $ ExceptT $ sendQueriesInIO connection registry integerDatetimes
+      fmap ExceptT $ ExceptT $ sendQueriesInIO usePreparedStatements connection registry integerDatetimes
 
     pipelineSync :: ExceptT SessionError IO ()
     pipelineSync =
@@ -116,7 +116,8 @@ run (Pipeline sendQueriesInIO) connection registry integerDatetimes = do
 -- @
 newtype Pipeline a
   = Pipeline
-      ( Pq.Connection ->
+      ( Bool ->
+        Pq.Connection ->
         PreparedStatementRegistry.PreparedStatementRegistry ->
         Bool ->
         IO (Either SessionError (IO (Either SessionError a)))
@@ -125,15 +126,15 @@ newtype Pipeline a
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline (\_ _ _ -> pure (Right (pure (Right a))))
+    Pipeline (\_ _ _ _ -> pure (Right (pure (Right a))))
 
   Pipeline lSend <*> Pipeline rSend =
-    Pipeline \conn reg integerDatetimes ->
-      lSend conn reg integerDatetimes >>= \case
+    Pipeline \usePreparedStatements conn reg integerDatetimes ->
+      lSend usePreparedStatements conn reg integerDatetimes >>= \case
         Left sendErr ->
           pure (Left sendErr)
         Right lRecv ->
-          rSend conn reg integerDatetimes <&> \case
+          rSend usePreparedStatements conn reg integerDatetimes <&> \case
             Left sendErr ->
               Left sendErr
             Right rRecv ->
@@ -145,8 +146,8 @@ statement :: params -> Statement.Statement params result -> Pipeline result
 statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Result decoder) preparable) =
   Pipeline run
   where
-    run connection registry integerDatetimes =
-      if preparable
+    run usePreparedStatements connection registry integerDatetimes =
+      if usePreparedStatements && preparable
         then runPrepared
         else runUnprepared
       where

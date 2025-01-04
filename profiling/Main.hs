@@ -17,7 +17,7 @@ main =
     return ()
   where
     acquireConnection =
-      A.acquire settings
+      A.acquire True settings
       where
         settings =
           A.settings host port user password database

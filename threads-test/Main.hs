@@ -15,7 +15,7 @@ main =
         acquire =
           join
             $ fmap (either (fail . show) return)
-            $ Hasql.Connection.acquire connectionSettings
+            $ Hasql.Connection.acquire True connectionSettings
           where
             connectionSettings =
               Hasql.Connection.settings "localhost" 5432 "postgres" "postgres" "postgres"

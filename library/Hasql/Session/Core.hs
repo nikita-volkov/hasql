@@ -30,7 +30,7 @@ run (Session impl) connection =
       runExceptT $ runReaderT impl connection
     handler =
       case connection of
-        Connection.Connection pqConnVar _ registry ->
+        Connection.Connection _ pqConnVar _ registry ->
           withMVar pqConnVar \pqConn ->
             Pq.transactionStatus pqConn >>= \case
               Pq.TransIdle -> pure ()
@@ -46,7 +46,7 @@ sql :: ByteString -> Session ()
 sql sql =
   Session
     $ ReaderT
-    $ \(Connection.Connection pqConnectionRef integerDatetimes _) ->
+    $ \(Connection.Connection _ pqConnectionRef integerDatetimes _) ->
       ExceptT
         $ fmap (first (QueryError sql []))
         $ withMVar pqConnectionRef
@@ -64,12 +64,12 @@ statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement template (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
   Session
     $ ReaderT
-    $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+    $ \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
       ExceptT
         $ fmap (first (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
-          r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder preparable input
+          r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder (usePreparedStatements && preparable) input
           r2 <- IO.getResults pqConnection integerDatetimes decoder
           return $ r1 *> r2
 
@@ -77,6 +77,6 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
-  Session $ ReaderT \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+  Session $ ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
     ExceptT $ withMVar pqConnectionRef \pqConnection ->
-      Pipeline.run pipeline pqConnection registry integerDatetimes
+      Pipeline.run pipeline usePreparedStatements pqConnection registry integerDatetimes

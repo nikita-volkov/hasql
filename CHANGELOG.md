@@ -1,3 +1,7 @@
+# 1.9
+
+- Add a global prepared statements setting
+
 # 1.8.1
 
 - In case of exceptions thrown by user from inside of Session, the connection status gets checked to be out of transaction and unless it is the connection gets reset.
