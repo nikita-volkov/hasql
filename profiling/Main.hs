@@ -12,7 +12,7 @@ main =
   do
     Right connection <- acquireConnection
     traceEventIO "START Session"
-    Right result <- B.run sessionWithManySmallResults connection
+    Right _ <- B.run sessionWithManySmallResults connection
     traceEventIO "STOP Session"
     return ()
   where

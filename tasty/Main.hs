@@ -279,7 +279,7 @@ tree =
                   Session.sql "asldfjsldk"
                 io =
                   Connection.with $ \c -> do
-                    Session.run errorSession c
+                    _ <- Session.run errorSession c
                     Session.run sumSession c
              in io >>= \x -> assertBool (show x) (either (const False) isRight x),
         testCase "\"another command is already in progress\" bugfix"

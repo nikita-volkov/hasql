@@ -46,7 +46,7 @@ sql :: ByteString -> Session ()
 sql sql =
   Session
     $ ReaderT
-    $ \(Connection.Connection pqConnectionRef integerDatetimes registry) ->
+    $ \(Connection.Connection pqConnectionRef integerDatetimes _) ->
       ExceptT
         $ fmap (first (QueryError sql []))
         $ withMVar pqConnectionRef

@@ -57,12 +57,13 @@ spec = do
         it "Leaves the connection usable" do
           result <-
             Dsl.runSessionOnLocalDb do
-              tryError
-                $ Dsl.runPipelineInSession
-                $ (,,)
-                <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
-                <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
-                <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              _ <-
+                tryError
+                  $ Dsl.runPipelineInSession
+                  $ (,,)
+                  <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+                  <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
+                  <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
               GenerateSeries.session True GenerateSeries.Params {start = 0, end = 0}
           shouldBe result (Right [0])
 
@@ -81,11 +82,12 @@ spec = do
         it "Leaves the connection usable" do
           result <-
             Dsl.runSessionOnLocalDb do
-              tryError
-                $ Dsl.runPipelineInSession
-                $ (,,)
-                <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
-                <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
-                <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+              _ <-
+                tryError
+                  $ Dsl.runPipelineInSession
+                  $ (,,)
+                  <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
+                  <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
+                  <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
               GenerateSeries.session True GenerateSeries.Params {start = 0, end = 0}
           shouldBe result (Right [0])
