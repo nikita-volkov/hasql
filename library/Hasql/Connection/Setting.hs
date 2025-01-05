@@ -1,9 +1,18 @@
-module Hasql.Connection.Setting where
+module Hasql.Connection.Setting
+  ( Setting,
+    connectionString,
+    usePreparedStatements,
+  )
+where
 
+import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting.Connection
 import Hasql.Prelude
 
-data Setting
+newtype Setting = Setting (Config.Config -> Config.Config)
+
+instance Config.Updates Setting where
+  update (Setting update) = update
 
 connectionString :: ConnectionString -> Setting
 connectionString =
