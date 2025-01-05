@@ -1,7 +1,53 @@
 # 1.9
 
-- Revise the settings construction exposing a tree of modules
-- Add a global prepared statements setting
+- Revised the settings construction exposing a tree of modules
+- Added a global prepared statements setting
+
+## Why the changes?
+
+To introduce the new global prepared statements setting and to make the settings API ready for extension without backward compatibility breakage.
+
+## Instructions on upgrading the 1.8 code
+
+### When explicit connection string is used
+
+Replace
+
+```haskell
+Hasql.Connection.acquire connectionString
+```
+
+with
+
+```haskell
+Hasql.Connection.acquire 
+  [ Hasql.Connection.Setting.connection (Hasql.Connection.Setting.Connection.string connectionString)
+  ]
+```
+
+### When parameteric connection string is used
+
+Replace
+
+```haskell
+Hasql.Connection.acquire (Hasql.Connection.settings host port user password dbname)
+```
+
+with
+
+```haskell
+Hasql.Connection.acquire
+  [ Hasql.Connection.Setting.connection
+    ( Hasql.Connection.Setting.Connection.params
+      [ Hasql.Connection.Setting.Connection.Param.host host,
+        Hasql.Connection.Setting.Connection.Param.port port,
+        Hasql.Connection.Setting.Connection.Param.user user,
+        Hasql.Connection.Setting.Connection.Param.password password,
+        Hasql.Connection.Setting.Connection.Param.dbname dbname
+      ]
+    )
+  ]
+```
 
 # 1.8.1
 
