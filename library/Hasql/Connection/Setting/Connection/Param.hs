@@ -46,7 +46,7 @@ dbname :: Text -> Param
 dbname =
   Param . Config.setKeyValue "dbname" . Text.encodeUtf8
 
--- | Any other parameter under the provided name according to the LibPQ format.
+-- | Any other parameter under the provided name according to <https://www.postgresql.org/docs/17/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
 other :: Text -> Text -> Param
 other name =
   Param . Config.setKeyValue (Text.encodeUtf8 name) . Text.encodeUtf8
