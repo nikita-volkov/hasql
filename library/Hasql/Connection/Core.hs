@@ -6,7 +6,7 @@ import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
-import Hasql.Settings qualified as Settings
+import Hasql.ConnectionString qualified as Settings
 
 -- |
 -- A single connection to the database.

@@ -1,4 +1,4 @@
-module Hasql.Settings where
+module Hasql.ConnectionString where
 
 import Data.ByteString qualified as B
 import Data.ByteString.Builder qualified as BB

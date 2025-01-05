@@ -108,6 +108,7 @@ library
   other-modules:
     Hasql.Commands
     Hasql.Connection.Core
+    Hasql.ConnectionString
     Hasql.Decoders.All
     Hasql.Decoders.Array
     Hasql.Decoders.Composite
@@ -129,7 +130,6 @@ library
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
     Hasql.Session.Core
-    Hasql.Settings
 
   build-depends:
     aeson >=2 && <3,

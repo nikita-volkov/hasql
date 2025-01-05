@@ -12,4 +12,4 @@ module Hasql.Connection
 where
 
 import Hasql.Connection.Core
-import Hasql.Settings
+import Hasql.ConnectionString
