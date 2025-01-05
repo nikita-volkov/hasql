@@ -60,5 +60,5 @@ data LocalKey
 
 instance Hashable LocalKey where
   {-# INLINE hashWithSalt #-}
-  hashWithSalt salt (LocalKey template types) =
+  hashWithSalt salt (LocalKey template _) =
     hashWithSalt salt template

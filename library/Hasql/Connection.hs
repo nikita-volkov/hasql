@@ -5,11 +5,8 @@ module Hasql.Connection
     ConnectionError,
     acquire,
     release,
-    Settings,
-    settings,
     withLibPQConnection,
   )
 where
 
 import Hasql.Connection.Core
-import Hasql.Settings

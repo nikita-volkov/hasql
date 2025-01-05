@@ -75,7 +75,7 @@ instance Exception SessionError where
         ClientError (Just message) -> "Client error: " <> show message
         ClientError Nothing -> "Client error without details"
         ResultError resultError -> case resultError of
-          ServerError code message details hint position ->
+          ServerError code message details hint _ ->
             "Server error "
               <> BC.unpack code
               <> ": "

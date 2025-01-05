@@ -406,11 +406,11 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot Value a -> Composite a
 field = \case
-  NonNullable (Value (Value.Value elementOID arrayOID encode print)) ->
+  NonNullable (Value (Value.Value elementOID _ encode print)) ->
     Composite
       (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
       (\val -> [print val])
-  Nullable (Value (Value.Value elementOID arrayOID encode print)) ->
+  Nullable (Value (Value.Value elementOID _ encode print)) ->
     Composite
       ( \val idt -> case val of
           Nothing -> A.nullField (PTI.oidWord32 elementOID)

@@ -2,11 +2,12 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection.Core where
 
+import Hasql.Connection.Config qualified as Config
+import Hasql.Connection.Setting qualified as Setting
 import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
-import Hasql.Settings qualified as Settings
 
 -- |
 -- A single connection to the database.
@@ -27,28 +28,22 @@ type ConnectionError =
   Maybe ByteString
 
 -- |
--- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
+-- Establish a connection according to the provided settings.
 acquire ::
-  -- | Whether prepared statements are allowed.
-  --
-  -- When 'False', even the statements marked as preparable will be executed without preparation.
-  --
-  -- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
-  -- Consult their docs or just set it to 'False' to stay on the safe side.
-  -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
-  Bool ->
-  Settings.Settings ->
+  [Setting.Setting] ->
   IO (Either ConnectionError Connection)
-acquire usePreparedStatements settings =
+acquire settings =
   {-# SCC "acquire" #-}
   runExceptT $ do
-    pqConnection <- lift (IO.acquireConnection settings)
+    pqConnection <- lift (IO.acquireConnection (Config.connectionString config))
     lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
     registry <- lift (IO.acquirePreparedStatementRegistry)
     pqConnectionRef <- lift (newMVar pqConnection)
-    pure (Connection usePreparedStatements pqConnectionRef integerDatetimes registry)
+    pure (Connection (Config.usePreparedStatements config) pqConnectionRef integerDatetimes registry)
+  where
+    config = Config.fromUpdates settings
 
 -- |
 -- Release the connection.

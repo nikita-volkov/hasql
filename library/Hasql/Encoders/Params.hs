@@ -24,7 +24,7 @@ compilePreparedStatementData (Params _ columnsMetadata serializer _) integerDate
         & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
 compileUnpreparedStatementData :: Params a -> Bool -> a -> [Maybe (A.Oid, ByteString, A.Format)]
-compileUnpreparedStatementData (Params _ columnsMetadata serializer printer) integerDatetimes input =
+compileUnpreparedStatementData (Params _ columnsMetadata serializer _) integerDatetimes input =
   zipWith
     ( \(oid, format) encoding ->
         (,,) <$> pure oid <*> encoding <*> pure format
