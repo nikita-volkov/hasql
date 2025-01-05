@@ -101,7 +101,7 @@ library
     Hasql.Connection
     Hasql.Connection.Setting
     Hasql.Connection.Setting.Connection
-    Hasql.Connection.Setting.Connection.Component
+    Hasql.Connection.Setting.Connection.Param
     Hasql.Decoders
     Hasql.Encoders
     Hasql.Pipeline
@@ -111,6 +111,8 @@ library
   other-modules:
     Hasql.Commands
     Hasql.Connection.Config
+    Hasql.Connection.Config.ConnectionString
+    Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.Core
     Hasql.ConnectionString
     Hasql.Decoders.All
@@ -141,6 +143,7 @@ library
     base >=4.14 && <5,
     bytestring >=0.10 && <0.13,
     bytestring-strict-builder >=0.4.5.1 && <0.5,
+    containers >=0.6 && <0.8,
     contravariant >=1.3 && <2,
     dlist >=0.8 && <0.9 || >=1 && <2,
     hashable >=1.2 && <2,

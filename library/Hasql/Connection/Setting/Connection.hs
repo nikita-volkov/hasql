@@ -1,14 +1,25 @@
-module Hasql.Connection.Setting.Connection where
+module Hasql.Connection.Setting.Connection
+  ( Connection,
+    string,
+    params,
+  )
+where
 
-import Hasql.Connection.Setting.Connection.Component qualified as Component
+import Hasql.Connection.Config.ConnectionString qualified as Config.ConnectionString
+import Hasql.Connection.Config.ConnectionString.Params qualified as Config.ConnectionString.Params
+import Hasql.Connection.Setting.Connection.Param qualified as Param
 import Hasql.Prelude
 
-data ConnectionString
+newtype Connection = Connection ByteString
 
-plain :: Text -> ConnectionString
-plain =
+instance Config.ConnectionString.Constructs Connection where
+  construct = coerce
+
+-- | Plain connection string according to <http://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
+string :: Text -> Connection
+string =
   error "TODO"
 
-components :: [Component.Component] -> ConnectionString
-components =
-  error "TODO"
+params :: [Param.Param] -> Connection
+params =
+  Connection . Config.ConnectionString.fromParams . Config.ConnectionString.Params.fromUpdates

@@ -16,7 +16,7 @@ main =
     useConnection connection
   where
     acquireConnection =
-      A.acquire True ""
+      A.acquire []
     useConnection connection =
       defaultMain
         [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,

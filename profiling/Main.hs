@@ -2,6 +2,9 @@ module Main where
 
 import Data.Vector qualified as F
 import Hasql.Connection qualified as A
+import Hasql.Connection.Setting qualified as E
+import Hasql.Connection.Setting.Connection qualified as F
+import Hasql.Connection.Setting.Connection.Param qualified as G
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
@@ -17,16 +20,17 @@ main =
     return ()
   where
     acquireConnection =
-      A.acquire True connectionString
-      where
-        connectionString =
-          A.connectionString host port user password database
-          where
-            host = "localhost"
-            port = 5432
-            user = "postgres"
-            password = "postgres"
-            database = "postgres"
+      A.acquire
+        [ E.connection
+            ( F.params
+                [ G.host "localhost",
+                  G.port 5432,
+                  G.user "postgres",
+                  G.password "postgres",
+                  G.dbname "postgres"
+                ]
+            )
+        ]
 
 -- * Sessions
 

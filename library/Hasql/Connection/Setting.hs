@@ -1,12 +1,13 @@
 module Hasql.Connection.Setting
   ( Setting,
-    connectionString,
+    connection,
     usePreparedStatements,
   )
 where
 
 import Hasql.Connection.Config qualified as Config
-import Hasql.Connection.Setting.Connection
+import Hasql.Connection.Config.ConnectionString qualified as Config.ConnectionString
+import Hasql.Connection.Setting.Connection qualified as Connection
 import Hasql.Prelude
 
 newtype Setting = Setting (Config.Config -> Config.Config)
@@ -14,10 +15,23 @@ newtype Setting = Setting (Config.Config -> Config.Config)
 instance Config.Updates Setting where
   update (Setting update) = update
 
-connectionString :: ConnectionString -> Setting
-connectionString =
-  error "TODO"
+connection :: Connection.Connection -> Setting
+connection setting =
+  Setting \config ->
+    config
+      { Config.connectionString =
+          Config.ConnectionString.construct setting
+      }
 
+-- | Whether prepared statements are allowed.
+--
+-- When 'False', even the statements marked as preparable will be executed without preparation.
+--
+-- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
+-- Consult their docs or just set it to 'False' to stay on the safe side.
+-- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
+--
+-- 'True' by default.
 usePreparedStatements :: Bool -> Setting
 usePreparedStatements =
   error "TODO"

@@ -1,6 +1,7 @@
 module Main.Connection where
 
 import Hasql.Connection qualified as HC
+import Hasql.TestingKit.Constants qualified as Constants
 import Main.Prelude
 
 with :: (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)
@@ -8,16 +9,7 @@ with handler =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ HC.acquire True connectionString
-      where
-        connectionString =
-          HC.connectionString host port user password database
-          where
-            host = "localhost"
-            port = 5432
-            user = "postgres"
-            password = "postgres"
-            database = "postgres"
+      ExceptT $ HC.acquire Constants.localConnectionSettings
     use connection =
       lift $ handler connection
     release connection =

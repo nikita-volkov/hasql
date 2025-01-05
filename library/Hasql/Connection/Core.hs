@@ -2,7 +2,8 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection.Core where
 
-import Hasql.ConnectionString qualified as ConnectionString
+import Hasql.Connection.Config qualified as Config
+import Hasql.Connection.Setting qualified as Setting
 import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
@@ -29,26 +30,20 @@ type ConnectionError =
 -- |
 -- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
 acquire ::
-  -- | Whether prepared statements are allowed.
-  --
-  -- When 'False', even the statements marked as preparable will be executed without preparation.
-  --
-  -- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
-  -- Consult their docs or just set it to 'False' to stay on the safe side.
-  -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
-  Bool ->
-  ConnectionString.ConnectionString ->
+  [Setting.Setting] ->
   IO (Either ConnectionError Connection)
-acquire usePreparedStatements connectionString =
+acquire settings =
   {-# SCC "acquire" #-}
   runExceptT $ do
-    pqConnection <- lift (IO.acquireConnection connectionString)
+    pqConnection <- lift (IO.acquireConnection (Config.connectionString config))
     lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
     registry <- lift (IO.acquirePreparedStatementRegistry)
     pqConnectionRef <- lift (newMVar pqConnection)
-    pure (Connection usePreparedStatements pqConnectionRef integerDatetimes registry)
+    pure (Connection (Config.usePreparedStatements config) pqConnectionRef integerDatetimes registry)
+  where
+    config = Config.fromUpdates settings
 
 -- |
 -- Release the connection.
