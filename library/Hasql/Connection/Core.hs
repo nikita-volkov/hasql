@@ -28,7 +28,7 @@ type ConnectionError =
   Maybe ByteString
 
 -- |
--- Acquire a connection using the provided settings encoded according to the PostgreSQL format.
+-- Establish a connection according to the provided settings.
 acquire ::
   [Setting.Setting] ->
   IO (Either ConnectionError Connection)

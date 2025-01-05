@@ -10,11 +10,13 @@ import Hasql.Connection.Config.ConnectionString qualified as Config.ConnectionSt
 import Hasql.Connection.Setting.Connection qualified as Connection
 import Hasql.Prelude
 
+-- | Setting of a client handle.
 newtype Setting = Setting (Config.Config -> Config.Config)
 
 instance Config.Updates Setting where
   update (Setting update) = update
 
+-- | Connection details like address of the remote service and authentication info.
 connection :: Connection.Connection -> Setting
 connection =
   Setting . Config.setConnectionString . Config.ConnectionString.construct

@@ -10,6 +10,7 @@ import Hasql.Connection.Config.ConnectionString.Params qualified as Config.Conne
 import Hasql.Connection.Setting.Connection.Param qualified as Param
 import Hasql.Prelude
 
+-- | Instructions on how to connect to the database.
 newtype Connection = Connection ByteString
 
 instance Config.ConnectionString.Constructs Connection where
