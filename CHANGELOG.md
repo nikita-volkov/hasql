@@ -1,5 +1,6 @@
 # 1.9
 
+- Revise the settings construction exposing a tree of modules
 - Add a global prepared statements setting
 
 # 1.8.1
