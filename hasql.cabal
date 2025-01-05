@@ -108,6 +108,9 @@ library
   other-modules:
     Hasql.Commands
     Hasql.Connection.Core
+    Hasql.Connection.Setting
+    Hasql.Connection.Setting.Connection
+    Hasql.Connection.Setting.Connection.Component
     Hasql.ConnectionString
     Hasql.Decoders.All
     Hasql.Decoders.Array
