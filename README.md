@@ -86,7 +86,7 @@ main = do
   result <- Session.run (sumAndDivModSession 3 8 3) connection
   print result
   where
-    connectionSettings = Connection.settings "localhost" 5432 "postgres" "" "postgres"
+    connectionSettings = Connection.connectionString "localhost" 5432 "postgres" "" "postgres"
 
 
 -- * Sessions

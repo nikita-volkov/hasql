@@ -8,10 +8,10 @@ with handler =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ HC.acquire True settings
+      ExceptT $ HC.acquire True connectionString
       where
-        settings =
-          HC.settings host port user password database
+        connectionString =
+          HC.connectionString host port user password database
           where
             host = "localhost"
             port = 5432

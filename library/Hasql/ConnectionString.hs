@@ -8,14 +8,14 @@ import Hasql.Prelude
 -- |
 -- All settings encoded in a single byte-string according to
 -- <http://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
-type Settings =
+type ConnectionString =
   ByteString
 
 -- |
 -- Encode a host, a port, a user, a password and a database into the PostgreSQL settings byte-string.
-{-# INLINE settings #-}
-settings :: ByteString -> Word16 -> ByteString -> ByteString -> ByteString -> Settings
-settings host port user password database =
+{-# INLINE connectionString #-}
+connectionString :: ByteString -> Word16 -> ByteString -> ByteString -> ByteString -> ConnectionString
+connectionString host port user password database =
   BL.toStrict
     $ BB.toLazyByteString
     $ mconcat

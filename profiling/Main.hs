@@ -17,10 +17,10 @@ main =
     return ()
   where
     acquireConnection =
-      A.acquire True settings
+      A.acquire True connectionString
       where
-        settings =
-          A.settings host port user password database
+        connectionString =
+          A.connectionString host port user password database
           where
             host = "localhost"
             port = 5432

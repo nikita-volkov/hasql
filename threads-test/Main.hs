@@ -18,7 +18,7 @@ main =
             $ Hasql.Connection.acquire True connectionSettings
           where
             connectionSettings =
-              Hasql.Connection.settings "localhost" 5432 "postgres" "postgres" "postgres"
+              Hasql.Connection.connectionString "localhost" 5432 "postgres" "postgres" "postgres"
     use (connection1, connection2) =
       do
         beginVar <- newEmptyMVar

@@ -5,8 +5,8 @@ module Hasql.Connection
     ConnectionError,
     acquire,
     release,
-    Settings,
-    settings,
+    ConnectionString,
+    connectionString,
     withLibPQConnection,
   )
 where

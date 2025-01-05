@@ -2,9 +2,9 @@ module Hasql.TestingKit.Constants where
 
 import Hasql.Connection qualified as Connection
 
-localConnectionSettings :: Connection.Settings
+localConnectionSettings :: Connection.ConnectionString
 localConnectionSettings =
-  Connection.settings host port user password database
+  Connection.connectionString host port user password database
   where
     host = "localhost"
     port = 5432

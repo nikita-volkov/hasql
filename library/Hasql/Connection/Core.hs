@@ -2,11 +2,11 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection.Core where
 
+import Hasql.ConnectionString qualified as ConnectionString
 import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
-import Hasql.ConnectionString qualified as Settings
 
 -- |
 -- A single connection to the database.
@@ -37,12 +37,12 @@ acquire ::
   -- Consult their docs or just set it to 'False' to stay on the safe side.
   -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
   Bool ->
-  Settings.Settings ->
+  ConnectionString.ConnectionString ->
   IO (Either ConnectionError Connection)
-acquire usePreparedStatements settings =
+acquire usePreparedStatements connectionString =
   {-# SCC "acquire" #-}
   runExceptT $ do
-    pqConnection <- lift (IO.acquireConnection settings)
+    pqConnection <- lift (IO.acquireConnection connectionString)
     lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
