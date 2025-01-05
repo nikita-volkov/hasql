@@ -15,11 +15,12 @@ newtype Connection = Connection ByteString
 instance Config.ConnectionString.Constructs Connection where
   construct = coerce
 
--- | Plain connection string according to <http://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
+-- | From plain connection string according to <http://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING the PostgreSQL format>.
 string :: Text -> Connection
 string =
-  error "TODO"
+  Connection . Config.ConnectionString.fromText
 
+-- | From structured parameters.
 params :: [Param.Param] -> Connection
 params =
   Connection . Config.ConnectionString.fromParams . Config.ConnectionString.Params.fromUpdates
