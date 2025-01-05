@@ -19,3 +19,11 @@ nil =
 
 fromUpdates :: (Updates a) => [a] -> Config
 fromUpdates = foldl' (flip update) nil
+
+setConnectionString :: ByteString -> Config -> Config
+setConnectionString connectionString config =
+  config {connectionString}
+
+setUsePreparedStatements :: Bool -> Config -> Config
+setUsePreparedStatements usePreparedStatements config =
+  config {usePreparedStatements}

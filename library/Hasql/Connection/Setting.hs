@@ -16,12 +16,8 @@ instance Config.Updates Setting where
   update (Setting update) = update
 
 connection :: Connection.Connection -> Setting
-connection setting =
-  Setting \config ->
-    config
-      { Config.connectionString =
-          Config.ConnectionString.construct setting
-      }
+connection =
+  Setting . Config.setConnectionString . Config.ConnectionString.construct
 
 -- | Whether prepared statements are allowed.
 --
@@ -34,4 +30,4 @@ connection setting =
 -- 'True' by default.
 usePreparedStatements :: Bool -> Setting
 usePreparedStatements =
-  error "TODO"
+  Setting . Config.setUsePreparedStatements
