@@ -19,7 +19,7 @@ import PostgreSQL.Binary.Decoding qualified as A
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (Results.Results a) deriving (Functor)
+newtype Result a = Result (Results.Results a) deriving (Functor, Filterable)
 
 -- |
 -- Decode no value from the result.
@@ -129,7 +129,7 @@ nullable = Nullable
 -- |
 -- Decoder of a value.
 newtype Value a = Value (Value.Value a)
-  deriving (Functor)
+  deriving (Functor, Filterable)
 
 type role Value representational
 
@@ -292,7 +292,7 @@ custom fn = Value (Value.decoderFn fn)
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINEABLE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value v) = Value (Value.Value (\b -> A.refine fn (Value.run v b)))
+refine fn (Value v) = Value (Value.refine fn v)
 
 -- |
 -- A generic decoder of @HSTORE@ values.

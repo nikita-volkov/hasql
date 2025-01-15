@@ -54,9 +54,9 @@ import Data.Hashable as Exports (Hashable (..))
 import Data.IORef as Exports
 import Data.Int as Exports
 import Data.Ix as Exports
-import Data.List as Exports hiding (all, and, any, concat, concatMap, elem, find, foldl, foldl', foldl1, foldr, foldr1, isSubsequenceOf, mapAccumL, mapAccumR, maximum, maximumBy, minimum, minimumBy, notElem, or, product, sortOn, sum, uncons)
+import Data.List as Exports hiding (all, and, any, concat, concatMap, elem, filter, find, foldl, foldl', foldl1, foldr, foldr1, isSubsequenceOf, mapAccumL, mapAccumR, maximum, maximumBy, minimum, minimumBy, notElem, or, product, sortOn, sum, uncons)
 import Data.List.NonEmpty as Exports (NonEmpty (..))
-import Data.Maybe as Exports
+import Data.Maybe as Exports hiding (catMaybes, mapMaybe)
 import Data.Monoid as Exports hiding (Alt, (<>))
 import Data.Ord as Exports
 import Data.Profunctor.Unsafe as Exports
@@ -101,7 +101,8 @@ import Text.ParserCombinators.ReadP as Exports (ReadP, readP_to_S, readS_to_P)
 import Text.ParserCombinators.ReadPrec as Exports (ReadPrec, readP_to_Prec, readPrec_to_P, readPrec_to_S, readS_to_Prec)
 import Text.Printf as Exports (hPrintf, printf)
 import Unsafe.Coerce as Exports
-import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, fail, foldl, foldl1, foldr, foldr1, id, mapM, mapM_, maximum, minimum, notElem, or, product, sequence, sequence_, sum, (.))
+import Witherable as Exports
+import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, fail, filter, foldl, foldl1, foldr, foldr1, id, mapM, mapM_, maximum, minimum, notElem, or, product, sequence, sequence_, sum, (.))
 
 type LazyByteString =
   Data.ByteString.Lazy.ByteString

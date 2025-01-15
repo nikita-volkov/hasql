@@ -64,6 +64,11 @@ instance Functor (Statement params) where
   {-# INLINE fmap #-}
   fmap = rmap
 
+instance Filterable (Statement params) where
+  {-# INLINE mapMaybe #-}
+  mapMaybe filtrator (Statement template encoder decoder preparable) =
+    Statement template encoder (mapMaybe filtrator decoder) preparable
+
 instance Profunctor Statement where
   {-# INLINE dimap #-}
   dimap f1 f2 (Statement template encoder decoder preparable) =
