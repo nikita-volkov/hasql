@@ -20,6 +20,11 @@ newtype Results a
   = Results (ReaderT (Bool, LibPQ.Connection) (ExceptT CommandError IO) a)
   deriving (Functor, Applicative, Monad)
 
+instance Filterable Results where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn =
+    refine (Prelude.maybe (Left "Invalid result") Right . fn)
+
 {-# INLINE run #-}
 run :: Results a -> LibPQ.Connection -> Bool -> IO (Either CommandError a)
 run (Results stack) conn idt =
