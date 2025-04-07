@@ -24,7 +24,7 @@ jobs:
     needs:
       - format
       - check
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/release.yaml@v3
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/release.yaml@v4
     secrets: inherit
     with:
       prefix-tag-with-v: false
