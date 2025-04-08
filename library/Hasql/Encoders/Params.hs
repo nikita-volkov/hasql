@@ -5,7 +5,7 @@ import Hasql.LibPq14 qualified as A
 import Hasql.PostgresTypeInfo qualified as D
 import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
-import Text.Builder qualified as E
+import TextBuilder qualified as E
 
 renderReadable :: Params a -> a -> [Text]
 renderReadable (Params _ _ _ printer) params =
@@ -86,7 +86,7 @@ value (C.Value valueOID _ serialize print) =
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
-      printer = pure . E.run . print
+      printer = pure . E.toText . print
     }
   where
     D.OID _ pqOid format = valueOID
@@ -97,7 +97,7 @@ nullableValue (C.Value valueOID _ serialize print) =
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
-      printer = pure . maybe "null" (E.run . print)
+      printer = pure . maybe "null" (E.toText . print)
     }
   where
     D.OID _ pqOid format = valueOID

@@ -12,7 +12,7 @@ import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool)
 import Hasql.Prelude qualified as Prelude
 import PostgreSQL.Binary.Encoding qualified as A
-import Text.Builder qualified as C
+import TextBuilder qualified as C
 
 -- * Parameters Product Encoder
 
@@ -381,7 +381,7 @@ dimension foldl (Array imp) = Array (Array.dimension foldl imp)
 data Composite a
   = Composite
       (a -> Bool -> A.Composite)
-      (a -> [C.Builder])
+      (a -> [C.TextBuilder])
 
 instance Contravariant Composite where
   contramap f (Composite encode print) =

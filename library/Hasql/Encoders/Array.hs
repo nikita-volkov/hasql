@@ -3,22 +3,22 @@ module Hasql.Encoders.Array where
 import Hasql.PostgresTypeInfo qualified as B
 import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as A
-import Text.Builder qualified as C
+import TextBuilder qualified as C
 
 data Array a
-  = Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.Builder)
+  = Array B.OID B.OID (Bool -> a -> A.Array) (a -> C.TextBuilder)
 
 instance Contravariant Array where
   contramap fn (Array valueOid arrayOid encoder renderer) =
     Array valueOid arrayOid (\intDateTimes -> encoder intDateTimes . fn) (renderer . fn)
 
 {-# INLINE value #-}
-value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.Builder) -> Array a
+value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> Array a
 value valueOID arrayOID encoder =
   Array valueOID arrayOID (\params -> A.encodingArray . encoder params)
 
 {-# INLINE nullableValue #-}
-nullableValue :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.Builder) -> Array (Maybe a)
+nullableValue :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> Array (Maybe a)
 nullableValue valueOID arrayOID encoder renderer =
   let maybeEncoder params =
         maybe A.nullArray (A.encodingArray . encoder params)
@@ -34,11 +34,11 @@ dimension fold (Array valueOID arrayOID elEncoder elRenderer) =
       renderer els =
         let folded =
               let step builder el =
-                    if C.null builder
+                    if C.isEmpty builder
                       then C.char '[' <> elRenderer el
                       else builder <> C.string ", " <> elRenderer el
                in fold step mempty els
-         in if C.null folded
+         in if C.isEmpty folded
               then C.string "[]"
               else folded <> C.char ']'
    in Array valueOID arrayOID encoder renderer

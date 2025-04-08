@@ -3,10 +3,10 @@ module Hasql.Encoders.Value where
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
-import Text.Builder qualified as C
+import TextBuilder qualified as C
 
 data Value a
-  = Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.Builder)
+  = Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.TextBuilder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
@@ -14,7 +14,7 @@ instance Contravariant Value where
     Value valueOID arrayOID (\integerDatetimes input -> encode integerDatetimes (f input)) (render . f)
 
 {-# INLINE unsafePTI #-}
-unsafePTI :: PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.Builder) -> Value a
+unsafePTI :: PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.TextBuilder) -> Value a
 unsafePTI pti =
   Value (PTI.ptiOID pti) (fromMaybe (error "No array OID") (PTI.ptiArrayOID pti))
 
