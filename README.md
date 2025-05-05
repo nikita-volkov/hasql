@@ -7,7 +7,7 @@ Hasql is a highly efficient PostgreSQL driver for Haskell with a typesafe yet fl
 
 # Status
 
-[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql) [![Hackage Deps](https://img.shields.io/hackage-deps/v/hasql.svg)](http://packdeps.haskellers.com/reverse/hasql)
+[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
 
 Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://postgrest.org/) project.
 
