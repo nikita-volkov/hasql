@@ -78,6 +78,9 @@ import qualified Hasql.Session as Session
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Connection as Connection
+import qualified Hasql.Connection.Setting as ConnectionSetting
+import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
+
 
 
 main :: IO ()
@@ -86,7 +89,8 @@ main = do
   result <- Session.run (sumAndDivModSession 3 8 3) connection
   print result
   where
-    connectionSettings = Connection.connectionString "localhost" 5432 "postgres" "" "postgres"
+    connectionSettings = [ConnectionSetting.connection $ ConnectionSettingConnection.string pstr]
+    pstr = "host=localhost dbname=postgres user=postgres port=5432"
 
 
 -- * Sessions
