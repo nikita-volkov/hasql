@@ -213,6 +213,17 @@ inet :: Value Iproute.IPRange
 inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 
 -- |
+-- Encoder of @MACADDR@ values.
+--
+-- Represented as a 6-tuple of Word8 values in big endian order. If
+-- you use `ip` library consider using it with `toOctets`.
+--
+-- > toOctets >$< macaddr
+{-# INLINEABLE macaddr #-}
+macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
+macaddr = Value (Value.unsafePTIWithShow PTI.macaddr (const A.macaddr))
+
+-- |
 -- Encoder of @JSON@ values from JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value

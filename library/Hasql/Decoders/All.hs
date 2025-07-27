@@ -259,6 +259,17 @@ inet :: Value Iproute.IPRange
 inet = Value (Value.decoder (const A.inet))
 
 -- |
+-- Decoder of the @MACADDR@ values.
+--
+-- Represented as a 6-tuple of Word8 values in big endian order. If
+-- you use `ip` library consider using it with `fromOctets`.
+--
+-- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
+{-# INLINEABLE macaddr #-}
+macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
+macaddr = Value (Value.decoder (const A.macaddr))
+
+-- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
