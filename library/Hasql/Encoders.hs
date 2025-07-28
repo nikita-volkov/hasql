@@ -34,6 +34,7 @@ module Hasql.Encoders
     interval,
     uuid,
     inet,
+    macaddr,
     json,
     jsonBytes,
     jsonLazyBytes,

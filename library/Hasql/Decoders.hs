@@ -45,6 +45,7 @@ module Hasql.Decoders
     interval,
     uuid,
     inet,
+    macaddr,
     json,
     jsonBytes,
     jsonb,
