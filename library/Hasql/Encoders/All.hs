@@ -314,11 +314,13 @@ daterange = Value (Value.unsafePTIWithShow PTI.daterange (const A.daterange))
 int4multirange :: Value (R.Multirange Int32)
 int4multirange = Value (Value.unsafePTIWithShow PTI.int4multirange (const A.int4multirange))
 
+-- |
 -- Encoder of @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
 int8multirange = Value (Value.unsafePTIWithShow PTI.int8multirange (const A.int8multirange))
 
+-- |
 -- Encoder of @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
@@ -330,11 +332,13 @@ nummultirange = Value (Value.unsafePTIWithShow PTI.nummultirange (const A.nummul
 tsmultirange :: Value (R.Multirange LocalTime)
 tsmultirange = Value (Value.unsafePTIWithShow PTI.tsmultirange (Prelude.bool A.tsmultirange_float A.tsmultirange_int))
 
+-- |
 -- Encoder of @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
 tstzmultirange = Value (Value.unsafePTIWithShow PTI.tstzmultirange (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int))
 
+-- |
 -- Encoder of @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
