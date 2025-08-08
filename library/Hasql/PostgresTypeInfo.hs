@@ -61,6 +61,9 @@ date = mkPTI LibPQ.Binary 1082 (Just 1182)
 daterange :: PTI
 daterange = mkPTI LibPQ.Binary 3912 (Just 3913)
 
+datemultirange :: PTI
+datemultirange = mkPTI LibPQ.Binary 4535 (Just 6155)
+
 float4 :: PTI
 float4 = mkPTI LibPQ.Binary 700 (Just 1021)
 
@@ -85,11 +88,17 @@ int4 = mkPTI LibPQ.Binary 23 (Just 1007)
 int4range :: PTI
 int4range = mkPTI LibPQ.Binary 3904 (Just 3905)
 
+int4multirange :: PTI
+int4multirange = mkPTI LibPQ.Binary 4451 (Just 6150)
+
 int8 :: PTI
 int8 = mkPTI LibPQ.Binary 20 (Just 1016)
 
 int8range :: PTI
 int8range = mkPTI LibPQ.Binary 3926 (Just 3927)
+
+int8multirange :: PTI
+int8multirange = mkPTI LibPQ.Binary 4536 (Just 6157)
 
 interval :: PTI
 interval = mkPTI LibPQ.Binary 1186 (Just 1187)
@@ -120,6 +129,9 @@ numeric = mkPTI LibPQ.Binary 1700 (Just 1231)
 
 numrange :: PTI
 numrange = mkPTI LibPQ.Binary 3906 (Just 3907)
+
+nummultirange :: PTI
+nummultirange = mkPTI LibPQ.Binary 4532 (Just 6151)
 
 oid :: PTI
 oid = mkPTI LibPQ.Binary 26 (Just 1028)
@@ -196,8 +208,14 @@ tsquery = mkPTI LibPQ.Binary 3615 (Just 3645)
 tsrange :: PTI
 tsrange = mkPTI LibPQ.Binary 3908 (Just 3909)
 
+tsmultirange :: PTI
+tsmultirange = mkPTI LibPQ.Binary 4533 (Just 6152)
+
 tstzrange :: PTI
 tstzrange = mkPTI LibPQ.Binary 3910 (Just 3911)
+
+tstzmultirange :: PTI
+tstzmultirange = mkPTI LibPQ.Binary 4534 (Just 6153)
 
 tsvector :: PTI
 tsvector = mkPTI LibPQ.Binary 3614 (Just 3643)
