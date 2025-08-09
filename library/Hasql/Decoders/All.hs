@@ -14,6 +14,7 @@ import Hasql.Decoders.Value qualified as Value
 import Hasql.Prelude hiding (bool, maybe)
 import Hasql.Prelude qualified as Prelude
 import PostgreSQL.Binary.Decoding qualified as A
+import PostgreSQL.Binary.Range qualified as R
 
 -- * Result
 
@@ -292,6 +293,78 @@ jsonb = Value (Value.decoder (const A.jsonb_ast))
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
 jsonbBytes fn = Value (Value.decoder (const (A.jsonb_bytes fn)))
+
+-- |
+-- Decoder of the @INT4RANGE@ values.
+{-# INLINEABLE int4range #-}
+int4range :: Value (R.Range Int32)
+int4range = Value (Value.decoder (const A.int4range))
+
+-- |
+-- Decoder of the @INT8RANGE@ values.
+{-# INLINEABLE int8range #-}
+int8range :: Value (R.Range Int64)
+int8range = Value (Value.decoder (const A.int8range))
+
+-- |
+-- Decoder of the @NUMRANGE@ values.
+{-# INLINEABLE numrange #-}
+numrange :: Value (R.Range Scientific)
+numrange = Value (Value.decoder (const A.numrange))
+
+-- |
+-- Decoder of the @TSRANGE@ values.
+{-# INLINEABLE tsrange #-}
+tsrange :: Value (R.Range LocalTime)
+tsrange = Value (Value.decoder (Prelude.bool A.tsrange_float A.tsrange_int))
+
+-- |
+-- Decoder of the @TSTZRANGE@ values.
+{-# INLINEABLE tstzrange #-}
+tstzrange :: Value (R.Range UTCTime)
+tstzrange = Value (Value.decoder (Prelude.bool A.tstzrange_float A.tstzrange_int))
+
+-- |
+-- Decoder of the @DATERANGE@ values.
+{-# INLINEABLE daterange #-}
+daterange :: Value (R.Range Day)
+daterange = Value (Value.decoder (const A.daterange))
+
+-- |
+-- Decoder of the @INT4MULTIRANGE@ values.
+{-# INLINEABLE int4multirange #-}
+int4multirange :: Value (R.Multirange Int32)
+int4multirange = Value (Value.decoder (const A.int4multirange))
+
+-- |
+-- Decoder of the @INT8MULTIRANGE@ values.
+{-# INLINEABLE int8multirange #-}
+int8multirange :: Value (R.Multirange Int64)
+int8multirange = Value (Value.decoder (const A.int8multirange))
+
+-- |
+-- Decoder of the @NUMMULTIRANGE@ values.
+{-# INLINEABLE nummultirange #-}
+nummultirange :: Value (R.Multirange Scientific)
+nummultirange = Value (Value.decoder (const A.nummultirange))
+
+-- |
+-- Decoder of the @TSMULTIRANGE@ values.
+{-# INLINEABLE tsmultirange #-}
+tsmultirange :: Value (R.Multirange LocalTime)
+tsmultirange = Value (Value.decoder (Prelude.bool A.tsmultirange_float A.tsmultirange_int))
+
+-- |
+-- Decoder of the @TSTZMULTIRANGE@ values.
+{-# INLINEABLE tstzmultirange #-}
+tstzmultirange :: Value (R.Multirange UTCTime)
+tstzmultirange = Value (Value.decoder (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int))
+
+-- |
+-- Decoder of the @DATEMULTIRANGE@ values.
+{-# INLINEABLE datemultirange #-}
+datemultirange :: Value (R.Multirange Day)
+datemultirange = Value (Value.decoder (const A.datemultirange))
 
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.

@@ -12,6 +12,7 @@ import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool)
 import Hasql.Prelude qualified as Prelude
 import PostgreSQL.Binary.Encoding qualified as A
+import PostgreSQL.Binary.Range qualified as R
 import TextBuilder qualified as C
 
 -- * Parameters Product Encoder
@@ -270,6 +271,78 @@ oid = Value (Value.unsafePTIWithShow PTI.oid (const A.int4_int32))
 {-# INLINEABLE name #-}
 name :: Value Text
 name = Value (Value.unsafePTIWithShow PTI.name (const A.text_strict))
+
+-- |
+-- Encoder of @INT4RANGE@ values.
+{-# INLINEABLE int4range #-}
+int4range :: Value (R.Range Int32)
+int4range = Value (Value.unsafePTIWithShow PTI.int4range (const A.int4range))
+
+-- |
+-- Encoder of @INT8RANGE@ values.
+{-# INLINEABLE int8range #-}
+int8range :: Value (R.Range Int64)
+int8range = Value (Value.unsafePTIWithShow PTI.int8range (const A.int8range))
+
+-- |
+-- Encoder of @NUMRANGE@ values.
+{-# INLINEABLE numrange #-}
+numrange :: Value (R.Range Scientific)
+numrange = Value (Value.unsafePTIWithShow PTI.numrange (const A.numrange))
+
+-- |
+-- Encoder of @TSRANGE@ values.
+{-# INLINEABLE tsrange #-}
+tsrange :: Value (R.Range LocalTime)
+tsrange = Value (Value.unsafePTIWithShow PTI.tsrange (Prelude.bool A.tsrange_float A.tsrange_int))
+
+-- |
+-- Encoder of @TSTZRANGE@ values.
+{-# INLINEABLE tstzrange #-}
+tstzrange :: Value (R.Range UTCTime)
+tstzrange = Value (Value.unsafePTIWithShow PTI.tstzrange (Prelude.bool A.tstzrange_float A.tstzrange_int))
+
+-- |
+-- Encoder of @DATERANGE@ values.
+{-# INLINEABLE daterange #-}
+daterange :: Value (R.Range Day)
+daterange = Value (Value.unsafePTIWithShow PTI.daterange (const A.daterange))
+
+-- |
+-- Encoder of @INT4MULTIRANGE@ values.
+{-# INLINEABLE int4multirange #-}
+int4multirange :: Value (R.Multirange Int32)
+int4multirange = Value (Value.unsafePTIWithShow PTI.int4multirange (const A.int4multirange))
+
+-- |
+-- Encoder of @INT8MULTIRANGE@ values.
+{-# INLINEABLE int8multirange #-}
+int8multirange :: Value (R.Multirange Int64)
+int8multirange = Value (Value.unsafePTIWithShow PTI.int8multirange (const A.int8multirange))
+
+-- |
+-- Encoder of @NUMMULTIRANGE@ values.
+{-# INLINEABLE nummultirange #-}
+nummultirange :: Value (R.Multirange Scientific)
+nummultirange = Value (Value.unsafePTIWithShow PTI.nummultirange (const A.nummultirange))
+
+-- |
+-- Encoder of @TSMULTIRANGE@ values.
+{-# INLINEABLE tsmultirange #-}
+tsmultirange :: Value (R.Multirange LocalTime)
+tsmultirange = Value (Value.unsafePTIWithShow PTI.tsmultirange (Prelude.bool A.tsmultirange_float A.tsmultirange_int))
+
+-- |
+-- Encoder of @TSTZMULTIRANGE@ values.
+{-# INLINEABLE tstzmultirange #-}
+tstzmultirange :: Value (R.Multirange UTCTime)
+tstzmultirange = Value (Value.unsafePTIWithShow PTI.tstzmultirange (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int))
+
+-- |
+-- Encoder of @DATEMULTIRANGE@ values.
+{-# INLINEABLE datemultirange #-}
+datemultirange :: Value (R.Multirange Day)
+datemultirange = Value (Value.unsafePTIWithShow PTI.datemultirange (const A.datemultirange))
 
 -- |
 -- Given a function,

@@ -150,7 +150,7 @@ library
     hashtables >=1.1 && <2,
     iproute >=1.7 && <1.8,
     mtl >=2 && <3,
-    postgresql-binary >=0.14.1 && <0.15,
+    postgresql-binary >=0.14.2 && <0.15,
     postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
