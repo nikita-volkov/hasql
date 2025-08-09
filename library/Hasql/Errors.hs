@@ -18,7 +18,7 @@ data SessionError
     PipelineError
       -- | Error details.
       CommandError
-  deriving (Show, Eq, Typeable)
+  deriving (Show, Eq)
 
 instance Exception SessionError where
   displayException = \case
