@@ -16,3 +16,19 @@ localConnectionSettings =
           ]
       )
   ]
+
+localConnectionSettingsEmptyPassword :: [Setting.Setting]
+localConnectionSettingsEmptyPassword =
+  [ Setting.connection
+      ( Setting.Connection.params
+          [ Setting.Connection.Component.host "localhost",
+            -- a different port and user are necessary otherwise
+            -- `password=<empty>`will swallow the next immediate field
+            -- which is port and then port gets ignored and defaults to 5432
+            Setting.Connection.Component.port 5434,
+            Setting.Connection.Component.user "newuser",
+            Setting.Connection.Component.dbname "newuser",
+            Setting.Connection.Component.password ""
+          ]
+      )
+  ]

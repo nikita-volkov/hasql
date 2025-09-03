@@ -18,4 +18,4 @@ fromParams :: Params.Params -> ConnectionString
 fromParams =
   B.intercalate " " . fmap renderParam . Map.toList
   where
-    renderParam (k, v) = mconcat [k, "=", v]
+    renderParam (k, v) = if B.null v then mempty else mconcat [k, "=", v]
