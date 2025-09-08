@@ -177,6 +177,7 @@ library testing-kit
     base,
     bytestring,
     hasql,
+    text,
     transformers,
     uuid,
 

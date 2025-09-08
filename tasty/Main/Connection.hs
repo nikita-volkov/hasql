@@ -15,12 +15,12 @@ with handler =
     release connection =
       lift $ HC.release connection
 
-withEmptyPassword :: (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)
-withEmptyPassword handler =
+withEmptyPassword :: Text -> (HC.Connection -> IO a) -> IO (Either HC.ConnectionError a)
+withEmptyPassword userName handler =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ HC.acquire Constants.localConnectionSettingsEmptyPassword
+      ExceptT $ HC.acquire (Constants.localConnectionSettingsEmptyPassword userName)
     use connection =
       lift $ handler connection
     release connection =

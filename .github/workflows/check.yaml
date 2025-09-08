@@ -37,6 +37,12 @@ jobs:
 
     steps:
 
+      - name: Setup newusers in postgres
+        run: |
+          psql -c 'create user "new user" with login password null;'
+          psql -c 'create user "new'\'' user" with login password null;'
+          psql -c 'create user "new\ user" with login password null;'
+
       - uses: nikita-volkov/build-and-test-cabal-package.github-action@v1
         with:
           ghc: ${{matrix.ghc}}

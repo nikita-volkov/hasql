@@ -1,6 +1,7 @@
 module Hasql.Connection.Config.ConnectionString where
 
 import Data.ByteString qualified as B
+import Data.ByteString.Char8 qualified as BC
 import Data.Map.Strict qualified as Map
 import Data.Text.Encoding qualified
 import Hasql.Connection.Config.ConnectionString.Params qualified as Params
@@ -18,4 +19,10 @@ fromParams :: Params.Params -> ConnectionString
 fromParams =
   B.intercalate " " . fmap renderParam . Map.toList
   where
-    renderParam (k, v) = if B.null v then mempty else mconcat [k, "=", v]
+    renderParam (k, v) = mconcat [k, "=", "'", escapeSingleQuote v, "'"]
+
+    escapeSingleQuote = BC.concatMap (\w ->
+                                        case w of
+                                          '\'' -> BC.pack "\\'"
+                                          '\\' -> BC.pack "\\\\"
+                                          otherwise -> BC.singleton w)

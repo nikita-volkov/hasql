@@ -470,7 +470,7 @@ tree =
           $ let actualIO =
                   Session.runSessionOnLocalDb $ Session.statement () $ Statements.selectList
              in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO,
-        testCase "Connection works with empty password"
+        testCase "Connection works with spaces in params"
           $ let statement =
                   Statement.Statement "select 1::bigint" Encoders.noParams decoder True
                   where
@@ -478,6 +478,26 @@ tree =
                       (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8))
                 session = Session.statement () statement
              in do
-                  x <- Connection.withEmptyPassword (Session.run session)
+                  x <- Connection.withEmptyPassword "new user" (Session.run session)
+                  assertEqual (show x) (Right (Right 1)) x,
+        testCase "Connection params with single quotes in them are properly escaped"
+          $ let statement =
+                  Statement.Statement "select 1::bigint" Encoders.noParams decoder True
+                  where
+                    decoder =
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8))
+                session = Session.statement () statement
+             in do
+                  x <- Connection.withEmptyPassword "new' user" (Session.run session)
+                  assertEqual (show x) (Right (Right 1)) x,
+        testCase "Connection params with backslashes in them are properly escaped"
+          $ let statement =
+                  Statement.Statement "select 1::bigint" Encoders.noParams decoder True
+                  where
+                    decoder =
+                      (Decoders.singleRow ((Decoders.column . Decoders.nonNullable) Decoders.int8))
+                session = Session.statement () statement
+             in do
+                  x <- Connection.withEmptyPassword "new\\ user" (Session.run session)
                   assertEqual (show x) (Right (Right 1)) x
       ]
