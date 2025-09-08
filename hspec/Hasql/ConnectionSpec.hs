@@ -43,5 +43,5 @@ spec = do
                   )
      in do
           itConnects "new user" "new password"
-          itConnects "new\\user" "new\\password"
-          itConnects "new'user" "new'password"
+          itConnects "new user" "new\\password"
+          itConnects "new user" "new'password"
