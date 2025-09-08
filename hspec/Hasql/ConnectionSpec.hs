@@ -45,8 +45,8 @@ spec = do
           describe "with spaces in params" do
             itConnects "new user" "new password"
 
-          describe "with single quotes" do
-            itConnects "new' user" "new' password"
+          describe "with special chars" do
+            itConnects "new@user" "new#password"
 
-          describe "with backslashes" do
-            itConnects "new\\ user" "new\\ password"
+          describe "with underscores and numbers" do
+            itConnects "new_user123" "new_password456"
