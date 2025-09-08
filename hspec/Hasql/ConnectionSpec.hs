@@ -18,7 +18,7 @@ spec = do
               it "connects" do
                 TestcontainersPostgresql.run
                   ( TestcontainersPostgresql.Config
-                      { forwardLogs = True,
+                      { forwardLogs = False,
                         distro = TestcontainersPostgresql.Distro17,
                         auth = TestcontainersPostgresql.CredentialsAuth username password
                       }
