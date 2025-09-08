@@ -26,7 +26,7 @@ localConnectionSettingsEmptyPassword userName =
             Setting.Connection.Component.port 5432,
             Setting.Connection.Component.user userName,
             Setting.Connection.Component.dbname "postgres",
-            Setting.Connection.Component.password ""
+            Setting.Connection.Component.password "postgres"
           ]
       )
   ]
