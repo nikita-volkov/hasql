@@ -1,3 +1,8 @@
 packages: .
 allow-newer:
   , *:base
+
+source-repository-package
+  type: git
+  location: https://github.com/nikita-volkov/testcontainers-postgresql
+  tag: a00523de153a7607f4c67ee98aebd297a9cb7766

@@ -18,7 +18,7 @@ spec = do
               it "connects" do
                 TestcontainersPostgresql.run
                   ( TestcontainersPostgresql.Config
-                      { forwardLogs = False,
+                      { forwardLogs = True,
                         distro = TestcontainersPostgresql.Distro17,
                         auth = TestcontainersPostgresql.CredentialsAuth username password
                       }
@@ -42,11 +42,6 @@ spec = do
                           pure ()
                   )
      in do
-          describe "with spaces in params" do
-            itConnects "new user" "new password"
-
-          describe "with special chars" do
-            itConnects "new@user" "new#password"
-
-          describe "with underscores and numbers" do
-            itConnects "new_user123" "new_password456"
+          itConnects "new user" "new password"
+          itConnects "new\\user" "new\\password"
+          itConnects "new'user" "new'password"
