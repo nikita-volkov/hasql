@@ -21,8 +21,11 @@ fromParams =
   where
     renderParam (k, v) = mconcat [k, "=", "'", escapeSingleQuote v, "'"]
 
-    escapeSingleQuote = BC.concatMap (\w ->
-                                        case w of
-                                          '\'' -> BC.pack "\\'"
-                                          '\\' -> BC.pack "\\\\"
-                                          otherwise -> BC.singleton w)
+    escapeSingleQuote =
+      BC.concatMap
+        ( \w ->
+            case w of
+              '\'' -> BC.pack "\\'"
+              '\\' -> BC.pack "\\\\"
+              _ -> BC.singleton w
+        )
