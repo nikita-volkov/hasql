@@ -59,5 +59,3 @@ queryTypeOid pqConnection typeName = do
                 Nothing -> pure Nothing
             else pure Nothing
         _ -> pure Nothing
-
-
