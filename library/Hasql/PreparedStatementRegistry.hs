@@ -7,46 +7,33 @@ module Hasql.PreparedStatementRegistry
   )
 where
 
-import ByteString.StrictBuilder qualified as B
-import Data.HashMap.Strict qualified as HM
-import Hasql.LibPq14 qualified as Pq
+import Hasql.PreparedStatementRegistry.Map (LocalKey (..))
+import Hasql.PreparedStatementRegistry.Map qualified as Map
 import Hasql.Prelude hiding (lookup, reset)
 
--- | Registry data structure containing a pure HashMap and counter wrapped in IORef
+-- | Registry data structure containing a pure RegistryState wrapped in IORef
 data PreparedStatementRegistry
-  = PreparedStatementRegistry !(IORef (HM.HashMap LocalKey ByteString, Word))
+  = PreparedStatementRegistry !(IORef Map.RegistryState)
 
 {-# INLINEABLE new #-}
 new :: IO PreparedStatementRegistry
 new =
-  PreparedStatementRegistry <$> newIORef (HM.empty, 0)
+  PreparedStatementRegistry <$> newIORef Map.empty
 
 {-# INLINEABLE update #-}
 update :: LocalKey -> (ByteString -> IO (Bool, a)) -> (ByteString -> IO a) -> PreparedStatementRegistry -> IO a
 update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry registryRef) = do
-  (hashMap, counter) <- readIORef registryRef
-  case HM.lookup localKey hashMap of
+  registryState <- readIORef registryRef
+  case Map.lookup localKey registryState of
     Just remoteKey -> onOldRemoteKey remoteKey
     Nothing -> do
-      let remoteKey = B.builderBytes . B.asciiIntegral $ counter
+      let (remoteKey, newState) = Map.insert localKey registryState
       (save, result) <- onNewRemoteKey remoteKey
-      when save $ do
-        let newHashMap = HM.insert localKey remoteKey hashMap
-            newCounter = succ counter
-        writeIORef registryRef (newHashMap, newCounter)
+      when save $ writeIORef registryRef newState
       return result
 
 reset :: PreparedStatementRegistry -> IO ()
 reset (PreparedStatementRegistry registryRef) = do
-  writeIORef registryRef (HM.empty, 0)
+  writeIORef registryRef Map.empty
 
--- |
--- Local statement key.
-data LocalKey
-  = LocalKey !ByteString ![Pq.Oid]
-  deriving (Show, Eq)
 
-instance Hashable LocalKey where
-  {-# INLINE hashWithSalt #-}
-  hashWithSalt salt (LocalKey template _) =
-    hashWithSalt salt template
