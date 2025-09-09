@@ -1,7 +1,7 @@
 module Hasql.Decoders.Value where
 
-import Hasql.Prelude
 import Hasql.PostgresTypeInfo qualified as PTI
+import Hasql.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 
 data Value a
