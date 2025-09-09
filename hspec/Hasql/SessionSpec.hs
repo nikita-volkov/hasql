@@ -7,7 +7,6 @@ import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.Testcontainers qualified as Testcontainers
 import Test.Hspec
-import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 import Prelude
 
@@ -16,21 +15,26 @@ spec = aroundAll Testcontainers.withConnection do
   describe "Basic Session Operations" do
     describe "Roundtrips" do
       it "handles simple values correctly" \connection -> do
-        let statement = Statement.Statement "select $1" 
-              (Encoders.param (Encoders.nonNullable Encoders.int8))
-              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-              True
+        let statement =
+              Statement.Statement
+                "select $1"
+                (Encoders.param (Encoders.nonNullable Encoders.int8))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+                True
         result <- Session.run (Session.statement (42 :: Int64) statement) connection
         result `shouldBe` Right 42
 
     describe "Error Handling" do
       it "captures query errors correctly" \connection -> do
-        let statement = Statement.Statement "select true where 1 = any ($1) and $2" 
-              (contrazip2
-                (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
-                (Encoders.param (Encoders.nonNullable Encoders.text)))
-              (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
-              True
+        let statement =
+              Statement.Statement
+                "select true where 1 = any ($1) and $2"
+                ( contrazip2
+                    (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+                    (Encoders.param (Encoders.nonNullable Encoders.text))
+                )
+                (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
+                True
         result <- Session.run (Session.statement ([3, 7] :: [Int64], "a") statement) connection
         case result of
           Left (Session.QueryError "select true where 1 = any ($1) and $2" ["[3, 7]", "\"a\""] _) -> pure ()
@@ -38,24 +42,36 @@ spec = aroundAll Testcontainers.withConnection do
 
     describe "IN simulation" do
       it "works with arrays" \connection -> do
-        let statement = Statement.Statement "select true where 1 = any ($1)" 
-              (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
-              (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
-              True
-        result <- Session.run (do
-          result1 <- Session.statement ([1, 2] :: [Int64]) statement
-          result2 <- Session.statement ([2, 3] :: [Int64]) statement
-          return (result1, result2)) connection
+        let statement =
+              Statement.Statement
+                "select true where 1 = any ($1)"
+                (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+                (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
+                True
+        result <-
+          Session.run
+            ( do
+                result1 <- Session.statement ([1, 2] :: [Int64]) statement
+                result2 <- Session.statement ([2, 3] :: [Int64]) statement
+                return (result1, result2)
+            )
+            connection
         result `shouldBe` Right (True, False)
 
     describe "NOT IN simulation" do
       it "works with arrays" \connection -> do
-        let statement = Statement.Statement "select true where 3 <> all ($1)" 
-              (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
-              (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
-              True
-        result <- Session.run (do
-          result1 <- Session.statement ([1, 2] :: [Int64]) statement
-          result2 <- Session.statement ([2, 3] :: [Int64]) statement
-          return (result1, result2)) connection
+        let statement =
+              Statement.Statement
+                "select true where 3 <> all ($1)"
+                (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+                (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
+                True
+        result <-
+          Session.run
+            ( do
+                result1 <- Session.statement ([1, 2] :: [Int64]) statement
+                result2 <- Session.statement ([2, 3] :: [Int64]) statement
+                return (result1, result2)
+            )
+            connection
         result `shouldBe` Right (True, False)
