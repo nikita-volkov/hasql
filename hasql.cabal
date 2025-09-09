@@ -170,6 +170,7 @@ library testing-kit
     Hasql.TestingKit.Constants
     Hasql.TestingKit.Preludes.Base
     Hasql.TestingKit.Statements.BrokenSyntax
+    Hasql.TestingKit.Statements.DecoderCompatTest
     Hasql.TestingKit.Statements.GenerateSeries
     Hasql.TestingKit.Statements.WrongDecoder
     Hasql.TestingKit.TestingDsl

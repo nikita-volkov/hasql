@@ -2,6 +2,7 @@ module Hasql.Decoders.Row where
 
 import Data.ByteString qualified as ByteString
 import Data.Text qualified as Text
+import Hasql.DecoderCompat qualified as DecoderCompat
 import Hasql.Decoders.Value qualified as Value
 import Hasql.Errors
 import Hasql.LibPq14 qualified as LibPQ
@@ -61,7 +62,7 @@ value valueDec =
               Just value -> do
                 -- Check for obvious type mismatches before attempting decode
                 if isKnownProblemPattern actualOid value
-                  then Left (DecoderTypeMismatch actualOid "Likely type mismatch detected")
+                  then Left (DecoderTypeMismatch actualOid ("Likely type mismatch: found " <> DecoderCompat.oidToTypeName actualOid <> " data"))
                   else do
                     -- Attempt to decode the value
                     let decodeResult = {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
