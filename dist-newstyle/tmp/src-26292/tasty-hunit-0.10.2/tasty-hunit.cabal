@@ -1,0 +1,37 @@
+name:                tasty-hunit
+version:             0.10.2
+synopsis:            HUnit support for the Tasty test framework.
+description:         HUnit support for the Tasty test framework.
+                     .
+                     Note that this package does not depend on HUnit but
+                     implements the relevant subset of its API. The name is a
+                     legacy of the early versions of tasty-hunit and of
+                     test-framework-hunit, which did depend on HUnit.
+license:             MIT
+license-file:        LICENSE
+author:              Roman Cheplyaka <roma@ro-che.info>
+maintainer:          Roman Cheplyaka <roma@ro-che.info>
+homepage:            https://github.com/UnkindPartition/tasty
+bug-reports:         https://github.com/UnkindPartition/tasty/issues
+-- copyright:           
+category:            Testing
+build-type:          Simple
+extra-source-files:  CHANGELOG.md
+cabal-version:       >=1.10
+
+Source-repository head
+  type:     git
+  location: https://github.com/UnkindPartition/tasty.git
+  subdir:   hunit
+
+library
+  exposed-modules:     Test.Tasty.HUnit
+  other-modules:       Test.Tasty.HUnit.Orig
+                       Test.Tasty.HUnit.Steps
+  other-extensions:    TypeFamilies, DeriveDataTypeable
+  build-depends:       base >= 4.8 && < 5,
+                       tasty >= 1.2.2 && < 1.6,
+                       call-stack < 0.5
+  -- hs-source-dirs:      
+  default-language:    Haskell2010
+  ghc-options: -Wall
