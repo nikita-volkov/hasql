@@ -353,6 +353,15 @@ enum :: (a -> Text) -> Value a
 enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
 
 -- |
+-- Encoder of enum values by type name.
+-- The type OID is looked up dynamically from the database.
+-- This requires a connection context and should be used in a Session.
+{-# INLINEABLE enumByName #-}
+enumByName :: Text -> (a -> Text) -> Value a
+enumByName _typeName mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
+-- TODO: Implement OID lookup integration
+
+-- |
 -- Variation of 'enum' with unknown OID.
 -- This function does not identify the type to Postgres,
 -- so Postgres must be able to derive the type from context.
@@ -394,6 +403,20 @@ composite (Composite encode print) =
       A.composite $ encode val idt
     printValue val =
       "ROW (" <> C.intercalate ", " (print val) <> ")"
+
+-- |
+-- Encoder of composite values by type name.
+-- The type OID is looked up dynamically from the database.
+-- This requires a connection context and should be used in a Session.
+compositeByName :: Text -> Composite a -> Value a
+compositeByName _typeName (Composite encode print) =
+  Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
+  where
+    encodeValue idt val =
+      A.composite $ encode val idt
+    printValue val =
+      "ROW (" <> C.intercalate ", " (print val) <> ")"
+-- TODO: Implement OID lookup integration
 
 -- |
 -- Lift a value encoder of element into a unidimensional array encoder of a foldable value.

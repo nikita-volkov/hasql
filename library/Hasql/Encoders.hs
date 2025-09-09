@@ -56,11 +56,13 @@ module Hasql.Encoders
     name,
     oid,
     enum,
+    enumByName,
     unknownEnum,
     unknown,
     array,
     foldableArray,
     composite,
+    compositeByName,
 
     -- * Array
     Array,

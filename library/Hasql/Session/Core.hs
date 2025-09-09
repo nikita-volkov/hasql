@@ -30,7 +30,7 @@ run (Session impl) connection =
       runExceptT $ runReaderT impl connection
     handler =
       case connection of
-        Connection.Connection _ pqConnVar _ registry ->
+        Connection.Connection _ pqConnVar _ registry _ ->
           withMVar pqConnVar \pqConn ->
             Pq.transactionStatus pqConn >>= \case
               Pq.TransIdle -> pure ()
@@ -46,7 +46,7 @@ sql :: ByteString -> Session ()
 sql sql =
   Session
     $ ReaderT
-    $ \(Connection.Connection _ pqConnectionRef integerDatetimes _) ->
+    $ \(Connection.Connection _ pqConnectionRef integerDatetimes _ _) ->
       ExceptT
         $ fmap (first (QueryError sql []))
         $ withMVar pqConnectionRef
@@ -64,7 +64,7 @@ statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement template (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
   Session
     $ ReaderT
-    $ \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
+    $ \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry _) ->
       ExceptT
         $ fmap (first (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
@@ -77,6 +77,6 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
-  Session $ ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
+  Session $ ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry _) ->
     ExceptT $ withMVar pqConnectionRef \pqConnection ->
       Pipeline.run pipeline usePreparedStatements pqConnection registry integerDatetimes

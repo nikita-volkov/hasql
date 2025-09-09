@@ -130,6 +130,7 @@ library
     Hasql.LibPq14
     Hasql.LibPq14.Ffi
     Hasql.LibPq14.Mappings
+    Hasql.OidCache
     Hasql.Pipeline.Core
     Hasql.PostgresTypeInfo
     Hasql.Prelude

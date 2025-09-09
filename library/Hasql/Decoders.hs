@@ -66,8 +66,10 @@ module Hasql.Decoders
     listArray,
     vectorArray,
     composite,
+    compositeByName,
     hstore,
     enum,
+    enumByName,
     custom,
     refine,
 
