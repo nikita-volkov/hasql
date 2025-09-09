@@ -7,6 +7,7 @@ import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.TestingDsl qualified as Session
 import Main.Connection qualified as Connection
+import Main.OidCacheTest qualified as OidCacheTest
 import Main.Prelude hiding (assert)
 import Main.Statements qualified as Statements
 import Test.QuickCheck.Instances ()
@@ -469,5 +470,9 @@ tree =
         testCase "List decoding"
           $ let actualIO =
                   Session.runSessionOnLocalDb $ Session.statement () $ Statements.selectList
-             in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO
+             in assertEqual "" (Right [(1, 2), (3, 4), (5, 6)]) =<< actualIO,
+        testCase "OID Cache functionality"
+          $ do
+            result <- OidCacheTest.testOidCache
+            assertEqual "" True result
       ]

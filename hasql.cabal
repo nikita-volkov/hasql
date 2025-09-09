@@ -104,8 +104,11 @@ library
     Hasql.Connection.Setting.Connection.Param
     Hasql.Decoders
     Hasql.Encoders
+    Hasql.OidCache
     Hasql.Pipeline
+    Hasql.PostgresTypeInfo
     Hasql.Session
+    Hasql.Session.Types
     Hasql.Statement
 
   other-modules:
@@ -130,9 +133,7 @@ library
     Hasql.LibPq14
     Hasql.LibPq14.Ffi
     Hasql.LibPq14.Mappings
-    Hasql.OidCache
     Hasql.Pipeline.Core
-    Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
     Hasql.Session.Core
@@ -188,6 +189,7 @@ test-suite tasty
   main-is: Main.hs
   other-modules:
     Main.Connection
+    Main.OidCacheTest
     Main.Prelude
     Main.Statements
 
