@@ -1,7 +1,5 @@
 # Hasql
 
-[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
-
 PostgreSQL driver for Haskell, that prioritizes:
 
 - Performance
