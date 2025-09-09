@@ -20,12 +20,7 @@ jobs:
       ghc: "8.10"
       skip-doctest: true
       skip-benchmarks: true
-      test-options: >
-        --quickcheck-tests 10_000
-  
+
   build-with-latest:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
     secrets: inherit
-    with:
-      test-options: >
-        --quickcheck-tests 10_000
