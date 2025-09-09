@@ -216,6 +216,7 @@ test-suite hspec
   other-modules:
     Hasql.ConcurrencySpec
     Hasql.ConnectionSpec
+    Hasql.DecoderCompatibilitySpec
     Hasql.EncodingDecodingSpec
     Hasql.MiscSpec
     Hasql.PipelineSpec

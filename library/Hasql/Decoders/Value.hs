@@ -52,6 +52,12 @@ refine fn (Value typeName typeOID arrayOID floatDecoder intDecoder) =
   Value typeName typeOID arrayOID (A.refine fn floatDecoder) (A.refine fn intDecoder)
 
 -- |
+-- Extract the expected OID from a Value decoder, if known statically.
+{-# INLINE expectedOID #-}
+expectedOID :: Value a -> Maybe Word32
+expectedOID (Value _ typeOID _ _ _) = fmap PTI.oidWord32 typeOID
+
+-- |
 -- Create a decoder from PTI metadata and a decoding function.
 {-# INLINE unsafePTI #-}
 unsafePTI :: Text -> PTI.PTI -> A.Value a -> A.Value a -> Value a

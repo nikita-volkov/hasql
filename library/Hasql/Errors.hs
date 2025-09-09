@@ -149,4 +149,8 @@ data RowError
     -- Appears when a wrong value parser is used.
     -- Comes with the error details.
     ValueError Text
+  | -- |
+    -- Appears when the decoder's expected type doesn't match the actual column type.
+    -- Reports the expected OID and the actual OID from the result.
+    DecoderTypeMismatch (Maybe Word32) Word32
   deriving (Show, Eq)
