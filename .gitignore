@@ -1,0 +1,28 @@
+# We apply the Gitignore Whitelist approach here.
+# Everything but a specific list of files and directories listed here gets ignored.
+# 
+# More on the approach: https://jasonstitt.com/gitignore-whitelisting-patterns.
+
+# Ignore everything in the root folder:
+/*
+
+# Unignore a specific list of files in the root folder:
+!/.gitignore
+!/LICENSE
+!/README.md
+!/CHANGELOG.md
+!/cabal.project
+!/*.cabal
+
+# Unignore subtrees:
+!/.github/
+!/benchmarks/
+!/hspec/
+!/library/
+!/profiling/
+!/tasty/
+!/testing-kit/
+!/threads-test/
+
+# Ignore noise:
+.DS_Store
