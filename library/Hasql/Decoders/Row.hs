@@ -48,15 +48,33 @@ value valueDec =
       writeIORef columnRef (succ col)
       if col < columnsAmount
         then do
-          valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
-          pure
-            $ case valueMaybe of
-              Nothing ->
-                Right Nothing
-              Just value ->
-                fmap Just
-                  $ first ValueError
-                  $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
+          -- Check decoder compatibility if we have expected OID information
+          case Value.expectedOID valueDec of
+            Just expectedOid -> do
+              actualOid <- LibPQ.ftype result col
+              let actualOidWord32 = fromIntegral ((\(LibPQ.Oid x) -> x) actualOid)
+              if expectedOid /= actualOidWord32
+                then pure $ Left $ DecoderTypeMismatch (Just expectedOid) actualOidWord32
+                else do
+                  valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
+                  pure
+                    $ case valueMaybe of
+                      Nothing ->
+                        Right Nothing
+                      Just value ->
+                        fmap Just
+                          $ first ValueError
+                          $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
+            Nothing -> do -- No static type info, skip check
+              valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
+              pure
+                $ case valueMaybe of
+                  Nothing ->
+                    Right Nothing
+                  Just value ->
+                    fmap Just
+                      $ first ValueError
+                      $ {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
         else pure (Left EndOfInput)
 
 -- |
