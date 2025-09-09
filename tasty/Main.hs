@@ -8,8 +8,8 @@ import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.TestingDsl qualified as Session
 import Main.Connection qualified as Connection
 import Main.OidCacheTest qualified as OidCacheTest
-import Main.SimpleOidTest qualified as SimpleOidTest
 import Main.Prelude hiding (assert)
+import Main.SimpleOidTest qualified as SimpleOidTest
 import Main.Statements qualified as Statements
 import Test.QuickCheck.Instances ()
 import Test.Tasty

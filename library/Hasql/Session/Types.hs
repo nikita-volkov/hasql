@@ -12,7 +12,7 @@
 --
 -- colorToText :: Color -> Text
 -- colorToText Red = "red"
--- colorToText Green = "green"  
+-- colorToText Green = "green"
 -- colorToText Blue = "blue"
 --
 -- textToColor :: Text -> Maybe Color
@@ -25,12 +25,12 @@
 -- mySession = do
 --   -- Create an encoder for the custom 'color_enum' type
 --   colorEncoder <- enumEncoder "color_enum" colorToText
---   
+--
 --   -- Create a decoder for the same type
 --   colorDecoder <- enumDecoder "color_enum" textToColor
---   
+--
 --   -- Use them in a statement
---   let statement = Statement "SELECT $1::color_enum" 
+--   let statement = Statement "SELECT $1::color_enum"
 --                    (param (nonNullable colorEncoder))
 --                    (singleRow (column (nullable colorDecoder)))
 --                    True
@@ -38,14 +38,14 @@
 -- @
 module Hasql.Session.Types where
 
-import Hasql.Session.Core qualified as Session
+import Data.Text.Encoding qualified as Text
 import Hasql.Connection.Core qualified as Connection
-import Hasql.OidCache qualified as OidCache
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors qualified as SessionError
+import Hasql.OidCache qualified as OidCache
 import Hasql.Prelude
-import Data.Text.Encoding qualified as Text
+import Hasql.Session.Core qualified as Session
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as C
@@ -69,7 +69,7 @@ enumEncoder typeName mapping = do
   connection <- ask
   maybeOid <- liftIO $ OidCache.lookupEnumOid connection typeName
   case maybeOid of
-    Just _oid -> pure $ Encoders.enum mapping -- For now, just use the standard enum encoder  
+    Just _oid -> pure $ Encoders.enum mapping -- For now, just use the standard enum encoder
     Nothing -> throwError $ SessionError.QueryError ("Unknown type: " <> Text.encodeUtf8 typeName) [] (SessionError.ClientError (Just "Type not found in pg_type"))
 
 -- |

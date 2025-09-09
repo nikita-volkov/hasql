@@ -1,14 +1,14 @@
 module Hasql.OidCache where
 
+import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
+import Data.HashTable.IO qualified as HashTable
+import Data.Text qualified as Text
+import Data.Text.Encoding qualified as TextEnc
 import Hasql.Connection.Core qualified as Connection
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude
-import Data.HashTable.IO qualified as HashTable
-import Data.Text qualified as Text
-import Data.Text.Encoding qualified as TextEnc
-import Data.ByteString qualified as BS
-import Data.ByteString.Char8 qualified as BS8
 import Text.Read (readMaybe)
 
 -- |
@@ -38,7 +38,7 @@ queryTypeOid pqConnection typeName = do
   -- Use simple exec since we're not parameterizing anything complex
   let query = "SELECT oid FROM pg_type WHERE typname = '" <> Text.replace "'" "''" typeName <> "'"
   let queryBytes = TextEnc.encodeUtf8 query
-  
+
   maybeResult <- LibPQ.exec pqConnection queryBytes
   case maybeResult of
     Nothing -> pure Nothing

@@ -2,6 +2,7 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection.Core where
 
+import Data.HashTable.IO qualified as HashTable
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.IO qualified as IO
@@ -9,7 +10,6 @@ import Hasql.LibPq14 qualified as LibPQ
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
-import Data.HashTable.IO qualified as HashTable
 
 -- |
 -- A single connection to the database.
