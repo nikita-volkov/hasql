@@ -8,19 +8,13 @@ import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
+import Hasql.Structures.ConnectionState qualified as ConnectionState
+import Hasql.Structures.RegistryState qualified as Map
 
 -- |
 -- A single connection to the database.
-data Connection
-  = Connection
-      -- | Whether prepared statements are allowed.
-      !Bool
-      -- | Lower level libpq connection.
-      !(MVar LibPQ.Connection)
-      -- | Integer datetimes.
-      !Bool
-      -- | Prepared statement registry.
-      !PreparedStatementRegistry.PreparedStatementRegistry
+newtype Connection
+  = Connection (MVar ConnectionState.ConnectionState)
 
 -- |
 -- Possible details of the connection acquistion error.
@@ -39,19 +33,25 @@ acquire settings =
     lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (IO.initConnection pqConnection)
     integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
-    registry <- lift (IO.acquirePreparedStatementRegistry)
-    pqConnectionRef <- lift (newMVar pqConnection)
-    pure (Connection (Config.usePreparedStatements config) pqConnectionRef integerDatetimes registry)
+    let registryState = Map.empty  -- Start with empty registry state
+    let connectionState = ConnectionState.ConnectionState 
+          (Config.usePreparedStatements config) 
+          pqConnection 
+          integerDatetimes 
+          registryState
+    connectionStateRef <- lift (newMVar connectionState)
+    pure (Connection connectionStateRef)
   where
     config = Config.fromUpdates settings
 
 -- |
 -- Release the connection.
 release :: Connection -> IO ()
-release (Connection _ pqConnectionRef _ _) =
+release (Connection connectionStateRef) =
   mask_ $ do
+    ConnectionState.ConnectionState _ pqConnection _ _ <- readMVar connectionStateRef
     nullConnection <- LibPQ.newNullConnection
-    pqConnection <- swapMVar pqConnectionRef nullConnection
+    _ <- swapMVar connectionStateRef (ConnectionState.ConnectionState False nullConnection False Map.empty)
     IO.releaseConnection pqConnection
 
 -- |
@@ -59,5 +59,6 @@ release (Connection _ pqConnectionRef _ _) =
 --
 -- The access to the connection is exclusive.
 withLibPQConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
-withLibPQConnection (Connection _ pqConnectionRef _ _) =
-  withMVar pqConnectionRef
+withLibPQConnection (Connection connectionStateRef) action =
+  withMVar connectionStateRef $ \(ConnectionState.ConnectionState _ pqConnection _ _) -> 
+    action pqConnection
