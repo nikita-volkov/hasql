@@ -1,8 +1,5 @@
 # Hasql
 
-[![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
-[![Continuous Haddock](https://img.shields.io/badge/haddock-master-blue)](https://nikita-volkov.github.io/hasql/)
-
 PostgreSQL driver for Haskell, that prioritizes:
 
 - Performance
@@ -13,6 +10,7 @@ PostgreSQL driver for Haskell, that prioritizes:
 # Status
 
 [![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
+[![Continuous Haddock](https://img.shields.io/badge/haddock-master-blue)](https://nikita-volkov.github.io/hasql/)
 
 Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://postgrest.org/) project.
 
