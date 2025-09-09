@@ -1,6 +1,6 @@
 module Hasql.Decoders.Composite where
 
-import Hasql.Prelude
+import Hasql.Internal.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 
 newtype Composite a

@@ -15,7 +15,7 @@ where
 import Hasql.Decoders qualified as Decoders
 import Hasql.Decoders.All qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Hasql.Prelude
+import Hasql.Internal.Prelude
 
 -- |
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.

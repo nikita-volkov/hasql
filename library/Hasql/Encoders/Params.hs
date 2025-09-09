@@ -1,9 +1,9 @@
 module Hasql.Encoders.Params where
 
 import Hasql.Encoders.Value qualified as C
-import Hasql.LibPq14 qualified as A
-import Hasql.PostgresTypeInfo qualified as D
-import Hasql.Prelude
+import Hasql.PostgreSQL.LibPq14 qualified as A
+import Hasql.PostgreSQL.TypeInfo qualified as D
+import Hasql.Internal.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as E
 

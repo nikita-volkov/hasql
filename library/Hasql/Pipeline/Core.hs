@@ -5,10 +5,10 @@ import Hasql.Decoders.Result qualified as Decoders.Result
 import Hasql.Decoders.Results qualified as Decoders.Results
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
-import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
-import Hasql.Prelude
-import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
+import Hasql.Internal.Errors
+import Hasql.PostgreSQL.LibPq14 qualified as Pq
+import Hasql.Internal.Prelude
+import Hasql.Internal.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
 
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> PreparedStatementRegistry.PreparedStatementRegistry -> Bool -> IO (Either SessionError a)

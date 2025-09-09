@@ -1,7 +1,7 @@
 module Hasql.Encoders.Value where
 
-import Hasql.PostgresTypeInfo qualified as PTI
-import Hasql.Prelude
+import Hasql.PostgreSQL.TypeInfo qualified as PTI
+import Hasql.Internal.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as C
 

@@ -5,10 +5,10 @@ import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Hasql.Decoders.Row qualified as Row
-import Hasql.Errors
-import Hasql.LibPq14 qualified as LibPQ
-import Hasql.Prelude hiding (many, maybe)
-import Hasql.Prelude qualified as Prelude
+import Hasql.Internal.Errors
+import Hasql.PostgreSQL.LibPq14 qualified as LibPQ
+import Hasql.Internal.Prelude hiding (many, maybe)
+import Hasql.Internal.Prelude qualified as Prelude
 
 newtype Result a
   = Result (ReaderT (Bool, LibPQ.Result) (ExceptT ResultError IO) a)

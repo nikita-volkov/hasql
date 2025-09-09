@@ -11,8 +11,8 @@ import Hasql.Decoders.Result qualified as Result
 import Hasql.Decoders.Results qualified as Results
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Decoders.Value qualified as Value
-import Hasql.Prelude hiding (bool, maybe)
-import Hasql.Prelude qualified as Prelude
+import Hasql.Internal.Prelude hiding (bool, maybe)
+import Hasql.Internal.Prelude qualified as Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
 

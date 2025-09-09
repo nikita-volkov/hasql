@@ -1,0 +1,12 @@
+dist-newstyle/
+.cabal-sandbox/
+cabal.sandbox.config
+*.hi
+*.o
+*.dyn_hi
+*.dyn_o
+.stack-work/
+*.prof
+*.ps
+*.hp
+.HTF/

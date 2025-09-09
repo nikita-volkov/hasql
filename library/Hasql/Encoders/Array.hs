@@ -1,7 +1,7 @@
 module Hasql.Encoders.Array where
 
-import Hasql.PostgresTypeInfo qualified as B
-import Hasql.Prelude
+import Hasql.PostgreSQL.TypeInfo qualified as B
+import Hasql.Internal.Prelude
 import PostgreSQL.Binary.Encoding qualified as A
 import TextBuilder qualified as C
 

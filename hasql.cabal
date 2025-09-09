@@ -109,7 +109,7 @@ library
     Hasql.Statement
 
   other-modules:
-    Hasql.Commands
+    Hasql.Internal.Commands
     Hasql.Connection.Config
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
@@ -126,14 +126,15 @@ library
     Hasql.Encoders.Params
     Hasql.Encoders.Value
     Hasql.Errors
-    Hasql.IO
-    Hasql.LibPq14
-    Hasql.LibPq14.Ffi
-    Hasql.LibPq14.Mappings
+    Hasql.Internal.Errors
+    Hasql.Internal.IO
+    Hasql.PostgreSQL.LibPq14
+    Hasql.PostgreSQL.LibPq14.Ffi
+    Hasql.PostgreSQL.LibPq14.Mappings
     Hasql.Pipeline.Core
-    Hasql.PostgresTypeInfo
-    Hasql.Prelude
-    Hasql.PreparedStatementRegistry
+    Hasql.PostgreSQL.TypeInfo
+    Hasql.Internal.Prelude
+    Hasql.Internal.PreparedStatementRegistry
     Hasql.Session.Core
 
   build-depends:

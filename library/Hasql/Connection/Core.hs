@@ -4,10 +4,10 @@ module Hasql.Connection.Core where
 
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting qualified as Setting
-import Hasql.IO qualified as IO
-import Hasql.LibPq14 qualified as LibPQ
-import Hasql.Prelude
-import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
+import Hasql.Internal.IO qualified as IO
+import Hasql.PostgreSQL.LibPq14 qualified as LibPQ
+import Hasql.Internal.Prelude
+import Hasql.Internal.PreparedStatementRegistry qualified as PreparedStatementRegistry
 
 -- |
 -- A single connection to the database.

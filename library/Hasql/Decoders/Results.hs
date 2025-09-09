@@ -11,10 +11,10 @@
 module Hasql.Decoders.Results where
 
 import Hasql.Decoders.Result qualified as Result
-import Hasql.Errors
-import Hasql.LibPq14 qualified as LibPQ
-import Hasql.Prelude hiding (many, maybe)
-import Hasql.Prelude qualified as Prelude
+import Hasql.Internal.Errors
+import Hasql.PostgreSQL.LibPq14 qualified as LibPQ
+import Hasql.Internal.Prelude hiding (many, maybe)
+import Hasql.Internal.Prelude qualified as Prelude
 
 newtype Results a
   = Results (ReaderT (Bool, LibPQ.Connection) (ExceptT CommandError IO) a)
