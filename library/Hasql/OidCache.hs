@@ -60,12 +60,4 @@ queryTypeOid pqConnection typeName = do
             else pure Nothing
         _ -> pure Nothing
 
--- |
--- Look up an enum type OID by name.
-lookupEnumOid :: Connection.Connection -> Text -> IO (Maybe PTI.OID)
-lookupEnumOid conn typeName = lookupTypeOid conn typeName
 
--- |
--- Look up a composite type OID by name.
-lookupCompositeOid :: Connection.Connection -> Text -> IO (Maybe PTI.OID)
-lookupCompositeOid conn typeName = lookupTypeOid conn typeName

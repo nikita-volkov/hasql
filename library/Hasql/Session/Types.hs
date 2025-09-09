@@ -56,7 +56,7 @@ import TextBuilder qualified as C
 enumDecoder :: Text -> (Text -> Maybe a) -> Session.Session (Decoders.Value a)
 enumDecoder typeName mapping = do
   connection <- ask
-  maybeOid <- liftIO $ OidCache.lookupEnumOid connection typeName
+  maybeOid <- liftIO $ OidCache.lookupTypeOid connection typeName
   case maybeOid of
     Just _oid -> pure $ Decoders.enum mapping -- For now, just use the standard enum decoder
     Nothing -> throwError $ SessionError.QueryError ("Unknown type: " <> Text.encodeUtf8 typeName) [] (SessionError.ClientError (Just "Type not found in pg_type"))
@@ -67,7 +67,7 @@ enumDecoder typeName mapping = do
 enumEncoder :: Text -> (a -> Text) -> Session.Session (Encoders.Value a)
 enumEncoder typeName mapping = do
   connection <- ask
-  maybeOid <- liftIO $ OidCache.lookupEnumOid connection typeName
+  maybeOid <- liftIO $ OidCache.lookupTypeOid connection typeName
   case maybeOid of
     Just _oid -> pure $ Encoders.enum mapping -- For now, just use the standard enum encoder
     Nothing -> throwError $ SessionError.QueryError ("Unknown type: " <> Text.encodeUtf8 typeName) [] (SessionError.ClientError (Just "Type not found in pg_type"))
@@ -78,7 +78,7 @@ enumEncoder typeName mapping = do
 compositeDecoder :: Text -> Decoders.Composite a -> Session.Session (Decoders.Value a)
 compositeDecoder typeName composite = do
   connection <- ask
-  maybeOid <- liftIO $ OidCache.lookupCompositeOid connection typeName
+  maybeOid <- liftIO $ OidCache.lookupTypeOid connection typeName
   case maybeOid of
     Just _oid -> pure $ Decoders.composite composite -- For now, just use the standard composite decoder
     Nothing -> throwError $ SessionError.QueryError ("Unknown type: " <> Text.encodeUtf8 typeName) [] (SessionError.ClientError (Just "Type not found in pg_type"))
@@ -89,7 +89,7 @@ compositeDecoder typeName composite = do
 compositeEncoder :: Text -> Encoders.Composite a -> Session.Session (Encoders.Value a)
 compositeEncoder typeName composite = do
   connection <- ask
-  maybeOid <- liftIO $ OidCache.lookupCompositeOid connection typeName
+  maybeOid <- liftIO $ OidCache.lookupTypeOid connection typeName
   case maybeOid of
     Just _oid -> pure $ Encoders.composite composite -- For now, just use the standard composite encoder
     Nothing -> throwError $ SessionError.QueryError ("Unknown type: " <> Text.encodeUtf8 typeName) [] (SessionError.ClientError (Just "Type not found in pg_type"))
