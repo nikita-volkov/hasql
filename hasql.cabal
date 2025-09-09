@@ -234,6 +234,7 @@ test-suite profiling
 
   build-depends:
     hasql,
+    hasql:testing-kit,
     rerebase >=1 && <2,
 
 test-suite hspec
