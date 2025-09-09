@@ -1,0 +1,20 @@
+name: Deploy Haddock Documentation to GitHub Pages
+
+on:
+  workflow_dispatch:
+  workflow_call: 
+
+# Prevent overlapping publishes on rapid pushes
+concurrency:
+  group: deploy-docs-to-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-docs:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/deploy-docs-to-github-pages.yaml@v4
+    secrets: inherit
