@@ -13,7 +13,6 @@ import Hasql.Decoders.Row qualified as Row
 import Hasql.Decoders.Value qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool, maybe)
-import Hasql.Prelude qualified as Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
 
