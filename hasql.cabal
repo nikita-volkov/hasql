@@ -136,6 +136,8 @@ library
     Hasql.PreparedStatementRegistry
     Hasql.PreparedStatementRegistry.Map
     Hasql.Session.Core
+    Hasql.Structures.ConnectionState
+    Hasql.Structures.RegistryState
 
   build-depends:
     aeson >=2 && <3,
