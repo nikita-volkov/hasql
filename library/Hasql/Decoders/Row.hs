@@ -67,7 +67,7 @@ value valueDec =
                     -- Attempt to decode the value
                     let decodeResult = {-# SCC "decode" #-} A.valueParser (Value.run valueDec integerDatetimes) value
                     case decodeResult of
-                      Left decodeError -> 
+                      Left decodeError ->
                         -- Check if this might be a type mismatch
                         if isLikelyTypeMismatch actualOid decodeError
                           then Left (DecoderTypeMismatch actualOid decodeError)
@@ -78,18 +78,18 @@ value valueDec =
     isKnownProblemPattern :: Word32 -> ByteString -> Bool
     isKnownProblemPattern oid bytes =
       case oid of
-        -- INT8 (OID 20) - if the data looks like an 8-byte integer but we're 
+        -- INT8 (OID 20) - if the data looks like an 8-byte integer but we're
         -- probably trying to decode it as UUID (16 bytes), this is likely wrong
         20 -> ByteString.length bytes == 8
         -- Add other patterns as needed
         _ -> False
-        
+
     isLikelyTypeMismatch :: Word32 -> Text -> Bool
     isLikelyTypeMismatch oid errorMsg =
       -- Detect common type mismatch patterns
       case oid of
-        20 -> "uuid" `Text.isInfixOf` errorMsg  -- INT8 being decoded as UUID
-        2950 -> "int" `Text.isInfixOf` errorMsg  -- UUID being decoded as INT
+        20 -> "uuid" `Text.isInfixOf` errorMsg -- INT8 being decoded as UUID
+        2950 -> "int" `Text.isInfixOf` errorMsg -- UUID being decoded as INT
         _ -> False
 
 -- |

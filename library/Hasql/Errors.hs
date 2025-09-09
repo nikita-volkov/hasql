@@ -89,9 +89,12 @@ instance Exception SessionError where
           UnexpectedAmountOfRows amount ->
             "Unexpected amount of rows: " <> show amount
           DecoderCompatibilityError column expectedOid actualOid ->
-            "Decoder compatibility error in column " <> show column 
-            <> ": expected type OID " <> show expectedOid 
-            <> ", but got " <> show actualOid
+            "Decoder compatibility error in column "
+              <> show column
+              <> ": expected type OID "
+              <> show expectedOid
+              <> ", but got "
+              <> show actualOid
 
 -- |
 -- An error of some command in the session.

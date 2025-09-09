@@ -111,10 +111,10 @@ checkColumnTypes =
       actualOids <- forM [0 .. maxCols - 1] $ \col -> do
         LibPQ.Oid oid <- LibPQ.ftype result col
         pure oid
-      
+
       -- Analyze the OID pattern for potential decoder mismatches
       -- This is a heuristic approach since we can't easily extract expected types
-      let checkForPotentialMismatches oids = 
+      let checkForPotentialMismatches oids =
             case oids of
               -- Single column with int8 - could be mistakenly decoded as UUID
               [20] -> do
@@ -123,7 +123,7 @@ checkColumnTypes =
                 pure (Right ())
               -- Add more patterns here as needed
               _ -> pure (Right ())
-      
+
       checkForPotentialMismatches actualOids
 
 {-# INLINE maybe #-}

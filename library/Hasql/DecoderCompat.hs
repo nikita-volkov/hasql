@@ -9,7 +9,7 @@ import Hasql.Prelude
 oidToTypeName :: Word32 -> Text
 oidToTypeName oid = case oid of
   16 -> "bool"
-  20 -> "int8" 
+  20 -> "int8"
   21 -> "int2"
   23 -> "int4"
   25 -> "text"
@@ -22,7 +22,7 @@ oidToTypeName oid = case oid of
 -- | Check if an OID represents a type that could be commonly mistaken
 -- This is used to provide better error messages for common decoder mismatches
 isCommonlyMistaken :: Word32 -> Word32 -> Bool
-isCommonlyMistaken actual expected = 
+isCommonlyMistaken actual expected =
   case (actual, expected) of
     -- INT8 mistaken for UUID (the WrongDecoder test case)
     (20, 2950) -> True
