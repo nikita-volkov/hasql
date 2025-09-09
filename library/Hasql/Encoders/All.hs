@@ -130,19 +130,19 @@ int8 = Value (Value.unsafePTIWithName "INT8" PTI.int8 (const A.int8_int64) (C.st
 -- Encoder of @FLOAT4@ values.
 {-# INLINEABLE float4 #-}
 float4 :: Value Float
-float4 = Value (Value.unsafePTIWithShow PTI.float4 (const A.float4))
+float4 = Value (Value.unsafePTIWithName "FLOAT4" PTI.float4 (const A.float4) (C.string . show))
 
 -- |
 -- Encoder of @FLOAT8@ values.
 {-# INLINEABLE float8 #-}
 float8 :: Value Double
-float8 = Value (Value.unsafePTIWithShow PTI.float8 (const A.float8))
+float8 = Value (Value.unsafePTIWithName "FLOAT8" PTI.float8 (const A.float8) (C.string . show))
 
 -- |
 -- Encoder of @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
 numeric :: Value Scientific
-numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
+numeric = Value (Value.unsafePTIWithName "NUMERIC" PTI.numeric (const A.numeric) (C.string . show))
 
 -- |
 -- Encoder of @CHAR@ values.
@@ -151,7 +151,7 @@ numeric = Value (Value.unsafePTIWithShow PTI.numeric (const A.numeric))
 -- identifies itself under the @TEXT@ OID because of that.
 {-# INLINEABLE char #-}
 char :: Value Char
-char = Value (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
+char = Value (Value.unsafePTIWithName "CHAR" PTI.text (const A.char_utf8) (C.string . show))
 
 -- |
 -- Encoder of @TEXT@ values.
@@ -163,55 +163,55 @@ text = Value (Value.unsafePTIWithName "TEXT" PTI.text (const A.text_strict) (C.s
 -- Encoder of @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString
-bytea = Value (Value.unsafePTIWithShow PTI.bytea (const A.bytea_strict))
+bytea = Value (Value.unsafePTIWithName "BYTEA" PTI.bytea (const A.bytea_strict) (C.string . show))
 
 -- |
 -- Encoder of @DATE@ values.
 {-# INLINEABLE date #-}
 date :: Value Day
-date = Value (Value.unsafePTIWithShow PTI.date (const A.date))
+date = Value (Value.unsafePTIWithName "DATE" PTI.date (const A.date) (C.string . show))
 
 -- |
 -- Encoder of @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = Value (Value.unsafePTIWithShow PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int))
+timestamp = Value (Value.unsafePTIWithName "TIMESTAMP" PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int) (C.string . show))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = Value (Value.unsafePTIWithShow PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int))
+timestamptz = Value (Value.unsafePTIWithName "TIMESTAMPTZ" PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int) (C.string . show))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = Value (Value.unsafePTIWithShow PTI.time (Prelude.bool A.time_float A.time_int))
+time = Value (Value.unsafePTIWithName "TIME" PTI.time (Prelude.bool A.time_float A.time_int) (C.string . show))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = Value (Value.unsafePTIWithShow PTI.timetz (Prelude.bool A.timetz_float A.timetz_int))
+timetz = Value (Value.unsafePTIWithName "TIMETZ" PTI.timetz (Prelude.bool A.timetz_float A.timetz_int) (C.string . show))
 
 -- |
 -- Encoder of @INTERVAL@ values.
 {-# INLINEABLE interval #-}
 interval :: Value DiffTime
-interval = Value (Value.unsafePTIWithShow PTI.interval (Prelude.bool A.interval_float A.interval_int))
+interval = Value (Value.unsafePTIWithName "INTERVAL" PTI.interval (Prelude.bool A.interval_float A.interval_int) (C.string . show))
 
 -- |
 -- Encoder of @UUID@ values.
 {-# INLINEABLE uuid #-}
 uuid :: Value UUID
-uuid = Value (Value.unsafePTIWithShow PTI.uuid (const A.uuid))
+uuid = Value (Value.unsafePTIWithName "UUID" PTI.uuid (const A.uuid) (C.string . show))
 
 -- |
 -- Encoder of @INET@ values.
 {-# INLINEABLE inet #-}
 inet :: Value Iproute.IPRange
-inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
+inet = Value (Value.unsafePTIWithName "INET" PTI.inet (const A.inet) (C.string . show))
 
 -- |
 -- Encoder of @MACADDR@ values.
@@ -222,127 +222,127 @@ inet = Value (Value.unsafePTIWithShow PTI.inet (const A.inet))
 -- > toOctets >$< macaddr
 {-# INLINEABLE macaddr #-}
 macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = Value (Value.unsafePTIWithShow PTI.macaddr (const A.macaddr))
+macaddr = Value (Value.unsafePTIWithName "MACADDR" PTI.macaddr (const A.macaddr) (C.string . show))
 
 -- |
 -- Encoder of @JSON@ values from JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
-json = Value (Value.unsafePTIWithShow PTI.json (const A.json_ast))
+json = Value (Value.unsafePTIWithName "JSON" PTI.json (const A.json_ast) (C.string . show))
 
 -- |
 -- Encoder of @JSON@ values from raw JSON.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: Value ByteString
-jsonBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes))
+jsonBytes = Value (Value.unsafePTIWithName "JSON" PTI.json (const A.json_bytes) (C.string . show))
 
 -- |
 -- Encoder of @JSON@ values from raw JSON as lazy ByteString.
 {-# INLINEABLE jsonLazyBytes #-}
 jsonLazyBytes :: Value LazyByteString.ByteString
-jsonLazyBytes = Value (Value.unsafePTIWithShow PTI.json (const A.json_bytes_lazy))
+jsonLazyBytes = Value (Value.unsafePTIWithName "JSON" PTI.json (const A.json_bytes_lazy) (C.string . show))
 
 -- |
 -- Encoder of @JSONB@ values from JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value Aeson.Value
-jsonb = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_ast))
+jsonb = Value (Value.unsafePTIWithName "JSONB" PTI.jsonb (const A.jsonb_ast) (C.string . show))
 
 -- |
 -- Encoder of @JSONB@ values from raw JSON.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: Value ByteString
-jsonbBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes))
+jsonbBytes = Value (Value.unsafePTIWithName "JSONB" PTI.jsonb (const A.jsonb_bytes) (C.string . show))
 
 -- |
 -- Encoder of @JSONB@ values from raw JSON as lazy ByteString.
 {-# INLINEABLE jsonbLazyBytes #-}
 jsonbLazyBytes :: Value LazyByteString.ByteString
-jsonbLazyBytes = Value (Value.unsafePTIWithShow PTI.jsonb (const A.jsonb_bytes_lazy))
+jsonbLazyBytes = Value (Value.unsafePTIWithName "JSONB" PTI.jsonb (const A.jsonb_bytes_lazy) (C.string . show))
 
 -- |
 -- Encoder of @OID@ values.
 {-# INLINEABLE oid #-}
 oid :: Value Int32
-oid = Value (Value.unsafePTIWithShow PTI.oid (const A.int4_int32))
+oid = Value (Value.unsafePTIWithName "OID" PTI.oid (const A.int4_int32) (C.string . show))
 
 -- |
 -- Encoder of @NAME@ values.
 {-# INLINEABLE name #-}
 name :: Value Text
-name = Value (Value.unsafePTIWithShow PTI.name (const A.text_strict))
+name = Value (Value.unsafePTIWithName "NAME" PTI.name (const A.text_strict) (C.string . show))
 
 -- |
 -- Encoder of @INT4RANGE@ values.
 {-# INLINEABLE int4range #-}
 int4range :: Value (R.Range Int32)
-int4range = Value (Value.unsafePTIWithShow PTI.int4range (const A.int4range))
+int4range = Value (Value.unsafePTIWithName "INT4RANGE" PTI.int4range (const A.int4range) (C.string . show))
 
 -- |
 -- Encoder of @INT8RANGE@ values.
 {-# INLINEABLE int8range #-}
 int8range :: Value (R.Range Int64)
-int8range = Value (Value.unsafePTIWithShow PTI.int8range (const A.int8range))
+int8range = Value (Value.unsafePTIWithName "INT8RANGE" PTI.int8range (const A.int8range) (C.string . show))
 
 -- |
 -- Encoder of @NUMRANGE@ values.
 {-# INLINEABLE numrange #-}
 numrange :: Value (R.Range Scientific)
-numrange = Value (Value.unsafePTIWithShow PTI.numrange (const A.numrange))
+numrange = Value (Value.unsafePTIWithName "NUMRANGE" PTI.numrange (const A.numrange) (C.string . show))
 
 -- |
 -- Encoder of @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = Value (Value.unsafePTIWithShow PTI.tsrange (Prelude.bool A.tsrange_float A.tsrange_int))
+tsrange = Value (Value.unsafePTIWithName "TSRANGE" PTI.tsrange (Prelude.bool A.tsrange_float A.tsrange_int) (C.string . show))
 
 -- |
 -- Encoder of @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = Value (Value.unsafePTIWithShow PTI.tstzrange (Prelude.bool A.tstzrange_float A.tstzrange_int))
+tstzrange = Value (Value.unsafePTIWithName "TSTZRANGE" PTI.tstzrange (Prelude.bool A.tstzrange_float A.tstzrange_int) (C.string . show))
 
 -- |
 -- Encoder of @DATERANGE@ values.
 {-# INLINEABLE daterange #-}
 daterange :: Value (R.Range Day)
-daterange = Value (Value.unsafePTIWithShow PTI.daterange (const A.daterange))
+daterange = Value (Value.unsafePTIWithName "DATERANGE" PTI.daterange (const A.daterange) (C.string . show))
 
 -- |
 -- Encoder of @INT4MULTIRANGE@ values.
 {-# INLINEABLE int4multirange #-}
 int4multirange :: Value (R.Multirange Int32)
-int4multirange = Value (Value.unsafePTIWithShow PTI.int4multirange (const A.int4multirange))
+int4multirange = Value (Value.unsafePTIWithName "INT4MULTIRANGE" PTI.int4multirange (const A.int4multirange) (C.string . show))
 
 -- |
 -- Encoder of @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
-int8multirange = Value (Value.unsafePTIWithShow PTI.int8multirange (const A.int8multirange))
+int8multirange = Value (Value.unsafePTIWithName "INT8MULTIRANGE" PTI.int8multirange (const A.int8multirange) (C.string . show))
 
 -- |
 -- Encoder of @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
-nummultirange = Value (Value.unsafePTIWithShow PTI.nummultirange (const A.nummultirange))
+nummultirange = Value (Value.unsafePTIWithName "NUMMULTIRANGE" PTI.nummultirange (const A.nummultirange) (C.string . show))
 
 -- |
 -- Encoder of @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = Value (Value.unsafePTIWithShow PTI.tsmultirange (Prelude.bool A.tsmultirange_float A.tsmultirange_int))
+tsmultirange = Value (Value.unsafePTIWithName "TSMULTIRANGE" PTI.tsmultirange (Prelude.bool A.tsmultirange_float A.tsmultirange_int) (C.string . show))
 
 -- |
 -- Encoder of @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = Value (Value.unsafePTIWithShow PTI.tstzmultirange (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int))
+tstzmultirange = Value (Value.unsafePTIWithName "TSTZMULTIRANGE" PTI.tstzmultirange (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int) (C.string . show))
 
 -- |
 -- Encoder of @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
-datemultirange = Value (Value.unsafePTIWithShow PTI.datemultirange (const A.datemultirange))
+datemultirange = Value (Value.unsafePTIWithName "DATEMULTIRANGE" PTI.datemultirange (const A.datemultirange) (C.string . show))
 
 -- |
 -- Given a function,
@@ -350,7 +350,7 @@ datemultirange = Value (Value.unsafePTIWithShow PTI.datemultirange (const A.date
 -- produces an encoder of that value.
 {-# INLINEABLE enum #-}
 enum :: (a -> Text) -> Value a
-enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
+enum mapping = Value (Value.unsafePTIWithName "TEXT" PTI.text (const (A.text_strict . mapping)) (C.text . mapping))
 
 -- |
 -- Variation of 'enum' with unknown OID.
@@ -360,7 +360,7 @@ enum mapping = Value (Value.unsafePTI PTI.text (const (A.text_strict . mapping))
 -- using the :: operator.
 {-# INLINEABLE unknownEnum #-}
 unknownEnum :: (a -> Text) -> Value a
-unknownEnum mapping = Value (Value.unsafePTI PTI.binaryUnknown (const (A.text_strict . mapping)) (C.text . mapping))
+unknownEnum mapping = Value (Value.unsafePTIWithName "unknown" PTI.binaryUnknown (const (A.text_strict . mapping)) (C.text . mapping))
 
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
@@ -375,7 +375,7 @@ unknownEnum mapping = Value (Value.unsafePTI PTI.binaryUnknown (const (A.text_st
 -- it is the only encoder that doesn't use the binary format.
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
-unknown = Value (Value.unsafePTIWithShow PTI.textUnknown (const A.bytea_strict))
+unknown = Value (Value.unsafePTIWithName "unknown" PTI.textUnknown (const A.bytea_strict) (C.string . show))
 
 -- |
 -- Lift an array encoder into a value encoder.
