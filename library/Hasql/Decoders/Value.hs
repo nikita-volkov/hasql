@@ -37,15 +37,18 @@ decoder aDecoder =
 {-# INLINE decoderFn #-}
 decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
 decoderFn fn =
-  Value "unknown" Nothing Nothing 
-    (A.fn $ fn False) 
+  Value
+    "unknown"
+    Nothing
+    Nothing
+    (A.fn $ fn False)
     (A.fn $ fn True)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value typeName typeOID arrayOID floatDecoder intDecoder) = 
+refine fn (Value typeName typeOID arrayOID floatDecoder intDecoder) =
   Value typeName typeOID arrayOID (A.refine fn floatDecoder) (A.refine fn intDecoder)
 
 -- |
