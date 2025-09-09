@@ -191,6 +191,7 @@ test-suite tasty
     Main.Connection
     Main.OidCacheTest
     Main.Prelude
+    Main.SimpleOidTest
     Main.Statements
 
   build-depends:

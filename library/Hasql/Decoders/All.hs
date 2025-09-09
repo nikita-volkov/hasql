@@ -398,14 +398,6 @@ enum :: (Text -> Maybe a) -> Value a
 enum mapping = Value (Value.decoder (const (A.enum mapping)))
 
 -- |
--- Decoder of enum values by type name.
--- The type OID is looked up dynamically from the database.
--- This requires a connection context and should be used in a Session.
-enumByName :: Text -> (Text -> Maybe a) -> Value a  
-enumByName _typeName mapping = Value (Value.decoder (const (A.enum mapping)))
--- TODO: Implement OID lookup integration
-
--- |
 -- Lift an 'Array' decoder to a 'Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array a -> Value a
@@ -446,14 +438,6 @@ vectorArray = array . dimension GenericVector.replicateM . element
 {-# INLINEABLE composite #-}
 composite :: Composite a -> Value a
 composite (Composite imp) = Value (Value.decoder (Composite.run imp))
-
--- |
--- Decoder of composite values by type name.
--- The type OID is looked up dynamically from the database.
--- This requires a connection context and should be used in a Session.
-compositeByName :: Text -> Composite a -> Value a
-compositeByName _typeName (Composite imp) = Value (Value.decoder (Composite.run imp))
--- TODO: Implement OID lookup integration
 
 -- * Array decoders
 

@@ -1,3 +1,41 @@
+-- |
+-- Session-level type codec functions with dynamic OID lookup.
+--
+-- This module provides functions for creating encoders and decoders for custom
+-- PostgreSQL types (enums and composites) by name. The type OIDs are looked up
+-- dynamically from the database's @pg_type@ system table and cached per connection.
+--
+-- __Example usage:__
+--
+-- @
+-- data Color = Red | Green | Blue
+--
+-- colorToText :: Color -> Text
+-- colorToText Red = "red"
+-- colorToText Green = "green"  
+-- colorToText Blue = "blue"
+--
+-- textToColor :: Text -> Maybe Color
+-- textToColor "red" = Just Red
+-- textToColor "green" = Just Green
+-- textToColor "blue" = Just Blue
+-- textToColor _ = Nothing
+--
+-- mySession :: Session (Maybe Color)
+-- mySession = do
+--   -- Create an encoder for the custom 'color_enum' type
+--   colorEncoder <- enumEncoder "color_enum" colorToText
+--   
+--   -- Create a decoder for the same type
+--   colorDecoder <- enumDecoder "color_enum" textToColor
+--   
+--   -- Use them in a statement
+--   let statement = Statement "SELECT $1::color_enum" 
+--                    (param (nonNullable colorEncoder))
+--                    (singleRow (column (nullable colorDecoder)))
+--                    True
+--   statement Red myStatement
+-- @
 module Hasql.Session.Types where
 
 import Hasql.Session.Core qualified as Session

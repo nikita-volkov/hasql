@@ -8,6 +8,7 @@ import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.TestingDsl qualified as Session
 import Main.Connection qualified as Connection
 import Main.OidCacheTest qualified as OidCacheTest
+import Main.SimpleOidTest qualified as SimpleOidTest
 import Main.Prelude hiding (assert)
 import Main.Statements qualified as Statements
 import Test.QuickCheck.Instances ()
@@ -474,5 +475,9 @@ tree =
         testCase "OID Cache functionality"
           $ do
             result <- OidCacheTest.testOidCache
+            assertEqual "" True result,
+        testCase "Simple OID parsing"
+          $ do
+            result <- SimpleOidTest.testOidParsing
             assertEqual "" True result
       ]
