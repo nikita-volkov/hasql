@@ -130,3 +130,20 @@ spec = aroundAll Testcontainers.withConnection do
             )
             connection
         result `shouldBe` Right "ok"
+
+    describe "Name-based types" do
+      it "compiles enumByName functions" \_ -> do
+        -- Test that the new functions compile and have correct types
+        let encoder = Encoders.enumByName "test_type" id
+        let decoder = Decoders.enumByName "test_type" Just
+        -- Just test that these type-check, not that they execute
+        seq encoder (seq decoder True) `shouldBe` True
+        
+      it "compiles compositeByName functions" \_ -> do
+        -- Test that the new composite functions compile and have correct types  
+        let compositeEnc = Encoders.field (Encoders.nonNullable Encoders.text)
+        let encoder = Encoders.compositeByName "test_composite" compositeEnc
+        let compositeDec = Decoders.field (Decoders.nonNullable Decoders.text)
+        let decoder = Decoders.compositeByName "test_composite" compositeDec
+        -- Just test that these type-check, not that they execute
+        seq encoder (seq decoder True) `shouldBe` True

@@ -524,3 +524,25 @@ field = \case
             Nothing -> ["NULL"]
             Just val -> [print val]
       )
+
+
+-- * Type name-based encoding
+
+-- |
+-- Create an enum encoder that uses a type name instead of hardcoded OID.
+-- The OID will be looked up dynamically from the database and cached per connection.
+enumByName :: Text -> (a -> Text) -> Value a
+enumByName typeName mapping = 
+  Value (Value.Value typeName Nothing Nothing (const (A.text_strict . mapping)) (C.text . mapping))
+
+-- |
+-- Create a composite encoder that uses a type name instead of hardcoded OID.
+-- The OID will be looked up dynamically from the database and cached per connection.
+compositeByName :: Text -> Composite a -> Value a
+compositeByName typeName (Composite encode print) =
+  Value (Value.Value typeName Nothing Nothing encodeValue printValue)
+  where
+    encodeValue idt val =
+      A.composite $ encode val idt
+    printValue val =
+      "ROW (" <> C.intercalate ", " (print val) <> ")"

@@ -62,6 +62,10 @@ module Hasql.Encoders
     foldableArray,
     composite,
 
+    -- * Type name-based encoding
+    enumByName,
+    compositeByName,
+
     -- * Array
     Array,
     element,

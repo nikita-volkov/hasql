@@ -71,6 +71,10 @@ module Hasql.Decoders
     custom,
     refine,
 
+    -- * Type name-based decoding
+    enumByName,
+    compositeByName,
+
     -- * Array
     Array,
     dimension,
