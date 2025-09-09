@@ -214,21 +214,21 @@ test-suite hspec
   hs-source-dirs: hspec
   main-is: Main.hs
   other-modules:
+    Hasql.ConcurrencySpec
     Hasql.ConnectionSpec
+    Hasql.EncodingDecodingSpec
+    Hasql.MiscSpec
     Hasql.PipelineSpec
     Hasql.SessionSpec
     Hasql.StatementSpec
-    Hasql.EncodingDecodingSpec
-    Hasql.MiscSpec
-    Hasql.ConcurrencySpec
 
   build-tool-depends: hspec-discover:hspec-discover
   build-depends:
+    QuickCheck,
     contravariant-extras >=0.3.5.2 && <0.4,
     hasql,
     hasql:testing-kit,
     hspec,
-    QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     rerebase >=1 && <2,
     testcontainers-postgresql >=0.0.1 && <0.1,
