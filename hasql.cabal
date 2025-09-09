@@ -171,12 +171,14 @@ library testing-kit
     Hasql.TestingKit.Statements.BrokenSyntax
     Hasql.TestingKit.Statements.GenerateSeries
     Hasql.TestingKit.Statements.WrongDecoder
+    Hasql.TestingKit.Testcontainers
     Hasql.TestingKit.TestingDsl
 
   build-depends:
     base,
     bytestring,
     hasql,
+    testcontainers-postgresql >=0.0.1 && <0.1,
     transformers,
     uuid,
 

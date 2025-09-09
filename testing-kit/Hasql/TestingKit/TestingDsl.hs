@@ -14,12 +14,15 @@ module Hasql.TestingKit.TestingDsl
     -- * Execution
     runSessionOnLocalDb,
     runPipelineOnLocalDb,
+    runSessionWithSettings,
+    runPipelineWithSettings,
     runStatementInSession,
     runPipelineInSession,
   )
 where
 
 import Hasql.Connection qualified as Connection
+import Hasql.Connection.Setting qualified as Connection.Setting
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
@@ -32,11 +35,18 @@ data Error
   deriving (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
-runSessionOnLocalDb session =
+runSessionOnLocalDb = runSessionWithSettings Constants.localConnectionSettings
+
+runPipelineOnLocalDb :: Pipeline.Pipeline a -> IO (Either Error a)
+runPipelineOnLocalDb =
+  runSessionOnLocalDb . Session.pipeline
+
+runSessionWithSettings :: [Connection.Setting.Setting] -> Session.Session a -> IO (Either Error a)
+runSessionWithSettings settings session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ fmap (first ConnectionError) $ Connection.acquire Constants.localConnectionSettings
+      ExceptT $ fmap (first ConnectionError) $ Connection.acquire settings
     use connection =
       ExceptT
         $ fmap (first SessionError)
@@ -44,9 +54,9 @@ runSessionOnLocalDb session =
     release connection =
       lift $ Connection.release connection
 
-runPipelineOnLocalDb :: Pipeline.Pipeline a -> IO (Either Error a)
-runPipelineOnLocalDb =
-  runSessionOnLocalDb . Session.pipeline
+runPipelineWithSettings :: [Connection.Setting.Setting] -> Pipeline.Pipeline a -> IO (Either Error a)
+runPipelineWithSettings settings =
+  runSessionWithSettings settings . Session.pipeline
 
 runStatementInSession :: Statement.Statement a b -> a -> Session.Session b
 runStatementInSession statement params =
