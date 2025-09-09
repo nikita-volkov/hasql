@@ -4,8 +4,8 @@ import Hasql.Connection qualified
 import Hasql.Session qualified
 import Hasql.TestingKit.TestcontainersHelpers qualified as TestcontainersHelpers
 import Main.Statements qualified as Statements
-import Prelude
 import TestcontainersPostgresql qualified
+import Prelude
 
 main :: IO ()
 main =

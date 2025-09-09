@@ -6,9 +6,9 @@ import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hasql.TestingKit.TestingDsl qualified as Session
-import Main.TestcontainersConnection qualified as Connection
 import Main.Prelude hiding (assert)
 import Main.Statements qualified as Statements
+import Main.TestcontainersConnection qualified as Connection
 import Test.QuickCheck.Instances ()
 import Test.Tasty
 import Test.Tasty.HUnit
