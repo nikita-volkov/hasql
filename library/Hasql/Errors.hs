@@ -1,6 +1,7 @@
 module Hasql.Errors where
 
 import Data.ByteString.Char8 qualified as BC
+import Data.Text qualified as Text
 import Hasql.Prelude
 
 -- | Error during execution of a session.
@@ -157,4 +158,8 @@ data RowError
     -- Appears when a wrong value parser is used.
     -- Comes with the error details.
     ValueError Text
+  | -- |
+    -- Appears when there's a type mismatch between the decoder and the actual column type.
+    -- Comes with the actual OID and the decoding error message.
+    DecoderTypeMismatch Word32 Text
   deriving (Show, Eq)
