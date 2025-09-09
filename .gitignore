@@ -1,0 +1,10 @@
+dist-newstyle/
+.cabal-sandbox/
+cabal.sandbox.config
+.stack-work/
+*.prof
+*.aux
+*.hp
+*.eventlog
+.HTF/
+.ghc.environment.*
