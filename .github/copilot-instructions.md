@@ -15,10 +15,10 @@ Hasql is a fast PostgreSQL driver for Haskell with a flexible mapping API. It se
 ### Key Abstractions
 - **Connection**: Manages database connections with settings and prepared statement registries
 - **Session**: A batch of actions executed in a database connection context (ReaderT + ExceptT)
+- **Pipeline**: Composable abstraction for executing multiple queries efficiently
 - **Statement**: Specification of a single SQL query with parameter/result mapping
 - **Encoders**: DSL for declaring parameter encoders (Params, Value, NullableOrNot)
 - **Decoders**: DSL for declaring result decoders (Result, Row, Value, NullableOrNot)
-- **Pipeline**: Composable abstraction for executing multiple queries efficiently
 
 ## Code Style & Conventions
 
@@ -38,12 +38,11 @@ The project uses modern Haskell with these standard extensions:
 ### Import Conventions
 - **Qualified Imports**: Extensively used for clarity (e.g., `qualified as Encoders`, `qualified as Decoders`)
 - **Custom Prelude**: Uses `Hasql.Prelude` instead of standard Prelude
-- **Module Organization**: Clean hierarchical structure (Hasql.Connection.Core, Hasql.Session.Core, etc.)
 
 ### Naming Patterns
 - **Newtype Wrappers**: Extensive use for type safety (Session, Statement, Connection)
 - **DSL Style**: Encoders and Decoders use fluent DSL patterns
-- **Explicit Types**: Clear, descriptive type signatures with phantom types where appropriate
+- **Explicit Types**: Clear, descriptive type signatures with phantom types where necessary
 
 ### Error Handling
 - **No Exceptions**: Explicit error handling using `Either` types
@@ -58,17 +57,8 @@ When working with this codebase:
 2. **Follow the newtype pattern** for type safety when introducing new abstractions
 3. **Maintain the Either-based error handling** - never throw exceptions
 4. **Use the custom Prelude** (`Hasql.Prelude`) in all modules
-5. **Prefer composition over inheritance** - follow the ecosystem philosophy
-6. **Keep modules focused** - each module should have a single, clear responsibility
-7. **Use phantom types** for compile-time safety where appropriate
-8. **Follow the existing DSL patterns** when extending encoders/decoders
-
-## Testing Patterns
-
-- **Testing Kit**: Dedicated testing utilities in `testing-kit/` directory
-- **Multiple Frameworks**: Uses both HSpec and Tasty for different types of tests
-- **Local Database**: Tests use local PostgreSQL connections
-- **Property Testing**: Includes property-based testing for robust validation
+5. **Keep modules focused** - each module should have a single, clear responsibility
+6. **Follow the existing DSL patterns** when extending encoders/decoders
 
 ## Build System
 
