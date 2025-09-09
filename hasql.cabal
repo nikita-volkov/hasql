@@ -134,7 +134,6 @@ library
     Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
-    Hasql.PreparedStatementRegistry.Map
     Hasql.Session.Core
     Hasql.Structures.ConnectionState
     Hasql.Structures.RegistryState

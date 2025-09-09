@@ -2,7 +2,7 @@ module Hasql.Structures.ConnectionState where
 
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
-import Hasql.PreparedStatementRegistry.Map qualified as PreparedStatementRegistry
+import Hasql.Structures.RegistryState qualified as PreparedStatementRegistry
 
 -- |
 -- Connection state containing the core connection data.

@@ -8,8 +8,8 @@ module Hasql.PreparedStatementRegistry
 where
 
 import Hasql.Prelude hiding (lookup, reset)
-import Hasql.PreparedStatementRegistry.Map (LocalKey (..))
-import Hasql.PreparedStatementRegistry.Map qualified as Map
+import Hasql.Structures.RegistryState (LocalKey (..))
+import Hasql.Structures.RegistryState qualified as Map
 
 -- | Registry data structure containing a pure RegistryState wrapped in IORef
 data PreparedStatementRegistry
