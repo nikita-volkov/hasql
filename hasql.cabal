@@ -171,8 +171,8 @@ library testing-kit
     Hasql.TestingKit.Statements.BrokenSyntax
     Hasql.TestingKit.Statements.GenerateSeries
     Hasql.TestingKit.Statements.WrongDecoder
-    Hasql.TestingKit.TestingDsl
     Hasql.TestingKit.TestcontainersHelpers
+    Hasql.TestingKit.TestingDsl
 
   build-depends:
     base,
