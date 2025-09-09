@@ -2,7 +2,9 @@ module Hasql.Session
   ( Session,
     sql,
     statement,
+    statementWithOidResolution,
     pipeline,
+    lookupTypeOid,
 
     -- * Execution
     run,

@@ -489,3 +489,20 @@ field :: NullableOrNot Value a -> Composite a
 field = \case
   NonNullable (Value imp) -> Composite (Composite.nonNullValue (Value.run imp))
   Nullable (Value imp) -> Composite (Composite.value (Value.run imp))
+
+
+-- * Type name-based decoding
+
+-- |
+-- Create an enum decoder that uses a type name instead of hardcoded OID.
+-- The OID will be looked up dynamically from the database and cached per connection.
+enumByName :: Text -> (Text -> Maybe a) -> Value a
+enumByName typeName mapping = 
+  Value (Value.Value typeName Nothing Nothing (A.enum mapping) (A.enum mapping))
+
+-- |
+-- Create a composite decoder that uses a type name instead of hardcoded OID.
+-- The OID will be looked up dynamically from the database and cached per connection.
+compositeByName :: Text -> Composite a -> Value a
+compositeByName typeName (Composite imp) = 
+  Value (Value.Value typeName Nothing Nothing (Composite.run imp False) (Composite.run imp True))
