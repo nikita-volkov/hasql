@@ -8,49 +8,37 @@ module Hasql.PreparedStatementRegistry
 where
 
 import ByteString.StrictBuilder qualified as B
-import Data.HashTable.IO qualified as A
+import Data.HashMap.Strict qualified as HM
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (lookup, reset)
 
+-- | Registry data structure containing a pure HashMap and counter wrapped in IORef
 data PreparedStatementRegistry
-  = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
+  = PreparedStatementRegistry !(IORef (HM.HashMap LocalKey ByteString, Word))
 
 {-# INLINEABLE new #-}
 new :: IO PreparedStatementRegistry
 new =
-  PreparedStatementRegistry <$> A.new <*> newIORef 0
+  PreparedStatementRegistry <$> newIORef (HM.empty, 0)
 
 {-# INLINEABLE update #-}
 update :: LocalKey -> (ByteString -> IO (Bool, a)) -> (ByteString -> IO a) -> PreparedStatementRegistry -> IO a
-update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry table counter) =
-  lookup >>= maybe new old
-  where
-    lookup =
-      A.lookup table localKey
-    new =
-      readIORef counter >>= onN
-      where
-        onN n =
-          do
-            (save, result) <- onNewRemoteKey remoteKey
-            when save $ do
-              A.insert table localKey remoteKey
-              writeIORef counter (succ n)
-            return result
-          where
-            remoteKey =
-              B.builderBytes . B.asciiIntegral $ n
-    old =
-      onOldRemoteKey
+update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry registryRef) = do
+  (hashMap, counter) <- readIORef registryRef
+  case HM.lookup localKey hashMap of
+    Just remoteKey -> onOldRemoteKey remoteKey
+    Nothing -> do
+      let remoteKey = B.builderBytes . B.asciiIntegral $ counter
+      (save, result) <- onNewRemoteKey remoteKey
+      when save $ do
+        let newHashMap = HM.insert localKey remoteKey hashMap
+            newCounter = succ counter
+        writeIORef registryRef (newHashMap, newCounter)
+      return result
 
 reset :: PreparedStatementRegistry -> IO ()
-reset (PreparedStatementRegistry table counter) = do
-  -- TODO: This is a temporary measure.
-  -- We should just move to a pure implementation.
-  do
-    entries <- A.toList table
-    forM_ entries \(k, _) -> A.delete table k
-  writeIORef counter 0
+reset (PreparedStatementRegistry registryRef) = do
+  writeIORef registryRef (HM.empty, 0)
 
 -- |
 -- Local statement key.
