@@ -1,9 +1,10 @@
 module Hasql.PipelineSpec (spec) where
 
+import Hasql.Session qualified as Session
 import Hasql.TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
 import Hasql.TestingKit.Statements.GenerateSeries qualified as GenerateSeries
 import Hasql.TestingKit.Statements.WrongDecoder qualified as WrongDecoder
-import Hasql.TestingKit.TestingDsl qualified as Dsl
+import Hasql.TestingKit.TestcontainersHelpers qualified as TestcontainersHelpers
 import Test.Hspec
 import Prelude
 
@@ -13,14 +14,14 @@ spec = do
     describe "Unprepared" do
       it "Collects results and sends params" do
         result <-
-          Dsl.runPipelineOnLocalDb
+          TestcontainersHelpers.runPipelineWithTestcontainers
             $ GenerateSeries.pipeline False GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [0 .. 2])
 
     describe "Prepared" do
       it "Collects results and sends params" do
         result <-
-          Dsl.runPipelineOnLocalDb
+          TestcontainersHelpers.runPipelineWithTestcontainers
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [0 .. 2])
 
@@ -28,7 +29,7 @@ spec = do
     describe "On unprepared statements" do
       it "Collects results and sends params" do
         result <-
-          Dsl.runPipelineOnLocalDb
+          TestcontainersHelpers.runPipelineWithTestcontainers
             $ replicateM 2
             $ GenerateSeries.pipeline False GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [[0 .. 2], [0 .. 2]])
@@ -36,7 +37,7 @@ spec = do
     describe "On prepared statements" do
       it "Collects results and sends params" do
         result <-
-          Dsl.runPipelineOnLocalDb
+          TestcontainersHelpers.runPipelineWithTestcontainers
             $ replicateM 2
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [[0 .. 2], [0 .. 2]])
@@ -45,21 +46,21 @@ spec = do
       describe "With query error" do
         it "Captures the error" do
           result <-
-            Dsl.runPipelineOnLocalDb
+            TestcontainersHelpers.runPipelineWithTestcontainers
               $ (,,)
               <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
               <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Dsl.SessionError (Dsl.QueryError _ _ _)) -> pure ()
+            Left (TestcontainersHelpers.SessionError (Session.QueryError _ _ _)) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" do
           result <-
-            Dsl.runSessionOnLocalDb do
+            TestcontainersHelpers.runSessionWithTestcontainers do
               _ <-
                 tryError
-                  $ Dsl.runPipelineInSession
+                  $ Session.pipeline
                   $ (,,)
                   <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
                   <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
@@ -70,21 +71,21 @@ spec = do
       describe "With decoding error" do
         it "Captures the error" do
           result <-
-            Dsl.runPipelineOnLocalDb
+            TestcontainersHelpers.runPipelineWithTestcontainers
               $ (,,)
               <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
               <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Dsl.SessionError (Dsl.QueryError _ _ _)) -> pure ()
+            Left (TestcontainersHelpers.SessionError (Session.QueryError _ _ _)) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" do
           result <-
-            Dsl.runSessionOnLocalDb do
+            TestcontainersHelpers.runSessionWithTestcontainers do
               _ <-
                 tryError
-                  $ Dsl.runPipelineInSession
+                  $ Session.pipeline
                   $ (,,)
                   <$> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
                   <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}

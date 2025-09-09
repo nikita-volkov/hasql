@@ -1,0 +1,9 @@
+dist-newstyle/
+.ghc.environment.*
+*.prof
+*.aux
+*.hp
+*.eventlog
+*.tix
+cabal.project.local
+cabal.project.local~
