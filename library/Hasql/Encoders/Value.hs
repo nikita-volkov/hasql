@@ -6,7 +6,15 @@ import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as C
 
 data Value a
-  = Value PTI.OID PTI.OID (Bool -> a -> B.Encoding) (a -> C.TextBuilder)
+  = Value
+      -- | Statically known OID for the type.
+      PTI.OID
+      -- | Statically known OID for the array-type with this type as the element.
+      PTI.OID
+      -- | Serialization function.
+      (Bool -> a -> B.Encoding)
+      -- | Render function for error messages.
+      (a -> C.TextBuilder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
