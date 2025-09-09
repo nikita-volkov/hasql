@@ -2,7 +2,7 @@ module Hasql.Structures.ConnectionState where
 
 import Hasql.LibPq14 qualified as LibPQ
 import Hasql.Prelude
-import Hasql.Structures.RegistryState qualified as RegistryState
+import Hasql.PreparedStatementRegistry.Map qualified as PreparedStatementRegistry
 
 -- |
 -- Connection state containing the core connection data.
@@ -15,4 +15,4 @@ data ConnectionState
       -- | Integer datetimes.
       !Bool
       -- | Prepared statement registry.
-      !RegistryState.RegistryState
+      !PreparedStatementRegistry.RegistryState
