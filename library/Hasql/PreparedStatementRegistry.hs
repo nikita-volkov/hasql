@@ -7,9 +7,9 @@ module Hasql.PreparedStatementRegistry
   )
 where
 
+import Hasql.Prelude hiding (lookup, reset)
 import Hasql.PreparedStatementRegistry.Map (LocalKey (..))
 import Hasql.PreparedStatementRegistry.Map qualified as Map
-import Hasql.Prelude hiding (lookup, reset)
 
 -- | Registry data structure containing a pure RegistryState wrapped in IORef
 data PreparedStatementRegistry
@@ -35,5 +35,3 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry registr
 reset :: PreparedStatementRegistry -> IO ()
 reset (PreparedStatementRegistry registryRef) = do
   writeIORef registryRef Map.empty
-
-

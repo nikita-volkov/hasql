@@ -5,6 +5,7 @@ module Hasql.PreparedStatementRegistry.Map
     lookup,
     insert,
     reset,
+
     -- * Key type
     LocalKey (..),
   )
