@@ -81,7 +81,7 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: C.Value a -> Params a
-value (C.Value valueOID _ serialize print) =
+value (C.Value _ (Just valueOID) _ serialize print) =
   Params
     { size = 1,
       columnsMetadata = pure (pqOid, format),
@@ -90,9 +90,11 @@ value (C.Value valueOID _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
+value (C.Value typeName Nothing _ _ _) =
+  error $ "Cannot create Params for type with unknown OID: " <> show typeName
 
 nullableValue :: C.Value a -> Params (Maybe a)
-nullableValue (C.Value valueOID _ serialize print) =
+nullableValue (C.Value _ (Just valueOID) _ serialize print) =
   Params
     { size = 1,
       columnsMetadata = pure (pqOid, format),
@@ -101,3 +103,5 @@ nullableValue (C.Value valueOID _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
+nullableValue (C.Value typeName Nothing _ _ _) =
+  error $ "Cannot create nullable Params for type with unknown OID: " <> show typeName

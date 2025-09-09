@@ -106,25 +106,25 @@ newtype Value a = Value (Value.Value a)
 -- Encoder of @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
-bool = Value (Value.unsafePTIWithShow PTI.bool (const A.bool))
+bool = Value (Value.unsafePTIWithName "BOOL" PTI.bool (const A.bool) (C.string . show))
 
 -- |
 -- Encoder of @INT2@ values.
 {-# INLINEABLE int2 #-}
 int2 :: Value Int16
-int2 = Value (Value.unsafePTIWithShow PTI.int2 (const A.int2_int16))
+int2 = Value (Value.unsafePTIWithName "INT2" PTI.int2 (const A.int2_int16) (C.string . show))
 
 -- |
 -- Encoder of @INT4@ values.
 {-# INLINEABLE int4 #-}
 int4 :: Value Int32
-int4 = Value (Value.unsafePTIWithShow PTI.int4 (const A.int4_int32))
+int4 = Value (Value.unsafePTIWithName "INT4" PTI.int4 (const A.int4_int32) (C.string . show))
 
 -- |
 -- Encoder of @INT8@ values.
 {-# INLINEABLE int8 #-}
 int8 :: Value Int64
-int8 = Value (Value.unsafePTIWithShow PTI.int8 (const A.int8_int64))
+int8 = Value (Value.unsafePTIWithName "INT8" PTI.int8 (const A.int8_int64) (C.string . show))
 
 -- |
 -- Encoder of @FLOAT4@ values.
@@ -157,7 +157,7 @@ char = Value (Value.unsafePTIWithShow PTI.text (const A.char_utf8))
 -- Encoder of @TEXT@ values.
 {-# INLINEABLE text #-}
 text :: Value Text
-text = Value (Value.unsafePTIWithShow PTI.text (const A.text_strict))
+text = Value (Value.unsafePTIWithName "TEXT" PTI.text (const A.text_strict) (C.string . show))
 
 -- |
 -- Encoder of @BYTEA@ values.
@@ -382,7 +382,7 @@ unknown = Value (Value.unsafePTIWithShow PTI.textUnknown (const A.bytea_strict))
 array :: Array a -> Value a
 array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
   let encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
-   in Value (Value.Value arrayOID arrayOID encoder renderer)
+   in Value (Value.Value "array" (Just arrayOID) (Just arrayOID) encoder renderer)
 
 -- |
 -- Lift a composite encoder into a value encoder.
@@ -438,10 +438,14 @@ newtype Array a = Array (Array.Array a)
 -- Lifts a 'Value' encoder into an 'Array' encoder.
 element :: NullableOrNot Value a -> Array a
 element = \case
-  NonNullable (Value (Value.Value elementOID arrayOID encoder renderer)) ->
+  NonNullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.value elementOID arrayOID encoder renderer)
-  Nullable (Value (Value.Value elementOID arrayOID encoder renderer)) ->
+  NonNullable (Value (Value.Value typeName _ _ _ _)) ->
+    error $ "Cannot create Array element for type with unknown OID: " <> show typeName
+  Nullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.nullableValue elementOID arrayOID encoder renderer)
+  Nullable (Value (Value.Value typeName _ _ _ _)) ->
+    error $ "Cannot create nullable Array element for type with unknown OID: " <> show typeName
 
 -- |
 -- Encoder of an array dimension,
@@ -490,11 +494,13 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot Value a -> Composite a
 field = \case
-  NonNullable (Value (Value.Value elementOID _ encode print)) ->
+  NonNullable (Value (Value.Value _ (Just elementOID) _ encode print)) ->
     Composite
       (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
       (\val -> [print val])
-  Nullable (Value (Value.Value elementOID _ encode print)) ->
+  NonNullable (Value (Value.Value typeName Nothing _ _ _)) ->
+    error $ "Cannot create Composite field for type with unknown OID: " <> show typeName
+  Nullable (Value (Value.Value _ (Just elementOID) _ encode print)) ->
     Composite
       ( \val idt -> case val of
           Nothing -> A.nullField (PTI.oidWord32 elementOID)
@@ -505,3 +511,5 @@ field = \case
             Nothing -> ["NULL"]
             Just val -> [print val]
       )
+  Nullable (Value (Value.Value typeName Nothing _ _ _)) ->
+    error $ "Cannot create nullable Composite field for type with unknown OID: " <> show typeName
