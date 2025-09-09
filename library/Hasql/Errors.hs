@@ -87,6 +87,10 @@ instance Exception SessionError where
             "Error in row " <> show row <> ", column " <> show column <> ": " <> show rowError
           UnexpectedAmountOfRows amount ->
             "Unexpected amount of rows: " <> show amount
+          DecoderCompatibilityError column expectedOid actualOid ->
+            "Decoder compatibility error in column " <> show column 
+            <> ": expected type OID " <> show expectedOid 
+            <> ", but got " <> show actualOid
 
 -- |
 -- An error of some command in the session.
@@ -134,6 +138,10 @@ data ResultError
   | -- |
     -- An unexpected amount of rows.
     UnexpectedAmountOfRows Int
+  | -- |
+    -- A decoder compatibility error. The decoder expects a different type than what the database returned.
+    -- Comes with the column index, expected OID, and actual OID.
+    DecoderCompatibilityError Int Word32 Word32
   deriving (Show, Eq)
 
 -- |

@@ -114,6 +114,7 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.Core
+    Hasql.DecoderCompat
     Hasql.Decoders.All
     Hasql.Decoders.Array
     Hasql.Decoders.Composite

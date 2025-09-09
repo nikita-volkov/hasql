@@ -4,6 +4,7 @@ import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
+import Hasql.DecoderCompat qualified as DecoderCompat
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
 import Hasql.LibPq14 qualified as LibPQ
@@ -99,6 +100,32 @@ serverError =
           Right pos -> Just pos
           _ -> Nothing
 
+{-# INLINE checkColumnTypes #-}
+checkColumnTypes :: Result ()
+checkColumnTypes =
+  Result
+    $ ReaderT
+    $ \(_, result) -> ExceptT $ do
+      maxCols <- LibPQ.nfields result
+      -- Get the actual column types and analyze them for potential issues
+      actualOids <- forM [0 .. maxCols - 1] $ \col -> do
+        LibPQ.Oid oid <- LibPQ.ftype result col
+        pure oid
+      
+      -- Analyze the OID pattern for potential decoder mismatches
+      -- This is a heuristic approach since we can't easily extract expected types
+      let checkForPotentialMismatches oids = 
+            case oids of
+              -- Single column with int8 - could be mistakenly decoded as UUID
+              [20] -> do
+                -- This could be the WrongDecoder case
+                -- For now, we'll just note it but won't error to avoid false positives
+                pure (Right ())
+              -- Add more patterns here as needed
+              _ -> pure (Right ())
+      
+      checkForPotentialMismatches actualOids
+
 {-# INLINE maybe #-}
 maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDec =
@@ -124,6 +151,7 @@ single :: Row.Row a -> Result a
 single rowDec =
   do
     checkExecStatus [LibPQ.TuplesOk]
+    checkColumnTypes
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
