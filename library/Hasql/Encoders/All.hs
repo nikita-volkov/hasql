@@ -440,12 +440,12 @@ element :: NullableOrNot Value a -> Array a
 element = \case
   NonNullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.value elementOID arrayOID encoder renderer)
-  NonNullable (Value (Value.Value typeName _ _ _ _)) ->
-    error $ "Cannot create Array element for type with unknown OID: " <> show typeName
+  NonNullable (Value (Value.Value _ elementOID arrayOID encoder renderer)) ->
+    Array (Array.value (fromMaybe (PTI.ptiOID PTI.binaryUnknown) elementOID) (fromMaybe (PTI.ptiOID PTI.binaryUnknown) arrayOID) encoder renderer)
   Nullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.nullableValue elementOID arrayOID encoder renderer)
-  Nullable (Value (Value.Value typeName _ _ _ _)) ->
-    error $ "Cannot create nullable Array element for type with unknown OID: " <> show typeName
+  Nullable (Value (Value.Value _ elementOID arrayOID encoder renderer)) ->
+    Array (Array.nullableValue (fromMaybe (PTI.ptiOID PTI.binaryUnknown) elementOID) (fromMaybe (PTI.ptiOID PTI.binaryUnknown) arrayOID) encoder renderer)
 
 -- |
 -- Encoder of an array dimension,
@@ -498,8 +498,10 @@ field = \case
     Composite
       (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
       (\val -> [print val])
-  NonNullable (Value (Value.Value typeName Nothing _ _ _)) ->
-    error $ "Cannot create Composite field for type with unknown OID: " <> show typeName
+  NonNullable (Value (Value.Value _ Nothing _ encode print)) ->
+    Composite
+      (\val idt -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode idt val))
+      (\val -> [print val])
   Nullable (Value (Value.Value _ (Just elementOID) _ encode print)) ->
     Composite
       ( \val idt -> case val of
@@ -511,5 +513,14 @@ field = \case
             Nothing -> ["NULL"]
             Just val -> [print val]
       )
-  Nullable (Value (Value.Value typeName Nothing _ _ _)) ->
-    error $ "Cannot create nullable Composite field for type with unknown OID: " <> show typeName
+  Nullable (Value (Value.Value _ Nothing _ encode print)) ->
+    Composite
+      ( \val idt -> case val of
+          Nothing -> A.nullField (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown))
+          Just val -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode idt val)
+      )
+      ( \val ->
+          case val of
+            Nothing -> ["NULL"]
+            Just val -> [print val]
+      )

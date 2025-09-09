@@ -90,8 +90,15 @@ value (C.Value _ (Just valueOID) _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
-value (C.Value typeName Nothing _ _ _) =
-  error $ "Cannot create Params for type with unknown OID: " <> show typeName
+value (C.Value _ Nothing _ serialize print) =
+  Params
+    { size = 1,
+      columnsMetadata = pure (pqOid, format),
+      serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
+      printer = pure . E.toText . print
+    }
+  where
+    D.OID _ pqOid format = D.ptiOID D.binaryUnknown
 
 nullableValue :: C.Value a -> Params (Maybe a)
 nullableValue (C.Value _ (Just valueOID) _ serialize print) =
@@ -103,5 +110,12 @@ nullableValue (C.Value _ (Just valueOID) _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
-nullableValue (C.Value typeName Nothing _ _ _) =
-  error $ "Cannot create nullable Params for type with unknown OID: " <> show typeName
+nullableValue (C.Value _ Nothing _ serialize print) =
+  Params
+    { size = 1,
+      columnsMetadata = pure (pqOid, format),
+      serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
+      printer = pure . maybe "null" (E.toText . print)
+    }
+  where
+    D.OID _ pqOid format = D.ptiOID D.binaryUnknown
