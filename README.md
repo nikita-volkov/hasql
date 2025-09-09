@@ -1,6 +1,7 @@
 # Hasql
 
 [![Hackage](https://img.shields.io/hackage/v/hasql.svg)](https://hackage.haskell.org/package/hasql)
+[![Continuous Haddock](https://img.shields.io/badge/haddock-master-blue)](https://nikita-volkov.github.io/hasql/)
 
 PostgreSQL driver for Haskell, that prioritizes:
 

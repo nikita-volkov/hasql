@@ -5,41 +5,27 @@ on:
 
 jobs:
 
-  check:
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - ghc: 8.10.1
-            ghc-options: ""
-            ignore-haddock: true
-            ignore-cabal-check: true
-          - ghc: latest
-            ignore-cabal-check: true
+  check-cabal:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/check-cabal.yaml@v4
+    secrets: inherit
 
-    runs-on: ubuntu-latest
+  generate-docs:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/generate-docs.yaml@v4
+    secrets: inherit
 
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-
-      - uses: nikita-volkov/build-and-test-cabal-package.github-action@v1
-        with:
-          ghc: ${{matrix.ghc}}
-          ghc-options: ${{matrix.ghc-options}}
-          ignore-haddock: ${{matrix.ignore-haddock}}
-          ignore-cabal-check: ${{matrix.ignore-cabal-check}}
+  build-with-ghc-8-10:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
+    secrets: inherit
+    with:
+      ghc: "8.10"
+      skip-doctest: true
+      skip-benchmarks: true
+      test-options: >
+        --quickcheck-tests 10_000
+  
+  build-with-latest:
+    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
+    secrets: inherit
+    with:
+      test-options: >
+        --quickcheck-tests 10_000
