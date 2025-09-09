@@ -1,36 +1,25 @@
 module Main where
 
 import Hasql.Connection qualified
-import Hasql.Connection.Setting qualified
-import Hasql.Connection.Setting.Connection qualified
-import Hasql.Connection.Setting.Connection.Param qualified
 import Hasql.Session qualified
+import Hasql.TestingKit.TestcontainersHelpers qualified as TestcontainersHelpers
 import Main.Statements qualified as Statements
 import Prelude
+import TestcontainersPostgresql qualified
 
 main :: IO ()
 main =
-  acquire >>= use
+  TestcontainersPostgresql.run TestcontainersHelpers.defaultTestcontainerConfig $ \(host, port) -> do
+    let connectionSettings = TestcontainersHelpers.connectionSettingsFromHostPort host port
+    acquire connectionSettings >>= use
   where
-    acquire =
-      (,) <$> acquire <*> acquire
+    acquire connectionSettings =
+      (,) <$> acquire connectionSettings <*> acquire connectionSettings
       where
-        acquire =
+        acquire cs =
           join
             $ fmap (either (fail . show) return)
-            $ Hasql.Connection.acquire connectionSettings
-          where
-            connectionSettings =
-              [ Hasql.Connection.Setting.connection
-                  ( Hasql.Connection.Setting.Connection.params
-                      [ Hasql.Connection.Setting.Connection.Param.host "localhost",
-                        Hasql.Connection.Setting.Connection.Param.port 5432,
-                        Hasql.Connection.Setting.Connection.Param.user "postgres",
-                        Hasql.Connection.Setting.Connection.Param.password "postgres",
-                        Hasql.Connection.Setting.Connection.Param.dbname "postgres"
-                      ]
-                  )
-              ]
+            $ Hasql.Connection.acquire cs
     use (connection1, connection2) =
       do
         beginVar <- newEmptyMVar

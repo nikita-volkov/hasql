@@ -192,6 +192,7 @@ test-suite tasty
     Main.Connection
     Main.Prelude
     Main.Statements
+    Main.TestcontainersConnection
 
   build-depends:
     contravariant-extras >=0.3.5.2 && <0.4,
@@ -202,6 +203,7 @@ test-suite tasty
     tasty >=0.12 && <2,
     tasty-hunit >=0.9 && <0.11,
     tasty-quickcheck >=0.9 && <0.12,
+    testcontainers-postgresql >=0.0.1 && <0.1,
 
 test-suite threads-test
   import: test
@@ -211,7 +213,9 @@ test-suite threads-test
   other-modules: Main.Statements
   build-depends:
     hasql,
+    hasql:testing-kit,
     rerebase,
+    testcontainers-postgresql >=0.0.1 && <0.1,
 
 benchmark benchmarks
   import: executable
