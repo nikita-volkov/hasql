@@ -65,37 +65,34 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
         $ fmap (first (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
-          -- inlined sendParametricStatement
-          let sendAction =
-                if usePreparedStatements && preparable
-                  then runExceptT $ do
-                    let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
-                    key <-
-                      ExceptT
-                        $ PreparedStatementRegistry.update
-                          (PreparedStatementRegistry.LocalKey template oidList)
-                          ( \k -> do
-                              recv <- Roundtrip.run (Roundtrip.prepare k template oidList) pqConnection
-                              result <- recv
-                              case result of
-                                Left e -> pure (False, Left e)
-                                Right _ -> pure (True, Right k)
-                          )
-                          (\k -> pure (Right k))
-                          registry
-                    ExceptT $ do
-                      sent <- Pq.sendQueryPrepared pqConnection key valueAndFormatList Pq.Binary
-                      if sent
-                        then pure (Right ())
-                        else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
-                  else do
-                    let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
-                    Pq.sendQueryParams pqConnection template paramsData Pq.Binary >>= \sent ->
-                      if sent
-                        then pure (Right ())
-                        else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
-          r1 <- sendAction
-          -- inlined getResults
+          r1 <-
+            if usePreparedStatements && preparable
+              then runExceptT $ do
+                let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
+                key <-
+                  ExceptT
+                    $ PreparedStatementRegistry.update
+                      (PreparedStatementRegistry.LocalKey template oidList)
+                      ( \k -> do
+                          recv <- Roundtrip.run (Roundtrip.prepare k template oidList) pqConnection
+                          result <- recv
+                          case result of
+                            Left e -> pure (False, Left e)
+                            Right _ -> pure (True, Right k)
+                      )
+                      (\k -> pure (Right k))
+                      registry
+                ExceptT $ do
+                  sent <- Pq.sendQueryPrepared pqConnection key valueAndFormatList Pq.Binary
+                  if sent
+                    then pure (Right ())
+                    else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
+              else do
+                let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
+                Pq.sendQueryParams pqConnection template paramsData Pq.Binary >>= \sent ->
+                  if sent
+                    then pure (Right ())
+                    else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
           r2 <-
             (<*)
               <$> ResultsDecoders.run decoder pqConnection integerDatetimes
