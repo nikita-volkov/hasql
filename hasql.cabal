@@ -114,6 +114,9 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.Core
+    Hasql.Contexts.Command
+    Hasql.Contexts.ResultConsumer
+    Hasql.Contexts.Roundtrip
     Hasql.Decoders.All
     Hasql.Decoders.Array
     Hasql.Decoders.Composite
@@ -134,8 +137,8 @@ library
     Hasql.PostgresTypeInfo
     Hasql.Prelude
     Hasql.PreparedStatementRegistry
-    Hasql.PreparedStatementRegistry.Map
     Hasql.Session.Core
+    Hasql.Structures.StatementCache
 
   build-depends:
     aeson >=2 && <3,
