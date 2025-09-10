@@ -11,8 +11,8 @@ import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
-import Hasql.PreparedStatementRegistry.Map qualified as PureStatementRegistry
 import Hasql.Statement qualified as Statement
+import Hasql.Structures.StatementCache qualified as PureStatementRegistry
 
 -- |
 -- A batch of actions to be executed in the context of a database connection.
@@ -51,8 +51,8 @@ liftInformedRoundtrip ::
   (CommandError -> SessionError) ->
   ( Bool ->
     Bool ->
-    PureStatementRegistry.RegistryState ->
-    Roundtrip.Roundtrip (a, PureStatementRegistry.RegistryState)
+    PureStatementRegistry.StatementCache ->
+    Roundtrip.Roundtrip (a, PureStatementRegistry.StatementCache)
   ) ->
   Session a
 liftInformedRoundtrip packError roundtrip =
@@ -60,14 +60,14 @@ liftInformedRoundtrip packError roundtrip =
     ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes statementRegistry) ->
       ExceptT do
         withMVar pqConnectionRef \pqConnection -> do
-          statementRegistryState <- PreparedStatementRegistry.readPureState statementRegistry
-          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementRegistryState) pqConnection
+          statementStatementCache <- PreparedStatementRegistry.readPureState statementRegistry
+          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementStatementCache) pqConnection
           result <- recv
           case result of
             Left err -> pure (Left (packError err))
-            Right (result, statementRegistryState) -> do
+            Right (result, statementStatementCache) -> do
               -- Update the statement registry state after successful execution
-              PreparedStatementRegistry.writePureState statementRegistry statementRegistryState
+              PreparedStatementRegistry.writePureState statementRegistry statementStatementCache
               pure (Right result)
 
 -- |
