@@ -62,7 +62,6 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
     $ ReaderT
     $ \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
       ExceptT
-        $ fmap (first (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
           r1 <-
@@ -97,7 +96,11 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
             (<*)
               <$> ResultsDecoders.run decoder pqConnection integerDatetimes
               <*> ResultsDecoders.run ResultsDecoders.dropRemainders pqConnection integerDatetimes
-          return $ r1 *> r2
+          return (first packCommandError (r1 *> r2))
+  where
+    packCommandError :: CommandError -> SessionError
+    packCommandError =
+      QueryError template (Encoders.Params.renderReadable paramsEncoder input)
 
 -- |
 -- Execute a pipeline.
