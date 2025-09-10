@@ -1,9 +1,8 @@
 module Hasql.Session.Core where
 
 import Hasql.Connection.Core qualified as Connection
+import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.All qualified as Decoders
-import Hasql.Decoders.Result qualified as Decoders.Result
-import Hasql.Decoders.Results qualified as Decoders.Results
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
@@ -38,25 +37,22 @@ run (Session impl) connection =
                 PreparedStatementRegistry.reset registry
                 Pq.reset pqConn
 
+liftRoundtrip :: (CommandError -> SessionError) -> Roundtrip.Roundtrip a -> Session a
+liftRoundtrip packError roundtrip =
+  Session do
+    ReaderT \(Connection.Connection _ pqConnectionRef _ _) ->
+      ExceptT do
+        withMVar pqConnectionRef \pqConnection -> do
+          recv <- Roundtrip.run roundtrip pqConnection
+          first packError <$> recv
+
 -- |
 -- Possibly a multi-statement query,
 -- which however cannot be parameterized or prepared,
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  Session
-    $ ReaderT
-    $ \(Connection.Connection _ pqConnectionRef integerDatetimes _) ->
-      ExceptT
-        $ fmap (first (QueryError sql []))
-        $ withMVar pqConnectionRef
-        $ \pqConnection -> do
-          r1 <- IO.sendNonparametricStatement pqConnection sql
-          r2 <- IO.getResults pqConnection integerDatetimes decoder
-          return $ r1 *> r2
-  where
-    decoder =
-      Decoders.Results.single Decoders.Result.noResult
+  liftRoundtrip (QueryError sql []) (Roundtrip.runSql sql)
 
 -- |
 -- Execute a statement by providing parameters to it.
