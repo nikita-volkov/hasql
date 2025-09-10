@@ -10,12 +10,12 @@
 -- * Row-by-row fetching.
 module Hasql.Decoders.Results where
 
+import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.Result qualified as Result
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
-import Hasql.Contexts.Roundtrip qualified as Roundtrip
 
 newtype Results a
   = Results (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)

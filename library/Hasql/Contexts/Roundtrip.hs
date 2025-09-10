@@ -4,6 +4,7 @@ import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
+import Hasql.PreparedStatementRegistry.Map qualified as StatementRegistry
 
 -- | Batch of commands executed independently, in a single roundtrip to the server, with errors interrupting neither the sending or reception, but being accumulated and reported at the end.
 newtype Roundtrip a
@@ -25,7 +26,7 @@ instance Applicative Roundtrip where
 
 runSql :: ByteString -> Roundtrip ()
 runSql sql = do
-  sendNonParametricStatement sql
+  sendQuery sql
   consumeResult ResultConsumer.ok
   drainResults
   pure ()
@@ -74,17 +75,17 @@ drainResults =
                   Right () -> go output
        in go (Right ())
 
-sendNonParametricStatement :: ByteString -> Roundtrip ()
-sendNonParametricStatement sql =
+sendQuery :: ByteString -> Roundtrip ()
+sendQuery sql =
   liftPqCommand \connection -> do
     Pq.sendQuery connection sql
 
-{-# INLINE sendUnpreparedParametricStatement #-}
-sendUnpreparedParametricStatement ::
+{-# INLINE sendQueryParams #-}
+sendQueryParams ::
   ByteString ->
   [Maybe (Pq.Oid, ByteString, Pq.Format)] ->
   Roundtrip ()
-sendUnpreparedParametricStatement sql input =
+sendQueryParams sql input =
   liftPqCommand \connection -> do
     Pq.sendQueryParams connection sql input Pq.Binary
 
@@ -107,3 +108,21 @@ sendQueryPrepared ::
 sendQueryPrepared key params =
   liftPqCommand \connection -> do
     Pq.sendQueryPrepared connection key params Pq.Binary
+
+prepareWithRegistry ::
+  ByteString ->
+  [Pq.Oid] ->
+  [Maybe (ByteString, Pq.Format)] ->
+  StatementRegistry.RegistryState ->
+  Roundtrip StatementRegistry.RegistryState
+prepareWithRegistry sql oidList valueAndFormatList registry =
+  let localKey = StatementRegistry.LocalKey sql oidList
+   in case StatementRegistry.lookup localKey registry of
+        Just key -> do
+          sendQueryPrepared key valueAndFormatList
+          pure registry
+        Nothing -> do
+          let (key, newRegistry) = StatementRegistry.insert localKey registry
+          prepare key sql oidList
+          sendQueryPrepared key valueAndFormatList
+          pure newRegistry

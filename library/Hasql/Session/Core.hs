@@ -11,6 +11,7 @@ import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
+import Hasql.PreparedStatementRegistry.Map qualified as PureStatementRegistry
 import Hasql.Statement qualified as Statement
 
 -- |
@@ -46,6 +47,29 @@ liftRoundtrip packError roundtrip =
           recv <- Roundtrip.run roundtrip pqConnection
           first packError <$> recv
 
+liftInformedRoundtrip ::
+  (CommandError -> SessionError) ->
+  ( Bool ->
+    Bool ->
+    PureStatementRegistry.RegistryState ->
+    Roundtrip.Roundtrip (a, PureStatementRegistry.RegistryState)
+  ) ->
+  Session a
+liftInformedRoundtrip packError roundtrip =
+  Session do
+    ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes statementRegistry) ->
+      ExceptT do
+        withMVar pqConnectionRef \pqConnection -> do
+          statementRegistryState <- PreparedStatementRegistry.readPureState statementRegistry
+          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementRegistryState) pqConnection
+          result <- recv
+          case result of
+            Left err -> pure (Left (packError err))
+            Right (result, statementRegistryState) -> do
+              -- Update the statement registry state after successful execution
+              PreparedStatementRegistry.writePureState statementRegistry statementRegistryState
+              pure (Right result)
+
 -- |
 -- Possibly a multi-statement query,
 -- which however cannot be parameterized or prepared,
@@ -57,50 +81,23 @@ sql sql =
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session result
-statement input (Statement.Statement template (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
-  Session
-    $ ReaderT
-    $ \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
-      ExceptT
-        $ withMVar pqConnectionRef
-        $ \pqConnection -> do
-          r1 <-
-            if usePreparedStatements && preparable
-              then runExceptT $ do
-                let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
-                key <-
-                  ExceptT
-                    $ PreparedStatementRegistry.update
-                      (PreparedStatementRegistry.LocalKey template oidList)
-                      ( \k -> do
-                          recv <- Roundtrip.run (Roundtrip.prepare k template oidList) pqConnection
-                          result <- recv
-                          case result of
-                            Left e -> pure (False, Left e)
-                            Right _ -> pure (True, Right k)
-                      )
-                      (\k -> pure (Right k))
-                      registry
-                ExceptT $ do
-                  sent <- Pq.sendQueryPrepared pqConnection key valueAndFormatList Pq.Binary
-                  if sent
-                    then pure (Right ())
-                    else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
-              else do
-                let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
-                Pq.sendQueryParams pqConnection template paramsData Pq.Binary >>= \sent ->
-                  if sent
-                    then pure (Right ())
-                    else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
-          r2 <-
-            (<*)
-              <$> ResultsDecoders.run decoder pqConnection integerDatetimes
-              <*> ResultsDecoders.run ResultsDecoders.dropRemainders pqConnection integerDatetimes
-          return (first packCommandError (r1 *> r2))
-  where
-    packCommandError :: CommandError -> SessionError
-    packCommandError =
-      QueryError template (Encoders.Params.renderReadable paramsEncoder input)
+statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
+  liftInformedRoundtrip
+    (QueryError sql (Encoders.Params.renderReadable paramsEncoder input))
+    \usePreparedStatements integerDatetimes registry -> do
+      registry <-
+        if usePreparedStatements && preparable
+          then
+            let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
+             in Roundtrip.prepareWithRegistry sql oidList valueAndFormatList registry
+          else
+            let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
+             in do
+                  Roundtrip.sendQueryParams sql paramsData
+                  pure registry
+      result <- ResultsDecoders.toRoundtrip integerDatetimes decoder
+      Roundtrip.drainResults
+      pure (result, registry)
 
 -- |
 -- Execute a pipeline.

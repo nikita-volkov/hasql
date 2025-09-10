@@ -4,6 +4,11 @@ module Hasql.PreparedStatementRegistry
     update,
     reset,
     LocalKey (..),
+
+    -- * Temporary hooks
+    onPureState,
+    readPureState,
+    writePureState,
   )
 where
 
@@ -35,3 +40,18 @@ update localKey onNewRemoteKey onOldRemoteKey (PreparedStatementRegistry registr
 reset :: PreparedStatementRegistry -> IO ()
 reset (PreparedStatementRegistry registryRef) = do
   writeIORef registryRef Map.empty
+
+onPureState :: PreparedStatementRegistry -> (Map.RegistryState -> (a, Map.RegistryState)) -> IO a
+onPureState (PreparedStatementRegistry registryRef) f = do
+  registryState <- readIORef registryRef
+  let (result, newState) = f registryState
+  writeIORef registryRef newState
+  return result
+
+readPureState :: PreparedStatementRegistry -> IO Map.RegistryState
+readPureState (PreparedStatementRegistry registryRef) =
+  readIORef registryRef
+
+writePureState :: PreparedStatementRegistry -> Map.RegistryState -> IO ()
+writePureState (PreparedStatementRegistry registryRef) =
+  writeIORef registryRef
