@@ -3,7 +3,7 @@
 module Hasql.IO where
 
 import Hasql.Commands qualified as Commands
-import Hasql.Decoders.Result qualified as ResultDecoders
+import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.Results qualified as ResultsDecoders
 import Hasql.Encoders.Params qualified as ParamsEncoders
 import Hasql.Errors
@@ -79,19 +79,12 @@ getPreparedStatementKey connection registry template oidList =
   where
     localKey =
       PreparedStatementRegistry.LocalKey template oidList
-    onNewRemoteKey key =
-      do
-        sent <- Pq.sendPrepare connection key template (mfilter (not . null) (Just oidList))
-        fmap resultsMapping $ getResults connection undefined (resultsDecoder sent)
-      where
-        resultsDecoder sent =
-          if sent
-            then ResultsDecoders.single ResultDecoders.noResult
-            else ResultsDecoders.clientError
-        resultsMapping =
-          \case
-            Left x -> (False, Left x)
-            Right _ -> (True, Right key)
+    onNewRemoteKey key = do
+      recv <- Roundtrip.run (Roundtrip.prepare key template oidList) connection
+      result <- recv
+      case result of
+        Left x -> pure (False, Left x)
+        Right _ -> pure (True, Right key)
     onOldRemoteKey key =
       pure (pure key)
 
