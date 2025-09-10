@@ -136,8 +136,8 @@ library
     Hasql.Pipeline.Core
     Hasql.PostgresTypeInfo
     Hasql.Prelude
-    Hasql.PreparedStatementRegistry
     Hasql.Session.Core
+    Hasql.Structures.ConnectionState
     Hasql.Structures.StatementCache
 
   build-depends:

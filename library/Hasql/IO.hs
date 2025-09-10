@@ -5,17 +5,11 @@ module Hasql.IO where
 import Hasql.Commands qualified as Commands
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
-import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 
 {-# INLINE acquireConnection #-}
 acquireConnection :: ByteString -> IO Pq.Connection
 acquireConnection =
   Pq.connectdb
-
-{-# INLINE acquirePreparedStatementRegistry #-}
-acquirePreparedStatementRegistry :: IO PreparedStatementRegistry.PreparedStatementRegistry
-acquirePreparedStatementRegistry =
-  PreparedStatementRegistry.new
 
 {-# INLINE releaseConnection #-}
 releaseConnection :: Pq.Connection -> IO ()
