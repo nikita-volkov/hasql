@@ -2,6 +2,11 @@
 -- This module defines the internal state of a database connection.
 module Hasql.Structures.ConnectionState
   ( ConnectionState (..),
+    fromConnection,
+    setIntegerDatetimes,
+    setPreparedStatements,
+    mapStatementCache,
+    traverseStatementCache,
   )
 where
 
@@ -21,3 +26,43 @@ data ConnectionState = ConnectionState
     -- | The underlying database connection.
     connection :: !Pq.Connection
   }
+
+fromConnection :: Pq.Connection -> ConnectionState
+fromConnection connection =
+  ConnectionState
+    { preparedStatements = False,
+      integerDatetimes = False,
+      statementCache = StatementCache.empty,
+      connection = connection
+    }
+
+setIntegerDatetimes :: Bool -> ConnectionState -> ConnectionState
+setIntegerDatetimes integerDatetimes connectionState =
+  connectionState {integerDatetimes = integerDatetimes}
+
+setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
+setPreparedStatements preparedStatements connectionState =
+  connectionState {preparedStatements = preparedStatements}
+
+mapStatementCache ::
+  (StatementCache.StatementCache -> StatementCache.StatementCache) ->
+  (ConnectionState -> ConnectionState)
+mapStatementCache f ConnectionState {..} =
+  ConnectionState
+    { statementCache = f statementCache,
+      ..
+    }
+
+traverseStatementCache ::
+  (Functor f) =>
+  (StatementCache.StatementCache -> f StatementCache.StatementCache) ->
+  (ConnectionState -> f ConnectionState)
+traverseStatementCache f ConnectionState {..} =
+  fmap
+    ( \newStatementCache ->
+        ConnectionState
+          { statementCache = newStatementCache,
+            ..
+          }
+    )
+    (f statementCache)
