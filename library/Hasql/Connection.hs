@@ -5,6 +5,7 @@ module Hasql.Connection
     ConnectionError,
     acquire,
     release,
+    use,
     withLibPQConnection,
   )
 where
