@@ -137,5 +137,11 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
   Session $ ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
-    ExceptT $ withMVar pqConnectionRef \pqConnection ->
-      Pipeline.run pipeline usePreparedStatements pqConnection registry integerDatetimes
+    ExceptT $ withMVar pqConnectionRef \pqConnection -> do
+      statementCache <- PreparedStatementRegistry.readPureState registry
+      pipelineResult <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
+      case pipelineResult of
+        Left err -> pure (Left err)
+        Right (result, newCache) -> do
+          PreparedStatementRegistry.writePureState registry newCache
+          pure (Right result)
