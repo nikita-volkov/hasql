@@ -12,12 +12,12 @@ module Hasql.Decoders.Results where
 
 import Hasql.Decoders.Result qualified as Result
 import Hasql.Errors
-import Hasql.LibPq14 qualified as LibPQ
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
 
 newtype Results a
-  = Results (ReaderT (Bool, LibPQ.Connection) (ExceptT CommandError IO) a)
+  = Results (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)
   deriving (Functor, Applicative, Monad)
 
 instance Filterable Results where
@@ -26,7 +26,7 @@ instance Filterable Results where
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
 
 {-# INLINE run #-}
-run :: Results a -> LibPQ.Connection -> Bool -> IO (Either CommandError a)
+run :: Results a -> Pq.Connection -> Bool -> IO (Either CommandError a)
 run (Results stack) conn idt =
   runExceptT (runReaderT stack (idt, conn))
 
@@ -37,7 +37,7 @@ clientError =
     $ ReaderT
     $ \(_, connection) ->
       ExceptT
-        $ fmap (Left . ClientError) (LibPQ.errorMessage connection)
+        $ fmap (Left . ClientError) (Pq.errorMessage connection)
 
 -- |
 -- Parse a single result.
@@ -47,12 +47,12 @@ single resultDec =
   Results
     $ ReaderT
     $ \(integerDatetimes, connection) -> ExceptT $ do
-      resultMaybe <- LibPQ.getResult connection
+      resultMaybe <- Pq.getResult connection
       case resultMaybe of
         Just result ->
           first ResultError <$> Result.run resultDec integerDatetimes result
         Nothing ->
-          fmap (Left . ClientError) (LibPQ.errorMessage connection)
+          fmap (Left . ClientError) (Pq.errorMessage connection)
 
 {-# INLINE dropRemainders #-}
 dropRemainders :: Results ()
@@ -64,7 +64,7 @@ dropRemainders =
       getResultMaybe >>= Prelude.maybe (pure ()) onResult
       where
         getResultMaybe =
-          lift $ LibPQ.getResult connection
+          lift $ Pq.getResult connection
         onResult result =
           loop integerDatetimes connection <* checkErrors
           where
