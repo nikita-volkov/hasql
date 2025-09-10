@@ -3,10 +3,10 @@ module Hasql.Session.Core where
 import Hasql.Connection.Core qualified as Connection
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.All qualified as Decoders
+import Hasql.Decoders.Results qualified as ResultsDecoders
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
-import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
@@ -65,8 +65,41 @@ statement input (Statement.Statement template (Encoders.Params paramsEncoder) (D
         $ fmap (first (QueryError template (Encoders.Params.renderReadable paramsEncoder input)))
         $ withMVar pqConnectionRef
         $ \pqConnection -> do
-          r1 <- IO.sendParametricStatement pqConnection integerDatetimes registry template paramsEncoder (usePreparedStatements && preparable) input
-          r2 <- IO.getResults pqConnection integerDatetimes decoder
+          -- inlined sendParametricStatement
+          let sendAction =
+                if usePreparedStatements && preparable
+                  then runExceptT $ do
+                    let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
+                    key <-
+                      ExceptT
+                        $ PreparedStatementRegistry.update
+                          (PreparedStatementRegistry.LocalKey template oidList)
+                          ( \k -> do
+                              recv <- Roundtrip.run (Roundtrip.prepare k template oidList) pqConnection
+                              result <- recv
+                              case result of
+                                Left e -> pure (False, Left e)
+                                Right _ -> pure (True, Right k)
+                          )
+                          (\k -> pure (Right k))
+                          registry
+                    ExceptT $ do
+                      sent <- Pq.sendQueryPrepared pqConnection key valueAndFormatList Pq.Binary
+                      if sent
+                        then pure (Right ())
+                        else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
+                  else do
+                    let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
+                    Pq.sendQueryParams pqConnection template paramsData Pq.Binary >>= \sent ->
+                      if sent
+                        then pure (Right ())
+                        else fmap (Left . ClientError) (Pq.errorMessage pqConnection)
+          r1 <- sendAction
+          -- inlined getResults
+          r2 <-
+            (<*)
+              <$> ResultsDecoders.run decoder pqConnection integerDatetimes
+              <*> ResultsDecoders.run ResultsDecoders.dropRemainders pqConnection integerDatetimes
           return $ r1 *> r2
 
 -- |
