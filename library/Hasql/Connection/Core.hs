@@ -59,3 +59,29 @@ release (Connection connectionRef) =
 withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
 withLibPQConnection (Connection connectionRef) action =
   withMVar connectionRef (action . ConnectionState.connection)
+
+-- | Use the connection exclusively.
+use :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
+use (Connection var) handler =
+  mask \restore -> do
+    connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
+    result <- try @SomeException (restore (handler connectionState))
+    case result of
+      Left exception -> do
+        -- If an exception happened, we need to check the connection status.
+        -- If the connection is not idle, we need to reset it
+        -- and clear the prepared statement registry.
+        Pq.transactionStatus connection >>= \case
+          Pq.TransIdle -> do
+            -- If the connection is idle, just put back the connection state.
+            putMVar var connectionState
+          _ -> do
+            -- If the connection is not idle, reset the prepared statement registry
+            -- and reset the connection itself.
+            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
+            Pq.reset connection
+
+        throwIO exception
+      Right (result, !newState) -> do
+        putMVar var newState
+        pure result
