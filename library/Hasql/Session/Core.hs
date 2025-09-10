@@ -11,9 +11,9 @@ import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Pipeline.Core qualified as Pipeline
 import Hasql.Prelude
-import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
-import Hasql.Structures.StatementCache qualified as PureStatementRegistry
+import Hasql.Structures.ConnectionState qualified as ConnectionState
+import Hasql.Structures.StatementCache qualified as StatementCache
 
 -- |
 -- A batch of actions to be executed in the context of a database connection.
@@ -30,21 +30,17 @@ run (Session impl) connection =
     main =
       runExceptT $ runReaderT impl connection
     handler =
-      case connection of
-        Connection.Connection _ pqConnVar _ registry ->
-          withMVar pqConnVar \pqConn ->
-            Pq.transactionStatus pqConn >>= \case
-              Pq.TransIdle -> pure ()
-              _ -> do
-                PreparedStatementRegistry.reset registry
-                Pq.reset pqConn
+      Connection.withLibPQConnection connection \pqConn ->
+        Pq.transactionStatus pqConn >>= \case
+          Pq.TransIdle -> pure ()
+          _ -> Pq.reset pqConn
 
 liftRoundtrip :: (CommandError -> SessionError) -> Roundtrip.Roundtrip a -> Session a
 liftRoundtrip packError roundtrip =
   Session do
-    ReaderT \(Connection.Connection _ pqConnectionRef _ _) ->
+    ReaderT \connection ->
       ExceptT do
-        withMVar pqConnectionRef \pqConnection -> do
+        Connection.withLibPQConnection connection \pqConnection -> do
           recv <- Roundtrip.run roundtrip pqConnection
           first packError <$> recv
 
@@ -52,24 +48,26 @@ liftInformedRoundtrip ::
   (CommandError -> SessionError) ->
   ( Bool ->
     Bool ->
-    PureStatementRegistry.StatementCache ->
-    Roundtrip.Roundtrip (a, PureStatementRegistry.StatementCache)
+    StatementCache.StatementCache ->
+    Roundtrip.Roundtrip (a, StatementCache.StatementCache)
   ) ->
   Session a
 liftInformedRoundtrip packError roundtrip =
   Session do
-    ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes statementRegistry) ->
+    ReaderT \connection ->
       ExceptT do
-        withMVar pqConnectionRef \pqConnection -> do
-          statementStatementCache <- PreparedStatementRegistry.readPureState statementRegistry
-          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementStatementCache) pqConnection
+        modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
+          let pqConnection = ConnectionState.connection connectionState
+              usePreparedStatements = ConnectionState.preparedStatements connectionState
+              integerDatetimes = ConnectionState.integerDatetimes connectionState
+              statementCache = ConnectionState.statementCache connectionState
+          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementCache) pqConnection
           result <- recv
           case result of
-            Left err -> pure (Left (packError err))
-            Right (result, statementStatementCache) -> do
-              -- Update the statement registry state after successful execution
-              PreparedStatementRegistry.writePureState statementRegistry statementStatementCache
-              pure (Right result)
+            Left err -> pure (connectionState, Left (packError err))
+            Right (result, newStatementCache) -> do
+              let newConnectionState = connectionState {ConnectionState.statementCache = newStatementCache}
+              pure (newConnectionState, Right result)
 
 liftCommand ::
   (CommandError -> SessionError) ->
@@ -82,23 +80,25 @@ liftInformedCommand ::
   (CommandError -> SessionError) ->
   ( Bool ->
     Bool ->
-    PureStatementRegistry.StatementCache ->
-    Command.Command (a, PureStatementRegistry.StatementCache)
+    StatementCache.StatementCache ->
+    Command.Command (a, StatementCache.StatementCache)
   ) ->
   Session a
 liftInformedCommand packError command =
   Session do
-    ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef idt statementRegistry) ->
+    ReaderT \connection ->
       ExceptT do
-        withMVar pqConnectionRef \pqConnection -> do
-          statementStatementCache <- PreparedStatementRegistry.readPureState statementRegistry
-          result <- Command.run (command usePreparedStatements idt statementStatementCache) pqConnection
+        modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
+          let pqConnection = ConnectionState.connection connectionState
+              usePreparedStatements = ConnectionState.preparedStatements connectionState
+              integerDatetimes = ConnectionState.integerDatetimes connectionState
+              statementCache = ConnectionState.statementCache connectionState
+          result <- Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
           case result of
-            Left err -> pure (Left (packError err))
-            Right (result, statementStatementCache) -> do
-              -- Update the statement registry state after successful execution
-              PreparedStatementRegistry.writePureState statementRegistry statementStatementCache
-              pure (Right result)
+            Left err -> pure (connectionState, Left (packError err))
+            Right (result, newStatementCache) -> do
+              let newConnectionState = connectionState {ConnectionState.statementCache = newStatementCache}
+              pure (newConnectionState, Right result)
 
 -- |
 -- Possibly a multi-statement query,
@@ -136,12 +136,15 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline =
-  Session $ ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef integerDatetimes registry) ->
-    ExceptT $ withMVar pqConnectionRef \pqConnection -> do
-      statementCache <- PreparedStatementRegistry.readPureState registry
+  Session $ ReaderT \connection ->
+    ExceptT $ modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
+      let pqConnection = ConnectionState.connection connectionState
+          usePreparedStatements = ConnectionState.preparedStatements connectionState
+          integerDatetimes = ConnectionState.integerDatetimes connectionState
+          statementCache = ConnectionState.statementCache connectionState
       pipelineResult <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
       case pipelineResult of
-        Left err -> pure (Left err)
+        Left err -> pure (connectionState, Left err)
         Right (result, newCache) -> do
-          PreparedStatementRegistry.writePureState registry newCache
-          pure (Right result)
+          let newConnectionState = connectionState {ConnectionState.statementCache = newCache}
+          pure (newConnectionState, Right result)
