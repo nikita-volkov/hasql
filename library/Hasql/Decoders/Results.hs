@@ -10,6 +10,7 @@
 -- * Row-by-row fetching.
 module Hasql.Decoders.Results where
 
+import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.Result qualified as Result
 import Hasql.Errors
@@ -25,6 +26,11 @@ instance Filterable Results where
   {-# INLINE mapMaybe #-}
   mapMaybe fn =
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
+
+toCommand :: Bool -> Results a -> Command.Command a
+toCommand idt (Results stack) =
+  Command.Command \connection -> do
+    runExceptT (runReaderT stack (idt, connection))
 
 toRoundtrip :: Bool -> Results a -> Roundtrip.Roundtrip a
 toRoundtrip idt (Results stack) =

@@ -1,6 +1,7 @@
 module Hasql.Session.Core where
 
 import Hasql.Connection.Core qualified as Connection
+import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders.All qualified as Decoders
 import Hasql.Decoders.Results qualified as ResultsDecoders
@@ -70,19 +71,48 @@ liftInformedRoundtrip packError roundtrip =
               PreparedStatementRegistry.writePureState statementRegistry statementStatementCache
               pure (Right result)
 
+liftCommand ::
+  (CommandError -> SessionError) ->
+  Command.Command a ->
+  Session a
+liftCommand packError command =
+  liftInformedCommand packError \_ _ statementCache -> (,statementCache) <$> command
+
+liftInformedCommand ::
+  (CommandError -> SessionError) ->
+  ( Bool ->
+    Bool ->
+    PureStatementRegistry.StatementCache ->
+    Command.Command (a, PureStatementRegistry.StatementCache)
+  ) ->
+  Session a
+liftInformedCommand packError command =
+  Session do
+    ReaderT \(Connection.Connection usePreparedStatements pqConnectionRef idt statementRegistry) ->
+      ExceptT do
+        withMVar pqConnectionRef \pqConnection -> do
+          statementStatementCache <- PreparedStatementRegistry.readPureState statementRegistry
+          result <- Command.run (command usePreparedStatements idt statementStatementCache) pqConnection
+          case result of
+            Left err -> pure (Left (packError err))
+            Right (result, statementStatementCache) -> do
+              -- Update the statement registry state after successful execution
+              PreparedStatementRegistry.writePureState statementRegistry statementStatementCache
+              pure (Right result)
+
 -- |
 -- Possibly a multi-statement query,
 -- which however cannot be parameterized or prepared,
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  liftRoundtrip (QueryError sql []) (Roundtrip.runSql sql)
+  liftCommand (QueryError sql []) (Command.runSql sql)
 
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
-  liftInformedRoundtrip packError roundtrip
+  liftInformedCommand packError roundtrip
   where
     packError =
       QueryError sql (Encoders.Params.renderReadable paramsEncoder input)
@@ -92,14 +122,14 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
         if usePreparedStatements && preparable
           then
             let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
-             in Roundtrip.prepareWithRegistry sql oidList valueAndFormatList registry
+             in Command.prepareWithRegistry sql oidList valueAndFormatList registry
           else
             let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
              in do
-                  Roundtrip.sendQueryParams sql paramsData
+                  Command.sendQueryParams sql paramsData
                   pure registry
-      result <- ResultsDecoders.toRoundtrip integerDatetimes decoder
-      Roundtrip.drainResults
+      result <- ResultsDecoders.toCommand integerDatetimes decoder
+      Command.drainResults
       pure (result, registry)
 
 -- |

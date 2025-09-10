@@ -114,6 +114,7 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.Core
+    Hasql.Contexts.Command
     Hasql.Contexts.ResultConsumer
     Hasql.Contexts.Roundtrip
     Hasql.Decoders.All

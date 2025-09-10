@@ -18,6 +18,7 @@ import Hasql.Prelude hiding (empty, insert, lookup, reset)
 
 -- | Pure registry state containing the hash map and counter
 data StatementCache = StatementCache (HashMap.HashMap LocalKey ByteString) Word
+  deriving stock (Show, Eq)
 
 -- | Create an empty registry state
 {-# INLINEABLE empty #-}
