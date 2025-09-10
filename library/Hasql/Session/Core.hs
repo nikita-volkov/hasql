@@ -1,5 +1,6 @@
 module Hasql.Session.Core where
 
+import Control.Monad.State.Class (MonadState (..), gets, modify)
 import Hasql.Connection.Core qualified as Connection
 import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
@@ -18,31 +19,31 @@ import Hasql.Structures.StatementCache qualified as StatementCache
 -- |
 -- A batch of actions to be executed in the context of a database connection.
 newtype Session a
-  = Session (ReaderT Connection.Connection (ExceptT SessionError IO) a)
-  deriving (Functor, Applicative, Monad, MonadError SessionError, MonadIO, MonadReader Connection.Connection)
+  = Session (StateT ConnectionState.ConnectionState (ExceptT SessionError IO) a)
+  deriving (Functor, Applicative, Monad, MonadError SessionError, MonadIO, MonadState ConnectionState.ConnectionState)
 
 -- |
 -- Executes a bunch of commands on the provided connection.
 run :: Session a -> Connection.Connection -> IO (Either SessionError a)
-run (Session impl) connection =
+run (Session session) (Connection.Connection mvar) =
   mask $ \restore -> onException (restore main) handler
   where
-    main =
-      runExceptT $ runReaderT impl connection
-    handler =
-      Connection.withLibPQConnection connection \pqConn ->
-        Pq.transactionStatus pqConn >>= \case
-          Pq.TransIdle -> pure ()
-          _ -> Pq.reset pqConn
+    main = modifyMVar mvar \initialState -> do
+      result <- runExceptT $ runStateT session initialState
+      case result of
+        Left err -> pure (initialState, Left err)
+        Right (a, newState) -> pure (newState, Right a)
+    handler = modifyMVar_ mvar \state -> do
+      let pqConn = ConnectionState.connection state
+      Pq.transactionStatus pqConn >>= \case
+        Pq.TransIdle -> pure state
+        _ -> Pq.reset pqConn >> pure state
 
 liftRoundtrip :: (CommandError -> SessionError) -> Roundtrip.Roundtrip a -> Session a
-liftRoundtrip packError roundtrip =
-  Session do
-    ReaderT \connection ->
-      ExceptT do
-        Connection.withLibPQConnection connection \pqConnection -> do
-          recv <- Roundtrip.run roundtrip pqConnection
-          first packError <$> recv
+liftRoundtrip packError roundtrip = Session do
+  pqConnection <- gets ConnectionState.connection
+  result <- liftIO $ join $ Roundtrip.run roundtrip pqConnection
+  either (throwError . packError) pure result
 
 liftInformedRoundtrip ::
   (CommandError -> SessionError) ->
@@ -52,22 +53,17 @@ liftInformedRoundtrip ::
     Roundtrip.Roundtrip (a, StatementCache.StatementCache)
   ) ->
   Session a
-liftInformedRoundtrip packError roundtrip =
-  Session do
-    ReaderT \connection ->
-      ExceptT do
-        modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
-          let pqConnection = ConnectionState.connection connectionState
-              usePreparedStatements = ConnectionState.preparedStatements connectionState
-              integerDatetimes = ConnectionState.integerDatetimes connectionState
-              statementCache = ConnectionState.statementCache connectionState
-          recv <- Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementCache) pqConnection
-          result <- recv
-          case result of
-            Left err -> pure (connectionState, Left (packError err))
-            Right (result, newStatementCache) -> do
-              let newConnectionState = connectionState {ConnectionState.statementCache = newStatementCache}
-              pure (newConnectionState, Right result)
+liftInformedRoundtrip packError roundtrip = Session do
+  usePreparedStatements <- gets ConnectionState.preparedStatements
+  integerDatetimes <- gets ConnectionState.integerDatetimes
+  statementCache <- gets ConnectionState.statementCache
+  pqConnection <- gets ConnectionState.connection
+  result <- liftIO $ join $ Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementCache) pqConnection
+  case result of
+    Left err -> throwError (packError err)
+    Right (a, newStatementCache) -> do
+      modify \s -> s {ConnectionState.statementCache = newStatementCache}
+      pure a
 
 liftCommand ::
   (CommandError -> SessionError) ->
@@ -84,21 +80,17 @@ liftInformedCommand ::
     Command.Command (a, StatementCache.StatementCache)
   ) ->
   Session a
-liftInformedCommand packError command =
-  Session do
-    ReaderT \connection ->
-      ExceptT do
-        modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
-          let pqConnection = ConnectionState.connection connectionState
-              usePreparedStatements = ConnectionState.preparedStatements connectionState
-              integerDatetimes = ConnectionState.integerDatetimes connectionState
-              statementCache = ConnectionState.statementCache connectionState
-          result <- Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
-          case result of
-            Left err -> pure (connectionState, Left (packError err))
-            Right (result, newStatementCache) -> do
-              let newConnectionState = connectionState {ConnectionState.statementCache = newStatementCache}
-              pure (newConnectionState, Right result)
+liftInformedCommand packError command = Session do
+  usePreparedStatements <- gets ConnectionState.preparedStatements
+  integerDatetimes <- gets ConnectionState.integerDatetimes
+  statementCache <- gets ConnectionState.statementCache
+  pqConnection <- gets ConnectionState.connection
+  result <- liftIO $ Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
+  case result of
+    Left err -> throwError (packError err)
+    Right (a, newStatementCache) -> do
+      modify \s -> s {ConnectionState.statementCache = newStatementCache}
+      pure a
 
 -- |
 -- Possibly a multi-statement query,
@@ -135,16 +127,14 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
 -- |
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
-pipeline pipeline =
-  Session $ ReaderT \connection ->
-    ExceptT $ modifyMVar (case connection of Connection.Connection mvar -> mvar) \connectionState -> do
-      let pqConnection = ConnectionState.connection connectionState
-          usePreparedStatements = ConnectionState.preparedStatements connectionState
-          integerDatetimes = ConnectionState.integerDatetimes connectionState
-          statementCache = ConnectionState.statementCache connectionState
-      pipelineResult <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
-      case pipelineResult of
-        Left err -> pure (connectionState, Left err)
-        Right (result, newCache) -> do
-          let newConnectionState = connectionState {ConnectionState.statementCache = newCache}
-          pure (newConnectionState, Right result)
+pipeline pipeline = Session do
+  usePreparedStatements <- gets ConnectionState.preparedStatements
+  integerDatetimes <- gets ConnectionState.integerDatetimes
+  statementCache <- gets ConnectionState.statementCache
+  pqConnection <- gets ConnectionState.connection
+  pipelineResult <- liftIO $ Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
+  case pipelineResult of
+    Left err -> throwError err
+    Right (result, newCache) -> do
+      modify \s -> s {ConnectionState.statementCache = newCache}
+      pure result
