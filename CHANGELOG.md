@@ -1,3 +1,10 @@
+# 1.10
+
+## Breaking changes
+
+- Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
+- Dropped `MonadReader Connection` instance for `Session`.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules
