@@ -4,9 +4,11 @@ module Hasql.Connection.Core where
 
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting qualified as Setting
+import Hasql.Errors
 import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
+import Hasql.Session.Core qualified as Session
 import Hasql.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Structures.StatementCache qualified as StatementCache
 
@@ -60,9 +62,17 @@ withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
 withLibPQConnection (Connection connectionRef) action =
   withMVar connectionRef (action . ConnectionState.connection)
 
--- | Use the connection exclusively.
-use :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
-use (Connection var) handler =
+-- |
+-- Execute a sequence of operations with exclusive access to the connection.
+--
+-- Blocks until the connection is available when there is another session running upon the connection.
+use :: Connection -> Session.Session a -> IO (Either SessionError a)
+use connection session =
+  useConnectionState connection \connectionState -> do
+    Session.run session connectionState
+
+useConnectionState :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
+useConnectionState (Connection var) handler =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
     result <- try @SomeException (restore (handler connectionState))
