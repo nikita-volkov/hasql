@@ -15,6 +15,7 @@ import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
+import Hasql.Contexts.Roundtrip qualified as Roundtrip
 
 newtype Results a
   = Results (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)
@@ -24,6 +25,12 @@ instance Filterable Results where
   {-# INLINE mapMaybe #-}
   mapMaybe fn =
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
+
+toRoundtrip :: Bool -> Results a -> Roundtrip.Roundtrip a
+toRoundtrip idt (Results stack) =
+  Roundtrip.Roundtrip \connection -> do
+    pure do
+      runExceptT (runReaderT stack (idt, connection))
 
 {-# INLINE run #-}
 run :: Results a -> Pq.Connection -> Bool -> IO (Either CommandError a)
