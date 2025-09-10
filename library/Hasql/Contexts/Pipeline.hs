@@ -1,4 +1,4 @@
-module Hasql.Pipeline.Core where
+module Hasql.Contexts.Pipeline where
 
 import Hasql.Decoders.All qualified as Decoders
 import Hasql.Decoders.Result qualified as Decoders.Result

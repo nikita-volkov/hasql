@@ -13,9 +13,9 @@ module Hasql.Session
 where
 
 import Hasql.Connection.Core qualified as Connection
+import Hasql.Contexts.Session hiding (run)
 import Hasql.Errors
 import Hasql.Prelude
-import Hasql.Session.Core hiding (run)
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.

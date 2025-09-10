@@ -4,11 +4,11 @@ module Hasql.Connection.Core where
 
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting qualified as Setting
+import Hasql.Contexts.Session qualified as Session
 import Hasql.Errors
 import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
-import Hasql.Session.Core qualified as Session
 import Hasql.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Structures.StatementCache qualified as StatementCache
 
