@@ -78,6 +78,7 @@ common base
     TypeApplications
     TypeFamilies
     TypeOperators
+    ViewPatterns
 
 common executable
   import: base
@@ -113,66 +114,106 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.PqProcedures
-    Hasql.Contexts.ArrayDecoder
-    Hasql.Contexts.ArrayEncoder
-    Hasql.Contexts.Command
-    Hasql.Contexts.CompositeDecoder
-    Hasql.Contexts.ParamsEncoder
-    Hasql.Contexts.Pipeline
-    Hasql.Contexts.ResultConsumer
-    Hasql.Contexts.ResultDecoder
-    Hasql.Contexts.ResultsDecoder
-    Hasql.Contexts.Roundtrip
-    Hasql.Contexts.RowDecoder
-    Hasql.Contexts.Session
-    Hasql.Contexts.ValueDecoder
-    Hasql.Contexts.ValueEncoder
-    Hasql.Errors
-    Hasql.LibPq14
-    Hasql.LibPq14.Ffi
-    Hasql.LibPq14.Mappings
-    Hasql.PostgresTypeInfo
-    Hasql.Prelude
-    Hasql.Structures.ConnectionState
-    Hasql.Structures.StatementCache
 
   build-depends:
     aeson >=2 && <3,
+    bytestring >=0.10 && <0.13,
+    containers >=0.6 && <0.9,
+    hasql:core,
+    hasql:libpq,
+    hasql:platform,
+    iproute >=1.7 && <1.8,
+    postgresql-binary >=0.14.2 && <0.15,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+    vector >=0.10 && <0.14,
+
+library core
+  import: base
+  hs-source-dirs: src/core
+  exposed-modules:
+    Core.Contexts.ArrayDecoder
+    Core.Contexts.ArrayEncoder
+    Core.Contexts.Command
+    Core.Contexts.CompositeDecoder
+    Core.Contexts.ParamsEncoder
+    Core.Contexts.Pipeline
+    Core.Contexts.ResultConsumer
+    Core.Contexts.ResultDecoder
+    Core.Contexts.ResultsDecoder
+    Core.Contexts.Roundtrip
+    Core.Contexts.RowDecoder
+    Core.Contexts.Session
+    Core.Contexts.ValueDecoder
+    Core.Contexts.ValueEncoder
+    Core.Errors
+    Core.PostgresTypeInfo
+    Core.Structures.ConnectionState
+    Core.Structures.StatementCache
+
+  other-modules:
+  build-depends:
     attoparsec >=0.10 && <0.15,
-    base >=4.14 && <5,
     bytestring >=0.10 && <0.13,
     bytestring-strict-builder >=0.4.5.1 && <0.5,
-    containers >=0.6 && <0.9,
+    hasql:libpq,
+    hasql:platform,
+    postgresql-binary >=0.14.2 && <0.15,
+    text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
+    vector >=0.10 && <0.14,
+
+-- Replacement of the "base" library for all the sublibs here.
+-- Covers such things as Prelude and shared utils.
+library platform
+  import: base
+  hs-source-dirs: src/platform
+  exposed-modules:
+    Platform.Prelude
+
+  build-depends:
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
     contravariant >=1.3 && <2,
     dlist >=0.8 && <0.9 || >=1 && <2,
     hashable >=1.2 && <2,
-    iproute >=1.7 && <1.8,
     mtl >=2 && <3,
-    postgresql-binary >=0.14.2 && <0.15,
-    postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
-    text-builder >=1 && <1.1,
     time >=1.9 && <2,
     transformers >=0.6 && <0.7,
-    unordered-containers >=0.2 && <0.3,
     uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
     witherable >=0.5 && <0.6,
+
+library libpq
+  import: base
+  hs-source-dirs: src/libpq
+  exposed-modules:
+    Libpq
+
+  other-modules:
+    Libpq.Ffi
+    Libpq.Mappings
+
+  build-depends:
+    base >=4.14 && <5,
+    hasql:platform,
+    postgresql-libpq >=0.10.1 && <0.12,
 
 library testing-kit
   import: base
   visibility: private
   hs-source-dirs: src/testing-kit
   exposed-modules:
-    Hasql.TestingKit.Constants
-    Hasql.TestingKit.Preludes.Base
-    Hasql.TestingKit.Statements.BrokenSyntax
-    Hasql.TestingKit.Statements.GenerateSeries
-    Hasql.TestingKit.Statements.WrongDecoder
-    Hasql.TestingKit.Testcontainers
-    Hasql.TestingKit.TestingDsl
+    TestingKit.Constants
+    TestingKit.Preludes.Base
+    TestingKit.Statements.BrokenSyntax
+    TestingKit.Statements.GenerateSeries
+    TestingKit.Statements.WrongDecoder
+    TestingKit.Testcontainers
+    TestingKit.TestingDsl
 
   build-depends:
     base,

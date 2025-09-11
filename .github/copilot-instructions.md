@@ -37,7 +37,7 @@ The project uses modern Haskell with these standard extensions:
 
 ### Import Conventions
 - **Qualified Imports**: Extensively used for clarity (e.g., `qualified as Encoders`, `qualified as Decoders`)
-- **Custom Prelude**: Uses `Hasql.Prelude` instead of standard Prelude
+- **Custom Prelude**: Uses `Platform.Prelude` instead of standard Prelude
 
 ### Naming Patterns
 - **Newtype Wrappers**: Extensive use for type safety (Session, Statement, Connection)
@@ -56,7 +56,7 @@ When working with this codebase:
 1. **Use qualified imports** for all major modules to maintain clarity
 2. **Follow the newtype pattern** for type safety when introducing new abstractions
 3. **Maintain the Either-based error handling** - never throw exceptions
-4. **Use the custom Prelude** (`Hasql.Prelude`) in all modules
+4. **Use the custom Prelude** (`Platform.Prelude`) in all modules
 5. **Keep modules focused** - each module should have a single, clear responsibility
 6. **Follow the existing DSL patterns** when extending encoders/decoders
 

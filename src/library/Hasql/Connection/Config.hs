@@ -1,6 +1,6 @@
 module Hasql.Connection.Config where
 
-import Hasql.Prelude
+import Platform.Prelude
 
 data Config = Config
   { connectionString :: ByteString,

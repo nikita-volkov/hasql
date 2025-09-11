@@ -8,7 +8,7 @@ where
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Config.ConnectionString qualified as Config.ConnectionString
 import Hasql.Connection.Setting.Connection qualified as Connection
-import Hasql.Prelude
+import Platform.Prelude
 
 -- | Setting of a client handle.
 newtype Setting = Setting (Config.Config -> Config.Config)

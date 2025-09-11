@@ -2,12 +2,12 @@ module Hasql.PipelineSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Session qualified as Session
-import Hasql.TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
-import Hasql.TestingKit.Statements.GenerateSeries qualified as GenerateSeries
-import Hasql.TestingKit.Statements.WrongDecoder qualified as WrongDecoder
-import Hasql.TestingKit.Testcontainers qualified as Testcontainers
-import Hasql.TestingKit.TestingDsl qualified as Dsl
 import Test.Hspec
+import TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
+import TestingKit.Statements.GenerateSeries qualified as GenerateSeries
+import TestingKit.Statements.WrongDecoder qualified as WrongDecoder
+import TestingKit.Testcontainers qualified as Testcontainers
+import TestingKit.TestingDsl qualified as Dsl
 import Prelude
 
 spec :: Spec

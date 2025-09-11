@@ -5,7 +5,7 @@
 -- E.g., the `Array` type is an __encoder__ of arrays, not the data-structure itself.
 module Hasql.Encoders
   ( -- * Parameters product
-    Params (..),
+    Params,
     noParams,
     param,
 
@@ -73,15 +73,15 @@ module Hasql.Encoders
   )
 where
 
+import Core.Contexts.ArrayEncoder qualified as Array
+import Core.Contexts.ParamsEncoder qualified as Params
+import Core.Contexts.ValueEncoder qualified as Value
+import Core.PostgresTypeInfo qualified as PTI
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IP qualified as Iproute
-import Hasql.Contexts.ArrayEncoder qualified as Array
-import Hasql.Contexts.ParamsEncoder qualified as Params
-import Hasql.Contexts.ValueEncoder qualified as Value
-import Hasql.PostgresTypeInfo qualified as PTI
-import Hasql.Prelude hiding (bool)
-import Hasql.Prelude qualified as Prelude
+import Platform.Prelude hiding (bool)
+import Platform.Prelude qualified as Prelude
 import PostgreSQL.Binary.Encoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
 import TextBuilder qualified as C
@@ -134,6 +134,10 @@ import TextBuilder qualified as C
 -- @
 newtype Params a = Params (Params.ParamsEncoder a)
   deriving (Contravariant, Divisible, Monoid, Semigroup)
+
+instance Params.Wraps Params where
+  wrap = Params
+  unwrap (Params imp) = imp
 
 -- |
 -- No parameters. Same as `mempty` and `conquered`.

@@ -5,11 +5,11 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingKit.Testcontainers qualified as Testcontainers
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 import Test.QuickCheck.Monadic (assert, monadicIO, pre, run)
+import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude hiding (assert)
 
 spec :: Spec
