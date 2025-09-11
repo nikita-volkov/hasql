@@ -2,9 +2,9 @@ module Hasql.Contexts.Roundtrip where
 
 import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Structures.StatementCache qualified as StatementRegistry
+import Libpq qualified as Pq
 
 -- | Batch of commands executed independently, in a single roundtrip to the server, with errors interrupting neither the sending or reception, but being accumulated and reported at the end.
 newtype Roundtrip a

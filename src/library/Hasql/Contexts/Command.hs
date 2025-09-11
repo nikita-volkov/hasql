@@ -2,9 +2,9 @@ module Hasql.Contexts.Command where
 
 import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Structures.StatementCache qualified as StatementRegistry
+import Libpq qualified as Pq
 
 -- | Statically structured command series execution context.
 --

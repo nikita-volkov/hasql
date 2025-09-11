@@ -9,8 +9,8 @@ where
 
 import Hasql.Contexts.ValueDecoder qualified as ValueDecoder
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (error)
+import Libpq qualified as Pq
 import PostgreSQL.Binary.Decoding qualified as A
 
 newtype RowDecoder a = RowDecoder (Env -> IO (Either RowError a))

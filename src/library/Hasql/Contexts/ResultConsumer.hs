@@ -14,8 +14,8 @@ where
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
+import Libpq qualified as Pq
 
 -- | Result consumption context, for consuming a single result from a sequence of results returned by the server.
 newtype ResultConsumer a

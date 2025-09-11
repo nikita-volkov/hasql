@@ -1,9 +1,9 @@
-module Hasql.LibPq14.Mappings where
+module Libpq.Mappings where
 
 #include "libpq-fe.h"
 
 import Foreign.C.Types (CInt (..))
-import Hasql.Prelude
+import Libpq.Prelude
 
 data ExecStatus
   = EmptyQuery

@@ -15,10 +15,10 @@ import Hasql.Connection.PqProcedures qualified as PqProcedures
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.Contexts.Session qualified as Session
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Structures.StatementCache qualified as StatementCache
+import Libpq qualified as Pq
 
 -- |
 -- A single connection to the database.

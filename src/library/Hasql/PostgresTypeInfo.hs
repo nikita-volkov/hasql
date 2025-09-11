@@ -1,7 +1,7 @@
 module Hasql.PostgresTypeInfo where
 
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (bool)
+import Libpq qualified as Pq
 
 -- | A Postgresql type info
 data PTI = PTI {ptiOID :: OID, ptiArrayOID :: Maybe OID}

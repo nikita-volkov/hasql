@@ -6,10 +6,10 @@ import Hasql.Contexts.ResultsDecoder qualified as ContextResults
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors
-import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Statement qualified as Statement
 import Hasql.Structures.StatementCache qualified as StatementCache
+import Libpq qualified as Pq
 
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError (a, StatementCache.StatementCache))
 run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes cache = do
