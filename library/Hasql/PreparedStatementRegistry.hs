@@ -13,7 +13,7 @@ import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (lookup, reset)
 
 data PreparedStatementRegistry
-  = PreparedStatementRegistry !(A.BasicHashTable LocalKey ByteString) !(IORef Word)
+  = PreparedStatementRegistry (A.BasicHashTable LocalKey ByteString) (IORef Word)
 
 {-# INLINEABLE new #-}
 new :: IO PreparedStatementRegistry
@@ -55,7 +55,7 @@ reset (PreparedStatementRegistry table counter) = do
 -- |
 -- Local statement key.
 data LocalKey
-  = LocalKey !ByteString ![Pq.Oid]
+  = LocalKey ByteString [Pq.Oid]
   deriving (Show, Eq)
 
 instance Hashable LocalKey where

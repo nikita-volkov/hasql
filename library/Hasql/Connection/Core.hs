@@ -14,13 +14,13 @@ import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 data Connection
   = Connection
       -- | Whether prepared statements are allowed.
-      !Bool
+      Bool
       -- | Lower level libpq connection.
-      !(MVar Pq.Connection)
+      (MVar Pq.Connection)
       -- | Integer datetimes.
-      !Bool
+      Bool
       -- | Prepared statement registry.
-      !PreparedStatementRegistry.PreparedStatementRegistry
+      PreparedStatementRegistry.PreparedStatementRegistry
 
 -- |
 -- Possible details of the connection acquistion error.

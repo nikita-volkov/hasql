@@ -17,7 +17,7 @@ instance MonadFail Row where
   fail = error . ValueError . fromString
 
 data Env
-  = Env !Pq.Result !Pq.Row !Pq.Column !Bool !(IORef Pq.Column)
+  = Env Pq.Result Pq.Row Pq.Column Bool (IORef Pq.Column)
 
 -- * Functions
 
