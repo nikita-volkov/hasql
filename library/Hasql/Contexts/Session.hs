@@ -15,7 +15,21 @@ import Hasql.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Structures.StatementCache qualified as StatementCache
 
 -- |
--- A batch of actions to be executed in the context of a database connection.
+-- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.
+--
+-- Construct sessions using helpers in this module such as
+-- 'statement', 'pipeline' and 'sql', or use 'onPqConnection' for a low-level
+-- escape hatch.
+--
+-- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
+-- concurrent access to the shared connection state and returns either a
+-- 'SessionError' or the result:
+--
+-- > result <- Hasql.Connection.use connection mySession
+--
+-- Note: while most session errors are returned as values, user code executed
+-- inside a session may still throw exceptions; in that case the driver will
+-- reset the connection to a clean state.
 newtype Session a
   = Session (ConnectionState.ConnectionState -> IO (Either SessionError a, ConnectionState.ConnectionState))
   deriving
