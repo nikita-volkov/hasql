@@ -1,4 +1,4 @@
-module Hasql.Contexts.ResultConsumer
+module Core.Contexts.ResultConsumer
   ( ResultConsumer,
     Handler,
     toHandler,
@@ -11,9 +11,9 @@ module Hasql.Contexts.ResultConsumer
   )
 where
 
+import Core.Errors
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
-import Hasql.Errors
 import Libpq qualified as Pq
 import Platform.Prelude
 

@@ -1,6 +1,6 @@
 -- |
 -- This module defines the internal state of a database connection.
-module Hasql.Structures.ConnectionState
+module Core.Structures.ConnectionState
   ( ConnectionState (..),
     fromConnection,
     setIntegerDatetimes,
@@ -13,7 +13,7 @@ module Hasql.Structures.ConnectionState
   )
 where
 
-import Hasql.Structures.StatementCache qualified as StatementCache
+import Core.Structures.StatementCache qualified as StatementCache
 import Libpq qualified as Pq
 import Platform.Prelude
 

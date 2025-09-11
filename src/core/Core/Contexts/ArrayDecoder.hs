@@ -1,4 +1,4 @@
-module Hasql.Contexts.ArrayDecoder where
+module Core.Contexts.ArrayDecoder where
 
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A

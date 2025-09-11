@@ -1,21 +1,24 @@
 module Hasql.Session
-  ( Session,
-    sql,
+  ( Session.Session,
+    Session.pipeline,
+    Session.sql,
     statement,
-    pipeline,
-    onLibpqConnection,
+    Session.onLibpqConnection,
 
     -- * Execution
     run,
 
     -- * Errors
-    module Hasql.Errors,
+    module Core.Errors,
   )
 where
 
+import Core.Contexts.Session qualified as Session
+import Core.Errors
 import Hasql.Connection qualified as Connection
-import Hasql.Contexts.Session hiding (run)
-import Hasql.Errors
+import Hasql.Decoders qualified as Decoders
+import Hasql.Encoders qualified as Encoders
+import Hasql.Statement qualified as Statement
 import Platform.Prelude
 
 -- |
@@ -23,5 +26,11 @@ import Platform.Prelude
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
 {-# DEPRECATED run "Use @Hasql.Connection.'Hasql.Connection.use'@ instead" #-}
-run :: Session a -> Connection.Connection -> IO (Either SessionError a)
+run :: Session.Session a -> Connection.Connection -> IO (Either SessionError a)
 run session connection = Connection.use connection session
+
+-- |
+-- Execute a statement by providing parameters to it.
+statement :: params -> Statement.Statement params result -> Session.Session result
+statement params (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
+  Session.statement sql paramsEncoder decoder preparable params

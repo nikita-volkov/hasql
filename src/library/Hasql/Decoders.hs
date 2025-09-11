@@ -83,16 +83,16 @@ module Hasql.Decoders
   )
 where
 
+import Core.Contexts.ArrayDecoder qualified as Array
+import Core.Contexts.CompositeDecoder qualified as Composite
+import Core.Contexts.ResultDecoder qualified as Result
+import Core.Contexts.ResultsDecoder qualified as Results
+import Core.Contexts.RowDecoder qualified as Row
+import Core.Contexts.ValueDecoder qualified as Value
+import Core.PostgresTypeInfo qualified as PTI
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
-import Hasql.Contexts.ArrayDecoder qualified as Array
-import Hasql.Contexts.CompositeDecoder qualified as Composite
-import Hasql.Contexts.ResultDecoder qualified as Result
-import Hasql.Contexts.ResultsDecoder qualified as Results
-import Hasql.Contexts.RowDecoder qualified as Row
-import Hasql.Contexts.ValueDecoder qualified as Value
-import Hasql.PostgresTypeInfo qualified as PTI
 import Platform.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R

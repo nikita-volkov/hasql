@@ -1,4 +1,4 @@
-module Hasql.Contexts.RowDecoder
+module Core.Contexts.RowDecoder
   ( RowDecoder,
     run,
     error,
@@ -7,8 +7,8 @@ module Hasql.Contexts.RowDecoder
   )
 where
 
-import Hasql.Contexts.ValueDecoder qualified as ValueDecoder
-import Hasql.Errors
+import Core.Contexts.ValueDecoder qualified as ValueDecoder
+import Core.Errors
 import Libpq qualified as Pq
 import Platform.Prelude hiding (error)
 import PostgreSQL.Binary.Decoding qualified as A

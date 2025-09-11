@@ -1,7 +1,7 @@
-module Hasql.Contexts.ParamsEncoder where
+module Core.Contexts.ParamsEncoder where
 
-import Hasql.Contexts.ValueEncoder qualified as C
-import Hasql.PostgresTypeInfo qualified as D
+import Core.Contexts.ValueEncoder qualified as C
+import Core.PostgresTypeInfo qualified as D
 import Libpq qualified as A
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as B

@@ -1,4 +1,4 @@
-module Hasql.Contexts.ResultDecoder
+module Core.Contexts.ResultDecoder
   ( ResultDecoder,
 
     -- * Constructors
@@ -28,11 +28,11 @@ module Hasql.Contexts.ResultDecoder
   )
 where
 
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
+import Core.Contexts.RowDecoder qualified as Row
+import Core.Errors
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
-import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
-import Hasql.Contexts.RowDecoder qualified as Row
-import Hasql.Errors
 import Libpq qualified as Pq
 import Platform.Prelude hiding (foldl, foldr, many, maybe)
 

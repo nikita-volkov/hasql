@@ -1,6 +1,6 @@
-module Hasql.Contexts.ValueEncoder where
+module Core.Contexts.ValueEncoder where
 
-import Hasql.PostgresTypeInfo qualified as PTI
+import Core.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as C

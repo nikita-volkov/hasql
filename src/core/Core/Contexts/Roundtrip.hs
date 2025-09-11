@@ -1,8 +1,8 @@
-module Hasql.Contexts.Roundtrip where
+module Core.Contexts.Roundtrip where
 
-import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
-import Hasql.Errors
-import Hasql.Structures.StatementCache qualified as StatementRegistry
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
+import Core.Errors
+import Core.Structures.StatementCache qualified as StatementRegistry
 import Libpq qualified as Pq
 import Platform.Prelude
 

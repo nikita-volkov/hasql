@@ -1,6 +1,6 @@
-module Hasql.Contexts.ValueDecoder where
+module Core.Contexts.ValueDecoder where
 
-import Hasql.PostgresTypeInfo qualified as PTI
+import Core.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 

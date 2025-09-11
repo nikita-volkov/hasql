@@ -1,4 +1,4 @@
-module Hasql.Errors where
+module Core.Errors where
 
 import Data.ByteString.Char8 qualified as BC
 import Platform.Prelude

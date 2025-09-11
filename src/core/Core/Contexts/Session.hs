@@ -1,16 +1,13 @@
-module Hasql.Contexts.Session where
+module Core.Contexts.Session where
 
-import Hasql.Contexts.Command qualified as Command
-import Hasql.Contexts.ParamsEncoder qualified as ContextParams
-import Hasql.Contexts.Pipeline qualified as Pipeline
-import Hasql.Contexts.ResultsDecoder qualified as ContextResults
-import Hasql.Contexts.Roundtrip qualified as Roundtrip
-import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
-import Hasql.Errors
-import Hasql.Statement qualified as Statement
-import Hasql.Structures.ConnectionState qualified as ConnectionState
-import Hasql.Structures.StatementCache qualified as StatementCache
+import Core.Contexts.Command qualified as Command
+import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Core.Contexts.Pipeline qualified as Pipeline
+import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
+import Core.Contexts.Roundtrip qualified as Roundtrip
+import Core.Errors
+import Core.Structures.ConnectionState qualified as ConnectionState
+import Core.Structures.StatementCache qualified as StatementCache
 import Libpq qualified as Pq
 import Platform.Prelude
 
@@ -96,25 +93,25 @@ sql sql =
 
 -- |
 -- Execute a statement by providing parameters to it.
-statement :: params -> Statement.Statement params result -> Session result
-statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
+statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultsDecoder.ResultsDecoder result -> Bool -> params -> Session result
+statement sql paramsEncoder decoder preparable params =
   liftInformedCommand packError command
   where
     packError =
-      QueryError sql (ContextParams.renderReadable paramsEncoder input)
+      QueryError sql (ParamsEncoder.renderReadable paramsEncoder params)
 
     command usePreparedStatements integerDatetimes registry = do
       registry' <-
         if usePreparedStatements && preparable
           then
-            let (oidList, valueAndFormatList) = ContextParams.compilePreparedStatementData paramsEncoder integerDatetimes input
+            let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder integerDatetimes params
              in Command.prepareWithRegistry sql oidList valueAndFormatList registry
           else
-            let paramsData = ContextParams.compileUnpreparedStatementData paramsEncoder integerDatetimes input
+            let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder integerDatetimes params
              in do
                   Command.sendQueryParams sql paramsData
                   pure registry
-      result <- ContextResults.toCommandByIdt decoder integerDatetimes
+      result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
       Command.drainResults
       pure (result, registry')
 

@@ -1,4 +1,4 @@
-module Hasql.Structures.StatementCache
+module Core.Structures.StatementCache
   ( -- * Pure registry operations
     StatementCache,
     empty,

@@ -1,4 +1,4 @@
-module Hasql.PostgresTypeInfo where
+module Core.PostgresTypeInfo where
 
 import Libpq qualified as Pq
 import Platform.Prelude hiding (bool)

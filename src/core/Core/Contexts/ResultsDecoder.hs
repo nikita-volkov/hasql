@@ -8,7 +8,7 @@
 -- with the help of "Applicative" and "Monad",
 --
 -- * Row-by-row fetching.
-module Hasql.Contexts.ResultsDecoder
+module Core.Contexts.ResultsDecoder
   ( ResultsDecoder,
 
     -- * Refinement
@@ -36,10 +36,10 @@ module Hasql.Contexts.ResultsDecoder
   )
 where
 
-import Hasql.Contexts.Command qualified as Command
-import Hasql.Contexts.ResultDecoder qualified as Result
-import Hasql.Contexts.Roundtrip qualified as Roundtrip
-import Hasql.Errors
+import Core.Contexts.Command qualified as Command
+import Core.Contexts.ResultDecoder qualified as Result
+import Core.Contexts.Roundtrip qualified as Roundtrip
+import Core.Errors
 import Libpq qualified as Pq
 import Platform.Prelude hiding (many, maybe)
 import Platform.Prelude qualified as Prelude
