@@ -31,12 +31,12 @@ spec = aroundAll Testcontainers.withConnection do
 
         _ <- forkIO do
           putMVar beginVar ()
-          _ <- Session.run (Session.statement (0.2 :: Double) selectSleep) connection1
+          _ <- Connection.use connection1 (Session.statement (0.2 :: Double) selectSleep)
           void (tryPutMVar finishVar False)
 
         _ <- forkIO do
           takeMVar beginVar
-          _ <- Session.run (Session.statement (0.1 :: Double) selectSleep) connection2
+          _ <- Connection.use connection2 (Session.statement (0.1 :: Double) selectSleep)
           void (tryPutMVar finishVar True)
 
         -- The second connection should finish first (True)

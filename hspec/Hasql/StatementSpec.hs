@@ -1,5 +1,6 @@
 module Hasql.StatementSpec (spec) where
 
+import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
@@ -27,13 +28,10 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                result1 <- Session.statement "ok" statement1
-                result2 <- Session.statement (1 :: Int64) statement2
-                return (result1, result2)
-            )
-            connection
+          Connection.use connection do
+            result1 <- Session.statement "ok" statement1
+            result2 <- Session.statement (1 :: Int64) statement2
+            return (result1, result2)
         result `shouldBe` Right ("ok", 1 :: Int64)
 
     describe "Row counting" do
@@ -44,16 +42,13 @@ spec = aroundAll Testcontainers.withConnection do
         let deleteRows = Statement.Statement "delete from a" mempty Decoders.rowsAffected False
 
         result <-
-          Session.run
-            ( do
-                Session.statement () dropTable
-                Session.statement () createTable
-                replicateM_ 100 (Session.statement () insertRow)
-                affectedRows <- Session.statement () deleteRows
-                Session.statement () dropTable
-                return affectedRows
-            )
-            connection
+          Connection.use connection do
+            Session.statement () dropTable
+            Session.statement () createTable
+            replicateM_ 100 (Session.statement () insertRow)
+            affectedRows <- Session.statement () deleteRows
+            Session.statement () dropTable
+            return affectedRows
         result `shouldBe` Right 100
 
     describe "Auto-incremented columns" do
@@ -64,16 +59,13 @@ spec = aroundAll Testcontainers.withConnection do
         let insertRow2 = Statement.Statement "insert into a (name) values ('b') returning id" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))) False
 
         result <-
-          Session.run
-            ( do
-                Session.statement () dropTable
-                Session.statement () createTable
-                id1 <- Session.statement () insertRow
-                id2 <- Session.statement () insertRow2
-                Session.statement () dropTable
-                return (id1, id2)
-            )
-            connection
+          Connection.use connection do
+            Session.statement () dropTable
+            Session.statement () createTable
+            id1 <- Session.statement () insertRow
+            id2 <- Session.statement () insertRow2
+            Session.statement () dropTable
+            return (id1, id2)
         result `shouldBe` Right (1 :: Int64, 2 :: Int64)
 
     describe "List decoding" do
@@ -84,5 +76,5 @@ spec = aroundAll Testcontainers.withConnection do
                 mempty
                 (Decoders.rowList ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
                 True
-        result <- Session.run (Session.statement () statement) connection
+        result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right [(1 :: Int64, 2 :: Int64), (3, 4), (5, 6)]

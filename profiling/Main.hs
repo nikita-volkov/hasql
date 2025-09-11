@@ -1,6 +1,7 @@
 module Main where
 
 import Data.Vector qualified as F
+import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
@@ -11,7 +12,7 @@ main :: IO ()
 main =
   Testcontainers.withConnection \connection -> do
     traceEventIO "START Session"
-    Right _ <- B.run sessionWithManySmallResults connection
+    Right _ <- Connection.use connection sessionWithManySmallResults
     traceEventIO "STOP Session"
     return ()
 

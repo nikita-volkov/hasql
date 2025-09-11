@@ -1,5 +1,6 @@
 module Hasql.EncodingDecodingSpec (spec) where
 
+import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
@@ -22,7 +23,7 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))))
                 True
-        result <- run $ Session.run (Session.statement values statement) connection
+        result <- run $ Connection.use connection (Session.statement values statement)
         assert $ result == Right values
 
       it "handles 2D arrays" \connection -> property $ \(values :: [Int64]) -> monadicIO $ do
@@ -34,7 +35,7 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))))))
                 True
-        result <- run $ Session.run (Session.statement input statement) connection
+        result <- run $ Connection.use connection (Session.statement input statement)
         assert $ result == Right input
 
     describe "Composite types" do
@@ -45,7 +46,7 @@ spec = aroundAll Testcontainers.withConnection do
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.composite ((,) <$> (Decoders.field (Decoders.nonNullable Decoders.int8)) <*> (Decoders.field (Decoders.nonNullable Decoders.bool)))))))
                 True
-        result <- Session.run (Session.statement () statement) connection
+        result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right (1 :: Int64, True)
 
       it "decodes complex composites" \connection -> do
@@ -84,7 +85,7 @@ spec = aroundAll Testcontainers.withConnection do
                     )
                 )
                 True
-        result <- Session.run (Session.statement () statement) connection
+        result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right ((1 :: Int64, True), ("hello", 3 :: Int64))
 
     describe "Enum types" do
@@ -100,13 +101,10 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                Session.statement () dropStatement
-                Session.statement () createStatement
-                Session.statement "ok" testStatement
-            )
-            connection
+          Connection.use connection do
+            Session.statement () dropStatement
+            Session.statement () createStatement
+            Session.statement "ok" testStatement
         result `shouldBe` Right "ok"
 
     describe "Unknown enum" do
@@ -122,11 +120,8 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                Session.statement () dropStatement
-                Session.statement () createStatement
-                Session.statement "ok" testStatement
-            )
-            connection
+          Connection.use connection do
+            Session.statement () dropStatement
+            Session.statement () createStatement
+            Session.statement "ok" testStatement
         result `shouldBe` Right "ok"

@@ -1,5 +1,6 @@
 module Hasql.MiscSpec (spec) where
 
+import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
@@ -19,7 +20,7 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable Encoders.interval))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
                 True
-        result <- Session.run (Session.statement (10 :: DiffTime) statement) connection
+        result <- Connection.use connection (Session.statement (10 :: DiffTime) statement)
         result `shouldBe` Right True
 
       it "decodes intervals correctly" \connection -> do
@@ -29,7 +30,7 @@ spec = aroundAll Testcontainers.withConnection do
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.interval)))
                 True
-        result <- Session.run (Session.statement () statement) connection
+        result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right (10 :: DiffTime)
 
       it "roundtrips intervals correctly" \connection -> do
@@ -39,7 +40,7 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable Encoders.interval))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.interval)))
                 True
-        result <- Session.run (Session.statement (10 :: DiffTime) statement) connection
+        result <- Connection.use connection (Session.statement (10 :: DiffTime) statement)
         result `shouldBe` Right (10 :: DiffTime)
 
     describe "Unknown types" do
@@ -55,13 +56,10 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                Session.statement () dropStatement
-                Session.statement () createStatement
-                Session.statement "ok" testStatement
-            )
-            connection
+          Connection.use connection do
+            Session.statement () dropStatement
+            Session.statement () createStatement
+            Session.statement "ok" testStatement
         result `shouldBe` Right True
 
     describe "Transaction-like operations" do
@@ -76,14 +74,11 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                Session.sql "begin;"
-                s <- Session.statement (1 :: Int64, 1 :: Int64) sumStatement
-                Session.sql "end;"
-                return s
-            )
-            connection
+          Connection.use connection do
+            Session.sql "begin;"
+            s <- Session.statement (1 :: Int64, 1 :: Int64) sumStatement
+            Session.sql "end;"
+            return s
         result `shouldBe` Right (2 :: Int64)
 
       it "recovers properly after query errors" \connection -> do
@@ -95,16 +90,13 @@ spec = aroundAll Testcontainers.withConnection do
                 True
 
         result <-
-          Session.run
-            ( do
-                -- First successful query
-                _ <- Session.statement (1 :: Int64) tryStatement
-                -- This should fail but connection should remain usable
-                _ <- catchError (Session.sql "absurd") (const (pure ()))
-                -- Second successful query
-                Session.statement (1 :: Int64) tryStatement
-            )
-            connection
+          Connection.use connection do
+            -- First successful query
+            _ <- Session.statement (1 :: Int64) tryStatement
+            -- This should fail but connection should remain usable
+            _ <- catchError (Session.sql "absurd") (const (pure ()))
+            -- Second successful query
+            Session.statement (1 :: Int64) tryStatement
 
         result `shouldSatisfy` isRight
   where

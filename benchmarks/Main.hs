@@ -29,7 +29,7 @@ main =
       where
         sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
         sessionBench name session =
-          bench name (nfIO (B.run session connection >>= either (fail . show) pure))
+          bench name (nfIO (A.use connection session >>= either (fail . show) pure))
 
 -- * Sessions
 

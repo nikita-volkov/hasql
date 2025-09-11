@@ -50,7 +50,7 @@ runSessionWithSettings settings session =
     use connection =
       ExceptT
         $ fmap (first SessionError)
-        $ Session.run session connection
+        $ Connection.use connection session
     release connection =
       lift $ Connection.release connection
 

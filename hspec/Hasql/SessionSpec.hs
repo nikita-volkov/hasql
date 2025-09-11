@@ -1,6 +1,7 @@
 module Hasql.SessionSpec (spec) where
 
 import Contravariant.Extras
+import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
@@ -21,7 +22,7 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable Encoders.int8))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
                 True
-        result <- Session.run (Session.statement (42 :: Int64) statement) connection
+        result <- Connection.use connection (Session.statement (42 :: Int64) statement)
         result `shouldBe` Right 42
 
     describe "Error Handling" do
@@ -35,7 +36,7 @@ spec = aroundAll Testcontainers.withConnection do
                 )
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
                 True
-        result <- Session.run (Session.statement ([3, 7] :: [Int64], "a") statement) connection
+        result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
           Left (Session.QueryError "select true where 1 = any ($1) and $2" ["[3, 7]", "\"a\""] _) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
@@ -48,14 +49,10 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
                 True
-        result <-
-          Session.run
-            ( do
-                result1 <- Session.statement ([1, 2] :: [Int64]) statement
-                result2 <- Session.statement ([2, 3] :: [Int64]) statement
-                return (result1, result2)
-            )
-            connection
+        result <- Connection.use connection do
+          result1 <- Session.statement ([1, 2] :: [Int64]) statement
+          result2 <- Session.statement ([2, 3] :: [Int64]) statement
+          return (result1, result2)
         result `shouldBe` Right (True, False)
 
     describe "NOT IN simulation" do
@@ -66,12 +63,8 @@ spec = aroundAll Testcontainers.withConnection do
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
                 True
-        result <-
-          Session.run
-            ( do
-                result1 <- Session.statement ([1, 2] :: [Int64]) statement
-                result2 <- Session.statement ([2, 3] :: [Int64]) statement
-                return (result1, result2)
-            )
-            connection
+        result <- Connection.use connection do
+          result1 <- Session.statement ([1, 2] :: [Int64]) statement
+          result2 <- Session.statement ([2, 3] :: [Int64]) statement
+          return (result1, result2)
         result `shouldBe` Right (True, False)
