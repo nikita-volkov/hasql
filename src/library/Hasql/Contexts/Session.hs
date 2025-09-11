@@ -8,11 +8,11 @@ import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors
-import Hasql.Prelude
 import Hasql.Statement qualified as Statement
 import Hasql.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Structures.StatementCache qualified as StatementCache
 import Libpq qualified as Pq
+import Platform.Prelude
 
 -- |
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.

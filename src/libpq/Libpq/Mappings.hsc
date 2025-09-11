@@ -3,7 +3,7 @@ module Libpq.Mappings where
 #include "libpq-fe.h"
 
 import Foreign.C.Types (CInt (..))
-import Libpq.Prelude
+import Platform.Prelude
 
 data ExecStatus
   = EmptyQuery

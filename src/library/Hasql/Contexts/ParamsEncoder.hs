@@ -2,8 +2,8 @@ module Hasql.Contexts.ParamsEncoder where
 
 import Hasql.Contexts.ValueEncoder qualified as C
 import Hasql.PostgresTypeInfo qualified as D
-import Hasql.Prelude
 import Libpq qualified as A
+import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as E
 

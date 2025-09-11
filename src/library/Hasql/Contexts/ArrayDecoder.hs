@@ -1,6 +1,6 @@
 module Hasql.Contexts.ArrayDecoder where
 
-import Hasql.Prelude
+import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 
 newtype ArrayDecoder a

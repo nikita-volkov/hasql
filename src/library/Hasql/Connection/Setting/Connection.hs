@@ -8,7 +8,7 @@ where
 import Hasql.Connection.Config.ConnectionString qualified as Config.ConnectionString
 import Hasql.Connection.Config.ConnectionString.Params qualified as Config.ConnectionString.Params
 import Hasql.Connection.Setting.Connection.Param qualified as Param
-import Hasql.Prelude
+import Platform.Prelude
 
 -- | Instructions on how to connect to the database.
 newtype Connection = Connection ByteString

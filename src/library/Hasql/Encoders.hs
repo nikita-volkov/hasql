@@ -80,8 +80,8 @@ import Hasql.Contexts.ArrayEncoder qualified as Array
 import Hasql.Contexts.ParamsEncoder qualified as Params
 import Hasql.Contexts.ValueEncoder qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
-import Hasql.Prelude hiding (bool)
-import Hasql.Prelude qualified as Prelude
+import Platform.Prelude hiding (bool)
+import Platform.Prelude qualified as Prelude
 import PostgreSQL.Binary.Encoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
 import TextBuilder qualified as C

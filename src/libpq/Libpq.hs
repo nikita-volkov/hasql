@@ -19,7 +19,7 @@ import Database.PostgreSQL.LibPQ as Base hiding (ExecStatus (..), PipelineStatus
 import Database.PostgreSQL.LibPQ.Internal qualified as BaseInternal
 import Libpq.Ffi qualified as Ffi
 import Libpq.Mappings qualified as Mappings
-import Libpq.Prelude
+import Platform.Prelude
 
 resultStatus :: Result -> IO Mappings.ExecStatus
 resultStatus result = do

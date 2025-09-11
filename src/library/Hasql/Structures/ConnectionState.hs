@@ -13,9 +13,9 @@ module Hasql.Structures.ConnectionState
   )
 where
 
-import Hasql.Prelude
 import Hasql.Structures.StatementCache qualified as StatementCache
 import Libpq qualified as Pq
+import Platform.Prelude
 
 -- |
 -- The internal state of a database connection.

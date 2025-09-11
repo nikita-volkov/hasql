@@ -16,7 +16,7 @@ where
 import Hasql.Connection qualified as Connection
 import Hasql.Contexts.Session hiding (run)
 import Hasql.Errors
-import Hasql.Prelude
+import Platform.Prelude
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.

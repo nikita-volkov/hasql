@@ -13,8 +13,8 @@ where
 
 import ByteString.StrictBuilder qualified as B
 import Data.HashMap.Strict qualified as HashMap
-import Hasql.Prelude hiding (empty, insert, lookup, reset)
 import Libpq qualified as Pq
+import Platform.Prelude hiding (empty, insert, lookup, reset)
 
 -- | Pure registry state containing the hash map and counter
 data StatementCache = StatementCache (HashMap.HashMap LocalKey ByteString) Word

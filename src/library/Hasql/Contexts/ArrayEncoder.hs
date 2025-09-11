@@ -1,7 +1,7 @@
 module Hasql.Contexts.ArrayEncoder where
 
 import Hasql.PostgresTypeInfo qualified as B
-import Hasql.Prelude
+import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as A
 import TextBuilder qualified as C
 

@@ -40,9 +40,9 @@ import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.ResultDecoder qualified as Result
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Errors
-import Hasql.Prelude hiding (many, maybe)
-import Hasql.Prelude qualified as Prelude
 import Libpq qualified as Pq
+import Platform.Prelude hiding (many, maybe)
+import Platform.Prelude qualified as Prelude
 
 newtype ResultsDecoder a
   = ResultsDecoder (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)

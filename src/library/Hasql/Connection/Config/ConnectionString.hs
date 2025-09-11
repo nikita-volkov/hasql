@@ -5,7 +5,7 @@ import Data.ByteString.Char8 qualified as BC
 import Data.Map.Strict qualified as Map
 import Data.Text.Encoding qualified
 import Hasql.Connection.Config.ConnectionString.Params qualified as Params
-import Hasql.Prelude
+import Platform.Prelude
 
 type ConnectionString = ByteString
 

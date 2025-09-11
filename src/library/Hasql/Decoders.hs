@@ -93,7 +93,7 @@ import Hasql.Contexts.ResultsDecoder qualified as Results
 import Hasql.Contexts.RowDecoder qualified as Row
 import Hasql.Contexts.ValueDecoder qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
-import Hasql.Prelude hiding (bool, maybe)
+import Platform.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
 
