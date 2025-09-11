@@ -1,10 +1,10 @@
 module Hasql.Contexts.Pipeline where
 
-import Hasql.Decoders.All qualified as Decoders
-import Hasql.Decoders.Result qualified as Decoders.Result
-import Hasql.Decoders.Results qualified as Decoders.Results
-import Hasql.Encoders.All qualified as Encoders
-import Hasql.Encoders.Params qualified as Encoders.Params
+import Hasql.Decoders qualified as Decoders
+import Hasql.Contexts.ResultDecoder qualified as Decoders.Result
+import Hasql.Contexts.ResultsDecoder qualified as Decoders.Results
+import Hasql.Encoders qualified as Encoders
+import Hasql.Contexts.ParamsEncoder qualified as Encoders.Params
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
@@ -43,7 +43,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
       runResultsDecoder
         $ Decoders.Results.single Decoders.Result.pipelineSync
 
-    runResultsDecoder :: forall a. Decoders.Results.Results a -> ExceptT SessionError IO a
+    runResultsDecoder :: forall a. Decoders.Results.ResultsDecoder a -> ExceptT SessionError IO a
     runResultsDecoder decoder =
       ExceptT
         $ fmap (first PipelineError)

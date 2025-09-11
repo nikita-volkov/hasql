@@ -3,26 +3,26 @@ module Hasql.Contexts.ArrayDecoder where
 import Hasql.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 
-newtype Array a
-  = Array (ReaderT Bool A.Array a)
+newtype ArrayDecoder a
+  = ArrayDecoder (ReaderT Bool A.Array a)
   deriving (Functor)
 
 {-# INLINE run #-}
-run :: Array a -> Bool -> A.Value a
-run (Array imp) env =
+run :: ArrayDecoder a -> Bool -> A.Value a
+run (ArrayDecoder imp) env =
   A.array (runReaderT imp env)
 
 {-# INLINE dimension #-}
-dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
-dimension replicateM (Array imp) =
-  Array $ ReaderT $ \env -> A.dimensionArray replicateM (runReaderT imp env)
+dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> ArrayDecoder a -> ArrayDecoder b
+dimension replicateM (ArrayDecoder imp) =
+  ArrayDecoder $ ReaderT $ \env -> A.dimensionArray replicateM (runReaderT imp env)
 
 {-# INLINE value #-}
-value :: (Bool -> A.Value a) -> Array (Maybe a)
+value :: (Bool -> A.Value a) -> ArrayDecoder (Maybe a)
 value decoder' =
-  Array $ ReaderT $ A.nullableValueArray . decoder'
+  ArrayDecoder $ ReaderT $ A.nullableValueArray . decoder'
 
 {-# INLINE nonNullValue #-}
-nonNullValue :: (Bool -> A.Value a) -> Array a
+nonNullValue :: (Bool -> A.Value a) -> ArrayDecoder a
 nonNullValue decoder' =
-  Array $ ReaderT $ A.valueArray . decoder'
+  ArrayDecoder $ ReaderT $ A.valueArray . decoder'

@@ -5,9 +5,9 @@ module Hasql.Encoders.All where
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IP qualified as Iproute
-import Hasql.Encoders.Array qualified as Array
-import Hasql.Encoders.Params qualified as Params
-import Hasql.Encoders.Value qualified as Value
+import Hasql.Contexts.ArrayEncoder qualified as Array
+import Hasql.Contexts.ParamsEncoder qualified as Params
+import Hasql.Contexts.ValueEncoder qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool)
 import Hasql.Prelude qualified as Prelude
@@ -61,7 +61,7 @@ import TextBuilder qualified as C
 --     Male -> "male"
 --     Female -> "female"
 -- @
-newtype Params a = Params (Params.Params a)
+newtype Params a = Params (Params.ParamsEncoder a)
   deriving (Contravariant, Divisible, Monoid, Semigroup)
 
 -- |
@@ -99,7 +99,7 @@ nullable = Nullable
 
 -- |
 -- Value encoder.
-newtype Value a = Value (Value.Value a)
+newtype Value a = Value (Value.ValueEncoder a)
   deriving (Contravariant)
 
 -- |
@@ -380,9 +380,9 @@ unknown = Value (Value.unsafePTIWithName "unknown" PTI.textUnknown (const A.byte
 -- |
 -- Lift an array encoder into a value encoder.
 array :: Array a -> Value a
-array (Array (Array.Array valueOID arrayOID arrayEncoder renderer)) =
+array (Array (Array.ArrayEncoder valueOID arrayOID arrayEncoder renderer)) =
   let encoder env input = A.array (PTI.oidWord32 valueOID) (arrayEncoder env input)
-   in Value (Value.Value "array" (Just arrayOID) (Just arrayOID) encoder renderer)
+   in Value (Value.ValueEncoder "array" (Just arrayOID) (Just arrayOID) encoder renderer)
 
 -- |
 -- Lift a composite encoder into a value encoder.
@@ -431,20 +431,20 @@ foldableArray = array . dimension foldl' . element
 --
 -- Please note that the PostgreSQL @IN@ keyword does not accept an array, but rather a syntactical list of
 -- values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condition instead.
-newtype Array a = Array (Array.Array a)
+newtype Array a = Array (Array.ArrayEncoder a)
   deriving (Contravariant)
 
 -- |
 -- Lifts a 'Value' encoder into an 'Array' encoder.
 element :: NullableOrNot Value a -> Array a
 element = \case
-  NonNullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
+  NonNullable (Value (Value.ValueEncoder _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.value elementOID arrayOID encoder renderer)
-  NonNullable (Value (Value.Value _ elementOID arrayOID encoder renderer)) ->
+  NonNullable (Value (Value.ValueEncoder _ elementOID arrayOID encoder renderer)) ->
     Array (Array.value (fromMaybe (PTI.ptiOID PTI.binaryUnknown) elementOID) (fromMaybe (PTI.ptiOID PTI.binaryUnknown) arrayOID) encoder renderer)
-  Nullable (Value (Value.Value _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
+  Nullable (Value (Value.ValueEncoder _ (Just elementOID) (Just arrayOID) encoder renderer)) ->
     Array (Array.nullableValue elementOID arrayOID encoder renderer)
-  Nullable (Value (Value.Value _ elementOID arrayOID encoder renderer)) ->
+  Nullable (Value (Value.ValueEncoder _ elementOID arrayOID encoder renderer)) ->
     Array (Array.nullableValue (fromMaybe (PTI.ptiOID PTI.binaryUnknown) elementOID) (fromMaybe (PTI.ptiOID PTI.binaryUnknown) arrayOID) encoder renderer)
 
 -- |
@@ -494,15 +494,15 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot Value a -> Composite a
 field = \case
-  NonNullable (Value (Value.Value _ (Just elementOID) _ encode print)) ->
+  NonNullable (Value (Value.ValueEncoder _ (Just elementOID) _ encode print)) ->
     Composite
       (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
       (\val -> [print val])
-  NonNullable (Value (Value.Value _ Nothing _ encode print)) ->
+  NonNullable (Value (Value.ValueEncoder _ Nothing _ encode print)) ->
     Composite
       (\val idt -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode idt val))
       (\val -> [print val])
-  Nullable (Value (Value.Value _ (Just elementOID) _ encode print)) ->
+  Nullable (Value (Value.ValueEncoder _ (Just elementOID) _ encode print)) ->
     Composite
       ( \val idt -> case val of
           Nothing -> A.nullField (PTI.oidWord32 elementOID)
@@ -513,7 +513,7 @@ field = \case
             Nothing -> ["NULL"]
             Just val -> [print val]
       )
-  Nullable (Value (Value.Value _ Nothing _ encode print)) ->
+  Nullable (Value (Value.ValueEncoder _ Nothing _ encode print)) ->
     Composite
       ( \val idt -> case val of
           Nothing -> A.nullField (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown))

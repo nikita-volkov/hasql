@@ -6,6 +6,7 @@ module Hasql.Decoders
     noResult,
     rowsAffected,
     singleRow,
+    refineResult,
 
     -- ** Specialized multi-row results
     rowMaybe,

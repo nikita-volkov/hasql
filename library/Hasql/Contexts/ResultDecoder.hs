@@ -1,5 +1,5 @@
 module Hasql.Contexts.ResultDecoder
-  ( Result,
+  ( ResultDecoder,
 
     -- * Constructors
     pipelineSync,
@@ -31,47 +31,47 @@ where
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
-import Hasql.Decoders.Row qualified as Row
+import Hasql.Contexts.RowDecoder qualified as Row
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (foldl, foldr, many, maybe)
 
-newtype Result a
-  = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
+newtype ResultDecoder a
+  = ResultDecoder (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
 
 -- * Construction
 
 {-# INLINE pipelineSync #-}
-pipelineSync :: Result ()
+pipelineSync :: ResultDecoder ()
 pipelineSync = fromResultConsumer ResultConsumer.pipelineSync
 
 {-# INLINE noResult #-}
-noResult :: Result ()
+noResult :: ResultDecoder ()
 noResult = fromResultConsumer ResultConsumer.ok
 
 {-# INLINE rowsAffected #-}
-rowsAffected :: Result Int64
+rowsAffected :: ResultDecoder Int64
 rowsAffected = fromResultConsumer ResultConsumer.rowsAffected
 
 {-# INLINE checkExecStatus #-}
-checkExecStatus :: [Pq.ExecStatus] -> Result ()
+checkExecStatus :: [Pq.ExecStatus] -> ResultDecoder ()
 checkExecStatus = fromResultConsumer . ResultConsumer.checkExecStatus
 
-unexpectedResult :: Text -> Result a
+unexpectedResult :: Text -> ResultDecoder a
 unexpectedResult =
-  Result . lift . ExceptT . pure . Left . UnexpectedResult
+  ResultDecoder . lift . ExceptT . pure . Left . UnexpectedResult
 
 {-# INLINE serverError #-}
-serverError :: Result ()
+serverError :: ResultDecoder ()
 serverError = fromResultConsumer ResultConsumer.serverError
 
 {-# INLINE maybe #-}
-maybe :: Row.Row a -> Result (Maybe a)
+maybe :: Row.RowDecoder a -> ResultDecoder (Maybe a)
 maybe rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    Result
+    ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- Pq.ntuples result
@@ -87,11 +87,11 @@ maybe rowDec =
       fromIntegral n
 
 {-# INLINE single #-}
-single :: Row.Row a -> Result a
+single :: Row.RowDecoder a -> ResultDecoder a
 single rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    Result
+    ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- Pq.ntuples result
@@ -106,11 +106,11 @@ single rowDec =
       fromIntegral n
 
 {-# INLINE vector #-}
-vector :: Row.Row a -> Result (Vector a)
+vector :: Row.RowDecoder a -> ResultDecoder (Vector a)
 vector rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    Result
+    ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- Pq.ntuples result
@@ -132,12 +132,12 @@ vector rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldl #-}
-foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
+foldl :: (a -> b -> a) -> a -> Row.RowDecoder b -> ResultDecoder a
 foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
     checkExecStatus [Pq.TuplesOk]
-    Result
+    ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) ->
         ExceptT
@@ -162,12 +162,12 @@ foldl step init rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldr #-}
-foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
+foldr :: (b -> a -> a) -> a -> Row.RowDecoder b -> ResultDecoder a
 foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
     checkExecStatus [Pq.TuplesOk]
-    Result
+    ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
         maxRows <- Pq.ntuples result
@@ -194,12 +194,12 @@ foldr step init rowDec =
 
 type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
 
-toResultConsumerByIdt :: Result a -> ResultConsumerByIdt a
-toResultConsumerByIdt (Result reader) idt =
+toResultConsumerByIdt :: ResultDecoder a -> ResultConsumerByIdt a
+toResultConsumerByIdt (ResultDecoder reader) idt =
   ResultConsumer.fromHandler \result -> do
     runExceptT (runReaderT reader (idt, result))
 
-fromResultConsumerByIdt :: ResultConsumerByIdt a -> Result a
+fromResultConsumerByIdt :: ResultConsumerByIdt a -> ResultDecoder a
 fromResultConsumerByIdt resultConsumerByIdt =
   fromHandler \idt result ->
     ResultConsumer.toHandler (resultConsumerByIdt idt) result
@@ -208,7 +208,7 @@ fromResultConsumerByIdt resultConsumerByIdt =
 
 type ResultConsumer a = ResultConsumer.ResultConsumer a
 
-fromResultConsumer :: ResultConsumer a -> Result a
+fromResultConsumer :: ResultConsumer a -> ResultDecoder a
 fromResultConsumer handler =
   fromHandler \_idt result ->
     ResultConsumer.toHandler handler result
@@ -218,11 +218,11 @@ fromResultConsumer handler =
 type Handler a = Bool -> Pq.Result -> IO (Either ResultError a)
 
 {-# INLINE toHandler #-}
-toHandler :: Result a -> Handler a
-toHandler (Result reader) idt result =
+toHandler :: ResultDecoder a -> Handler a
+toHandler (ResultDecoder reader) idt result =
   runExceptT (runReaderT reader (idt, result))
 
-fromHandler :: Handler a -> Result a
+fromHandler :: Handler a -> ResultDecoder a
 fromHandler handler =
-  Result $ ReaderT $ \(idt, result) ->
+  ResultDecoder $ ReaderT $ \(idt, result) ->
     ExceptT $ handler idt result

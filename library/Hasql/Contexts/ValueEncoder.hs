@@ -5,8 +5,8 @@ import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as C
 
-data Value a
-  = Value
+data ValueEncoder a
+  = ValueEncoder
       -- | Type name.
       Text
       -- | Statically known OID for the type.
@@ -21,22 +21,22 @@ data Value a
       -- | Render function for error messages.
       (a -> C.TextBuilder)
 
-instance Contravariant Value where
+instance Contravariant ValueEncoder where
   {-# INLINE contramap #-}
-  contramap f (Value typeName valueOID arrayOID encode render) =
-    Value typeName valueOID arrayOID (\integerDatetimes input -> encode integerDatetimes (f input)) (render . f)
+  contramap f (ValueEncoder typeName valueOID arrayOID encode render) =
+    ValueEncoder typeName valueOID arrayOID (\integerDatetimes input -> encode integerDatetimes (f input)) (render . f)
 
 {-# INLINE unsafePTI #-}
-unsafePTI :: PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.TextBuilder) -> Value a
+unsafePTI :: PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.TextBuilder) -> ValueEncoder a
 unsafePTI pti =
-  Value "unknown" (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti)
+  ValueEncoder "unknown" (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti)
 
 {-# INLINE unsafePTIWithName #-}
-unsafePTIWithName :: Text -> PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.TextBuilder) -> Value a
+unsafePTIWithName :: Text -> PTI.PTI -> (Bool -> a -> B.Encoding) -> (a -> C.TextBuilder) -> ValueEncoder a
 unsafePTIWithName typeName pti =
-  Value typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti)
+  ValueEncoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti)
 
 {-# INLINE unsafePTIWithShow #-}
-unsafePTIWithShow :: (Show a) => PTI.PTI -> (Bool -> a -> B.Encoding) -> Value a
+unsafePTIWithShow :: (Show a) => PTI.PTI -> (Bool -> a -> B.Encoding) -> ValueEncoder a
 unsafePTIWithShow pti encode =
   unsafePTI pti encode (C.string . show)
