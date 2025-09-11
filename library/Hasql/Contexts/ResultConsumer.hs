@@ -1,4 +1,15 @@
-module Hasql.Contexts.ResultConsumer where
+module Hasql.Contexts.ResultConsumer
+  ( ResultConsumer,
+    Handler,
+    toHandler,
+    fromHandler,
+    ok,
+    pipelineSync,
+    rowsAffected,
+    checkExecStatus,
+    serverError,
+  )
+where
 
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
@@ -8,10 +19,26 @@ import Hasql.Prelude
 
 -- | Result consumption context, for consuming a single result from a sequence of results returned by the server.
 newtype ResultConsumer a
-  = ResultConsumer {run :: Pq.Result -> IO (Either ResultError a)}
+  = ResultConsumer (Pq.Result -> IO (Either ResultError a))
   deriving
     (Functor, Applicative, Monad, MonadError ResultError, MonadReader Pq.Result)
     via (ReaderT Pq.Result (ExceptT ResultError IO))
+
+-- * Relations
+
+-- ** Handler
+
+type Handler a = Pq.Result -> IO (Either ResultError a)
+
+toHandler :: ResultConsumer a -> Handler a
+toHandler (ResultConsumer handler) =
+  handler
+
+fromHandler :: Handler a -> ResultConsumer a
+fromHandler handler =
+  ResultConsumer handler
+
+-- * Construction
 
 {-# INLINE ok #-}
 ok :: ResultConsumer ()

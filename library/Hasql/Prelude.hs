@@ -14,7 +14,7 @@ import Control.Applicative as Exports hiding (WrappedArrow (..))
 import Control.Arrow as Exports hiding (first, second)
 import Control.Category as Exports
 import Control.Concurrent as Exports
-import Control.Exception as Exports
+import Control.Exception as Exports hiding (Handler)
 import Control.Monad as Exports hiding (fail, forM, forM_, mapM, mapM_, msum, sequence, sequence_)
 import Control.Monad.Error.Class as Exports (MonadError (..))
 import Control.Monad.Fail as Exports

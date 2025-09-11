@@ -44,13 +44,13 @@ liftPqCommand command =
 -- | Consume a single result from the connection using the provided result decoder.
 {-# INLINE consumeResult #-}
 consumeResult :: ResultConsumer.ResultConsumer a -> Roundtrip a
-consumeResult (ResultConsumer.ResultConsumer resultHandler) =
+consumeResult resultConsumer =
   Roundtrip \connection -> do
     pure do
       result <- Pq.getResult connection
       case result of
         Just result -> do
-          result <- resultHandler result
+          result <- ResultConsumer.toHandler resultConsumer result
           case result of
             Left err -> pure (Left (ResultError err))
             Right result -> pure (Right result)
@@ -69,7 +69,7 @@ drainResults =
             case result of
               Nothing -> pure (Right ())
               Just result -> do
-                result <- ResultConsumer.run ResultConsumer.ok result
+                result <- ResultConsumer.toHandler ResultConsumer.ok result
                 case result of
                   Left err -> go (output *> Left (ResultError err))
                   Right () -> go output

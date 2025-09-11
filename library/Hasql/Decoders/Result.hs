@@ -12,22 +12,53 @@ newtype Result a
   = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
 
-toResultConsumer :: Bool -> Result a -> ResultConsumer.ResultConsumer a
-toResultConsumer idt (Result reader) =
-  ResultConsumer.ResultConsumer \result -> do
+-- * Relations
+
+-- ** ResultConsumerByIdt
+
+type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
+
+toResultConsumerByIdt :: Result a -> Bool -> ResultConsumer.ResultConsumer a
+toResultConsumerByIdt (Result reader) idt =
+  ResultConsumer.fromHandler \result -> do
     runExceptT (runReaderT reader (idt, result))
 
-fromResultConsumer :: ResultConsumer.ResultConsumer a -> Result a
-fromResultConsumer (ResultConsumer.ResultConsumer handler) =
-  Result do
-    ReaderT \(_, result) ->
-      ExceptT do
-        handler result
+fromResultConsumerByIdt :: ResultConsumerByIdt a -> Result a
+fromResultConsumerByIdt resultConsumerByIdt =
+  fromHandler \idt result ->
+    ResultConsumer.toHandler (resultConsumerByIdt idt) result
 
+-- ** ResultConsumer
+
+type ResultConsumer a = ResultConsumer.ResultConsumer a
+
+fromResultConsumer :: ResultConsumer a -> Result a
+fromResultConsumer handler =
+  fromHandler \_idt result ->
+    ResultConsumer.toHandler handler result
+
+-- ** Handler
+
+type Handler a = Bool -> Pq.Result -> IO (Either ResultError a)
+
+{-# INLINE toHandler #-}
+toHandler :: Result a -> Handler a
+toHandler (Result reader) idt result =
+  runExceptT (runReaderT reader (idt, result))
+
+fromHandler :: Handler a -> Result a
+fromHandler handler =
+  Result $ ReaderT $ \(idt, result) ->
+    ExceptT $ handler idt result
+
+-- * Execution
+
+-- TODO: Get rid of by replacing with toHandler
 {-# INLINE run #-}
 run :: Result a -> Bool -> Pq.Result -> IO (Either ResultError a)
-run (Result reader) idt result =
-  runExceptT (runReaderT reader (idt, result))
+run = toHandler
+
+-- * Construction
 
 {-# INLINE pipelineSync #-}
 pipelineSync :: Result ()
