@@ -15,7 +15,6 @@ module Hasql.Decoders.Results
     refine,
 
     -- * Constructors
-    clientError,
     single,
     dropRemainders,
 
@@ -54,6 +53,28 @@ instance Filterable Results where
   mapMaybe fn =
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
 
+-- * Construction
+
+-- |
+-- Parse a single result.
+{-# INLINE single #-}
+single :: Result.Result a -> Results a
+single resultDec =
+  fromCommandByIdt \idt ->
+    Command.consumeResult (Result.toResultConsumerByIdt resultDec idt)
+
+{-# INLINE dropRemainders #-}
+dropRemainders :: Results ()
+dropRemainders =
+  fromCommand Command.drainResults
+
+refine :: (a -> Either Text b) -> Results a -> Results b
+refine refiner (Results stack) = Results
+  $ ReaderT
+  $ \env -> ExceptT $ do
+    resultEither <- runExceptT $ runReaderT stack env
+    return $ resultEither >>= first (ResultError . UnexpectedResult) . refiner
+
 -- * Relations
 
 -- ** Handler
@@ -85,6 +106,13 @@ fromCommandByIdt commandByIdt = fromHandler \connection idt ->
   let (Command.Command handler) = commandByIdt idt
    in handler connection
 
+-- ** Command
+
+type Command = Command.Command
+
+fromCommand :: Command a -> Results a
+fromCommand = fromCommandByIdt . const
+
 -- ** Roundtrip
 
 type RoundtripByIdt a = Bool -> Roundtrip.Roundtrip a
@@ -94,53 +122,3 @@ toRoundtripByIdt (Results stack) idt =
   Roundtrip.Roundtrip \connection -> do
     pure do
       runExceptT (runReaderT stack (idt, connection))
-
--- * Construction
-
-{-# INLINE clientError #-}
-clientError :: Results a
-clientError =
-  Results
-    $ ReaderT
-    $ \(_, connection) ->
-      ExceptT
-        $ fmap (Left . ClientError) (Pq.errorMessage connection)
-
--- |
--- Parse a single result.
-{-# INLINE single #-}
-single :: Result.Result a -> Results a
-single resultDec =
-  Results
-    $ ReaderT
-    $ \(integerDatetimes, connection) -> ExceptT $ do
-      resultMaybe <- Pq.getResult connection
-      case resultMaybe of
-        Just result ->
-          first ResultError <$> Result.toHandler resultDec integerDatetimes result
-        Nothing ->
-          fmap (Left . ClientError) (Pq.errorMessage connection)
-
-{-# INLINE dropRemainders #-}
-dropRemainders :: Results ()
-dropRemainders =
-  {-# SCC "dropRemainders" #-}
-  Results $ ReaderT $ \(integerDatetimes, connection) -> loop integerDatetimes connection
-  where
-    loop integerDatetimes connection =
-      getResultMaybe >>= Prelude.maybe (pure ()) onResult
-      where
-        getResultMaybe =
-          lift $ Pq.getResult connection
-        onResult result =
-          loop integerDatetimes connection <* checkErrors
-          where
-            checkErrors =
-              ExceptT $ fmap (first ResultError) $ Result.toHandler Result.noResult integerDatetimes result
-
-refine :: (a -> Either Text b) -> Results a -> Results b
-refine refiner (Results stack) = Results
-  $ ReaderT
-  $ \env -> ExceptT $ do
-    resultEither <- runExceptT $ runReaderT stack env
-    return $ resultEither >>= first (ResultError . UnexpectedResult) . refiner
