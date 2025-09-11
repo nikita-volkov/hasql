@@ -1,7 +1,5 @@
 module Hasql.Decoders.Result where
 
-import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
-import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
@@ -9,7 +7,6 @@ import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)
-import Hasql.Prelude qualified as Prelude
 
 newtype Result a
   = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
@@ -34,52 +31,19 @@ run (Result reader) idt result =
 
 {-# INLINE pipelineSync #-}
 pipelineSync :: Result ()
-pipelineSync =
-  checkExecStatus [Pq.PipelineSync]
+pipelineSync = fromResultConsumer ResultConsumer.pipelineSync
 
 {-# INLINE noResult #-}
 noResult :: Result ()
-noResult =
-  checkExecStatus [Pq.CommandOk, Pq.TuplesOk]
+noResult = fromResultConsumer ResultConsumer.ok
 
 {-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
-rowsAffected =
-  do
-    checkExecStatus [Pq.CommandOk]
-    Result
-      $ ReaderT
-      $ \(_, result) ->
-        ExceptT
-          $ Pq.cmdTuples result
-          & fmap cmdTuplesReader
-  where
-    cmdTuplesReader =
-      notNothing >=> notEmpty >=> decimal
-      where
-        notNothing =
-          Prelude.maybe (Left (UnexpectedResult "No bytes")) Right
-        notEmpty bytes =
-          if ByteString.null bytes
-            then Left (UnexpectedResult "Empty bytes")
-            else Right bytes
-        decimal bytes =
-          first (\m -> UnexpectedResult ("Decimal parsing failure: " <> fromString m))
-            $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
+rowsAffected = fromResultConsumer ResultConsumer.rowsAffected
 
 {-# INLINE checkExecStatus #-}
 checkExecStatus :: [Pq.ExecStatus] -> Result ()
-checkExecStatus expectedList =
-  {-# SCC "checkExecStatus" #-}
-  do
-    status <- Result $ ReaderT $ \(_, result) -> lift $ Pq.resultStatus result
-    unless (elem status expectedList) $ do
-      case status of
-        Pq.BadResponse -> serverError
-        Pq.NonfatalError -> serverError
-        Pq.FatalError -> serverError
-        Pq.EmptyQuery -> return ()
-        _ -> unexpectedResult $ "Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList)
+checkExecStatus = fromResultConsumer . ResultConsumer.checkExecStatus
 
 unexpectedResult :: Text -> Result a
 unexpectedResult =
@@ -87,30 +51,7 @@ unexpectedResult =
 
 {-# INLINE serverError #-}
 serverError :: Result ()
-serverError =
-  Result
-    $ ReaderT
-    $ \(_, result) -> ExceptT $ do
-      code <-
-        fmap fold
-          $ Pq.resultErrorField result Pq.DiagSqlstate
-      message <-
-        fmap fold
-          $ Pq.resultErrorField result Pq.DiagMessagePrimary
-      detail <-
-        Pq.resultErrorField result Pq.DiagMessageDetail
-      hint <-
-        Pq.resultErrorField result Pq.DiagMessageHint
-      position <-
-        parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
-      pure $ Left $ ServerError code message detail hint position
-  where
-    parsePosition = \case
-      Nothing -> Nothing
-      Just pos ->
-        case Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) pos of
-          Right pos -> Just pos
-          _ -> Nothing
+serverError = fromResultConsumer ResultConsumer.serverError
 
 {-# INLINE maybe #-}
 maybe :: Row.Row a -> Result (Maybe a)
