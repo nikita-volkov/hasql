@@ -33,6 +33,9 @@ module Core.Contexts.ResultsDecoder
     -- ** RoundtripByIdt
     RoundtripByIdt,
     toRoundtripByIdt,
+
+    -- * Classes
+    Wraps (..),
   )
 where
 
@@ -122,3 +125,9 @@ toRoundtripByIdt (ResultsDecoder stack) idt =
   Roundtrip.Roundtrip \connection -> do
     pure do
       runExceptT (runReaderT stack (idt, connection))
+
+-- * Classes
+
+class Wraps f where
+  wrap :: ResultsDecoder a -> f a
+  unwrap :: f a -> ResultsDecoder a

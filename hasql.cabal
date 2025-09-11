@@ -78,6 +78,7 @@ common base
     TypeApplications
     TypeFamilies
     TypeOperators
+    ViewPatterns
 
 common executable
   import: base

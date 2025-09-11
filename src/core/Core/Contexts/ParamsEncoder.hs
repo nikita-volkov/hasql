@@ -119,3 +119,7 @@ nullableValue (C.ValueEncoder _ Nothing _ serialize print) =
     }
   where
     D.OID _ pqOid format = D.ptiOID D.binaryUnknown
+
+class Wraps f where
+  wrap :: ParamsEncoder a -> f a
+  unwrap :: f a -> ParamsEncoder a

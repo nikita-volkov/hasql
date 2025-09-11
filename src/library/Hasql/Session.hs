@@ -13,11 +13,11 @@ module Hasql.Session
   )
 where
 
+import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
 import Core.Contexts.Session qualified as Session
 import Core.Errors
 import Hasql.Connection qualified as Connection
-import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
 import Hasql.Statement qualified as Statement
 import Platform.Prelude
 
@@ -32,5 +32,12 @@ run session connection = Connection.use connection session
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session.Session result
-statement params (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
-  Session.statement sql paramsEncoder decoder preparable params
+statement
+  params
+  ( Statement.Statement
+      sql
+      (ParamsEncoder.unwrap -> paramsEncoder)
+      (ResultsDecoder.unwrap -> decoder)
+      preparable
+    ) =
+    Session.statement sql paramsEncoder decoder preparable params

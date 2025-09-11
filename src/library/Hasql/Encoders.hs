@@ -5,7 +5,7 @@
 -- E.g., the `Array` type is an __encoder__ of arrays, not the data-structure itself.
 module Hasql.Encoders
   ( -- * Parameters product
-    Params (..),
+    Params,
     noParams,
     param,
 
@@ -134,6 +134,10 @@ import TextBuilder qualified as C
 -- @
 newtype Params a = Params (Params.ParamsEncoder a)
   deriving (Contravariant, Divisible, Monoid, Semigroup)
+
+instance Params.Wraps Params where
+  wrap = Params
+  unwrap (Params imp) = imp
 
 -- |
 -- No parameters. Same as `mempty` and `conquered`.

@@ -2,7 +2,7 @@
 -- A DSL for declaration of result decoders.
 module Hasql.Decoders
   ( -- * Result
-    Result (..),
+    Result,
     noResult,
     rowsAffected,
     singleRow,
@@ -102,6 +102,10 @@ import PostgreSQL.Binary.Range qualified as R
 -- |
 -- Decoder of a query result.
 newtype Result a = Result (Results.ResultsDecoder a) deriving (Functor, Filterable)
+
+instance Results.Wraps Result where
+  wrap = Result
+  unwrap (Result r) = r
 
 -- |
 -- Decode no value from the result.
