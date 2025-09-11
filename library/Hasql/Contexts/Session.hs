@@ -8,6 +8,7 @@ import Hasql.Decoders.Results qualified as ResultsDecoders
 import Hasql.Encoders.All qualified as Encoders
 import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Statement qualified as Statement
 import Hasql.Structures.ConnectionState qualified as ConnectionState
@@ -117,3 +118,22 @@ pipeline pipeline = Session \connectionState -> do
     Right (result, newCache) ->
       let newState = ConnectionState.setStatementCache newCache connectionState
        in pure (Right result, newState)
+
+-- |
+-- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.
+-- This is a low-level escape hatch for custom integrations.
+--
+-- You can supply a new connection in the result to replace it in the running Hasql connection.
+-- The responsibility to close the old libpq connection is on you.
+-- Otherwise, just return the same connection you've received.
+--
+-- Producing a 'Left' value will cause the session to fail with the given error.
+-- Regardless of success or failure, the connection will be replaced with the one you return.
+--
+-- Throwing exceptions is okay. It will lead to the connection getting reset.
+onPqConnection :: (Pq.Connection -> IO (Either SessionError a, Pq.Connection)) -> Session a
+onPqConnection f = Session \connectionState -> do
+  let pqConnection = ConnectionState.connection connectionState
+  (result, newConnection) <- f pqConnection
+  let newState = ConnectionState.setConnection newConnection connectionState
+  pure (result, newState)
