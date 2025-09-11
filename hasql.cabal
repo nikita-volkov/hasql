@@ -127,8 +127,6 @@ library
     Hasql.Contexts.Session
     Hasql.Contexts.ValueDecoder
     Hasql.Contexts.ValueEncoder
-    Hasql.Decoders.All
-    Hasql.Encoders.All
     Hasql.Errors
     Hasql.LibPq14
     Hasql.LibPq14.Ffi
