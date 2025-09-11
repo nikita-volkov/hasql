@@ -5,12 +5,12 @@ module Hasql.Decoders.All where
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
-import Hasql.Decoders.Array qualified as Array
-import Hasql.Decoders.Composite qualified as Composite
-import Hasql.Decoders.Result qualified as Result
-import Hasql.Decoders.Results qualified as Results
-import Hasql.Decoders.Row qualified as Row
-import Hasql.Decoders.Value qualified as Value
+import Hasql.Contexts.ArrayDecoder qualified as Array
+import Hasql.Contexts.CompositeDecoder qualified as Composite
+import Hasql.Contexts.ResultDecoder qualified as Result
+import Hasql.Contexts.ResultsDecoder qualified as Results
+import Hasql.Contexts.RowDecoder qualified as Row
+import Hasql.Contexts.ValueDecoder qualified as Value
 import Hasql.PostgresTypeInfo qualified as PTI
 import Hasql.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
@@ -20,7 +20,7 @@ import PostgreSQL.Binary.Range qualified as R
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (Results.Results a) deriving (Functor, Filterable)
+newtype Result a = Result (Results.ResultsDecoder a) deriving (Functor, Filterable)
 
 -- |
 -- Decode no value from the result.
@@ -96,7 +96,7 @@ rowList = foldrRows strictCons []
 -- x :: 'Row' (Maybe Int64, Text, TimeOfDay)
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
-newtype Row a = Row (Row.Row a)
+newtype Row a = Row (Row.RowDecoder a)
   deriving (Functor, Applicative, Monad, MonadFail)
 
 -- |
@@ -129,7 +129,7 @@ nullable = Nullable
 
 -- |
 -- Decoder of a value.
-newtype Value a = Value (Value.Value a)
+newtype Value a = Value (Value.ValueDecoder a)
   deriving (Functor, Filterable)
 
 type role Value representational
@@ -401,7 +401,7 @@ enum mapping = Value (Value.decoder (A.enum mapping))
 -- Lift an 'Array' decoder to a 'Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array a -> Value a
-array (Array imp) = Value (Value.Value "unknown" Nothing Nothing (Array.run imp False) (Array.run imp True))
+array (Array imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Array.run imp False) (Array.run imp True))
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -437,7 +437,7 @@ vectorArray = array . dimension GenericVector.replicateM . element
 -- Lift a 'Composite' decoder to a 'Value' decoder.
 {-# INLINEABLE composite #-}
 composite :: Composite a -> Value a
-composite (Composite imp) = Value (Value.Value "unknown" Nothing Nothing (Composite.run imp False) (Composite.run imp True))
+composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp False) (Composite.run imp True))
 
 -- * Array decoders
 
@@ -450,7 +450,7 @@ composite (Composite imp) = Value (Value.Value "unknown" Nothing Nothing (Compos
 -- x :: 'Value' [[Text]]
 -- x = 'array' ('dimension' 'replicateM' ('dimension' 'replicateM' ('element' ('nonNullable' 'text'))))
 -- @
-newtype Array a = Array (Array.Array a)
+newtype Array a = Array (Array.ArrayDecoder a)
   deriving (Functor)
 
 -- |
@@ -480,7 +480,7 @@ element = \case
 
 -- |
 -- Composable decoder of composite values (rows, records).
-newtype Composite a = Composite (Composite.Composite a)
+newtype Composite a = Composite (Composite.CompositeDecoder a)
   deriving (Functor, Applicative, Monad, MonadFail)
 
 -- |

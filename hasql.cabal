@@ -113,22 +113,22 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.PqProcedures
+    Hasql.Contexts.ArrayDecoder
+    Hasql.Contexts.ArrayEncoder
     Hasql.Contexts.Command
+    Hasql.Contexts.CompositeDecoder
+    Hasql.Contexts.ParamsEncoder
     Hasql.Contexts.Pipeline
     Hasql.Contexts.ResultConsumer
+    Hasql.Contexts.ResultDecoder
+    Hasql.Contexts.ResultsDecoder
     Hasql.Contexts.Roundtrip
+    Hasql.Contexts.RowDecoder
     Hasql.Contexts.Session
+    Hasql.Contexts.ValueDecoder
+    Hasql.Contexts.ValueEncoder
     Hasql.Decoders.All
-    Hasql.Decoders.Array
-    Hasql.Decoders.Composite
-    Hasql.Decoders.Result
-    Hasql.Decoders.Results
-    Hasql.Decoders.Row
-    Hasql.Decoders.Value
     Hasql.Encoders.All
-    Hasql.Encoders.Array
-    Hasql.Encoders.Params
-    Hasql.Encoders.Value
     Hasql.Errors
     Hasql.LibPq14
     Hasql.LibPq14.Ffi

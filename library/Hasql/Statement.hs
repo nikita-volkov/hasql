@@ -13,7 +13,6 @@ module Hasql.Statement
 where
 
 import Hasql.Decoders qualified as Decoders
-import Hasql.Decoders.All qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Prelude
 

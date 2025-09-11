@@ -1,10 +1,10 @@
 module Hasql.Contexts.Pipeline where
 
-import Hasql.Decoders.All qualified as Decoders
-import Hasql.Decoders.Result qualified as Decoders.Result
-import Hasql.Decoders.Results qualified as Decoders.Results
-import Hasql.Encoders.All qualified as Encoders
-import Hasql.Encoders.Params qualified as Encoders.Params
+import Hasql.Decoders qualified as Decoders
+import Hasql.Contexts.ResultDecoder qualified as ContextResult
+import Hasql.Contexts.ResultsDecoder qualified as ContextResults
+import Hasql.Encoders qualified as Encoders
+import Hasql.Contexts.ParamsEncoder qualified as ContextParams
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
@@ -41,13 +41,13 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
     recvPipelineSync :: ExceptT SessionError IO ()
     recvPipelineSync =
       runResultsDecoder
-        $ Decoders.Results.single Decoders.Result.pipelineSync
+        $ ContextResults.single ContextResult.pipelineSync
 
-    runResultsDecoder :: forall a. Decoders.Results.Results a -> ExceptT SessionError IO a
+    runResultsDecoder :: forall a. ContextResults.ResultsDecoder a -> ExceptT SessionError IO a
     runResultsDecoder decoder =
       ExceptT
         $ fmap (first PipelineError)
-        $ Decoders.Results.toHandler decoder connection integerDatetimes
+        $ ContextResults.toHandler decoder connection integerDatetimes
 
     runCommand :: IO Bool -> ExceptT SessionError IO ()
     runCommand action =
@@ -158,7 +158,7 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
           pure (keyRecv *> queryRecv, newCache)
           where
             (oidList, valueAndFormatList) =
-              Encoders.Params.compilePreparedStatementData encoder integerDatetimes params
+              ContextParams.compilePreparedStatementData encoder integerDatetimes params
 
             resolvePreparedStatementKey =
               case StatementCache.lookup localKey cache of
@@ -175,8 +175,8 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                     recv =
                       fmap (first commandToSessionError)
                         $ (<*)
-                        <$> Decoders.Results.toHandler (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
-                        <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
+                        <$> ContextResults.toHandler (ContextResults.single ContextResult.noResult) connection integerDatetimes
+                        <*> ContextResults.toHandler ContextResults.dropRemainders connection integerDatetimes
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
@@ -189,11 +189,11 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                 recv =
                   fmap (first commandToSessionError)
                     $ (<*)
-                    <$> Decoders.Results.toHandler decoder connection integerDatetimes
-                    <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
+                    <$> ContextResults.toHandler decoder connection integerDatetimes
+                    <*> ContextResults.toHandler ContextResults.dropRemainders connection integerDatetimes
 
         runUnprepared = do
-          sent <- Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary
+          sent <- Pq.sendQueryParams connection sql (ContextParams.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary
           if sent
             then pure (Right (recv, cache))
             else do
@@ -203,8 +203,8 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
             recv =
               fmap (first commandToSessionError)
                 $ (<*)
-                <$> Decoders.Results.toHandler decoder connection integerDatetimes
-                <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
+                <$> ContextResults.toHandler decoder connection integerDatetimes
+                <*> ContextResults.toHandler ContextResults.dropRemainders connection integerDatetimes
 
     commandToSessionError =
-      QueryError sql (Encoders.Params.renderReadable encoder params)
+      QueryError sql (ContextParams.renderReadable encoder params)

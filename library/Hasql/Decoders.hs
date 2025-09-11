@@ -2,10 +2,11 @@
 -- A DSL for declaration of result decoders.
 module Hasql.Decoders
   ( -- * Result
-    Result,
+    Result(..),
     noResult,
     rowsAffected,
     singleRow,
+    refineResult,
 
     -- ** Specialized multi-row results
     rowMaybe,

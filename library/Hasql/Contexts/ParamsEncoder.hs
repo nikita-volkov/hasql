@@ -1,19 +1,19 @@
-module Hasql.Encoders.Params where
+module Hasql.Contexts.ParamsEncoder where
 
-import Hasql.Encoders.Value qualified as C
+import Hasql.Contexts.ValueEncoder qualified as C
 import Hasql.LibPq14 qualified as A
 import Hasql.PostgresTypeInfo qualified as D
 import Hasql.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import TextBuilder qualified as E
 
-renderReadable :: Params a -> a -> [Text]
-renderReadable (Params _ _ _ printer) params =
+renderReadable :: ParamsEncoder a -> a -> [Text]
+renderReadable (ParamsEncoder _ _ _ printer) params =
   printer params
     & toList
 
-compilePreparedStatementData :: Params a -> Bool -> a -> ([A.Oid], [Maybe (ByteString, A.Format)])
-compilePreparedStatementData (Params _ columnsMetadata serializer _) integerDatetimes input =
+compilePreparedStatementData :: ParamsEncoder a -> Bool -> a -> ([A.Oid], [Maybe (ByteString, A.Format)])
+compilePreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) integerDatetimes input =
   (oidList, valueAndFormatList)
   where
     (oidList, formatList) =
@@ -23,8 +23,8 @@ compilePreparedStatementData (Params _ columnsMetadata serializer _) integerDate
         & toList
         & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
-compileUnpreparedStatementData :: Params a -> Bool -> a -> [Maybe (A.Oid, ByteString, A.Format)]
-compileUnpreparedStatementData (Params _ columnsMetadata serializer _) integerDatetimes input =
+compileUnpreparedStatementData :: ParamsEncoder a -> Bool -> a -> [Maybe (A.Oid, ByteString, A.Format)]
+compileUnpreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) integerDatetimes input =
   zipWith
     ( \(oid, format) encoding ->
         (,,) <$> pure oid <*> encoding <*> pure format
@@ -34,25 +34,25 @@ compileUnpreparedStatementData (Params _ columnsMetadata serializer _) integerDa
 
 -- |
 -- Encoder of some representation of a parameters product.
-data Params a = Params
+data ParamsEncoder a = ParamsEncoder
   { size :: Int,
     columnsMetadata :: DList (A.Oid, A.Format),
     serializer :: Bool -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
 
-instance Contravariant Params where
-  contramap fn (Params size columnsMetadata oldSerializer oldPrinter) = Params {..}
+instance Contravariant ParamsEncoder where
+  contramap fn (ParamsEncoder size columnsMetadata oldSerializer oldPrinter) = ParamsEncoder {..}
     where
       serializer idt = oldSerializer idt . fn
       printer = oldPrinter . fn
 
-instance Divisible Params where
+instance Divisible ParamsEncoder where
   divide
     divisor
-    (Params leftSize leftColumnsMetadata leftSerializer leftPrinter)
-    (Params rightSize rightColumnsMetadata rightSerializer rightPrinter) =
-      Params
+    (ParamsEncoder leftSize leftColumnsMetadata leftSerializer leftPrinter)
+    (ParamsEncoder rightSize rightColumnsMetadata rightSerializer rightPrinter) =
+      ParamsEncoder
         { size = leftSize + rightSize,
           columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
           serializer = \idt input -> case divisor input of
@@ -61,28 +61,28 @@ instance Divisible Params where
             (leftInput, rightInput) -> leftPrinter leftInput <> rightPrinter rightInput
         }
   conquer =
-    Params
+    ParamsEncoder
       { size = 0,
         columnsMetadata = mempty,
         serializer = mempty,
         printer = mempty
       }
 
-instance Semigroup (Params a) where
-  Params leftSize leftColumnsMetadata leftSerializer leftPrinter <> Params rightSize rightColumnsMetadata rightSerializer rightPrinter =
-    Params
+instance Semigroup (ParamsEncoder a) where
+  ParamsEncoder leftSize leftColumnsMetadata leftSerializer leftPrinter <> ParamsEncoder rightSize rightColumnsMetadata rightSerializer rightPrinter =
+    ParamsEncoder
       { size = leftSize + rightSize,
         columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
         serializer = \idt input -> leftSerializer idt input <> rightSerializer idt input,
         printer = \input -> leftPrinter input <> rightPrinter input
       }
 
-instance Monoid (Params a) where
+instance Monoid (ParamsEncoder a) where
   mempty = conquer
 
-value :: C.Value a -> Params a
-value (C.Value _ (Just valueOID) _ serialize print) =
-  Params
+value :: C.ValueEncoder a -> ParamsEncoder a
+value (C.ValueEncoder _ (Just valueOID) _ serialize print) =
+  ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
@@ -90,8 +90,8 @@ value (C.Value _ (Just valueOID) _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
-value (C.Value _ Nothing _ serialize print) =
-  Params
+value (C.ValueEncoder _ Nothing _ serialize print) =
+  ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
@@ -100,9 +100,9 @@ value (C.Value _ Nothing _ serialize print) =
   where
     D.OID _ pqOid format = D.ptiOID D.binaryUnknown
 
-nullableValue :: C.Value a -> Params (Maybe a)
-nullableValue (C.Value _ (Just valueOID) _ serialize print) =
-  Params
+nullableValue :: C.ValueEncoder a -> ParamsEncoder (Maybe a)
+nullableValue (C.ValueEncoder _ (Just valueOID) _ serialize print) =
+  ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
@@ -110,8 +110,8 @@ nullableValue (C.Value _ (Just valueOID) _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
-nullableValue (C.Value _ Nothing _ serialize print) =
-  Params
+nullableValue (C.ValueEncoder _ Nothing _ serialize print) =
+  ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
       serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
