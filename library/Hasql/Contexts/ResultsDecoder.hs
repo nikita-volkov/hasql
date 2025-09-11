@@ -37,8 +37,8 @@ module Hasql.Contexts.ResultsDecoder
 where
 
 import Hasql.Contexts.Command qualified as Command
-import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Contexts.ResultDecoder qualified as Result
+import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)

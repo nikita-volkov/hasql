@@ -5,7 +5,7 @@
 -- E.g., the `Array` type is an __encoder__ of arrays, not the data-structure itself.
 module Hasql.Encoders
   ( -- * Parameters product
-    Params(..),
+    Params (..),
     noParams,
     param,
 

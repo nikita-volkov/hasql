@@ -1,10 +1,10 @@
 module Hasql.Contexts.Pipeline where
 
-import Hasql.Decoders qualified as Decoders
+import Hasql.Contexts.ParamsEncoder qualified as ContextParams
 import Hasql.Contexts.ResultDecoder qualified as ContextResult
 import Hasql.Contexts.ResultsDecoder qualified as ContextResults
+import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Hasql.Contexts.ParamsEncoder qualified as ContextParams
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
