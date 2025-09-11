@@ -98,12 +98,12 @@ sql sql =
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session result
 statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decoders.Result decoder) preparable) =
-  liftInformedCommand packError roundtrip
+  liftInformedCommand packError command
   where
     packError =
       QueryError sql (Encoders.Params.renderReadable paramsEncoder input)
 
-    roundtrip usePreparedStatements integerDatetimes registry = do
+    command usePreparedStatements integerDatetimes registry = do
       registry' <-
         if usePreparedStatements && preparable
           then
