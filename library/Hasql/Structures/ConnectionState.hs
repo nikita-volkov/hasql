@@ -21,13 +21,13 @@ import Hasql.Structures.StatementCache qualified as StatementCache
 -- The internal state of a database connection.
 data ConnectionState = ConnectionState
   { -- | Whether prepared statements are enabled.
-    preparedStatements :: !Bool,
+    preparedStatements :: Bool,
     -- | Whether integer datetimes are used.
-    integerDatetimes :: !Bool,
+    integerDatetimes :: Bool,
     -- | The statement cache for prepared statements.
-    statementCache :: !StatementCache.StatementCache,
+    statementCache :: StatementCache.StatementCache,
     -- | The underlying database connection.
-    connection :: !Pq.Connection
+    connection :: Pq.Connection
   }
 
 fromConnection :: Pq.Connection -> ConnectionState

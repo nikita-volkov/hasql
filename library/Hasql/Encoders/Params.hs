@@ -35,8 +35,8 @@ compileUnpreparedStatementData (Params _ columnsMetadata serializer _) integerDa
 -- |
 -- Encoder of some representation of a parameters product.
 data Params a = Params
-  { size :: !Int,
-    columnsMetadata :: !(DList (A.Oid, A.Format)),
+  { size :: Int,
+    columnsMetadata :: DList (A.Oid, A.Format),
     serializer :: Bool -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }

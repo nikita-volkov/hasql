@@ -48,7 +48,7 @@ reset _ = StatementCache HashMap.empty 0
 -- |
 -- Local statement key.
 data LocalKey
-  = LocalKey !ByteString ![Pq.Oid]
+  = LocalKey ByteString [Pq.Oid]
   deriving (Show, Eq)
 
 instance Hashable LocalKey where
