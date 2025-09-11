@@ -1,18 +1,18 @@
-module Hasql.TestingKit.Statements.WrongDecoder where
+module TestingKit.Statements.BrokenSyntax where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingKit.Preludes.Base
+import TestingKit.Preludes.Base
 
 data Params = Params
   { start :: Int64,
     end :: Int64
   }
 
-type Result = [UUID]
+type Result = [Int64]
 
 session :: Bool -> Params -> Session.Session Result
 session prepared params =
@@ -28,7 +28,7 @@ statement =
 
 sql :: ByteString
 sql =
-  "SELECT generate_series($1, $2)"
+  "S"
 
 encoder :: Encoders.Params Params
 encoder =
@@ -40,4 +40,4 @@ encoder =
 decoder :: Decoders.Result Result
 decoder =
   Decoders.rowList
-    (Decoders.column (Decoders.nonNullable Decoders.uuid))
+    (Decoders.column (Decoders.nonNullable Decoders.int8))

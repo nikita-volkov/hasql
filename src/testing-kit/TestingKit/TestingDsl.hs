@@ -1,4 +1,4 @@
-module Hasql.TestingKit.TestingDsl
+module TestingKit.TestingDsl
   ( -- * Errors
     Error (..),
     Session.SessionError (..),
@@ -26,8 +26,8 @@ import Hasql.Connection.Setting qualified as Connection.Setting
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingKit.Constants qualified as Constants
-import Hasql.TestingKit.Preludes.Base
+import TestingKit.Constants qualified as Constants
+import TestingKit.Preludes.Base
 
 data Error
   = ConnectionError (Connection.ConnectionError)

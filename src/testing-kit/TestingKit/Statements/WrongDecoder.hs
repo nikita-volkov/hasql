@@ -1,18 +1,18 @@
-module Hasql.TestingKit.Statements.GenerateSeries where
+module TestingKit.Statements.WrongDecoder where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingKit.Preludes.Base
+import TestingKit.Preludes.Base
 
 data Params = Params
   { start :: Int64,
     end :: Int64
   }
 
-type Result = [Int64]
+type Result = [UUID]
 
 session :: Bool -> Params -> Session.Session Result
 session prepared params =
@@ -40,4 +40,4 @@ encoder =
 decoder :: Decoders.Result Result
 decoder =
   Decoders.rowList
-    (Decoders.column (Decoders.nonNullable Decoders.int8))
+    (Decoders.column (Decoders.nonNullable Decoders.uuid))

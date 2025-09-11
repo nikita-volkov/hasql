@@ -1,4 +1,4 @@
-module Hasql.TestingKit.Constants where
+module TestingKit.Constants where
 
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.Connection.Setting.Connection qualified as Setting.Connection

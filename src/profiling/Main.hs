@@ -5,7 +5,7 @@ import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
-import Hasql.TestingKit.Testcontainers qualified as Testcontainers
+import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 main :: IO ()

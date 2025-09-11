@@ -1,4 +1,4 @@
-module Hasql.TestingKit.Testcontainers where
+module TestingKit.Testcontainers where
 
 import Control.Exception
 import Hasql.Connection qualified

@@ -1,11 +1,11 @@
-module Hasql.TestingKit.Statements.BrokenSyntax where
+module TestingKit.Statements.GenerateSeries where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hasql.TestingKit.Preludes.Base
+import TestingKit.Preludes.Base
 
 data Params = Params
   { start :: Int64,
@@ -28,7 +28,7 @@ statement =
 
 sql :: ByteString
 sql =
-  "S"
+  "SELECT generate_series($1, $2)"
 
 encoder :: Encoders.Params Params
 encoder =

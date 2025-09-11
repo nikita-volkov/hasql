@@ -206,13 +206,13 @@ library testing-kit
   visibility: private
   hs-source-dirs: src/testing-kit
   exposed-modules:
-    Hasql.TestingKit.Constants
-    Hasql.TestingKit.Preludes.Base
-    Hasql.TestingKit.Statements.BrokenSyntax
-    Hasql.TestingKit.Statements.GenerateSeries
-    Hasql.TestingKit.Statements.WrongDecoder
-    Hasql.TestingKit.Testcontainers
-    Hasql.TestingKit.TestingDsl
+    TestingKit.Constants
+    TestingKit.Preludes.Base
+    TestingKit.Statements.BrokenSyntax
+    TestingKit.Statements.GenerateSeries
+    TestingKit.Statements.WrongDecoder
+    TestingKit.Testcontainers
+    TestingKit.TestingDsl
 
   build-depends:
     base,

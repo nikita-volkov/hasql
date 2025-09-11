@@ -1,4 +1,4 @@
-module Hasql.TestingKit.Preludes.Base
+module TestingKit.Preludes.Base
   ( module Exports,
   )
 where
