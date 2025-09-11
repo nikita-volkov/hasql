@@ -59,8 +59,10 @@ release (Connection connectionRef) =
 --
 -- The access to the connection is exclusive.
 withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
-withLibPQConnection (Connection connectionRef) action =
-  withMVar connectionRef (action . ConnectionState.connection)
+withLibPQConnection connection action =
+  useConnectionState connection \connectionState ->
+    (,connectionState)
+      <$> action (ConnectionState.connection connectionState)
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
