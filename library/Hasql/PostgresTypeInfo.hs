@@ -6,7 +6,7 @@ import Hasql.Prelude hiding (bool)
 -- | A Postgresql type info
 data PTI = PTI {ptiOID :: OID, ptiArrayOID :: Maybe OID}
 
--- | A Word32 and a Pq representation of an OID
+-- | A Word32 and a LibPQ representation of an OID
 data OID = OID {oidWord32 :: Word32, oidPQ :: Pq.Oid, oidFormat :: Pq.Format}
 
 mkOID :: Pq.Format -> Word32 -> OID
