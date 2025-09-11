@@ -21,6 +21,6 @@ import Hasql.Prelude
 -- Execute a sequence of operations with exclusive access to the connection.
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
-{-# DEPRECATED run "Use Hasql.Connection.use instead" #-}
+{-# DEPRECATED run "Use @Hasql.Connection.'Hasql.Connection.use'@ instead" #-}
 run :: Session a -> Connection.Connection -> IO (Either SessionError a)
 run session connection = Connection.use connection session
