@@ -15,9 +15,13 @@ module Hasql.Decoders.Result
     foldr,
 
     -- * Relations
+
+    -- ** Handler
     Handler,
     toHandler,
     fromHandler,
+
+    -- ** ResultConsumerByIdt
     ResultConsumerByIdt,
     toResultConsumerByIdt,
     fromResultConsumerByIdt,
@@ -35,45 +39,6 @@ import Hasql.Prelude hiding (foldl, foldr, many, maybe)
 newtype Result a
   = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
-
--- * Relations
-
--- ** ResultConsumerByIdt
-
-type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
-
-toResultConsumerByIdt :: Result a -> ResultConsumerByIdt a
-toResultConsumerByIdt (Result reader) idt =
-  ResultConsumer.fromHandler \result -> do
-    runExceptT (runReaderT reader (idt, result))
-
-fromResultConsumerByIdt :: ResultConsumerByIdt a -> Result a
-fromResultConsumerByIdt resultConsumerByIdt =
-  fromHandler \idt result ->
-    ResultConsumer.toHandler (resultConsumerByIdt idt) result
-
--- ** ResultConsumer
-
-type ResultConsumer a = ResultConsumer.ResultConsumer a
-
-fromResultConsumer :: ResultConsumer a -> Result a
-fromResultConsumer handler =
-  fromHandler \_idt result ->
-    ResultConsumer.toHandler handler result
-
--- ** Handler
-
-type Handler a = Bool -> Pq.Result -> IO (Either ResultError a)
-
-{-# INLINE toHandler #-}
-toHandler :: Result a -> Handler a
-toHandler (Result reader) idt result =
-  runExceptT (runReaderT reader (idt, result))
-
-fromHandler :: Handler a -> Result a
-fromHandler handler =
-  Result $ ReaderT $ \(idt, result) ->
-    ExceptT $ handler idt result
 
 -- * Construction
 
@@ -222,3 +187,42 @@ foldr step init rowDec =
       fromIntegral n
     intToRow =
       Pq.Row . fromIntegral
+
+-- * Relations
+
+-- ** ResultConsumerByIdt
+
+type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
+
+toResultConsumerByIdt :: Result a -> ResultConsumerByIdt a
+toResultConsumerByIdt (Result reader) idt =
+  ResultConsumer.fromHandler \result -> do
+    runExceptT (runReaderT reader (idt, result))
+
+fromResultConsumerByIdt :: ResultConsumerByIdt a -> Result a
+fromResultConsumerByIdt resultConsumerByIdt =
+  fromHandler \idt result ->
+    ResultConsumer.toHandler (resultConsumerByIdt idt) result
+
+-- ** ResultConsumer
+
+type ResultConsumer a = ResultConsumer.ResultConsumer a
+
+fromResultConsumer :: ResultConsumer a -> Result a
+fromResultConsumer handler =
+  fromHandler \_idt result ->
+    ResultConsumer.toHandler handler result
+
+-- ** Handler
+
+type Handler a = Bool -> Pq.Result -> IO (Either ResultError a)
+
+{-# INLINE toHandler #-}
+toHandler :: Result a -> Handler a
+toHandler (Result reader) idt result =
+  runExceptT (runReaderT reader (idt, result))
+
+fromHandler :: Handler a -> Result a
+fromHandler handler =
+  Result $ ReaderT $ \(idt, result) ->
+    ExceptT $ handler idt result
