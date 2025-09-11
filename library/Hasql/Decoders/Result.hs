@@ -1,4 +1,28 @@
-module Hasql.Decoders.Result where
+module Hasql.Decoders.Result
+  ( Result,
+
+    -- * Constructors
+    pipelineSync,
+    noResult,
+    rowsAffected,
+    checkExecStatus,
+    unexpectedResult,
+    serverError,
+    maybe,
+    single,
+    vector,
+    foldl,
+    foldr,
+
+    -- * Relations
+    Handler,
+    toHandler,
+    fromHandler,
+    ResultConsumerByIdt,
+    toResultConsumerByIdt,
+    fromResultConsumerByIdt,
+  )
+where
 
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
@@ -6,7 +30,7 @@ import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
-import Hasql.Prelude hiding (many, maybe)
+import Hasql.Prelude hiding (foldl, foldr, many, maybe)
 
 newtype Result a
   = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
@@ -18,7 +42,7 @@ newtype Result a
 
 type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
 
-toResultConsumerByIdt :: Result a -> Bool -> ResultConsumer.ResultConsumer a
+toResultConsumerByIdt :: Result a -> ResultConsumerByIdt a
 toResultConsumerByIdt (Result reader) idt =
   ResultConsumer.fromHandler \result -> do
     runExceptT (runReaderT reader (idt, result))
@@ -50,13 +74,6 @@ fromHandler :: Handler a -> Result a
 fromHandler handler =
   Result $ ReaderT $ \(idt, result) ->
     ExceptT $ handler idt result
-
--- * Execution
-
--- TODO: Get rid of by replacing with toHandler
-{-# INLINE run #-}
-run :: Result a -> Bool -> Pq.Result -> IO (Either ResultError a)
-run = toHandler
 
 -- * Construction
 

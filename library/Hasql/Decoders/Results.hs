@@ -96,7 +96,7 @@ single resultDec =
       resultMaybe <- Pq.getResult connection
       case resultMaybe of
         Just result ->
-          first ResultError <$> Result.run resultDec integerDatetimes result
+          first ResultError <$> Result.toHandler resultDec integerDatetimes result
         Nothing ->
           fmap (Left . ClientError) (Pq.errorMessage connection)
 
@@ -115,7 +115,7 @@ dropRemainders =
           loop integerDatetimes connection <* checkErrors
           where
             checkErrors =
-              ExceptT $ fmap (first ResultError) $ Result.run Result.noResult integerDatetimes result
+              ExceptT $ fmap (first ResultError) $ Result.toHandler Result.noResult integerDatetimes result
 
 refine :: (a -> Either Text b) -> Results a -> Results b
 refine refiner (Results stack) = Results
