@@ -12,3 +12,7 @@ jobs:
   check:
     uses: ./.github/workflows/check.yaml
     secrets: inherit
+
+  deploy-docs-to-pages:
+    uses: ./.github/workflows/deploy-docs-to-pages.yaml
+    secrets: inherit

@@ -36,7 +36,7 @@ compileUnpreparedStatementData (Params _ columnsMetadata serializer _) integerDa
 -- Encoder of some representation of a parameters product.
 data Params a = Params
   { size :: Int,
-    columnsMetadata :: (DList (A.Oid, A.Format)),
+    columnsMetadata :: DList (A.Oid, A.Format),
     serializer :: Bool -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
@@ -81,7 +81,7 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: C.Value a -> Params a
-value (C.Value valueOID _ serialize print) =
+value (C.Value _ (Just valueOID) _ serialize print) =
   Params
     { size = 1,
       columnsMetadata = pure (pqOid, format),
@@ -90,9 +90,18 @@ value (C.Value valueOID _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
+value (C.Value _ Nothing _ serialize print) =
+  Params
+    { size = 1,
+      columnsMetadata = pure (pqOid, format),
+      serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
+      printer = pure . E.toText . print
+    }
+  where
+    D.OID _ pqOid format = D.ptiOID D.binaryUnknown
 
 nullableValue :: C.Value a -> Params (Maybe a)
-nullableValue (C.Value valueOID _ serialize print) =
+nullableValue (C.Value _ (Just valueOID) _ serialize print) =
   Params
     { size = 1,
       columnsMetadata = pure (pqOid, format),
@@ -101,3 +110,12 @@ nullableValue (C.Value valueOID _ serialize print) =
     }
   where
     D.OID _ pqOid format = valueOID
+nullableValue (C.Value _ Nothing _ serialize print) =
+  Params
+    { size = 1,
+      columnsMetadata = pure (pqOid, format),
+      serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
+      printer = pure . maybe "null" (E.toText . print)
+    }
+  where
+    D.OID _ pqOid format = D.ptiOID D.binaryUnknown

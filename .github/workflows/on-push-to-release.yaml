@@ -29,3 +29,9 @@ jobs:
     with:
       prefix-tag-with-v: false
       docs: true
+
+  deploy-docs-to-pages:
+    needs:
+      - release
+    uses: ./.github/workflows/deploy-docs-to-pages.yaml
+    secrets: inherit

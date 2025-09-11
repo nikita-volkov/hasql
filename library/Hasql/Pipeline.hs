@@ -4,4 +4,4 @@ module Hasql.Pipeline
   )
 where
 
-import Hasql.Pipeline.Core
+import Hasql.Contexts.Pipeline

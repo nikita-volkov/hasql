@@ -5,6 +5,7 @@ import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Hasql.DecoderCompat qualified as DecoderCompat
+import Hasql.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
@@ -14,6 +15,18 @@ import Hasql.Prelude qualified as Prelude
 newtype Result a
   = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
+
+toResultConsumer :: Bool -> Result a -> ResultConsumer.ResultConsumer a
+toResultConsumer idt (Result reader) =
+  ResultConsumer.ResultConsumer \result -> do
+    runExceptT (runReaderT reader (idt, result))
+
+fromResultConsumer :: ResultConsumer.ResultConsumer a -> Result a
+fromResultConsumer (ResultConsumer.ResultConsumer handler) =
+  Result do
+    ReaderT \(_, result) ->
+      ExceptT do
+        handler result
 
 {-# INLINE run #-}
 run :: Result a -> Bool -> Pq.Result -> IO (Either ResultError a)

@@ -4,7 +4,7 @@ import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (bool)
 
 -- | A Postgresql type info
-data PTI = PTI {ptiOID :: OID, ptiArrayOID :: (Maybe OID)}
+data PTI = PTI {ptiOID :: OID, ptiArrayOID :: Maybe OID}
 
 -- | A Word32 and a LibPQ representation of an OID
 data OID = OID {oidWord32 :: Word32, oidPQ :: Pq.Oid, oidFormat :: Pq.Format}

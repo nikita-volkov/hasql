@@ -17,12 +17,10 @@
 # Unignore subtrees:
 !/.github/
 !/benchmarks/
-!/hspec/
+!/integration-tests/
 !/library/
 !/profiling/
-!/tasty/
 !/testing-kit/
-!/threads-test/
 
 # Ignore noise:
 .DS_Store

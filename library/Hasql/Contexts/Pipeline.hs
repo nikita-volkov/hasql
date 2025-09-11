@@ -1,4 +1,4 @@
-module Hasql.Pipeline.Core where
+module Hasql.Contexts.Pipeline where
 
 import Hasql.Decoders.All qualified as Decoders
 import Hasql.Decoders.Result qualified as Decoders.Result
@@ -8,18 +8,19 @@ import Hasql.Encoders.Params qualified as Encoders.Params
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
-import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 import Hasql.Statement qualified as Statement
+import Hasql.Structures.StatementCache qualified as StatementCache
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> PreparedStatementRegistry.PreparedStatementRegistry -> Bool -> IO (Either SessionError a)
-run (Pipeline sendQueriesInIO) usePreparedStatements connection registry integerDatetimes = do
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError (a, StatementCache.StatementCache))
+run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes cache = do
   runExceptT do
     enterPipelineMode
-    recvQueries <- sendQueries
+    (recvQueries, newCache) <- sendQueries
     pipelineSync
-    finallyE recvQueries do
+    result <- finallyE recvQueries do
       recvPipelineSync
       exitPipelineMode
+    pure (result, newCache)
   where
     enterPipelineMode :: ExceptT SessionError IO ()
     enterPipelineMode =
@@ -29,9 +30,9 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection registry integer
     exitPipelineMode =
       runCommand $ Pq.exitPipelineMode connection
 
-    sendQueries :: ExceptT SessionError IO (ExceptT SessionError IO a)
+    sendQueries :: ExceptT SessionError IO (ExceptT SessionError IO a, StatementCache.StatementCache)
     sendQueries =
-      fmap ExceptT $ ExceptT $ sendQueriesInIO usePreparedStatements connection registry integerDatetimes
+      fmap (\(ioResult, newCache) -> (ExceptT ioResult, newCache)) $ ExceptT $ sendQueriesInIO usePreparedStatements connection integerDatetimes cache
 
     pipelineSync :: ExceptT SessionError IO ()
     pipelineSync =
@@ -62,15 +63,15 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection registry integer
 -- Typically the buffer size is 8KB.
 --
 -- This execution mode is much more efficient than running queries directly from 'Hasql.Session.Session', because in session every statement execution involves a dedicated network roundtrip.
--- An obvious question rises then: why not execute all queries like that?
 --
+-- An obvious question rises then: why not execute all queries like that?
 -- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next.
 -- This reasoning is essentially the same as the one for the difference between 'Applicative' and 'Monad'.
 -- That\'s why 'Pipeline' does not have the 'Monad' instance.
 --
 -- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
 --
--- == __Examples__
+-- == Examples
 --
 -- === Insert-Many or Batch-Insert
 --
@@ -118,27 +119,27 @@ newtype Pipeline a
   = Pipeline
       ( Bool ->
         Pq.Connection ->
-        PreparedStatementRegistry.PreparedStatementRegistry ->
         Bool ->
-        IO (Either SessionError (IO (Either SessionError a)))
+        StatementCache.StatementCache ->
+        IO (Either SessionError (IO (Either SessionError a), StatementCache.StatementCache))
       )
   deriving (Functor)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline (\_ _ _ _ -> pure (Right (pure (Right a))))
+    Pipeline (\_ _ _ cache -> pure (Right (pure (Right a), cache)))
 
   Pipeline lSend <*> Pipeline rSend =
-    Pipeline \usePreparedStatements conn reg integerDatetimes ->
-      lSend usePreparedStatements conn reg integerDatetimes >>= \case
+    Pipeline \usePreparedStatements conn integerDatetimes cache ->
+      lSend usePreparedStatements conn integerDatetimes cache >>= \case
         Left sendErr ->
           pure (Left sendErr)
-        Right lRecv ->
-          rSend usePreparedStatements conn reg integerDatetimes <&> \case
+        Right (lRecv, cache1) ->
+          rSend usePreparedStatements conn integerDatetimes cache1 <&> \case
             Left sendErr ->
               Left sendErr
-            Right rRecv ->
-              Right (liftA2 (<*>) lRecv rRecv)
+            Right (rRecv, cache2) ->
+              Right (liftA2 (<*>) lRecv rRecv, cache2)
 
 -- |
 -- Execute a statement in pipelining mode.
@@ -146,38 +147,39 @@ statement :: params -> Statement.Statement params result -> Pipeline result
 statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Result decoder) preparable) =
   Pipeline run
   where
-    run usePreparedStatements connection registry integerDatetimes =
+    run usePreparedStatements connection integerDatetimes cache =
       if usePreparedStatements && preparable
         then runPrepared
         else runUnprepared
       where
         runPrepared = runExceptT do
-          (key, keyRecv) <- ExceptT resolvePreparedStatementKey
+          (key, keyRecv, newCache) <- ExceptT resolvePreparedStatementKey
           queryRecv <- ExceptT (sendQuery key)
-          pure (keyRecv *> queryRecv)
+          pure (keyRecv *> queryRecv, newCache)
           where
             (oidList, valueAndFormatList) =
               Encoders.Params.compilePreparedStatementData encoder integerDatetimes params
 
             resolvePreparedStatementKey =
-              PreparedStatementRegistry.update localKey onNewRemoteKey onOldRemoteKey registry
-              where
-                localKey =
-                  PreparedStatementRegistry.LocalKey sql oidList
-                onNewRemoteKey key =
-                  do
-                    sent <- Pq.sendPrepare connection key sql (mfilter (not . null) (Just oidList))
-                    if sent
-                      then pure (True, Right (key, recv))
-                      else (False,) . Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
+              case StatementCache.lookup localKey cache of
+                Just remoteKey -> pure (Right (remoteKey, pure (Right ()), cache))
+                Nothing -> do
+                  let (remoteKey, newCache) = StatementCache.insert localKey cache
+                  sent <- Pq.sendPrepare connection remoteKey sql (mfilter (not . null) (Just oidList))
+                  if sent
+                    then pure (Right (remoteKey, recv, newCache))
+                    else do
+                      errMsg <- Pq.errorMessage connection
+                      pure (Left (commandToSessionError (ClientError errMsg)))
                   where
                     recv =
                       fmap (first commandToSessionError)
                         $ (<*)
                         <$> Decoders.Results.run (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
                         <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
-                onOldRemoteKey key =
-                  pure (Right (key, pure (Right ())))
+              where
+                localKey =
+                  StatementCache.LocalKey sql oidList
 
             sendQuery key =
               Pq.sendQueryPrepared connection key valueAndFormatList Pq.Binary >>= \case
@@ -190,10 +192,13 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                     <$> Decoders.Results.run decoder connection integerDatetimes
                     <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
 
-        runUnprepared =
-          Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary >>= \case
-            False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
-            True -> pure (Right recv)
+        runUnprepared = do
+          sent <- Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary
+          if sent
+            then pure (Right (recv, cache))
+            else do
+              errMsg <- Pq.errorMessage connection
+              pure (Left (commandToSessionError (ClientError errMsg)))
           where
             recv =
               fmap (first commandToSessionError)
