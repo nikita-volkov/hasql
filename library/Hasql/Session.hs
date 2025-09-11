@@ -3,7 +3,7 @@ module Hasql.Session
     sql,
     statement,
     pipeline,
-    onPqConnection,
+    onLibpqConnection,
 
     -- * Execution
     run,

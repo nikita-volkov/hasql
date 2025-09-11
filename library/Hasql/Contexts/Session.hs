@@ -18,7 +18,7 @@ import Hasql.Structures.StatementCache qualified as StatementCache
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.
 --
 -- Construct sessions using helpers in this module such as
--- 'statement', 'pipeline' and 'sql', or use 'onPqConnection' for a low-level
+-- 'statement', 'pipeline' and 'sql', or use 'onLibpqConnection' for a low-level
 -- escape hatch.
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
@@ -145,8 +145,8 @@ pipeline pipeline = Session \connectionState -> do
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
 -- Throwing exceptions is okay. It will lead to the connection getting reset.
-onPqConnection :: (Pq.Connection -> IO (Either SessionError a, Pq.Connection)) -> Session a
-onPqConnection f = Session \connectionState -> do
+onLibpqConnection :: (Pq.Connection -> IO (Either SessionError a, Pq.Connection)) -> Session a
+onLibpqConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection
   let newState = ConnectionState.setConnection newConnection connectionState

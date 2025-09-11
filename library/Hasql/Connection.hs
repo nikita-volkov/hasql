@@ -66,7 +66,7 @@ release (Connection connectionRef) =
 -- Execute an operation on the raw @libpq@ 'Pq.Connection'.
 --
 -- The access to the connection is exclusive.
-{-# DEPRECATED withLibPQConnection "Use @Hasql.Session.'Hasql.Session.onPqConnection'@ instead" #-}
+{-# DEPRECATED withLibPQConnection "Use @Hasql.Session.'Hasql.Session.onLibpqConnection'@ instead" #-}
 withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
 withLibPQConnection connection action =
   useConnectionState connection \connectionState ->
