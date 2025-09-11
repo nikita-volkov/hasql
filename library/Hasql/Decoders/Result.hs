@@ -98,7 +98,7 @@ maybe rowDec =
           1 -> do
             maxCols <- Pq.nfields result
             let fromRowError (col, err) = RowError 0 col err
-            fmap (fmap Just . first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (fmap Just . first fromRowError) $ Row.run rowDec result 0 maxCols integerDatetimes
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
@@ -117,7 +117,7 @@ single rowDec =
           1 -> do
             maxCols <- Pq.nfields result
             let fromRowError (col, err) = RowError 0 col err
-            fmap (first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
+            fmap (first fromRowError) $ Row.run rowDec result 0 maxCols integerDatetimes
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
@@ -136,7 +136,7 @@ vector rowDec =
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
+          rowResult <- Row.run rowDec result (intToRow rowIndex) maxCols integerDatetimes
           case rowResult of
             Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
@@ -166,7 +166,7 @@ foldl step init rowDec =
             accRef <- newIORef init
             failureRef <- newIORef Nothing
             forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-              rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
+              rowResult <- Row.run rowDec result (intToRow rowIndex) maxCols integerDatetimes
               case rowResult of
                 Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
                 Right !x -> modifyIORef' accRef (\acc -> step acc x)
@@ -193,7 +193,7 @@ foldr step init rowDec =
         accRef <- newIORef init
         failureRef <- newIORef Nothing
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.run rowDec (result, intToRow rowIndex, maxCols, integerDatetimes)
+          rowResult <- Row.run rowDec result (intToRow rowIndex) maxCols integerDatetimes
           case rowResult of
             Left !(!colIndex, !x) -> writeIORef failureRef (Just (RowError rowIndex colIndex x))
             Right !x -> modifyIORef accRef (\acc -> step x acc)

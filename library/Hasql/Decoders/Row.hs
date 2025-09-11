@@ -25,8 +25,8 @@ data Env
 -- * Functions
 
 {-# INLINE run #-}
-run :: Row a -> (Pq.Result, Pq.Row, Pq.Column, Bool) -> IO (Either (Int, RowError) a)
-run (Row f) (result, row, columnsAmount, integerDatetimes) = do
+run :: Row a -> Pq.Result -> Pq.Row -> Pq.Column -> Bool -> IO (Either (Int, RowError) a)
+run (Row f) result row columnsAmount integerDatetimes = do
   columnRef <- newIORef 0
   let env = Env result row columnsAmount integerDatetimes columnRef
   f env >>= \case
