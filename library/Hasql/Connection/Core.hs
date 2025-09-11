@@ -5,7 +5,7 @@ module Hasql.Connection.Core where
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.IO qualified as IO
-import Hasql.LibPq14 qualified as LibPQ
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.PreparedStatementRegistry qualified as PreparedStatementRegistry
 
@@ -16,7 +16,7 @@ data Connection
       -- | Whether prepared statements are allowed.
       !Bool
       -- | Lower level libpq connection.
-      !(MVar LibPQ.Connection)
+      !(MVar Pq.Connection)
       -- | Integer datetimes.
       !Bool
       -- | Prepared statement registry.
@@ -50,14 +50,14 @@ acquire settings =
 release :: Connection -> IO ()
 release (Connection _ pqConnectionRef _ _) =
   mask_ $ do
-    nullConnection <- LibPQ.newNullConnection
+    nullConnection <- Pq.newNullConnection
     pqConnection <- swapMVar pqConnectionRef nullConnection
     IO.releaseConnection pqConnection
 
 -- |
--- Execute an operation on the raw @libpq@ 'LibPQ.Connection'.
+-- Execute an operation on the raw @libpq@ 'Pq.Connection'.
 --
 -- The access to the connection is exclusive.
-withLibPQConnection :: Connection -> (LibPQ.Connection -> IO a) -> IO a
+withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
 withLibPQConnection (Connection _ pqConnectionRef _ _) =
   withMVar pqConnectionRef

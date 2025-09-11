@@ -7,39 +7,39 @@ import Data.Vector.Mutable qualified as MutableVector
 import Hasql.DecoderCompat qualified as DecoderCompat
 import Hasql.Decoders.Row qualified as Row
 import Hasql.Errors
-import Hasql.LibPq14 qualified as LibPQ
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (many, maybe)
 import Hasql.Prelude qualified as Prelude
 
 newtype Result a
-  = Result (ReaderT (Bool, LibPQ.Result) (ExceptT ResultError IO) a)
+  = Result (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
 
 {-# INLINE run #-}
-run :: Result a -> Bool -> LibPQ.Result -> IO (Either ResultError a)
+run :: Result a -> Bool -> Pq.Result -> IO (Either ResultError a)
 run (Result reader) idt result =
   runExceptT (runReaderT reader (idt, result))
 
 {-# INLINE pipelineSync #-}
 pipelineSync :: Result ()
 pipelineSync =
-  checkExecStatus [LibPQ.PipelineSync]
+  checkExecStatus [Pq.PipelineSync]
 
 {-# INLINE noResult #-}
 noResult :: Result ()
 noResult =
-  checkExecStatus [LibPQ.CommandOk, LibPQ.TuplesOk]
+  checkExecStatus [Pq.CommandOk, Pq.TuplesOk]
 
 {-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
   do
-    checkExecStatus [LibPQ.CommandOk]
+    checkExecStatus [Pq.CommandOk]
     Result
       $ ReaderT
       $ \(_, result) ->
         ExceptT
-          $ LibPQ.cmdTuples result
+          $ Pq.cmdTuples result
           & fmap cmdTuplesReader
   where
     cmdTuplesReader =
@@ -56,17 +56,17 @@ rowsAffected =
             $ Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) bytes
 
 {-# INLINE checkExecStatus #-}
-checkExecStatus :: [LibPQ.ExecStatus] -> Result ()
+checkExecStatus :: [Pq.ExecStatus] -> Result ()
 checkExecStatus expectedList =
   {-# SCC "checkExecStatus" #-}
   do
-    status <- Result $ ReaderT $ \(_, result) -> lift $ LibPQ.resultStatus result
+    status <- Result $ ReaderT $ \(_, result) -> lift $ Pq.resultStatus result
     unless (elem status expectedList) $ do
       case status of
-        LibPQ.BadResponse -> serverError
-        LibPQ.NonfatalError -> serverError
-        LibPQ.FatalError -> serverError
-        LibPQ.EmptyQuery -> return ()
+        Pq.BadResponse -> serverError
+        Pq.NonfatalError -> serverError
+        Pq.FatalError -> serverError
+        Pq.EmptyQuery -> return ()
         _ -> unexpectedResult $ "Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList)
 
 unexpectedResult :: Text -> Result a
@@ -81,16 +81,16 @@ serverError =
     $ \(_, result) -> ExceptT $ do
       code <-
         fmap fold
-          $ LibPQ.resultErrorField result LibPQ.DiagSqlstate
+          $ Pq.resultErrorField result Pq.DiagSqlstate
       message <-
         fmap fold
-          $ LibPQ.resultErrorField result LibPQ.DiagMessagePrimary
+          $ Pq.resultErrorField result Pq.DiagMessagePrimary
       detail <-
-        LibPQ.resultErrorField result LibPQ.DiagMessageDetail
+        Pq.resultErrorField result Pq.DiagMessageDetail
       hint <-
-        LibPQ.resultErrorField result LibPQ.DiagMessageHint
+        Pq.resultErrorField result Pq.DiagMessageHint
       position <-
-        parsePosition <$> LibPQ.resultErrorField result LibPQ.DiagStatementPosition
+        parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
       pure $ Left $ ServerError code message detail hint position
   where
     parsePosition = \case
@@ -106,10 +106,10 @@ checkColumnTypes =
   Result
     $ ReaderT
     $ \(_, result) -> ExceptT $ do
-      maxCols <- LibPQ.nfields result
+      maxCols <- Pq.nfields result
       -- Get the actual column types and analyze them for potential issues
       actualOids <- forM [0 .. maxCols - 1] $ \col -> do
-        LibPQ.Oid oid <- LibPQ.ftype result col
+        Pq.Oid oid <- Pq.ftype result col
         pure oid
 
       -- Analyze the OID pattern for potential decoder mismatches
@@ -130,52 +130,52 @@ checkColumnTypes =
 maybe :: Row.Row a -> Result (Maybe a)
 maybe rowDec =
   do
-    checkExecStatus [LibPQ.TuplesOk]
+    checkExecStatus [Pq.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
-        maxRows <- LibPQ.ntuples result
+        maxRows <- Pq.ntuples result
         case maxRows of
           0 -> return (Right Nothing)
           1 -> do
-            maxCols <- LibPQ.nfields result
+            maxCols <- Pq.nfields result
             let fromRowError (col, err) = RowError 0 col err
             fmap (fmap Just . first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
-    rowToInt (LibPQ.Row n) =
+    rowToInt (Pq.Row n) =
       fromIntegral n
 
 {-# INLINE single #-}
 single :: Row.Row a -> Result a
 single rowDec =
   do
-    checkExecStatus [LibPQ.TuplesOk]
+    checkExecStatus [Pq.TuplesOk]
     checkColumnTypes
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
-        maxRows <- LibPQ.ntuples result
+        maxRows <- Pq.ntuples result
         case maxRows of
           1 -> do
-            maxCols <- LibPQ.nfields result
+            maxCols <- Pq.nfields result
             let fromRowError (col, err) = RowError 0 col err
             fmap (first fromRowError) $ Row.run rowDec (result, 0, maxCols, integerDatetimes)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
-    rowToInt (LibPQ.Row n) =
+    rowToInt (Pq.Row n) =
       fromIntegral n
 
 {-# INLINE vector #-}
 vector :: Row.Row a -> Result (Vector a)
 vector rowDec =
   do
-    checkExecStatus [LibPQ.TuplesOk]
+    checkExecStatus [Pq.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
-        maxRows <- LibPQ.ntuples result
-        maxCols <- LibPQ.nfields result
+        maxRows <- Pq.ntuples result
+        maxCols <- Pq.nfields result
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
@@ -187,25 +187,25 @@ vector rowDec =
           Nothing -> Right <$> Vector.unsafeFreeze mvector
           Just x -> pure (Left x)
   where
-    rowToInt (LibPQ.Row n) =
+    rowToInt (Pq.Row n) =
       fromIntegral n
     intToRow =
-      LibPQ.Row . fromIntegral
+      Pq.Row . fromIntegral
 
 {-# INLINE foldl #-}
 foldl :: (a -> b -> a) -> a -> Row.Row b -> Result a
 foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
-    checkExecStatus [LibPQ.TuplesOk]
+    checkExecStatus [Pq.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) ->
         ExceptT
           $ {-# SCC "traversal" #-}
           do
-            maxRows <- LibPQ.ntuples result
-            maxCols <- LibPQ.nfields result
+            maxRows <- Pq.ntuples result
+            maxCols <- Pq.nfields result
             accRef <- newIORef init
             failureRef <- newIORef Nothing
             forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
@@ -217,22 +217,22 @@ foldl step init rowDec =
               Nothing -> Right <$> readIORef accRef
               Just x -> pure (Left x)
   where
-    rowToInt (LibPQ.Row n) =
+    rowToInt (Pq.Row n) =
       fromIntegral n
     intToRow =
-      LibPQ.Row . fromIntegral
+      Pq.Row . fromIntegral
 
 {-# INLINE foldr #-}
 foldr :: (b -> a -> a) -> a -> Row.Row b -> Result a
 foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
-    checkExecStatus [LibPQ.TuplesOk]
+    checkExecStatus [Pq.TuplesOk]
     Result
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
-        maxRows <- LibPQ.ntuples result
-        maxCols <- LibPQ.nfields result
+        maxRows <- Pq.ntuples result
+        maxCols <- Pq.nfields result
         accRef <- newIORef init
         failureRef <- newIORef Nothing
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
@@ -244,7 +244,7 @@ foldr step init rowDec =
           Nothing -> Right <$> readIORef accRef
           Just x -> pure (Left x)
   where
-    rowToInt (LibPQ.Row n) =
+    rowToInt (Pq.Row n) =
       fromIntegral n
     intToRow =
-      LibPQ.Row . fromIntegral
+      Pq.Row . fromIntegral

@@ -5,7 +5,7 @@ import Data.Text qualified as Text
 import Hasql.DecoderCompat qualified as DecoderCompat
 import Hasql.Decoders.Value qualified as Value
 import Hasql.Errors
-import Hasql.LibPq14 qualified as LibPQ
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude hiding (error)
 import PostgreSQL.Binary.Decoding qualified as A
 
@@ -17,18 +17,18 @@ instance MonadFail Row where
   fail = error . ValueError . fromString
 
 data Env
-  = Env !LibPQ.Result !LibPQ.Row !LibPQ.Column !Bool !(IORef LibPQ.Column)
+  = Env !Pq.Result !Pq.Row !Pq.Column !Bool !(IORef Pq.Column)
 
 -- * Functions
 
 {-# INLINE run #-}
-run :: Row a -> (LibPQ.Result, LibPQ.Row, LibPQ.Column, Bool) -> IO (Either (Int, RowError) a)
+run :: Row a -> (Pq.Result, Pq.Row, Pq.Column, Bool) -> IO (Either (Int, RowError) a)
 run (Row impl) (result, row, columnsAmount, integerDatetimes) =
   do
     columnRef <- newIORef 0
     runExceptT (runReaderT impl (Env result row columnsAmount integerDatetimes columnRef)) >>= \case
       Left e -> do
-        LibPQ.Col col <- readIORef columnRef
+        Pq.Col col <- readIORef columnRef
         -- -1 because succ is applied before the error is returned
         pure $ Left (fromIntegral col - 1, e)
       Right x -> pure $ Right x
@@ -52,9 +52,9 @@ value valueDec =
       if col < columnsAmount
         then do
           -- Get the actual column type for better error reporting
-          LibPQ.Oid actualOidRaw <- LibPQ.ftype result col
+          Pq.Oid actualOidRaw <- Pq.ftype result col
           let actualOid = fromIntegral actualOidRaw
-          valueMaybe <- {-# SCC "getvalue'" #-} LibPQ.getvalue' result row col
+          valueMaybe <- {-# SCC "getvalue'" #-} Pq.getvalue' result row col
           pure
             $ case valueMaybe of
               Nothing ->

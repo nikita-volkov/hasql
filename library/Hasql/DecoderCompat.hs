@@ -2,7 +2,7 @@
 -- Utilities for tracking expected column types in decoders
 module Hasql.DecoderCompat where
 
-import Hasql.LibPq14 qualified as LibPQ
+import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 
 -- | Map common PostgreSQL type OIDs to their names for error messages
