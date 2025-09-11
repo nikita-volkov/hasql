@@ -113,7 +113,6 @@ library
     Hasql.Connection.Config
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
-    Hasql.Connection.Core
     Hasql.Contexts.Command
     Hasql.Contexts.Pipeline
     Hasql.Contexts.ResultConsumer

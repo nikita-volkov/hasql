@@ -13,7 +13,7 @@ module Hasql.Session
   )
 where
 
-import Hasql.Connection.Core qualified as Connection
+import Hasql.Connection qualified as Connection
 import Hasql.Contexts.Session hiding (run)
 import Hasql.Errors
 import Hasql.Prelude
