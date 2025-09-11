@@ -5,6 +5,7 @@ module Hasql.Structures.ConnectionState
     fromConnection,
     setIntegerDatetimes,
     setPreparedStatements,
+    setStatementCache,
     mapStatementCache,
     traverseStatementCache,
     resetPreparedStatementsCache,
@@ -44,6 +45,10 @@ setIntegerDatetimes integerDatetimes connectionState =
 setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
 setPreparedStatements preparedStatements connectionState =
   connectionState {preparedStatements = preparedStatements}
+
+setStatementCache :: StatementCache.StatementCache -> ConnectionState -> ConnectionState
+setStatementCache statementCache connectionState =
+  connectionState {statementCache = statementCache}
 
 mapStatementCache ::
   (StatementCache.StatementCache -> StatementCache.StatementCache) ->

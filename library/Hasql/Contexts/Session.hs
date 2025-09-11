@@ -115,5 +115,5 @@ pipeline pipeline = Session \connectionState -> do
   case pipelineResult of
     Left err -> pure (Left err, connectionState)
     Right (result, newCache) ->
-      let newState = connectionState {ConnectionState.statementCache = newCache}
+      let newState = ConnectionState.setStatementCache newCache connectionState
        in pure (Right result, newState)
