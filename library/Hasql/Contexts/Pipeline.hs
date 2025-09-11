@@ -47,7 +47,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
     runResultsDecoder decoder =
       ExceptT
         $ fmap (first PipelineError)
-        $ Decoders.Results.run decoder connection integerDatetimes
+        $ Decoders.Results.toHandler decoder connection integerDatetimes
 
     runCommand :: IO Bool -> ExceptT SessionError IO ()
     runCommand action =
@@ -175,8 +175,8 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                     recv =
                       fmap (first commandToSessionError)
                         $ (<*)
-                        <$> Decoders.Results.run (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
-                        <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
+                        <$> Decoders.Results.toHandler (Decoders.Results.single Decoders.Result.noResult) connection integerDatetimes
+                        <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
@@ -189,8 +189,8 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
                 recv =
                   fmap (first commandToSessionError)
                     $ (<*)
-                    <$> Decoders.Results.run decoder connection integerDatetimes
-                    <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
+                    <$> Decoders.Results.toHandler decoder connection integerDatetimes
+                    <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
 
         runUnprepared = do
           sent <- Pq.sendQueryParams connection sql (Encoders.Params.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary
@@ -203,8 +203,8 @@ statement params (Statement.Statement sql (Encoders.Params encoder) (Decoders.Re
             recv =
               fmap (first commandToSessionError)
                 $ (<*)
-                <$> Decoders.Results.run decoder connection integerDatetimes
-                <*> Decoders.Results.run Decoders.Results.dropRemainders connection integerDatetimes
+                <$> Decoders.Results.toHandler decoder connection integerDatetimes
+                <*> Decoders.Results.toHandler Decoders.Results.dropRemainders connection integerDatetimes
 
     commandToSessionError =
       QueryError sql (Encoders.Params.renderReadable encoder params)

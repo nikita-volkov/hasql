@@ -27,21 +27,54 @@ instance Filterable Results where
   mapMaybe fn =
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
 
-toCommand :: Bool -> Results a -> Command.Command a
-toCommand idt (Results stack) =
+-- * Relations
+
+-- ** Handler
+
+type Handler a = Pq.Connection -> Bool -> IO (Either CommandError a)
+
+toHandler :: Results a -> (Pq.Connection -> Bool -> IO (Either CommandError a))
+toHandler (Results stack) =
+  \connection idt ->
+    runExceptT (runReaderT stack (idt, connection))
+
+-- | Construct from a handler function.
+fromHandler :: (Pq.Connection -> Bool -> IO (Either CommandError a)) -> Results a
+fromHandler handler =
+  Results $ ReaderT $ \(integerDatetimes, connection) ->
+    ExceptT $ handler connection integerDatetimes
+
+-- ** CommandByIdt
+
+type CommandByIdt a = Bool -> Command.Command a
+
+toCommandByIdt :: Results a -> CommandByIdt a
+toCommandByIdt (Results stack) idt =
   Command.Command \connection -> do
     runExceptT (runReaderT stack (idt, connection))
 
-toRoundtrip :: Bool -> Results a -> Roundtrip.Roundtrip a
-toRoundtrip idt (Results stack) =
+fromCommandByIdt :: CommandByIdt a -> Results a
+fromCommandByIdt commandByIdt = fromHandler \connection idt ->
+  let (Command.Command handler) = commandByIdt idt
+   in handler connection
+
+-- ** AlternativeCommandsByIdt
+
+fromAlternativeCommandsByIdt :: Command.Command a -> Command.Command a -> Results a
+fromAlternativeCommandsByIdt true false =
+  fromCommandByIdt (bool false true)
+
+-- ** Roundtrip
+
+type RoundtripByIdt a = Bool -> Roundtrip.Roundtrip a
+
+toRoundtripByIdt :: Results a -> RoundtripByIdt a
+toRoundtripByIdt (Results stack) idt =
   Roundtrip.Roundtrip \connection -> do
     pure do
       runExceptT (runReaderT stack (idt, connection))
 
-{-# INLINE run #-}
-run :: Results a -> Pq.Connection -> Bool -> IO (Either CommandError a)
-run (Results stack) conn idt =
-  runExceptT (runReaderT stack (idt, conn))
+-- * Construction
 
 {-# INLINE clientError #-}
 clientError :: Results a

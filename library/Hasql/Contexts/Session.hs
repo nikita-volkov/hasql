@@ -114,7 +114,7 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
              in do
                   Command.sendQueryParams sql paramsData
                   pure registry
-      result <- ResultsDecoders.toCommand integerDatetimes decoder
+      result <- ResultsDecoders.toCommandByIdt decoder integerDatetimes
       Command.drainResults
       pure (result, registry')
 
