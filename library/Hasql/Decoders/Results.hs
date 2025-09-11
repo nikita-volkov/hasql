@@ -8,7 +8,34 @@
 -- with the help of "Applicative" and "Monad",
 --
 -- * Row-by-row fetching.
-module Hasql.Decoders.Results where
+module Hasql.Decoders.Results
+  ( Results,
+
+    -- * Refinement
+    refine,
+
+    -- * Constructors
+    clientError,
+    single,
+    dropRemainders,
+
+    -- * Relations
+
+    -- ** Handler
+    Handler,
+    toHandler,
+    fromHandler,
+
+    -- ** CommandByIdt
+    CommandByIdt,
+    toCommandByIdt,
+    fromCommandByIdt,
+
+    -- ** RoundtripByIdt
+    RoundtripByIdt,
+    toRoundtripByIdt,
+  )
+where
 
 import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
@@ -57,12 +84,6 @@ fromCommandByIdt :: CommandByIdt a -> Results a
 fromCommandByIdt commandByIdt = fromHandler \connection idt ->
   let (Command.Command handler) = commandByIdt idt
    in handler connection
-
--- ** AlternativeCommandsByIdt
-
-fromAlternativeCommandsByIdt :: Command.Command a -> Command.Command a -> Results a
-fromAlternativeCommandsByIdt true false =
-  fromCommandByIdt (bool false true)
 
 -- ** Roundtrip
 
