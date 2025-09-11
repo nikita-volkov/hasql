@@ -4,9 +4,9 @@ import Hasql.Contexts.Command qualified as Command
 import Hasql.Contexts.Pipeline qualified as Pipeline
 import Hasql.Contexts.Roundtrip qualified as Roundtrip
 import Hasql.Decoders qualified as Decoders
-import Hasql.Contexts.ResultsDecoder qualified as ResultsDecoders
+import Hasql.Contexts.ResultsDecoder qualified as ContextResults
 import Hasql.Encoders qualified as Encoders
-import Hasql.Contexts.ParamsEncoder qualified as Encoders.Params
+import Hasql.Contexts.ParamsEncoder qualified as ContextParams
 import Hasql.Errors
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
@@ -101,20 +101,20 @@ statement input (Statement.Statement sql (Encoders.Params paramsEncoder) (Decode
   liftInformedCommand packError command
   where
     packError =
-      QueryError sql (Encoders.Params.renderReadable paramsEncoder input)
+      QueryError sql (ContextParams.renderReadable paramsEncoder input)
 
     command usePreparedStatements integerDatetimes registry = do
       registry' <-
         if usePreparedStatements && preparable
           then
-            let (oidList, valueAndFormatList) = Encoders.Params.compilePreparedStatementData paramsEncoder integerDatetimes input
+            let (oidList, valueAndFormatList) = ContextParams.compilePreparedStatementData paramsEncoder integerDatetimes input
              in Command.prepareWithRegistry sql oidList valueAndFormatList registry
           else
-            let paramsData = Encoders.Params.compileUnpreparedStatementData paramsEncoder integerDatetimes input
+            let paramsData = ContextParams.compileUnpreparedStatementData paramsEncoder integerDatetimes input
              in do
                   Command.sendQueryParams sql paramsData
                   pure registry
-      result <- ResultsDecoders.toCommandByIdt decoder integerDatetimes
+      result <- ContextResults.toCommandByIdt decoder integerDatetimes
       Command.drainResults
       pure (result, registry')
 

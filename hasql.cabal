@@ -128,16 +128,7 @@ library
     Hasql.Contexts.ValueDecoder
     Hasql.Contexts.ValueEncoder
     Hasql.Decoders.All
-    Hasql.Decoders.Array
-    Hasql.Decoders.Composite
-    Hasql.Decoders.Result
-    Hasql.Decoders.Results
-    Hasql.Decoders.Row
-    Hasql.Decoders.Value
     Hasql.Encoders.All
-    Hasql.Encoders.Array
-    Hasql.Encoders.Params
-    Hasql.Encoders.Value
     Hasql.Errors
     Hasql.LibPq14
     Hasql.LibPq14.Ffi

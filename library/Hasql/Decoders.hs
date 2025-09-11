@@ -2,7 +2,7 @@
 -- A DSL for declaration of result decoders.
 module Hasql.Decoders
   ( -- * Result
-    Result,
+    Result(..),
     noResult,
     rowsAffected,
     singleRow,
