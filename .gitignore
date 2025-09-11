@@ -16,11 +16,7 @@
 
 # Unignore subtrees:
 !/.github/
-!/benchmarks/
-!/integration-tests/
-!/library/
-!/profiling/
-!/testing-kit/
+!/src/
 
 # Ignore noise:
 .DS_Store

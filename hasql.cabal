@@ -96,7 +96,7 @@ common test
 
 library
   import: base
-  hs-source-dirs: library
+  hs-source-dirs: src/library
   exposed-modules:
     Hasql.Connection
     Hasql.Connection.Setting
@@ -164,7 +164,7 @@ library
 library testing-kit
   import: base
   visibility: private
-  hs-source-dirs: testing-kit
+  hs-source-dirs: src/testing-kit
   exposed-modules:
     Hasql.TestingKit.Constants
     Hasql.TestingKit.Preludes.Base
@@ -185,7 +185,7 @@ library testing-kit
 benchmark benchmarks
   import: executable
   type: exitcode-stdio-1.0
-  hs-source-dirs: benchmarks
+  hs-source-dirs: src/benchmarks
   main-is: Main.hs
   build-depends:
     criterion >=1.6 && <2,
@@ -195,7 +195,7 @@ benchmark benchmarks
 test-suite profiling
   import: base
   type: exitcode-stdio-1.0
-  hs-source-dirs: profiling
+  hs-source-dirs: src/profiling
   main-is: Main.hs
   ghc-options:
     -O2
@@ -210,7 +210,7 @@ test-suite profiling
 test-suite integration-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs: integration-tests
+  hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
     Hasql.ConcurrencySpec
