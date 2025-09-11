@@ -71,7 +71,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
 --
 -- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
 --
--- == __Examples__
+-- == Examples
 --
 -- === Insert-Many or Batch-Insert
 --
