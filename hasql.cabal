@@ -109,10 +109,10 @@ library
     Hasql.Statement
 
   other-modules:
-    Hasql.Commands
     Hasql.Connection.Config
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
+    Hasql.Connection.PqProcedures
     Hasql.Contexts.Command
     Hasql.Contexts.Pipeline
     Hasql.Contexts.ResultConsumer
@@ -130,7 +130,6 @@ library
     Hasql.Encoders.Params
     Hasql.Encoders.Value
     Hasql.Errors
-    Hasql.IO
     Hasql.LibPq14
     Hasql.LibPq14.Ffi
     Hasql.LibPq14.Mappings

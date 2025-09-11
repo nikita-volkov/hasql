@@ -1,20 +1,7 @@
--- |
--- An API of low-level IO operations.
-module Hasql.IO where
+module Hasql.Connection.PqProcedures where
 
-import Hasql.Commands qualified as Commands
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
-
-{-# INLINE acquireConnection #-}
-acquireConnection :: ByteString -> IO Pq.Connection
-acquireConnection =
-  Pq.connectdb
-
-{-# INLINE releaseConnection #-}
-releaseConnection :: Pq.Connection -> IO ()
-releaseConnection connection =
-  Pq.finish connection
 
 {-# INLINE checkConnectionStatus #-}
 checkConnectionStatus :: Pq.Connection -> IO (Maybe (Maybe ByteString))
@@ -42,4 +29,8 @@ getIntegerDatetimes c =
 {-# INLINE initConnection #-}
 initConnection :: Pq.Connection -> IO ()
 initConnection c =
-  void $ Pq.exec c (Commands.asBytes (Commands.setEncodersToUTF8 <> Commands.setMinClientMessagesToWarning))
+  void (Pq.exec c sql)
+  where
+    sql =
+      "SET client_encoding = 'UTF8';\n\
+      \SET client_min_messages TO WARNING;"

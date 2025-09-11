@@ -11,10 +11,10 @@ module Hasql.Connection
 where
 
 import Hasql.Connection.Config qualified as Config
+import Hasql.Connection.PqProcedures qualified as PqProcedures
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.Contexts.Session qualified as Session
 import Hasql.Errors
-import Hasql.IO qualified as IO
 import Hasql.LibPq14 qualified as Pq
 import Hasql.Prelude
 import Hasql.Structures.ConnectionState qualified as ConnectionState
@@ -38,10 +38,10 @@ acquire ::
 acquire settings =
   {-# SCC "acquire" #-}
   runExceptT $ do
-    pqConnection <- lift (IO.acquireConnection (Config.connectionString config))
-    lift (IO.checkConnectionStatus pqConnection) >>= traverse throwError
-    lift (IO.initConnection pqConnection)
-    integerDatetimes <- lift (IO.getIntegerDatetimes pqConnection)
+    pqConnection <- lift (Pq.connectdb (Config.connectionString config))
+    lift (PqProcedures.checkConnectionStatus pqConnection) >>= traverse throwError
+    lift (PqProcedures.initConnection pqConnection)
+    integerDatetimes <- lift (PqProcedures.getIntegerDatetimes pqConnection)
     let connectionState =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = Config.usePreparedStatements config,
@@ -58,9 +58,9 @@ acquire settings =
 -- Release the connection.
 release :: Connection -> IO ()
 release (Connection connectionRef) =
-  mask_ $ do
+  mask_ do
     connectionState <- readMVar connectionRef
-    IO.releaseConnection (ConnectionState.connection connectionState)
+    Pq.finish (ConnectionState.connection connectionState)
 
 -- |
 -- Execute an operation on the raw @libpq@ 'Pq.Connection'.
