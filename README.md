@@ -12,7 +12,7 @@ PostgreSQL driver for Haskell, that prioritizes:
 
 # Status
 
-Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://postgrest.org/) project.
+Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://github.com/PostgREST/postgrest) project.
 
 # Ecosystem
 
