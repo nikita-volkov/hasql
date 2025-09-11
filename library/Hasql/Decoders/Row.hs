@@ -1,4 +1,11 @@
-module Hasql.Decoders.Row where
+module Hasql.Decoders.Row
+  ( Row,
+    run,
+    error,
+    value,
+    nonNullValue,
+  )
+where
 
 import Hasql.Decoders.Value qualified as Value
 import Hasql.Errors
