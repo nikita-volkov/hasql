@@ -1,7 +1,6 @@
 module Core.Contexts.RowDecoder
   ( RowDecoder,
     run,
-    error,
     value,
     nonNullValue,
   )
