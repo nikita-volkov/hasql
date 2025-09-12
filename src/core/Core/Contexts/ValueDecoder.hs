@@ -3,6 +3,7 @@ module Core.Contexts.ValueDecoder where
 import Core.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
+import Pq qualified
 
 data ValueDecoder a
   = ValueDecoder
@@ -22,11 +23,6 @@ instance Filterable ValueDecoder where
   {-# INLINE mapMaybe #-}
   mapMaybe fn =
     refine (maybe (Left "Invalid value") Right . fn)
-
-{-# INLINE run #-}
-run :: ValueDecoder a -> Bool -> A.Value a
-run (ValueDecoder _ _ _ floatDecoder intDecoder) integerDatetimes =
-  if integerDatetimes then intDecoder else floatDecoder
 
 {-# INLINE decoder #-}
 decoder :: A.Value a -> ValueDecoder a
@@ -57,3 +53,10 @@ refine fn (ValueDecoder typeName typeOID arrayOID floatDecoder intDecoder) =
 unsafePTI :: Text -> PTI.PTI -> A.Value a -> A.Value a -> ValueDecoder a
 unsafePTI typeName pti floatDecoder intDecoder =
   ValueDecoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti) floatDecoder intDecoder
+
+-- * Relations
+
+{-# INLINE toHandler #-}
+toHandler :: ValueDecoder a -> Bool -> A.Value a
+toHandler (ValueDecoder _ _ _ floatDecoder intDecoder) integerDatetimes =
+  if integerDatetimes then intDecoder else floatDecoder
