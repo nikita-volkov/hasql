@@ -52,28 +52,77 @@ spec = around Testcontainers.withConnection $ parallel do
         result ->
           expectationFailure ("Not an error: " <> show result)
 
-    it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
-      let statement =
-            Statement.Statement
-              "select 1, 'text'"
-              mempty
-              ( Decoders.singleRow
-                  ( (,)
-                      <$> Decoders.column (Decoders.nonNullable Decoders.int8)
-                      <*> Decoders.column (Decoders.nonNullable Decoders.int8)
-                  )
-              )
-              True
-      result <- Connection.use connection (Session.statement () statement)
-      case result of
-        Left (Session.QueryError _ _ (Session.ResultError (Session.DecoderTypeMismatch column expected actual))) -> do
-          shouldBe column 1
-          shouldBe expected 20
-          shouldBe actual 25
-        Left err ->
-          expectationFailure ("Unexpected type of error: " <> show err)
-        result ->
-          expectationFailure ("Not an error: " <> show result)
+    describe "singleRow" do
+      it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
+        let statement =
+              Statement.Statement
+                "select 1, 'text'"
+                mempty
+                ( Decoders.singleRow
+                    ( (,)
+                        <$> Decoders.column (Decoders.nonNullable Decoders.int8)
+                        <*> Decoders.column (Decoders.nonNullable Decoders.int8)
+                    )
+                )
+                True
+        result <- Connection.use connection (Session.pipeline (Pipeline.statement () statement))
+        case result of
+          Left (Session.QueryError _ _ (Session.ResultError (Session.DecoderTypeMismatch column expected actual))) -> do
+            shouldBe column 1
+            shouldBe expected 20
+            shouldBe actual 25
+          Left err ->
+            expectationFailure ("Unexpected type of error: " <> show err)
+          result ->
+            expectationFailure ("Not an error: " <> show result)
+
+    describe "rowMaybe" do
+      it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
+        let statement =
+              Statement.Statement
+                "select 1, 'text'"
+                mempty
+                ( Decoders.rowMaybe
+                    ( (,)
+                        <$> Decoders.column (Decoders.nonNullable Decoders.int8)
+                        <*> Decoders.column (Decoders.nonNullable Decoders.int8)
+                    )
+                )
+                True
+        result <- Connection.use connection (Session.pipeline (Pipeline.statement () statement))
+        case result of
+          Left (Session.QueryError _ _ (Session.ResultError (Session.DecoderTypeMismatch column expected actual))) -> do
+            shouldBe column 1
+            shouldBe expected 20
+            shouldBe actual 25
+          Left err ->
+            expectationFailure ("Unexpected type of error: " <> show err)
+          result ->
+            expectationFailure ("Not an error: " <> show result)
+
+    describe "rowVector" do
+      it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
+        let statement =
+              Statement.Statement
+                "select 1, 'text'"
+                mempty
+                ( Decoders.rowVector
+                    ( (,)
+                        <$> Decoders.column (Decoders.nonNullable Decoders.int8)
+                        <*> Decoders.column (Decoders.nonNullable Decoders.int8)
+                    )
+                )
+                True
+        result <- Connection.use connection (Session.pipeline (Pipeline.statement () statement))
+        case result of
+          Left (Session.QueryError _ _ (Session.ResultError (Session.DecoderTypeMismatch column expected actual))) -> do
+            shouldBe column 1
+            shouldBe expected 20
+            shouldBe actual 25
+          Left err ->
+            expectationFailure ("Unexpected type of error: " <> show err)
+          result ->
+            expectationFailure ("Not an error: " <> show result)
 
   describe "Pipeline" do
     it "reports UnexpectedAmountOfColumns when result has more columns" \connection -> do
