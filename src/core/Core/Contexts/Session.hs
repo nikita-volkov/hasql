@@ -78,7 +78,24 @@ liftInformedCommand packError command = Session \connectionState -> do
       pqConnection = ConnectionState.connection connectionState
   result <- Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
   case result of
-    Left err -> pure (Left (packError err), connectionState)
+    Left err -> 
+      -- Check if this is a "prepared statement already exists" error (42P05)
+      -- This indicates cache corruption, so reset the cache and retry
+      case err of
+        ResultError (ServerError "42P05" _ _ _ _) -> do
+          -- Reset both the cache and the PostgreSQL connection to clear prepared statements
+          let resetConnectionState = ConnectionState.resetPreparedStatementsCache connectionState
+              resetStatementCache = ConnectionState.statementCache resetConnectionState
+          Pq.reset pqConnection  -- Clear prepared statements on PostgreSQL side
+          retryResult <- Command.run (command usePreparedStatements integerDatetimes resetStatementCache) pqConnection
+          case retryResult of
+            Left retryErr -> 
+              pure (Left (packError retryErr), resetConnectionState)
+            Right (a, newStatementCache) ->
+              let newState = resetConnectionState {ConnectionState.statementCache = newStatementCache}
+               in pure (Right a, newState)
+        _ ->
+          pure (Left (packError err), connectionState)
     Right (a, newStatementCache) ->
       let newState = connectionState {ConnectionState.statementCache = newStatementCache}
        in pure (Right a, newState)
