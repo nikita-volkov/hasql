@@ -58,7 +58,7 @@ column valueDec processNullable = RowDecoder do
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
     Just v ->
-      case {-# SCC "decode" #-} A.valueParser (ValueDecoder.run valueDec integerDatetimes) v of
+      case {-# SCC "decode" #-} A.valueParser (ValueDecoder.toHandler valueDec integerDatetimes) v of
         Left err -> throwError (packRowError (ValueError err))
         Right decoded -> pure (Just decoded)
 

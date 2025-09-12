@@ -24,10 +24,6 @@ instance Filterable ValueDecoder where
   mapMaybe fn =
     refine (maybe (Left "Invalid value") Right . fn)
 
-{-# INLINE run #-}
-run :: ValueDecoder a -> Bool -> A.Value a
-run = toHandler
-
 {-# INLINE decoder #-}
 decoder :: A.Value a -> ValueDecoder a
 decoder aDecoder =

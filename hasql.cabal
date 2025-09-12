@@ -29,8 +29,10 @@ copyright: (c) 2014, Nikita Volkov
 license: MIT
 license-file: LICENSE
 extra-source-files:
-  CHANGELOG.md
   README.md
+
+extra-doc-files:
+  CHANGELOG.md
 
 source-repository head
   type: git
@@ -217,12 +219,12 @@ library testing-kit
     TestingKit.TestingDsl
 
   build-depends:
-    base,
-    bytestring,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
     hasql,
     testcontainers-postgresql >=0.0.1 && <0.1,
-    transformers,
-    uuid,
+    transformers >=0.6 && <0.7,
+    uuid >=1.3 && <2,
 
 benchmark benchmarks
   import: executable

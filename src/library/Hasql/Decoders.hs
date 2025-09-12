@@ -558,8 +558,8 @@ dimension replicateM (Array imp) = Array (Array.dimension replicateM imp)
 {-# INLINEABLE element #-}
 element :: NullableOrNot Value a -> Array a
 element = \case
-  NonNullable (Value imp) -> Array (Array.nonNullValue (Value.run imp))
-  Nullable (Value imp) -> Array (Array.value (Value.run imp))
+  NonNullable (Value imp) -> Array (Array.nonNullValue (Value.toHandler imp))
+  Nullable (Value imp) -> Array (Array.value (Value.toHandler imp))
 
 -- * Composite decoders
 
@@ -572,5 +572,5 @@ newtype Composite a = Composite (Composite.CompositeDecoder a)
 -- Lift a 'Value' decoder into a 'Composite' decoder for parsing of component values.
 field :: NullableOrNot Value a -> Composite a
 field = \case
-  NonNullable (Value imp) -> Composite (Composite.nonNullValue (Value.run imp))
-  Nullable (Value imp) -> Composite (Composite.value (Value.run imp))
+  NonNullable (Value imp) -> Composite (Composite.nonNullValue (Value.toHandler imp))
+  Nullable (Value imp) -> Composite (Composite.value (Value.toHandler imp))

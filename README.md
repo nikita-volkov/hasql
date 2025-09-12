@@ -8,7 +8,6 @@ PostgreSQL driver for Haskell, that prioritizes:
 - Performance
 - Typesafety
 - Flexibility
-- Decentralization
 
 # Status
 
