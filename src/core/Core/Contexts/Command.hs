@@ -124,3 +124,16 @@ prepareWithRegistry sql oidList valueAndFormatList registry =
           prepare key sql oidList
           sendQueryPrepared key valueAndFormatList
           pure newRegistry
+
+describePrepared ::
+  -- | Key.
+  ByteString ->
+  Command [Pq.Oid]
+describePrepared key = do
+  liftPqCommand \connection -> do
+    Pq.sendDescribePrepared connection key
+  oids <- consumeResult do
+    ResultConsumer.ok
+    ResultConsumer.columnOids
+  drainResults
+  pure oids
