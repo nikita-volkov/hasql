@@ -261,6 +261,7 @@ test-suite integration-tests
     EncodingDecodingSpec
     MiscSpec
     PipelineSpec
+    Regressions.PreparedStatementAlreadyExistsSpec
     SessionSpec
     StatementSpec
 
