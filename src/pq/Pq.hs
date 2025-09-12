@@ -12,6 +12,11 @@ module Pq
     exitPipelineMode,
     pipelineSync,
     sendFlushRequest,
+
+    -- * Helpers
+    oidToWord32,
+    rowToInt,
+    colToInt,
   )
 where
 
@@ -81,3 +86,14 @@ decodeProcedureResult label decoder ffiResult =
   case decoder ffiResult of
     Just res -> pure res
     Nothing -> fail ("Failed to decode result of " <> label <> " from: " <> show ffiResult)
+
+-- * Helpers
+
+oidToWord32 :: Oid -> Word32
+oidToWord32 (Oid x) = fromIntegral x
+
+rowToInt :: Row -> Int
+rowToInt (Row x) = fromIntegral x
+
+colToInt :: Column -> Int
+colToInt (Col x) = fromIntegral x
