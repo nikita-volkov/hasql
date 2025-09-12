@@ -1,4 +1,4 @@
-module Hasql.EncodingDecodingSpec (spec) where
+module EncodingDecodingSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders

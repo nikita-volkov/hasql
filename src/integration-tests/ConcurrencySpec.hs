@@ -1,4 +1,4 @@
-module Hasql.ConcurrencySpec (spec) where
+module ConcurrencySpec (spec) where
 
 import Control.Concurrent
 import Hasql.Connection qualified as Connection

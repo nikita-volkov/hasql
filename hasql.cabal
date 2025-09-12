@@ -256,13 +256,13 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
-    Hasql.ConcurrencySpec
-    Hasql.ConnectionSpec
-    Hasql.EncodingDecodingSpec
-    Hasql.MiscSpec
-    Hasql.PipelineSpec
-    Hasql.SessionSpec
-    Hasql.StatementSpec
+    ConcurrencySpec
+    ConnectionSpec
+    EncodingDecodingSpec
+    MiscSpec
+    PipelineSpec
+    SessionSpec
+    StatementSpec
 
   build-tool-depends: hspec-discover:hspec-discover
   build-depends:
