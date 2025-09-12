@@ -2,7 +2,7 @@ module Core.Contexts.Command where
 
 import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Errors
-import Core.Structures.StatementCache qualified as StatementRegistry
+import Core.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
 import Pq qualified
 
@@ -111,16 +111,16 @@ prepareWithRegistry ::
   ByteString ->
   [Pq.Oid] ->
   [Maybe (ByteString, Pq.Format)] ->
-  StatementRegistry.StatementCache ->
-  Command StatementRegistry.StatementCache
+  StatementCache.StatementCache ->
+  Command StatementCache.StatementCache
 prepareWithRegistry sql oidList valueAndFormatList registry =
-  let localKey = StatementRegistry.LocalKey sql oidList
-   in case StatementRegistry.lookup localKey registry of
+  let localKey = StatementCache.LocalKey sql oidList
+   in case StatementCache.lookup localKey registry of
         Just key -> do
           sendQueryPrepared key valueAndFormatList
           pure registry
         Nothing -> do
-          let (key, newRegistry) = StatementRegistry.insert localKey registry
+          let (key, newRegistry) = StatementCache.insert localKey registry
           prepare key sql oidList
           sendQueryPrepared key valueAndFormatList
           pure newRegistry
