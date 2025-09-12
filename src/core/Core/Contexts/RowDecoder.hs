@@ -8,15 +8,16 @@ module Core.Contexts.RowDecoder
     -- ** Expected OIDs
     toExpectedOids,
 
-    -- ** Handler
-    Handler,
-    toHandler,
+    -- ** Decoder
+    Decoder,
+    toDecoder,
 
     -- ** Compatiblity check
     toCompatibilityCheck,
   )
 where
 
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.RowDecoder.RowDecoder qualified as RowDecoder
 import Core.Contexts.ValueDecoder qualified as ValueDecoder
 import Core.Errors
@@ -61,13 +62,13 @@ nonNullableColumn valueDec =
 toExpectedOids :: RowDecoder a -> [Maybe Pq.Oid]
 toExpectedOids (RowDecoder oids _) = oids
 
--- ** Handler
+-- ** Decoder
 
-type Handler a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+type Decoder a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
 
-toHandler :: RowDecoder a -> Handler a
-toHandler (RowDecoder _ dec) =
-  RowDecoder.run dec
+toDecoder :: RowDecoder a -> Decoder a
+toDecoder =
+  RowDecoder.run . toInnerRowDecoder
 
 -- ** Compatiblity check
 
@@ -93,3 +94,19 @@ toCompatibilityCheck (RowDecoder oids _) result = do
                     (Pq.oidToWord32 actualOid)
                 )
             )
+
+-- ** Inner decoder
+
+toInnerRowDecoder :: RowDecoder a -> RowDecoder.RowDecoder a
+toInnerRowDecoder (RowDecoder _ dec) = dec
+
+-- ** ResultConsumer
+
+type ResultConsumer a = Bool -> Pq.Row -> Pq.Column -> ResultConsumer.ResultConsumer a
+
+-- | Convert a 'RowDecoder' to a 'ResultConsumer', which performs decoding of a single row.
+{-# INLINE toResultConsumer #-}
+toResultConsumer :: RowDecoder a -> ResultConsumer a
+toResultConsumer rowDecoder idt row col = do
+  ResultConsumer.fromHandler (toCompatibilityCheck rowDecoder)
+  ResultConsumer.fromHandler (RowDecoder.run (toInnerRowDecoder rowDecoder) idt row col)
