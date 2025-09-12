@@ -2,8 +2,20 @@
 
 ## Breaking changes
 
+- Decoder checks are now more strict and report `DecoderTypeMismatch` when the actual type of a column does not match the expected type of a decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors later on.
+  - E.g., `int4` column decoded with `int8` decoder will now report `DecoderTypeMismatch` instead of silently accepting the value.
+
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
+
 - Dropped `MonadReader Connection` instance for `Session`.
+
+- Dropped `Monad` and `MonadFail` instances for `Row`. Applicative is enough for all practical purposes.
+
+- `UnexpectedAmountOfColumns` error added to `RowError` type. It is reported when there are not enough columns in the result for the decoders used.
+
+- `DecoderTypeMismatch` error added to `ResultError` type. It is reported when the actual type of a column does not match the expected type of a decoder.
+
+- `EndOfInput` error removed. Now if there are not enough columns in the result, `UnexpectedAmountOfColumns` error is reported instead.
 
 # 1.9
 

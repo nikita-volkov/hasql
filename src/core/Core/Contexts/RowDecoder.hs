@@ -1,83 +1,100 @@
 module Core.Contexts.RowDecoder
   ( RowDecoder,
-
-    -- * Constructors
     nullableColumn,
     nonNullableColumn,
 
     -- * Relations
 
-    -- ** Handler
-    Handler,
-    toHandler,
+    -- ** Expected OIDs
+    toExpectedOids,
+
+    -- ** Decoder
+    Decoder,
+    toDecoder,
+
+    -- ** Compatiblity check
+    toCompatibilityCheck,
   )
 where
 
+import Core.Contexts.RowDecoder.RowDecoder qualified as RowDecoder
 import Core.Contexts.ValueDecoder qualified as ValueDecoder
 import Core.Errors
-import Platform.Prelude
-import PostgreSQL.Binary.Decoding qualified as A
+import Platform.Prelude hiding (error)
 import Pq qualified
 
-newtype RowDecoder a
-  = RowDecoder (Env -> IO (Either ResultError a))
-  deriving (Functor, Applicative, Monad) via (ReaderT Env (ExceptT ResultError IO))
+data RowDecoder a
+  = RowDecoder
+      [Maybe Pq.Oid]
+      (RowDecoder.RowDecoder a)
+  deriving stock (Functor)
 
-instance MonadFail RowDecoder where
-  fail = rowError . ValueError . fromString
-
-data Env
-  = Env
-      Pq.Result
-      Pq.Row
-      Pq.Column
-      Bool
-      (IORef Pq.Column)
+instance Applicative RowDecoder where
+  pure a = RowDecoder [] (pure a)
+  RowDecoder lOids lDec <*> RowDecoder rOids rDec =
+    RowDecoder (lOids <> rOids) (lDec <*> rDec)
 
 -- * Functions
-
-{-# INLINE rowError #-}
-rowError :: RowError -> RowDecoder a
-rowError x = RowDecoder \(Env _ row _ _ columnRef) -> do
-  col <- readIORef columnRef
-  pure (Left (RowError (Pq.rowToInt row) (Pq.colToInt (pred col)) x))
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nullableColumn #-}
 nullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
 nullableColumn valueDec =
-  {-# SCC "nullableColumn" #-}
-  RowDecoder \(Env result row columnsAmount integerDatetimes columnRef) -> do
-    col <- readIORef columnRef
-    let packRowError err = RowError (Pq.rowToInt row) (Pq.colToInt col) err
-    writeIORef columnRef (succ col)
-    if col < columnsAmount
-      then do
-        valueMaybe <- {-# SCC "getvalue'" #-} Pq.getvalue' result row col
-        pure case valueMaybe of
-          Nothing -> Right Nothing
-          Just value ->
-            fmap Just
-              $ first (packRowError . ValueError)
-              $ {-# SCC "decode" #-} A.valueParser (ValueDecoder.toHandler valueDec integerDatetimes) value
-      else pure (Left (packRowError EndOfInput))
+  RowDecoder
+    [ValueDecoder.toExpectedOid valueDec]
+    (RowDecoder.nullableColumn valueDec)
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nonNullableColumn #-}
 nonNullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder a
 nonNullableColumn valueDec =
-  {-# SCC "nonNullableColumn" #-}
-  nullableColumn valueDec >>= maybe (rowError UnexpectedNull) pure
+  RowDecoder
+    [ValueDecoder.toExpectedOid valueDec]
+    (RowDecoder.nonNullableColumn valueDec)
 
 -- * Relations
 
--- ** Handler
+-- ** Expected OIDs
 
-type Handler a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+toExpectedOids :: RowDecoder a -> [Maybe Pq.Oid]
+toExpectedOids (RowDecoder oids _) = oids
 
-toHandler :: RowDecoder a -> Handler a
-toHandler (RowDecoder run) integerDatetimes row columnsAmount result = do
-  columnRef <- newIORef 0
-  run (Env result row columnsAmount integerDatetimes columnRef)
+-- ** Decoder
+
+type Decoder a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+
+toDecoder :: RowDecoder a -> Decoder a
+toDecoder =
+  RowDecoder.toHandler . toInnerRowDecoder
+
+-- ** Compatiblity check
+
+toCompatibilityCheck :: RowDecoder a -> Pq.Result -> IO (Either ResultError ())
+toCompatibilityCheck (RowDecoder oids _) result = do
+  maxCols <- Pq.nfields result
+  if length oids == Pq.colToInt maxCols
+    then go oids 0
+    else pure (Left (UnexpectedAmountOfColumns (length oids) (Pq.colToInt maxCols)))
+  where
+    go [] _ = pure (Right ())
+    go (Nothing : rest) colIndex = go rest (succ colIndex)
+    go (Just expectedOid : rest) colIndex = do
+      actualOid <- Pq.ftype result (Pq.toColumn colIndex)
+      if actualOid == expectedOid
+        then go rest (succ colIndex)
+        else
+          pure
+            ( Left
+                ( DecoderTypeMismatch
+                    colIndex
+                    (Pq.oidToWord32 expectedOid)
+                    (Pq.oidToWord32 actualOid)
+                )
+            )
+
+-- ** Inner decoder
+
+toInnerRowDecoder :: RowDecoder a -> RowDecoder.RowDecoder a
+toInnerRowDecoder (RowDecoder _ dec) = dec
