@@ -257,6 +257,7 @@ test-suite integration-tests
   other-modules:
     Hasql.ConcurrencySpec
     Hasql.ConnectionSpec
+    Hasql.DecoderCompatibilityCheckSpec
     Hasql.EncodingDecodingSpec
     Hasql.MiscSpec
     Hasql.PipelineSpec
