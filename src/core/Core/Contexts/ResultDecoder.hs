@@ -5,9 +5,6 @@ module Core.Contexts.ResultDecoder
     pipelineSync,
     noResult,
     rowsAffected,
-    checkExecStatus,
-    unexpectedResult,
-    serverError,
     maybe,
     single,
     vector,
@@ -57,14 +54,6 @@ rowsAffected = fromResultConsumer ResultConsumer.rowsAffected
 {-# INLINE checkExecStatus #-}
 checkExecStatus :: [Pq.ExecStatus] -> ResultDecoder ()
 checkExecStatus = fromResultConsumer . ResultConsumer.checkExecStatus
-
-unexpectedResult :: Text -> ResultDecoder a
-unexpectedResult =
-  ResultDecoder . lift . ExceptT . pure . Left . UnexpectedResult
-
-{-# INLINE serverError #-}
-serverError :: ResultDecoder ()
-serverError = fromResultConsumer ResultConsumer.serverError
 
 {-# INLINE maybe #-}
 maybe :: Row.RowDecoder a -> ResultDecoder (Maybe a)
