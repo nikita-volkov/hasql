@@ -22,6 +22,7 @@ spec = around Testcontainers.withConnection do
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
             True
         )
+    shouldBe (isLeft result) True
     -- Run a succeeding prepared statement to see if the cache is still in a good state.
     result <- Connection.use connection do
       Session.statement
