@@ -4,7 +4,6 @@ module Core.Contexts.RowDecoder
     error,
     value,
     nonNullValue,
-    columnOids,
   )
 where
 
@@ -69,12 +68,3 @@ nonNullValue :: ValueDecoder.ValueDecoder a -> RowDecoder a
 nonNullValue valueDec =
   {-# SCC "nonNullValue" #-}
   value valueDec >>= maybe (error UnexpectedNull) pure
-
--- | Get the OIDs of all columns in the current result.
-{-# INLINE columnOids #-}
-columnOids :: RowDecoder [Pq.Oid]
-columnOids = RowDecoder $ \(Env result _ columnsAmount _ _) -> do
-  let Pq.Col count = columnsAmount
-  oids <- forM [0 .. count - 1] $ \colIndex ->
-    Pq.ftype result (Pq.Col colIndex)
-  pure (Right oids)
