@@ -130,7 +130,13 @@ data ResultError
     UnexpectedResult Text
   | -- |
     -- An error of the row reader, preceded by the indexes of the row and column.
-    RowError Int Int RowError
+    RowError
+      -- | Row index.
+      Int
+      -- | Column index.
+      Int
+      -- | Row error.
+      RowError
   | -- |
     -- An unexpected amount of rows.
     UnexpectedAmountOfRows Int
