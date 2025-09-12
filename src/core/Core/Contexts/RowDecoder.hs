@@ -11,6 +11,9 @@ module Core.Contexts.RowDecoder
     -- ** Handler
     Handler,
     toHandler,
+
+    -- ** Compatiblity check
+    toCompatibilityCheck,
   )
 where
 
@@ -65,3 +68,28 @@ type Handler a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultEr
 toHandler :: RowDecoder a -> Handler a
 toHandler (RowDecoder _ dec) =
   RowDecoder.run dec
+
+-- ** Compatiblity check
+
+toCompatibilityCheck :: RowDecoder a -> Pq.Result -> IO (Either ResultError ())
+toCompatibilityCheck (RowDecoder oids _) result = do
+  maxCols <- Pq.nfields result
+  if length oids == Pq.colToInt maxCols
+    then go oids 0
+    else pure (Left (UnexpectedAmountOfColumns (length oids) (Pq.colToInt maxCols)))
+  where
+    go [] _ = pure (Right ())
+    go (Nothing : rest) colIndex = go rest (succ colIndex)
+    go (Just expectedOid : rest) colIndex = do
+      actualOid <- Pq.ftype result (Pq.toColumn colIndex)
+      if actualOid == expectedOid
+        then go rest (succ colIndex)
+        else
+          pure
+            ( Left
+                ( DecoderTypeMismatch
+                    colIndex
+                    (Pq.oidToWord32 expectedOid)
+                    (Pq.oidToWord32 actualOid)
+                )
+            )
