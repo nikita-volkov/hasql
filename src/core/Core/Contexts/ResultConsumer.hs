@@ -8,6 +8,7 @@ module Core.Contexts.ResultConsumer
     rowsAffected,
     checkExecStatus,
     serverError,
+    columnOids,
   )
 where
 
@@ -113,3 +114,13 @@ serverError =
         case Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) pos of
           Right pos -> Just pos
           _ -> Nothing
+
+-- | Get the OIDs of all columns in the current result.
+{-# INLINE columnOids #-}
+columnOids :: ResultConsumer [Pq.Oid]
+columnOids = ResultConsumer \result -> do
+  columnsAmount <- Pq.nfields result
+  let Pq.Col count = columnsAmount
+  oids <- forM [0 .. count - 1] $ \colIndex ->
+    Pq.ftype result (Pq.Col colIndex)
+  pure (Right oids)
