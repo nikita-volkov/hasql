@@ -14,8 +14,8 @@ import PostgreSQL.Binary.Decoding qualified as A
 import Pq qualified
 
 newtype RowDecoder a
-  = RowDecoder (Env -> IO (Either ResultError a))
-  deriving (Functor, Applicative, Monad) via (ReaderT Env (ExceptT ResultError IO))
+  = RowDecoder (StateT Pq.Column (ReaderT Env (ExceptT ResultError IO)) a)
+  deriving (Functor, Applicative, Monad) via (StateT Pq.Column (ReaderT Env (ExceptT ResultError IO)))
 
 data Env
   = Env
@@ -23,42 +23,40 @@ data Env
       Pq.Row
       Pq.Column
       Bool
-      (IORef Pq.Column)
 
 -- * Functions
 
 {-# INLINE run #-}
 run :: RowDecoder a -> Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
-run (RowDecoder f) integerDatetimes row columnsAmount result = do
-  columnRef <- newIORef 0
-  f (Env result row columnsAmount integerDatetimes columnRef)
+run (RowDecoder f) integerDatetimes row columnsAmount result =
+  let env = Env result row columnsAmount integerDatetimes
+   in runExceptT (runReaderT (evalStateT f 0) env)
 
 {-# INLINE rowError #-}
 rowError :: RowError -> RowDecoder a
-rowError x = RowDecoder \(Env _ row _ _ columnRef) -> do
-  col <- readIORef columnRef
-  pure (Left (RowError (Pq.rowToInt row) (Pq.colToInt (pred col)) x))
+rowError x = RowDecoder do
+  col <- get
+  Env _ row _ _ <- ask
+  throwError (RowError (Pq.rowToInt row) (Pq.colToInt (pred col)) x)
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE value #-}
 value :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
-value valueDec =
-  {-# SCC "value" #-}
-  RowDecoder \(Env result row columnsAmount integerDatetimes columnRef) -> do
-    col <- readIORef columnRef
-    let packRowError err = RowError (Pq.rowToInt row) (Pq.colToInt col) err
-    writeIORef columnRef (succ col)
-    if col < columnsAmount
-      then do
-        valueMaybe <- {-# SCC "getvalue'" #-} Pq.getvalue' result row col
-        pure case valueMaybe of
-          Nothing -> Right Nothing
-          Just value ->
-            fmap Just
-              $ first (packRowError . ValueError)
-              $ {-# SCC "decode" #-} A.valueParser (ValueDecoder.run valueDec integerDatetimes) value
-      else pure (Left (packRowError EndOfInput))
+value valueDec = RowDecoder do
+  col <- get
+  Env result row columnsAmount integerDatetimes <- ask
+  let packRowError err = RowError (Pq.rowToInt row) (Pq.colToInt col) err
+  put (succ col)
+  if col < columnsAmount
+    then do
+      valueMaybe <- liftIO ({-# SCC "getvalue'" #-} Pq.getvalue' result row col)
+      case valueMaybe of
+        Nothing -> pure Nothing
+        Just v -> do
+          let decoded = first (packRowError . ValueError) ({-# SCC "decode" #-} A.valueParser (ValueDecoder.run valueDec integerDatetimes) v)
+          either throwError (pure . Just) decoded
+    else throwError (packRowError EndOfInput)
 
 -- |
 -- Next value, decoded using the provided value decoder.
