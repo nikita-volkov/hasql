@@ -1,4 +1,4 @@
-module Hasql.SessionSpec (spec) where
+module SessionSpec (spec) where
 
 import Contravariant.Extras
 import Hasql.Connection qualified as Connection

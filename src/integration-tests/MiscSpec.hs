@@ -1,4 +1,4 @@
-module Hasql.MiscSpec (spec) where
+module MiscSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
