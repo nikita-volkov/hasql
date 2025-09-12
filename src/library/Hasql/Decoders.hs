@@ -182,7 +182,7 @@ rowList = foldrRows strictCons []
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a = Row (Row.RowDecoder a)
-  deriving (Functor, Applicative, Monad, MonadFail)
+  deriving (Functor, Applicative)
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.

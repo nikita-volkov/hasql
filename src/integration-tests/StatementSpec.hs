@@ -72,7 +72,7 @@ spec = aroundAll Testcontainers.withConnection do
       it "decodes lists correctly" \connection -> do
         let statement =
               Statement.Statement
-                "values (1,2), (3,4), (5,6)"
+                "values (1 :: int8, 2 :: int8), (3,4), (5,6)"
                 mempty
                 (Decoders.rowList ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
                 True

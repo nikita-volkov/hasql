@@ -12,8 +12,13 @@ main :: IO ()
 main =
   Testcontainers.withConnection \connection -> do
     traceEventIO "START Session"
-    Right _ <- Connection.use connection sessionWithManySmallResults
+    result <- Connection.use connection sessionWithManySmallResults
     traceEventIO "STOP Session"
+    case result of
+      Left err ->
+        putStrLn ("Error: " <> show err)
+      Right vector -> do
+        putStrLn ("Received " <> show (F.length vector) <> " rows")
     return ()
 
 -- * Sessions
@@ -45,7 +50,7 @@ statementWithSingleRow =
   C.Statement template encoder decoder True
   where
     template =
-      "SELECT 1, 2"
+      "SELECT 1 :: int8, 2 :: int8"
     encoder =
       conquer
     decoder =

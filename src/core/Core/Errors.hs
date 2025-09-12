@@ -87,6 +87,10 @@ instance Exception SessionError where
             "Error in row " <> show row <> ", column " <> show column <> ": " <> show rowError
           UnexpectedAmountOfRows amount ->
             "Unexpected amount of rows: " <> show amount
+          UnexpectedAmountOfColumns expected actual ->
+            "Unexpected amount of columns: expected " <> show expected <> ", got " <> show actual
+          DecoderTypeMismatch column expected actual ->
+            "Decoder type mismatch in column " <> show column <> ": expected OID " <> show expected <> ", got " <> show actual
 
 -- |
 -- An error of some command in the session.
@@ -140,6 +144,23 @@ data ResultError
   | -- |
     -- An unexpected amount of rows.
     UnexpectedAmountOfRows Int
+  | -- |
+    -- An unexpected amount of columns in the result.
+    UnexpectedAmountOfColumns
+      -- | Expected amount of columns.
+      Int
+      -- | Actual amount of columns.
+      Int
+  | -- |
+    -- Appears when the decoder's expected type doesn't match the actual column type.
+    -- Reports the expected OID and the actual OID from the result.
+    DecoderTypeMismatch
+      -- | Column index.
+      Int
+      -- | Expected OID.
+      Word32
+      -- | Actual OID.
+      Word32
   deriving (Show, Eq)
 
 -- |

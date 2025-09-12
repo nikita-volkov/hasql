@@ -55,11 +55,18 @@ rowsAffected = fromResultConsumer ResultConsumer.rowsAffected
 checkExecStatus :: [Pq.ExecStatus] -> ResultDecoder ()
 checkExecStatus = fromResultConsumer . ResultConsumer.checkExecStatus
 
+{-# INLINE checkCompatibility #-}
+checkCompatibility :: Row.RowDecoder a -> ResultDecoder ()
+checkCompatibility rowDec =
+  fromHandler \_idt result ->
+    Row.toCompatibilityCheck rowDec result
+
 {-# INLINE maybe #-}
 maybe :: Row.RowDecoder a -> ResultDecoder (Maybe a)
 maybe rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
+    checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -68,7 +75,7 @@ maybe rowDec =
           0 -> return (Right Nothing)
           1 -> do
             maxCols <- Pq.nfields result
-            result <- Row.toHandler rowDec integerDatetimes 0 maxCols result
+            result <- Row.toDecoder rowDec integerDatetimes 0 maxCols result
             pure (fmap Just result)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
@@ -80,6 +87,7 @@ single :: Row.RowDecoder a -> ResultDecoder a
 single rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
+    checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -87,7 +95,7 @@ single rowDec =
         case maxRows of
           1 -> do
             maxCols <- Pq.nfields result
-            Row.toHandler rowDec integerDatetimes 0 maxCols result
+            Row.toDecoder rowDec integerDatetimes 0 maxCols result
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
@@ -98,6 +106,7 @@ vector :: Row.RowDecoder a -> ResultDecoder (Vector a)
 vector rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
+    checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -106,7 +115,7 @@ vector rowDec =
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.toHandler rowDec integerDatetimes (intToRow rowIndex) maxCols result
+          rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
           case rowResult of
             Left !err -> writeIORef failureRef (Just err)
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
@@ -125,6 +134,7 @@ foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
     checkExecStatus [Pq.TuplesOk]
+    checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) ->
@@ -136,7 +146,7 @@ foldl step init rowDec =
             accRef <- newIORef init
             failureRef <- newIORef Nothing
             forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-              rowResult <- Row.toHandler rowDec integerDatetimes (intToRow rowIndex) maxCols result
+              rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
               case rowResult of
                 Left !err -> writeIORef failureRef (Just err)
                 Right !x -> modifyIORef' accRef (\acc -> step acc x)
@@ -155,6 +165,7 @@ foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
     checkExecStatus [Pq.TuplesOk]
+    checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
       $ \(integerDatetimes, result) -> ExceptT $ do
@@ -163,7 +174,7 @@ foldr step init rowDec =
         accRef <- newIORef init
         failureRef <- newIORef Nothing
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.toHandler rowDec integerDatetimes (intToRow rowIndex) maxCols result
+          rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
           case rowResult of
             Left !err -> writeIORef failureRef (Just err)
             Right !x -> modifyIORef accRef (\acc -> step x acc)

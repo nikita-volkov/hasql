@@ -56,6 +56,9 @@ unsafePTI typeName pti floatDecoder intDecoder =
 
 -- * Relations
 
+toExpectedOid :: ValueDecoder a -> Maybe Pq.Oid
+toExpectedOid (ValueDecoder _ typeOID _ _ _) = PTI.oidPQ <$> typeOID
+
 {-# INLINE toHandler #-}
 toHandler :: ValueDecoder a -> Bool -> A.Value a
 toHandler (ValueDecoder _ _ _ floatDecoder intDecoder) integerDatetimes =
