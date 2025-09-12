@@ -60,7 +60,7 @@ toExpectedOids (RowDecoder oids _) = oids
 
 -- ** Handler
 
-type Handler a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either (Int, RowError) a)
+type Handler a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
 
 toHandler :: RowDecoder a -> Handler a
 toHandler (RowDecoder _ dec) =
