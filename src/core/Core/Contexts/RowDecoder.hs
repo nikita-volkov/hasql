@@ -44,7 +44,7 @@ nullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
 nullableColumn valueDec =
   RowDecoder
     [ValueDecoder.toExpectedOid valueDec]
-    (RowDecoder.value valueDec)
+    (RowDecoder.nullableColumn valueDec)
 
 -- |
 -- Next value, decoded using the provided value decoder.
@@ -53,7 +53,7 @@ nonNullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder a
 nonNullableColumn valueDec =
   RowDecoder
     [ValueDecoder.toExpectedOid valueDec]
-    (RowDecoder.nonNullValue valueDec)
+    (RowDecoder.nonNullableColumn valueDec)
 
 -- * Relations
 
@@ -68,7 +68,7 @@ type Decoder a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultEr
 
 toDecoder :: RowDecoder a -> Decoder a
 toDecoder =
-  RowDecoder.run . toInnerRowDecoder
+  RowDecoder.toHandler . toInnerRowDecoder
 
 -- ** Compatiblity check
 
@@ -99,14 +99,3 @@ toCompatibilityCheck (RowDecoder oids _) result = do
 
 toInnerRowDecoder :: RowDecoder a -> RowDecoder.RowDecoder a
 toInnerRowDecoder (RowDecoder _ dec) = dec
-
--- ** ResultConsumer
-
-type ResultConsumer a = Bool -> Pq.Row -> Pq.Column -> ResultConsumer.ResultConsumer a
-
--- | Convert a 'RowDecoder' to a 'ResultConsumer', which performs decoding of a single row.
-{-# INLINE toResultConsumer #-}
-toResultConsumer :: RowDecoder a -> ResultConsumer a
-toResultConsumer rowDecoder idt row col = do
-  ResultConsumer.fromHandler (toCompatibilityCheck rowDecoder)
-  ResultConsumer.fromHandler (RowDecoder.run (toInnerRowDecoder rowDecoder) idt row col)

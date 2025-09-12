@@ -56,7 +56,7 @@ spec = around Testcontainers.withConnection $ parallel do
       it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
         let statement =
               Statement.Statement
-                "select 1, 'text'"
+                "select 1::int8, 'text'"
                 mempty
                 ( Decoders.singleRow
                     ( (,)
@@ -80,7 +80,7 @@ spec = around Testcontainers.withConnection $ parallel do
       it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
         let statement =
               Statement.Statement
-                "select 1, 'text'"
+                "select 1::int8, 'text'"
                 mempty
                 ( Decoders.rowMaybe
                     ( (,)
@@ -104,7 +104,7 @@ spec = around Testcontainers.withConnection $ parallel do
       it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
         let statement =
               Statement.Statement
-                "select 1, 'text'"
+                "select 1::int8, 'text'"
                 mempty
                 ( Decoders.rowVector
                     ( (,)
@@ -167,7 +167,7 @@ spec = around Testcontainers.withConnection $ parallel do
     it "reports DecoderTypeMismatch when column type mismatches decoder" \connection -> do
       let statement =
             Statement.Statement
-              "select 1, 'text'"
+              "select 1::int8, 'text'"
               mempty
               ( Decoders.singleRow
                   ( (,)

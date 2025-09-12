@@ -1,9 +1,9 @@
 -- | Lower level context focused on just the actual decoding of values. No metadata involved.
 module Core.Contexts.RowDecoder.RowDecoder
   ( RowDecoder,
-    run,
-    value,
-    nonNullValue,
+    toHandler,
+    nullableColumn,
+    nonNullableColumn,
   )
 where
 
@@ -15,7 +15,9 @@ import Pq qualified
 
 newtype RowDecoder a
   = RowDecoder (StateT Pq.Column (ReaderT Env (ExceptT ResultError IO)) a)
-  deriving (Functor, Applicative, Monad) via (StateT Pq.Column (ReaderT Env (ExceptT ResultError IO)))
+  deriving
+    (Functor, Applicative)
+    via (StateT Pq.Column (ReaderT Env (ExceptT ResultError IO)))
 
 data Env
   = Env
@@ -26,9 +28,9 @@ data Env
 
 -- * Functions
 
-{-# INLINE run #-}
-run :: RowDecoder a -> Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
-run (RowDecoder f) integerDatetimes row columnsAmount result =
+{-# INLINE toHandler #-}
+toHandler :: RowDecoder a -> Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+toHandler (RowDecoder f) integerDatetimes row columnsAmount result =
   let env = Env result row columnsAmount integerDatetimes
    in runExceptT (runReaderT (evalStateT f 0) env)
 
@@ -41,27 +43,40 @@ rowError x = RowDecoder do
 
 -- |
 -- Next value, decoded using the provided value decoder.
-{-# INLINE value #-}
-value :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
-value valueDec = RowDecoder do
+{-# INLINE column #-}
+column :: ValueDecoder.ValueDecoder a -> (Maybe a -> Either RowError b) -> RowDecoder b
+column valueDec processNullable = RowDecoder do
   col <- get
   Env result row columnsAmount integerDatetimes <- ask
   let packRowError err = RowError (Pq.rowToInt row) (Pq.colToInt col) err
   put (succ col)
-  if col < columnsAmount
-    then do
-      valueMaybe <- liftIO ({-# SCC "getvalue'" #-} Pq.getvalue' result row col)
-      case valueMaybe of
-        Nothing -> pure Nothing
-        Just v -> do
-          let decoded = first (packRowError . ValueError) ({-# SCC "decode" #-} A.valueParser (ValueDecoder.run valueDec integerDatetimes) v)
-          either throwError (pure . Just) decoded
-    else throwError (packRowError EndOfInput)
+
+  when (col >= columnsAmount) (throwError (packRowError EndOfInput))
+
+  valueMaybe <- liftIO ({-# SCC "getvalue'" #-} Pq.getvalue' result row col)
+
+  valueMaybe <- case valueMaybe of
+    Nothing -> pure Nothing
+    Just v ->
+      case {-# SCC "decode" #-} A.valueParser (ValueDecoder.run valueDec integerDatetimes) v of
+        Left err -> throwError (packRowError (ValueError err))
+        Right decoded -> pure (Just decoded)
+
+  case processNullable valueMaybe of
+    Left err -> throwError (packRowError err)
+    Right decoded -> pure decoded
 
 -- |
 -- Next value, decoded using the provided value decoder.
-{-# INLINE nonNullValue #-}
-nonNullValue :: ValueDecoder.ValueDecoder a -> RowDecoder a
-nonNullValue valueDec =
-  {-# SCC "nonNullValue" #-}
-  value valueDec >>= maybe (rowError UnexpectedNull) pure
+{-# INLINE nullableColumn #-}
+nullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
+nullableColumn valueDec = column valueDec Right
+
+-- |
+-- Next value, decoded using the provided value decoder.
+{-# INLINE nonNullableColumn #-}
+nonNullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder a
+nonNullableColumn valueDec = column valueDec process
+  where
+    process Nothing = Left UnexpectedNull
+    process (Just v) = Right v
