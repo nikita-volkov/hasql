@@ -107,13 +107,28 @@ sendQueryPrepared key params =
   liftPqCommand \connection -> do
     Pq.sendQueryPrepared connection key params Pq.Binary
 
-prepareWithRegistry ::
+prepareWithCache ::
+  ByteString ->
+  [Pq.Oid] ->
+  StatementCache.StatementCache ->
+  Command (ByteString, StatementCache.StatementCache)
+prepareWithCache sql oidList registry =
+  let localKey = StatementCache.LocalKey sql oidList
+   in case StatementCache.lookup localKey registry of
+        Just key -> do
+          pure (key, registry)
+        Nothing -> do
+          let (key, newRegistry) = StatementCache.insert localKey registry
+          prepare key sql oidList
+          pure (key, newRegistry)
+
+prepareAndSendWithCache ::
   ByteString ->
   [Pq.Oid] ->
   [Maybe (ByteString, Pq.Format)] ->
   StatementCache.StatementCache ->
   Command StatementCache.StatementCache
-prepareWithRegistry sql oidList valueAndFormatList registry =
+prepareAndSendWithCache sql oidList valueAndFormatList registry =
   let localKey = StatementCache.LocalKey sql oidList
    in case StatementCache.lookup localKey registry of
         Just key -> do

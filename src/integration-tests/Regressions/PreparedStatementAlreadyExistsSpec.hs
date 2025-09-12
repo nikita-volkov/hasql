@@ -19,7 +19,7 @@ spec = around Testcontainers.withConnection do
         ( Statement.Statement
             "select null"
             mempty
-            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
             True
         )
     shouldBe (isLeft result) True
@@ -30,7 +30,7 @@ spec = around Testcontainers.withConnection do
         ( Statement.Statement
             "select 1"
             mempty
-            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
             True
         )
     -- If there is an error the cache got corrupted.
