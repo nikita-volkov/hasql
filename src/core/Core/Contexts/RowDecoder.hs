@@ -17,7 +17,6 @@ module Core.Contexts.RowDecoder
   )
 where
 
-import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.RowDecoder.RowDecoder qualified as RowDecoder
 import Core.Contexts.ValueDecoder qualified as ValueDecoder
 import Core.Errors
