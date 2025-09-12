@@ -1,4 +1,4 @@
-module DecoderCompatibilityCheckSpec (spec) where
+module Features.DecoderCompatibilityCheckSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

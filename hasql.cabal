@@ -257,8 +257,8 @@ test-suite integration-tests
   other-modules:
     ConcurrencySpec
     ConnectionSpec
-    DecoderCompatibilityCheckSpec
     EncodingDecodingSpec
+    Features.DecoderCompatibilityCheckSpec
     MiscSpec
     PipelineSpec
     SessionSpec
