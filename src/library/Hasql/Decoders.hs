@@ -182,15 +182,15 @@ rowList = foldrRows strictCons []
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a = Row (Row.RowDecoder a)
-  deriving (Functor, Applicative, Monad, MonadFail)
+  deriving (Functor, Applicative)
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.
 {-# INLINEABLE column #-}
 column :: NullableOrNot Value a -> Row a
 column = \case
-  NonNullable (Value imp) -> Row (Row.nonNullValue imp)
-  Nullable (Value imp) -> Row (Row.value imp)
+  NonNullable (Value imp) -> Row (Row.nonNullableColumn imp)
+  Nullable (Value imp) -> Row (Row.nullableColumn imp)
 
 -- * Nullability
 

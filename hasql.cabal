@@ -143,6 +143,7 @@ library core
     Core.Contexts.ResultsDecoder
     Core.Contexts.Roundtrip
     Core.Contexts.RowDecoder
+    Core.Contexts.RowDecoder.RowDecoder
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder

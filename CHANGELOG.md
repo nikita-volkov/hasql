@@ -4,6 +4,7 @@
 
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
 - Dropped `MonadReader Connection` instance for `Session`.
+- Dropped `Monad` and `MonadFail` instances for `Row`. Applicative is enough for all practical purposes.
 
 # 1.9
 
