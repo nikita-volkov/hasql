@@ -80,21 +80,7 @@ withLibPQConnection connection action =
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
 use connection session =
   useConnectionState connection \connectionState -> do
-    result <- Session.run session connectionState
-    case result of
-      (Left err, newConnectionState) -> do
-        -- When session fails, check if it's a prepare-related error that might
-        -- indicate cache/PostgreSQL inconsistency and reset the cache
-        case err of
-          QueryError _ _ (ResultError (ServerError "42P05" _ _ _ _)) -> do
-            -- This is a "prepared statement already exists" error, which indicates
-            -- cache corruption. Reset the cache to recover.
-            let resetConnectionState = ConnectionState.resetPreparedStatementsCache newConnectionState
-            pure (Left err, resetConnectionState)
-          _ ->
-            pure (Left err, newConnectionState)
-      success -> 
-        pure success
+    Session.run session connectionState
 
 useConnectionState :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
 useConnectionState (Connection var) handler =

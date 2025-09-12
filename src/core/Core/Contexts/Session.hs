@@ -78,24 +78,7 @@ liftInformedCommand packError command = Session \connectionState -> do
       pqConnection = ConnectionState.connection connectionState
   result <- Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
   case result of
-    Left err -> 
-      -- Check if this is a "prepared statement already exists" error (42P05)
-      -- This indicates cache corruption, so reset the cache and retry
-      case err of
-        ResultError (ServerError "42P05" _ _ _ _) -> do
-          -- Reset both the cache and the PostgreSQL connection to clear prepared statements
-          let resetConnectionState = ConnectionState.resetPreparedStatementsCache connectionState
-              resetStatementCache = ConnectionState.statementCache resetConnectionState
-          Pq.reset pqConnection  -- Clear prepared statements on PostgreSQL side
-          retryResult <- Command.run (command usePreparedStatements integerDatetimes resetStatementCache) pqConnection
-          case retryResult of
-            Left retryErr -> 
-              pure (Left (packError retryErr), resetConnectionState)
-            Right (a, newStatementCache) ->
-              let newState = resetConnectionState {ConnectionState.statementCache = newStatementCache}
-               in pure (Right a, newState)
-        _ ->
-          pure (Left (packError err), connectionState)
+    Left err -> pure (Left (packError err), connectionState)
     Right (a, newStatementCache) ->
       let newState = connectionState {ConnectionState.statementCache = newStatementCache}
        in pure (Right a, newState)
@@ -118,19 +101,38 @@ statement sql paramsEncoder decoder preparable params =
       QueryError sql (ParamsEncoder.renderReadable paramsEncoder params)
 
     command usePreparedStatements integerDatetimes registry = do
-      registry' <-
+      (registry', maybeNewKey) <-
         if usePreparedStatements && preparable
           then
             let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder integerDatetimes params
-             in Command.prepareWithRegistry sql oidList valueAndFormatList registry
-          else
+             in Command.prepareStatementIfNeeded sql oidList valueAndFormatList registry
+          else do
             let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder integerDatetimes params
-             in do
-                  Command.sendQueryParams sql paramsData
-                  pure registry
-      result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+            Command.sendQueryParams sql paramsData
+            pure (registry, Nothing)
+      
+      -- Try to decode the result
+      resultOrError <- Command.tryCommand (ResultsDecoder.toCommandByIdt decoder integerDatetimes)
       Command.drainResults
-      pure (result, registry')
+      
+      case resultOrError of
+        Right result -> 
+          -- Success: use the updated cache
+          pure (result, registry')
+        Left _err -> 
+          -- Failure: check if we need to deallocate a prepared statement
+          case maybeNewKey of
+            Just key -> do
+              -- We prepared a new statement but result decoding failed
+              -- Deallocate it to maintain consistency
+              _ <- Command.tryCommand (Command.deallocatePrepared key)
+              -- Let the original error propagate by re-attempting the decode
+              result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+              pure (result, registry)  -- Return original registry
+            Nothing -> do
+              -- No new statement was prepared, just re-attempt to get the error
+              result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+              pure (result, registry)
 
 -- |
 -- Execute a pipeline.

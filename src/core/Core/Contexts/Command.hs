@@ -125,6 +125,41 @@ prepareWithRegistry sql oidList valueAndFormatList registry =
           sendQueryPrepared key valueAndFormatList
           pure newRegistry
 
+-- | Version that defers cache update until after execution succeeds
+prepareStatementIfNeeded ::
+  ByteString ->
+  [Pq.Oid] ->
+  [Maybe (ByteString, Pq.Format)] ->
+  StatementCache.StatementCache ->
+  Command (StatementCache.StatementCache, Maybe ByteString)
+prepareStatementIfNeeded sql oidList valueAndFormatList registry =
+  let localKey = StatementCache.LocalKey sql oidList
+   in case StatementCache.lookup localKey registry of
+        Just key -> do
+          sendQueryPrepared key valueAndFormatList
+          pure (registry, Nothing)  -- No new statement prepared
+        Nothing -> do
+          let (key, newRegistry) = StatementCache.insert localKey registry
+          prepare key sql oidList
+          sendQueryPrepared key valueAndFormatList
+          pure (newRegistry, Just key)  -- New statement was prepared
+
+-- | Try to run a command, returning Left on failure instead of failing the entire Command
+tryCommand :: Command a -> Command (Either CommandError a)
+tryCommand (Command action) = Command \conn -> do
+  result <- action conn
+  case result of
+    Left err -> pure (Right (Left err))
+    Right val -> pure (Right (Right val))
+
+-- | Deallocate a prepared statement
+deallocatePrepared :: ByteString -> Command ()
+deallocatePrepared key = do
+  liftPqCommand \connection -> 
+    Pq.sendQuery connection ("DEALLOCATE " <> key)
+  consumeResult ResultConsumer.ok
+  drainResults
+
 describePrepared ::
   -- | Key.
   ByteString ->
