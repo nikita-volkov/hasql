@@ -3,8 +3,8 @@ module Core.Contexts.Roundtrip where
 import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementRegistry
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 -- | Batch of commands executed independently, in a single roundtrip to the server, with errors interrupting neither the sending or reception, but being accumulated and reported at the end.
 newtype Roundtrip a

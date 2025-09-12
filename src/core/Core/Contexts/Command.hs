@@ -3,8 +3,8 @@ module Core.Contexts.Command where
 import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementRegistry
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 -- | Statically structured command series execution context.
 --

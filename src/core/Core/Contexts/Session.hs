@@ -8,8 +8,8 @@ import Core.Contexts.Roundtrip qualified as Roundtrip
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 -- |
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.

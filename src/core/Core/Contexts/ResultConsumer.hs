@@ -15,8 +15,8 @@ where
 import Core.Errors
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 -- | Result consumption context, for consuming a single result from a sequence of results returned by the server.
 newtype ResultConsumer a

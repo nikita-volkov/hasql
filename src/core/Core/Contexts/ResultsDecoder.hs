@@ -43,9 +43,9 @@ import Core.Contexts.Command qualified as Command
 import Core.Contexts.ResultDecoder qualified as Result
 import Core.Contexts.Roundtrip qualified as Roundtrip
 import Core.Errors
-import Libpq qualified as Pq
 import Platform.Prelude hiding (many, maybe)
 import Platform.Prelude qualified as Prelude
+import Pq qualified
 
 newtype ResultsDecoder a
   = ResultsDecoder (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)

@@ -1,7 +1,7 @@
 module Core.PostgresTypeInfo where
 
-import Libpq qualified as Pq
 import Platform.Prelude hiding (bool)
+import Pq qualified
 
 -- | A Postgresql type info
 data PTI = PTI {ptiOID :: OID, ptiArrayOID :: Maybe OID}

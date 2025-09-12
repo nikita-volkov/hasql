@@ -1,6 +1,6 @@
 {-# LANGUAGE CApiFFI #-}
 
-module Libpq.Ffi where
+module Pq.Ffi where
 
 import Database.PostgreSQL.LibPQ.Internal
 import Foreign.C.Types (CInt (..))

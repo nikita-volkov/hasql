@@ -2,9 +2,9 @@ module Core.Contexts.ParamsEncoder where
 
 import Core.Contexts.ValueEncoder qualified as C
 import Core.PostgresTypeInfo qualified as D
-import Libpq qualified as A
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
+import Pq qualified as A
 import TextBuilder qualified as E
 
 renderReadable :: ParamsEncoder a -> a -> [Text]

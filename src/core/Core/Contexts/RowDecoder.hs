@@ -10,9 +10,9 @@ where
 
 import Core.Contexts.ValueDecoder qualified as ValueDecoder
 import Core.Errors
-import Libpq qualified as Pq
 import Platform.Prelude hiding (error)
 import PostgreSQL.Binary.Decoding qualified as A
+import Pq qualified
 
 newtype RowDecoder a = RowDecoder (Env -> IO (Either RowError a))
   deriving (Functor, Applicative, Monad) via (ReaderT Env (ExceptT RowError IO))

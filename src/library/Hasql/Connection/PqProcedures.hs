@@ -1,7 +1,7 @@
 module Hasql.Connection.PqProcedures where
 
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 {-# INLINE checkConnectionStatus #-}
 checkConnectionStatus :: Pq.Connection -> IO (Maybe (Maybe ByteString))

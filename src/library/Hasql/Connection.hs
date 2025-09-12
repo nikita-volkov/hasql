@@ -17,8 +17,8 @@ import Core.Structures.StatementCache qualified as StatementCache
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.PqProcedures qualified as PqProcedures
 import Hasql.Connection.Setting qualified as Setting
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 -- |
 -- A single connection to the database.

@@ -1,4 +1,4 @@
-module Libpq.Mappings where
+module Pq.Mappings where
 
 #include "libpq-fe.h"
 

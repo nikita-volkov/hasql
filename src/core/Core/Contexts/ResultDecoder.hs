@@ -33,8 +33,8 @@ import Core.Contexts.RowDecoder qualified as Row
 import Core.Errors
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
-import Libpq qualified as Pq
 import Platform.Prelude hiding (foldl, foldr, many, maybe)
+import Pq qualified
 
 newtype ResultDecoder a
   = ResultDecoder (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)

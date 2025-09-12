@@ -1,4 +1,4 @@
-module Libpq
+module Pq
   ( module Base,
 
     -- * Updated and new types
@@ -17,9 +17,9 @@ where
 
 import Database.PostgreSQL.LibPQ as Base hiding (ExecStatus (..), PipelineStatus (..), enterPipelineMode, exitPipelineMode, pipelineStatus, pipelineSync, resultStatus, sendFlushRequest)
 import Database.PostgreSQL.LibPQ.Internal qualified as BaseInternal
-import Libpq.Ffi qualified as Ffi
-import Libpq.Mappings qualified as Mappings
 import Platform.Prelude
+import Pq.Ffi qualified as Ffi
+import Pq.Mappings qualified as Mappings
 
 resultStatus :: Result -> IO Mappings.ExecStatus
 resultStatus result = do

@@ -5,8 +5,8 @@ import Core.Contexts.ResultDecoder qualified as ResultDecoder
 import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementCache
-import Libpq qualified as Pq
 import Platform.Prelude
+import Pq qualified
 
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError (a, StatementCache.StatementCache))
 run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes cache = do
