@@ -34,13 +34,6 @@ toHandler (RowDecoder f) integerDatetimes row columnsAmount result =
   let env = Env result row columnsAmount integerDatetimes
    in runExceptT (runReaderT (evalStateT f 0) env)
 
-{-# INLINE rowError #-}
-rowError :: RowError -> RowDecoder a
-rowError x = RowDecoder do
-  col <- get
-  Env _ row _ _ <- ask
-  throwError (RowError (Pq.rowToInt row) (Pq.colToInt (pred col)) x)
-
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE column #-}
@@ -48,10 +41,11 @@ column :: ValueDecoder.ValueDecoder a -> (Maybe a -> Either RowError b) -> RowDe
 column valueDec processNullable = RowDecoder do
   col <- get
   Env result row columnsAmount integerDatetimes <- ask
-  let packRowError err = RowError (Pq.rowToInt row) (Pq.colToInt col) err
+  let colInt = Pq.colToInt col
+  let packRowError err = RowError (Pq.rowToInt row) colInt err
   put (succ col)
 
-  when (col >= columnsAmount) (throwError (packRowError EndOfInput))
+  when (col >= columnsAmount) (throwError (UnexpectedAmountOfColumns (colInt + 1) (Pq.colToInt columnsAmount)))
 
   valueMaybe <- liftIO ({-# SCC "getvalue'" #-} Pq.getvalue' result row col)
 

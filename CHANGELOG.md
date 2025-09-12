@@ -11,6 +11,12 @@
 
 - Dropped `Monad` and `MonadFail` instances for `Row`. Applicative is enough for all practical purposes.
 
+- `UnexpectedAmountOfColumns` error added to `RowError` type. It is reported when there are not enough columns in the result for the decoders used.
+
+- `DecoderTypeMismatch` error added to `ResultError` type. It is reported when the actual type of a column does not match the expected type of a decoder.
+
+- `EndOfInput` error removed. Now if there are not enough columns in the result, `UnexpectedAmountOfColumns` error is reported instead.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules

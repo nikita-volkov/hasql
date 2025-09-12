@@ -167,9 +167,6 @@ data ResultError
 -- An error during the decoding of a specific row.
 data RowError
   = -- |
-    -- Appears on the attempt to parse more columns than there are in the result.
-    EndOfInput
-  | -- |
     -- Appears on the attempt to parse a @NULL@ as some value.
     UnexpectedNull
   | -- |
