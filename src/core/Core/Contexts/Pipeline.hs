@@ -153,9 +153,7 @@ statement sql encoder decoder preparable params =
       where
         runPrepared = runExceptT do
           (key, keyRecv, newCache) <- ExceptT resolvePreparedStatementKey
-          traceShowM ("resolvePreparedStatementKey: " <> show newCache)
           queryRecv <- ExceptT (sendQuery key)
-          traceM ("query sent")
           pure (keyRecv *> queryRecv, newCache)
           where
             (oidList, valueAndFormatList) =
