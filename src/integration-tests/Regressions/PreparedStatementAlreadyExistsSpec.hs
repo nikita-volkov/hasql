@@ -50,13 +50,22 @@ spec = around Testcontainers.withConnection do
           Pipeline.statement
             ()
             ( Statement.Statement
-                "select null"
+                "select null :: int4"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
                 True
             )
-      shouldBe (isLeft result) True
+      case result of
+        Right val ->
+          expectationFailure ("First statement succeeded unexpectedly: " <> show val)
+        Left err -> case err of
+          Session.QueryError _ _ (Session.ResultError (Session.RowError 0 0 Session.UnexpectedNull)) ->
+            pure ()
+          _ ->
+            expectationFailure ("Unexpected error: " <> show err)
+
       -- Run a succeeding prepared statement in a pipeline to see if the cache is still in a good state.
+      putStrLn "Running second statement"
       result <- Connection.use connection do
         Session.pipeline do
           Pipeline.statement
