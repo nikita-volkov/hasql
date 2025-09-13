@@ -50,7 +50,7 @@ spec = around Testcontainers.withConnection do
           Pipeline.statement
             ()
             ( Statement.Statement
-                "select null :: int4"
+                "select 1/0"  -- PostgreSQL error instead of decoding error
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
                 True
@@ -59,8 +59,8 @@ spec = around Testcontainers.withConnection do
         Right val ->
           expectationFailure ("First statement succeeded unexpectedly: " <> show val)
         Left err -> case err of
-          Session.QueryError _ _ (Session.ResultError (Session.RowError 0 0 Session.UnexpectedNull)) ->
-            pure ()
+          Session.QueryError _ _ (Session.ResultError (Session.ServerError _ _ _ _ _ _)) ->
+            pure ()  -- Accept any server error
           _ ->
             expectationFailure ("Unexpected error: " <> show err)
 

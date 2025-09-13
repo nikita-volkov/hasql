@@ -57,7 +57,7 @@ consumeResult resultConsumer =
         errorMessage <- Pq.errorMessage connection
         pure (Left (ClientError errorMessage))
 
--- | Drain all results from the connection, expecting all to be OK.
+-- | Drain all results from the connection, expecting all to be OK or PipelineAbort.
 {-# INLINE drainResults #-}
 drainResults :: Command ()
 drainResults =
@@ -67,11 +67,14 @@ drainResults =
           case resultMb of
             Nothing -> pure output
             Just result -> do
-              resultR <- ResultConsumer.toHandler ResultConsumer.ok result
+              resultR <- ResultConsumer.toHandler drainResultConsumer result
               case resultR of
                 Left err -> go (output *> Left (ResultError err))
                 Right () -> go output
      in go (Right ())
+  where
+    -- Accept both normal completion statuses and PipelineAbort for pipeline mode
+    drainResultConsumer = ResultConsumer.checkExecStatus [Pq.CommandOk, Pq.TuplesOk, Pq.PipelineAbort]
 
 sendQuery :: ByteString -> Command ()
 sendQuery sql =
