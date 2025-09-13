@@ -82,3 +82,56 @@ spec = around Testcontainers.withConnection do
           pure ()
         Left result ->
           expectationFailure ("Unexpected error: " <> show result)
+
+    it "Multiple consecutive pipeline failures are handled correctly" \connection -> do
+      -- This test ensures that our fix handles multiple pipeline failures gracefully
+      -- First pipeline with failing statement
+      result1 <- Connection.use connection do
+        Session.pipeline do
+          Pipeline.statement
+            ()
+            ( Statement.Statement
+                "select null :: int4"
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                True
+            )
+      case result1 of
+        Right val ->
+          expectationFailure ("First pipeline succeeded unexpectedly: " <> show val)
+        Left _ ->
+          pure () -- Expected to fail
+
+      -- Second pipeline with failing statement
+      result2 <- Connection.use connection do
+        Session.pipeline do
+          Pipeline.statement
+            ()
+            ( Statement.Statement
+                "select 'not a number' :: int4"
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                True
+            )
+      case result2 of
+        Right val ->
+          expectationFailure ("Second pipeline succeeded unexpectedly: " <> show val)
+        Left _ ->
+          pure () -- Expected to fail
+
+      -- Third pipeline with succeeding statement - this should work
+      result3 <- Connection.use connection do
+        Session.pipeline do
+          Pipeline.statement
+            ()
+            ( Statement.Statement
+                "select 1"
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                True
+            )
+      case result3 of
+        Right _ ->
+          pure () -- Expected to succeed
+        Left result ->
+          expectationFailure ("Third pipeline failed unexpectedly: " <> show result)

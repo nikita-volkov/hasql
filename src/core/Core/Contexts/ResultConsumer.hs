@@ -46,7 +46,7 @@ ok = checkExecStatus [Pq.CommandOk, Pq.TuplesOk]
 
 {-# INLINE pipelineSync #-}
 pipelineSync :: ResultConsumer ()
-pipelineSync = checkExecStatus [Pq.PipelineSync]
+pipelineSync = checkExecStatus [Pq.PipelineSync, Pq.PipelineAbort]
 
 {-# INLINE rowsAffected #-}
 rowsAffected :: ResultConsumer Int64
