@@ -7,7 +7,6 @@ module Core.Contexts.ResultConsumer
     pipelineSync,
     rowsAffected,
     checkExecStatus,
-    serverError,
     columnOids,
   )
 where
@@ -82,9 +81,10 @@ checkExecStatus expectedList = do
   status <- ResultConsumer \result -> Right <$> Pq.resultStatus result
   unless (elem status expectedList) $ do
     case status of
-      Pq.BadResponse -> serverError
-      Pq.NonfatalError -> serverError
-      Pq.FatalError -> serverError
+      Pq.BadResponse -> serverError status
+      Pq.NonfatalError -> serverError status
+      Pq.FatalError -> serverError status
+      Pq.PipelineAbort -> serverError status
       Pq.EmptyQuery -> return ()
       _ ->
         throwError
@@ -93,8 +93,8 @@ checkExecStatus expectedList = do
           )
 
 {-# INLINE serverError #-}
-serverError :: ResultConsumer ()
-serverError =
+serverError :: Pq.ExecStatus -> ResultConsumer ()
+serverError status =
   ResultConsumer \result -> do
     code <-
       fold <$> Pq.resultErrorField result Pq.DiagSqlstate
@@ -106,7 +106,7 @@ serverError =
       Pq.resultErrorField result Pq.DiagMessageHint
     position <-
       parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
-    pure $ Left $ ServerError code message detail hint position
+    pure $ Left $ ServerError (fromString (show status)) code message detail hint position
   where
     parsePosition = \case
       Nothing -> Nothing

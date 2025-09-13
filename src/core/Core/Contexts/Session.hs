@@ -93,27 +93,48 @@ sql sql =
 
 -- |
 -- Execute a statement by providing parameters to it.
-statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultsDecoder.ResultsDecoder result -> Bool -> params -> Session result
+statement ::
+  forall params result.
+  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultsDecoder.ResultsDecoder result -> Bool -> params -> Session result
 statement sql paramsEncoder decoder preparable params =
-  liftInformedCommand packError command
+  do
+    prepared <- prepare
+    case prepared of
+      Just (key, valueAndFormatList) ->
+        executePrepared key valueAndFormatList
+      Nothing ->
+        executeUnprepared
   where
     packError =
       QueryError sql (ParamsEncoder.renderReadable paramsEncoder params)
 
-    command usePreparedStatements integerDatetimes registry = do
-      registry' <-
+    prepare :: Session (Maybe (ByteString, [Maybe (ByteString, Pq.Format)]))
+    prepare =
+      liftInformedCommand packError \usePreparedStatements integerDatetimes statementCache -> do
         if usePreparedStatements && preparable
           then
             let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder integerDatetimes params
-             in Command.prepareWithRegistry sql oidList valueAndFormatList registry
+             in Command.prepareWithCache sql oidList statementCache
+                  <&> \(key, statementCache) -> (Just (key, valueAndFormatList), statementCache)
           else
-            let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder integerDatetimes params
-             in do
-                  Command.sendQueryParams sql paramsData
-                  pure registry
-      result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
-      Command.drainResults
-      pure (result, registry')
+            pure (Nothing, statementCache)
+
+    executePrepared :: ByteString -> [Maybe (ByteString, Pq.Format)] -> Session result
+    executePrepared key valueAndFormatList =
+      liftInformedCommand packError \_usePreparedStatements integerDatetimes statementCache -> do
+        Command.sendQueryPrepared key valueAndFormatList
+        result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+        Command.drainResults
+        pure (result, statementCache)
+
+    executeUnprepared :: Session result
+    executeUnprepared =
+      liftInformedCommand packError \_ integerDatetimes statementCache -> do
+        let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder integerDatetimes params
+        Command.sendQueryParams sql paramsData
+        result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+        Command.drainResults
+        pure (result, statementCache)
 
 -- |
 -- Execute a pipeline.

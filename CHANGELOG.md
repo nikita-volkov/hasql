@@ -17,6 +17,8 @@
 
 - `EndOfInput` error removed. Now if there are not enough columns in the result, `UnexpectedAmountOfColumns` error is reported instead.
 
+- `ServerError` got a new field: Causal execution status.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules

@@ -27,7 +27,7 @@ instance Exception SessionError where
           queryContext = case commandError of
             ClientError _ -> Nothing
             ResultError resultError -> case resultError of
-              ServerError _ message _ _ (Just position) -> Just (message, position)
+              ServerError _ _ message _ _ (Just position) -> Just (message, position)
               _ -> Nothing
 
           -- find the line number and position of the error
@@ -75,13 +75,15 @@ instance Exception SessionError where
         ClientError (Just message) -> "Client error: " <> show message
         ClientError Nothing -> "Client error without details"
         ResultError resultError -> case resultError of
-          ServerError code message details hint _ ->
+          ServerError status code message details hint _ ->
             "Server error "
               <> BC.unpack code
               <> ": "
               <> BC.unpack message
               <> maybe "" (\d -> "\n  Details: " <> BC.unpack d) details
               <> maybe "" (\h -> "\n  Hint: " <> BC.unpack h) hint
+              <> "\n  Status: "
+              <> toList status
           UnexpectedResult message -> "Unexpected result: " <> show message
           RowError row column rowError ->
             "Error in row " <> show row <> ", column " <> show column <> ": " <> show rowError
@@ -110,6 +112,8 @@ data CommandError
 data ResultError
   = -- | An error reported by the DB.
     ServerError
+      -- | Causal execution status.
+      Text
       -- | __Code__. The SQLSTATE code for the error. It's recommended to use
       -- <http://hackage.haskell.org/package/postgresql-error-codes
       -- the "postgresql-error-codes" package> to work with those.

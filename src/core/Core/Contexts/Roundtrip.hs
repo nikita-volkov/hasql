@@ -109,13 +109,13 @@ sendQueryPrepared key params =
   liftPqCommand \connection -> do
     Pq.sendQueryPrepared connection key params Pq.Binary
 
-prepareWithRegistry ::
+prepareAndSendWithCache ::
   ByteString ->
   [Pq.Oid] ->
   [Maybe (ByteString, Pq.Format)] ->
   StatementRegistry.StatementCache ->
   Roundtrip StatementRegistry.StatementCache
-prepareWithRegistry sql oidList valueAndFormatList registry =
+prepareAndSendWithCache sql oidList valueAndFormatList registry =
   let localKey = StatementRegistry.LocalKey sql oidList
    in case StatementRegistry.lookup localKey registry of
         Just key -> do

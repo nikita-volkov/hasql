@@ -1,6 +1,8 @@
 module Core.Contexts.Pipeline where
 
+import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.ResultDecoder qualified as ResultDecoder
 import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
 import Core.Errors
@@ -171,9 +173,12 @@ statement sql encoder decoder preparable params =
                   where
                     recv =
                       fmap (first commandToSessionError)
-                        $ (<*)
-                        <$> ResultsDecoder.toHandler (ResultsDecoder.single ResultDecoder.noResult) connection integerDatetimes
-                        <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection integerDatetimes
+                        $ Command.run command connection
+                      where
+                        command = do
+                          Command.consumeResult ResultConsumer.ok
+                          Command.drainResults
+                          pure ()
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
