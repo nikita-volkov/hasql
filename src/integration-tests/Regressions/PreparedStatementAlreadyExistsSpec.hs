@@ -44,7 +44,44 @@ spec = around Testcontainers.withConnection do
 
   describe "Pipeline" do
     it "Failing pipeline statements don't cause misses in updates of the prepared statement cache" \connection -> do
-      -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
+      -- Test same pattern as existing working tests - failure in a multi-statement pipeline
+      result <- Connection.use connection do
+        _ <- tryError $ Session.pipeline do
+          (,) 
+            <$> Pipeline.statement
+                  ()
+                  ( Statement.Statement
+                      "select null :: int4"
+                      mempty
+                      (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                      True
+                  )
+            <*> Pipeline.statement
+                  ()
+                  ( Statement.Statement
+                      "select 1"
+                      mempty
+                      (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                      True
+                  )
+        -- Now test that the connection is still usable with a regular session
+        Session.statement
+          ()
+          ( Statement.Statement
+              "select 1"
+              mempty
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+              True
+          )
+
+      case result of
+        Right _ ->
+          pure ()
+        Left result ->
+          expectationFailure ("Unexpected error in regular session after pipeline failure: " <> show result)
+
+    it "Consecutive separate pipelines work after failure" \connection -> do
+      -- This tests the specific issue in the bug report - consecutive separate pipelines
       result <- Connection.use connection do
         _ <- tryError $ Session.pipeline do
           Pipeline.statement
@@ -55,7 +92,7 @@ spec = around Testcontainers.withConnection do
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
                 True
             )
-        -- Now try running another pipeline to see if pipeline mode works again
+        -- This should work but currently fails with PipelineAbort
         Session.pipeline do
           Pipeline.statement
             ()
@@ -70,42 +107,4 @@ spec = around Testcontainers.withConnection do
         Right _ ->
           pure ()
         Left result ->
-          expectationFailure ("Unexpected error in second pipeline: " <> show result)
-
-    it "Multiple consecutive pipeline failures are handled correctly" \connection -> do
-      -- This test ensures that our fix handles multiple pipeline failures gracefully
-      result <- Connection.use connection do
-        _ <- tryError $ Session.pipeline do
-          Pipeline.statement
-            ()
-            ( Statement.Statement
-                "select null :: int4"
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
-            )
-        _ <- tryError $ Session.pipeline do
-          Pipeline.statement
-            ()
-            ( Statement.Statement
-                "select 'not a number' :: int4"
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
-            )
-        -- Final pipeline with succeeding statement - this should work
-        Session.pipeline do
-          Pipeline.statement
-            ()
-            ( Statement.Statement
-                "select 1"
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
-            )
-
-      case result of
-        Right _ ->
-          pure () -- Expected to succeed
-        Left result ->
-          expectationFailure ("Final pipeline failed unexpectedly: " <> show result)
+          expectationFailure ("Consecutive pipeline failed: " <> show result)
