@@ -50,10 +50,10 @@ spec = around Testcontainers.withConnection do
           Pipeline.statement
             ()
             ( Statement.Statement
-                "select 1/0"  -- This causes a PostgreSQL error
+                "select 1/0"  -- PostgreSQL error instead of decoding error
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True  -- Preparable
+                True
             )
       case result of
         Right val ->
@@ -74,7 +74,7 @@ spec = around Testcontainers.withConnection do
                 "select 1"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True  -- Preparable
+                True
             )
       -- If there is an error the cache got corrupted.
       case result of
