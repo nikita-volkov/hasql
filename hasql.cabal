@@ -66,6 +66,7 @@ common base
     NamedFieldPuns
     NoImplicitPrelude
     NoMonomorphismRestriction
+    NumericUnderscores
     OverloadedStrings
     PatternGuards
     QuasiQuotes
@@ -115,6 +116,7 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.PqProcedures
+    Hasql.Connection.PqProcedures.ServerVersion
 
   build-depends:
     aeson >=2 && <3,
@@ -261,6 +263,7 @@ test-suite integration-tests
     ConnectionSpec
     EncodingDecodingSpec
     Features.DecoderCompatibilityCheckSpec
+    Features.ServerVersionCompatibilitySpec
     MiscSpec
     PipelineSpec
     Regressions.PipelineAbortSpec

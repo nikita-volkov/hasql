@@ -14,6 +14,7 @@ import Core.Contexts.Session qualified as Session
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
+import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.PqProcedures qualified as PqProcedures
 import Hasql.Connection.Setting qualified as Setting
@@ -40,6 +41,7 @@ acquire settings =
   runExceptT $ do
     pqConnection <- lift (Pq.connectdb (Config.connectionString config))
     lift (PqProcedures.checkConnectionStatus pqConnection) >>= traverse throwError
+    lift (PqProcedures.checkServerVersion pqConnection) >>= traverse (throwError . Just . Text.Encoding.encodeUtf8)
     lift (PqProcedures.initConnection pqConnection)
     integerDatetimes <- lift (PqProcedures.getIntegerDatetimes pqConnection)
     let connectionState =

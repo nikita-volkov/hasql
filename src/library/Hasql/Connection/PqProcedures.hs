@@ -1,5 +1,6 @@
 module Hasql.Connection.PqProcedures where
 
+import Hasql.Connection.PqProcedures.ServerVersion qualified as ServerVersion
 import Platform.Prelude
 import Pq qualified
 
@@ -12,9 +13,17 @@ checkConnectionStatus c = do
     _ -> fmap Just (Pq.errorMessage c)
 
 {-# INLINE checkServerVersion #-}
-checkServerVersion :: Pq.Connection -> IO (Maybe Int)
-checkServerVersion c =
-  fmap (mfilter (< 80200) . Just) (Pq.serverVersion c)
+checkServerVersion :: Pq.Connection -> IO (Maybe Text)
+checkServerVersion c = do
+  versionInt <- Pq.serverVersion c
+  pure
+    let version = ServerVersion.fromInt versionInt
+        minVersion = ServerVersion.ServerVersion 10 0 0
+     in if version < minVersion
+          then
+            Just ("Server version is lower than 10: " <> ServerVersion.toText version)
+          else
+            Nothing
 
 {-# INLINE getIntegerDatetimes #-}
 getIntegerDatetimes :: Pq.Connection -> IO Bool
