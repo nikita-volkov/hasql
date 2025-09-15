@@ -35,7 +35,6 @@ spec = around Testcontainers.withConnection do
             expectationFailure ("Unexpected error: " <> show err)
 
       -- Run a succeeding prepared statement in a pipeline to see if the cache is still in a good state.
-      putStrLn "Running second statement"
       result <- Connection.use connection do
         Session.pipeline do
           Pipeline.statement
