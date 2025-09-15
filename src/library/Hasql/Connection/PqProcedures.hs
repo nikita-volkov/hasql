@@ -25,8 +25,6 @@ checkServerVersion c = do
           else
             Nothing
 
-
-
 {-# INLINE initConnection #-}
 initConnection :: Pq.Connection -> IO ()
 initConnection c =

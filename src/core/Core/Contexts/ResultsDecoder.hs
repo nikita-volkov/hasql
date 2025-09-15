@@ -63,8 +63,8 @@ instance Filterable ResultsDecoder where
 {-# INLINE single #-}
 single :: Result.ResultDecoder a -> ResultsDecoder a
 single resultDec =
-  fromCommand $
-    Command.consumeResult (Result.toResultConsumerByIdt resultDec)
+  fromCommand
+    $ Command.consumeResult (Result.toResultConsumerByIdt resultDec)
 
 {-# INLINE dropRemainders #-}
 dropRemainders :: ResultsDecoder ()

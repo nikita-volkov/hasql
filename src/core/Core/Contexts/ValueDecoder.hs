@@ -35,7 +35,7 @@ decoderFn fn =
     "unknown"
     Nothing
     Nothing
-    (A.fn $ fn True)  -- Always use integer timestamps
+    (A.fn $ fn True) -- Always use integer timestamps
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
