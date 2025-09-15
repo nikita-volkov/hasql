@@ -69,7 +69,7 @@ aroundSpecWithConnection isolated spec =
 
 distros :: [TestcontainersPostgresql.Distro]
 distros =
-  [ TestcontainersPostgresql.Distro8,
+  [ TestcontainersPostgresql.Distro9,
     TestcontainersPostgresql.Distro17
   ]
 
