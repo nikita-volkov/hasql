@@ -1,11 +1,20 @@
 # 1.10
 
+Major revision happened.
+
+## Features
+
+- Decoder compatibility checks added.
+
 ## Breaking changes
 
 - Decoder checks are now more strict and report `DecoderTypeMismatch` when the actual type of a column does not match the expected type of a decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors later on.
   - E.g., `int4` column decoded with `int8` decoder will now report `DecoderTypeMismatch` instead of silently accepting the value.
 
+- Due to the above the oldest supported PostgreSQL version now is 10. In older versions some types had different OIDs.
+
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
+  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT SessionError IO)`.
 
 - Dropped `MonadReader Connection` instance for `Session`.
 
