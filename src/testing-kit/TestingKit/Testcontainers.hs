@@ -52,9 +52,10 @@ aroundSpecWithConnectionSettings ::
   Hspec.SpecWith [Hasql.Connection.Setting.Setting] ->
   Hspec.Spec
 aroundSpecWithConnectionSettings isolated spec =
-  forM_ distros \distro -> do
-    describeByDistro distro do
-      bool Hspec.aroundAll Hspec.around isolated (withConnectionSettings distro) spec
+  Hspec.parallel do
+    forM_ distros \distro -> do
+      describeByDistro distro do
+        bool Hspec.aroundAll Hspec.around isolated (withConnectionSettings distro) spec
 
 -- | Run with a hardcoded preset of distros.
 aroundSpecWithConnection ::
@@ -63,13 +64,14 @@ aroundSpecWithConnection ::
   Hspec.SpecWith Hasql.Connection.Connection ->
   Hspec.Spec
 aroundSpecWithConnection isolated spec =
-  forM_ distros \distro -> do
-    describeByDistro distro do
-      bool Hspec.aroundAll Hspec.around isolated (withConnectionByDistro distro) spec
+  Hspec.parallel do
+    forM_ distros \distro -> do
+      describeByDistro distro do
+        bool Hspec.aroundAll Hspec.around isolated (withConnectionByDistro distro) spec
 
 distros :: [TestcontainersPostgresql.Distro]
 distros =
-  [ TestcontainersPostgresql.Distro9,
+  [ TestcontainersPostgresql.Distro10,
     TestcontainersPostgresql.Distro17
   ]
 
