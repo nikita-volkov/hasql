@@ -2,6 +2,8 @@
 -- This module defines the internal state of a database connection.
 module Core.Structures.ConnectionState
   ( ConnectionState (..),
+    toStatementCache,
+    toIntegerDatetimes,
     fromConnection,
     setIntegerDatetimes,
     setPreparedStatements,
@@ -29,6 +31,12 @@ data ConnectionState = ConnectionState
     -- | The underlying database connection.
     connection :: Pq.Connection
   }
+
+toStatementCache :: ConnectionState -> StatementCache.StatementCache
+toStatementCache ConnectionState {..} = statementCache
+
+toIntegerDatetimes :: ConnectionState -> Bool
+toIntegerDatetimes ConnectionState {..} = integerDatetimes
 
 fromConnection :: Pq.Connection -> ConnectionState
 fromConnection connection =

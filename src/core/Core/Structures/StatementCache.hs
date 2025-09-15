@@ -35,7 +35,7 @@ lookup localKey (StatementCache hashMap _) = HashMap.lookup localKey hashMap
 insert :: LocalKey -> StatementCache -> (ByteString, StatementCache)
 insert localKey (StatementCache hashMap counter) = (remoteKey, newState)
   where
-    remoteKey = B.builderBytes . B.asciiIntegral $ counter
+    remoteKey = B.builderBytes . B.asciiIntegral $ newCounter
     newHashMap = HashMap.insert localKey remoteKey hashMap
     newCounter = succ counter
     newState = StatementCache newHashMap newCounter
