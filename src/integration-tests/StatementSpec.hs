@@ -10,7 +10,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection False do
   describe "Statement Functionality" do
     describe "Prepared statements" do
       it "allows reuse of the same prepared statement on different types" \connection -> do

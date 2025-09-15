@@ -12,7 +12,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection False do
   describe "Basic Session Operations" do
     describe "Roundtrips" do
       it "handles simple values correctly" \connection -> do
