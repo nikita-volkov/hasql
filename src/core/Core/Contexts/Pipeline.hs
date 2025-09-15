@@ -10,49 +10,66 @@ import Core.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
 import Pq qualified
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError (a, StatementCache.StatementCache))
+type Run = ExceptT SessionError (StateT StatementCache.StatementCache IO)
+
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
 run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes cache = do
-  runExceptT do
+  flip runStateT cache $ runExceptT $ do
     enterPipelineMode
-    (recvQueries, newCache) <- sendQueries
+    recvQueries <- sendQueries
     pipelineSync
-    result <- finallyE recvQueries do
+    finallyE recvQueries do
       recvPipelineSync
       exitPipelineMode
-    pure (result, newCache)
   where
-    enterPipelineMode :: ExceptT SessionError IO ()
+    enterPipelineMode :: Run ()
     enterPipelineMode =
       runCommand $ Pq.enterPipelineMode connection
 
-    exitPipelineMode :: ExceptT SessionError IO ()
+    exitPipelineMode :: Run ()
     exitPipelineMode =
       runCommand $ Pq.exitPipelineMode connection
 
-    sendQueries :: ExceptT SessionError IO (ExceptT SessionError IO a, StatementCache.StatementCache)
-    sendQueries =
-      fmap (\(ioResult, newCache) -> (ExceptT ioResult, newCache)) $ ExceptT $ sendQueriesInIO usePreparedStatements connection integerDatetimes cache
+    sendQueries :: Run (Run a)
+    sendQueries = do
+      cache <- get
+      res <- liftIO do
+        sendQueriesInIO usePreparedStatements connection integerDatetimes cache
+      (recv, newCache) <- case res of
+        Left err -> throwError err
+        Right ok -> pure ok
+      put newCache
+      pure do
+        res <- liftIO recv
+        case res of
+          Left err -> throwError err
+          Right ok -> pure ok
 
-    pipelineSync :: ExceptT SessionError IO ()
+    pipelineSync :: Run ()
     pipelineSync =
       runCommand $ Pq.pipelineSync connection
 
-    recvPipelineSync :: ExceptT SessionError IO ()
+    recvPipelineSync :: Run ()
     recvPipelineSync =
       runResultsDecoder
         $ ResultsDecoder.single ResultDecoder.pipelineSync
 
-    runResultsDecoder :: forall a. ResultsDecoder.ResultsDecoder a -> ExceptT SessionError IO a
-    runResultsDecoder decoder =
-      ExceptT
-        $ fmap (first PipelineError)
-        $ ResultsDecoder.toHandler decoder connection integerDatetimes
+    runResultsDecoder :: forall a. ResultsDecoder.ResultsDecoder a -> Run a
+    runResultsDecoder decoder = do
+      res <- liftIO do
+        ResultsDecoder.toHandler decoder connection integerDatetimes
+      case res of
+        Right ok -> pure ok
+        Left err -> throwError (PipelineError err)
 
-    runCommand :: IO Bool -> ExceptT SessionError IO ()
+    runCommand :: IO Bool -> Run ()
     runCommand action =
-      lift action >>= \case
+      liftIO action >>= \case
         True -> pure ()
-        False -> ExceptT (Left . PipelineError . ClientError <$> Pq.errorMessage connection)
+        False -> do
+          err <- liftIO do
+            Pq.errorMessage connection
+          throwError . PipelineError . ClientError $ err
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

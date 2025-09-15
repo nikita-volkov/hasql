@@ -144,12 +144,9 @@ pipeline pipeline = Session \connectionState -> do
       integerDatetimes = ConnectionState.integerDatetimes connectionState
       statementCache = ConnectionState.statementCache connectionState
       pqConnection = ConnectionState.connection connectionState
-  pipelineResult <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
-  case pipelineResult of
-    Left err -> pure (Left err, connectionState)
-    Right (result, newCache) ->
-      let newState = ConnectionState.setStatementCache newCache connectionState
-       in pure (Right result, newState)
+  (result, newCache) <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
+  let newState = ConnectionState.setStatementCache newCache connectionState
+  pure (result, newState)
 
 -- |
 -- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.

@@ -263,6 +263,7 @@ test-suite integration-tests
     Features.DecoderCompatibilityCheckSpec
     MiscSpec
     PipelineSpec
+    Regressions.PipelineAbortSpec
     Regressions.PreparedStatementAlreadyExistsSpec
     SessionSpec
     StatementSpec
