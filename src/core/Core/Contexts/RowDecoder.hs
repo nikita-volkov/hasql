@@ -63,7 +63,7 @@ toExpectedOids (RowDecoder oids _) = oids
 
 -- ** Decoder
 
-type Decoder a = Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+type Decoder a = Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
 
 toDecoder :: RowDecoder a -> Decoder a
 toDecoder =

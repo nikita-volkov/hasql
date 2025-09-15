@@ -34,7 +34,7 @@ import Platform.Prelude hiding (foldl, foldr, many, maybe)
 import Pq qualified
 
 newtype ResultDecoder a
-  = ResultDecoder (ReaderT (Bool, Pq.Result) (ExceptT ResultError IO) a)
+  = ResultDecoder (ReaderT Pq.Result (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
 
 -- * Construction
@@ -58,7 +58,7 @@ checkExecStatus = fromResultConsumer . ResultConsumer.checkExecStatus
 {-# INLINE checkCompatibility #-}
 checkCompatibility :: Row.RowDecoder a -> ResultDecoder ()
 checkCompatibility rowDec =
-  fromHandler \_idt result ->
+  fromHandler \result ->
     Row.toCompatibilityCheck rowDec result
 
 {-# INLINE maybe #-}
@@ -69,13 +69,13 @@ maybe rowDec =
     checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
-      $ \(integerDatetimes, result) -> ExceptT $ do
+      $ \result -> ExceptT $ do
         maxRows <- Pq.ntuples result
         case maxRows of
           0 -> return (Right Nothing)
           1 -> do
             maxCols <- Pq.nfields result
-            result <- Row.toDecoder rowDec integerDatetimes 0 maxCols result
+            result <- Row.toDecoder rowDec 0 maxCols result
             pure (fmap Just result)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
@@ -90,12 +90,12 @@ single rowDec =
     checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
-      $ \(integerDatetimes, result) -> ExceptT $ do
+      $ \result -> ExceptT $ do
         maxRows <- Pq.ntuples result
         case maxRows of
           1 -> do
             maxCols <- Pq.nfields result
-            Row.toDecoder rowDec integerDatetimes 0 maxCols result
+            Row.toDecoder rowDec 0 maxCols result
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
@@ -109,13 +109,13 @@ vector rowDec =
     checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
-      $ \(integerDatetimes, result) -> ExceptT $ do
+      $ \result -> ExceptT $ do
         maxRows <- Pq.ntuples result
         maxCols <- Pq.nfields result
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
+          rowResult <- Row.toDecoder rowDec (intToRow rowIndex) maxCols result
           case rowResult of
             Left !err -> writeIORef failureRef (Just err)
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
@@ -137,7 +137,7 @@ foldl step init rowDec =
     checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
-      $ \(integerDatetimes, result) ->
+      $ \result ->
         ExceptT
           $ {-# SCC "traversal" #-}
           do
@@ -146,7 +146,7 @@ foldl step init rowDec =
             accRef <- newIORef init
             failureRef <- newIORef Nothing
             forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-              rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
+              rowResult <- Row.toDecoder rowDec (intToRow rowIndex) maxCols result
               case rowResult of
                 Left !err -> writeIORef failureRef (Just err)
                 Right !x -> modifyIORef' accRef (\acc -> step acc x)
@@ -168,13 +168,13 @@ foldr step init rowDec =
     checkCompatibility rowDec
     ResultDecoder
       $ ReaderT
-      $ \(integerDatetimes, result) -> ExceptT $ do
+      $ \result -> ExceptT $ do
         maxRows <- Pq.ntuples result
         maxCols <- Pq.nfields result
         accRef <- newIORef init
         failureRef <- newIORef Nothing
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- Row.toDecoder rowDec integerDatetimes (intToRow rowIndex) maxCols result
+          rowResult <- Row.toDecoder rowDec (intToRow rowIndex) maxCols result
           case rowResult of
             Left !err -> writeIORef failureRef (Just err)
             Right !x -> modifyIORef accRef (\acc -> step x acc)
@@ -191,17 +191,17 @@ foldr step init rowDec =
 
 -- ** ResultConsumerByIdt
 
-type ResultConsumerByIdt a = Bool -> ResultConsumer.ResultConsumer a
+type ResultConsumerByIdt a = ResultConsumer.ResultConsumer a
 
 toResultConsumerByIdt :: ResultDecoder a -> ResultConsumerByIdt a
-toResultConsumerByIdt (ResultDecoder reader) idt =
+toResultConsumerByIdt (ResultDecoder reader) =
   ResultConsumer.fromHandler \result -> do
-    runExceptT (runReaderT reader (idt, result))
+    runExceptT (runReaderT reader result)
 
 fromResultConsumerByIdt :: ResultConsumerByIdt a -> ResultDecoder a
 fromResultConsumerByIdt resultConsumerByIdt =
-  fromHandler \idt result ->
-    ResultConsumer.toHandler (resultConsumerByIdt idt) result
+  fromHandler \result ->
+    ResultConsumer.toHandler resultConsumerByIdt result
 
 -- ** ResultConsumer
 
@@ -209,19 +209,19 @@ type ResultConsumer a = ResultConsumer.ResultConsumer a
 
 fromResultConsumer :: ResultConsumer a -> ResultDecoder a
 fromResultConsumer handler =
-  fromHandler \_idt result ->
+  fromHandler \result ->
     ResultConsumer.toHandler handler result
 
 -- ** Handler
 
-type Handler a = Bool -> Pq.Result -> IO (Either ResultError a)
+type Handler a = Pq.Result -> IO (Either ResultError a)
 
 {-# INLINE toHandler #-}
 toHandler :: ResultDecoder a -> Handler a
-toHandler (ResultDecoder reader) idt result =
-  runExceptT (runReaderT reader (idt, result))
+toHandler (ResultDecoder reader) result =
+  runExceptT (runReaderT reader result)
 
 fromHandler :: Handler a -> ResultDecoder a
 fromHandler handler =
-  ResultDecoder $ ReaderT $ \(idt, result) ->
-    ExceptT $ handler idt result
+  ResultDecoder $ ReaderT $ \result ->
+    ExceptT $ handler result

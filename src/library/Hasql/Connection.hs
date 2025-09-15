@@ -43,11 +43,10 @@ acquire settings =
     lift (PqProcedures.checkConnectionStatus pqConnection) >>= traverse throwError
     lift (PqProcedures.checkServerVersion pqConnection) >>= traverse (throwError . Just . Text.Encoding.encodeUtf8)
     lift (PqProcedures.initConnection pqConnection)
-    integerDatetimes <- lift (PqProcedures.getIntegerDatetimes pqConnection)
     let connectionState =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = Config.usePreparedStatements config,
-              ConnectionState.integerDatetimes = integerDatetimes,
+              ConnectionState.integerDatetimes = True,  -- Always True for PostgreSQL 10+
               ConnectionState.statementCache = StatementCache.empty,
               ConnectionState.connection = pqConnection
             }

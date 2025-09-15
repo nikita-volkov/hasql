@@ -12,39 +12,39 @@ renderReadable (ParamsEncoder _ _ _ printer) params =
   printer params
     & toList
 
-compilePreparedStatementData :: ParamsEncoder a -> Bool -> a -> ([A.Oid], [Maybe (ByteString, A.Format)])
-compilePreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) integerDatetimes input =
+compilePreparedStatementData :: ParamsEncoder a -> a -> ([A.Oid], [Maybe (ByteString, A.Format)])
+compilePreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) input =
   (oidList, valueAndFormatList)
   where
     (oidList, formatList) =
       columnsMetadata & toList & unzip
     valueAndFormatList =
-      serializer integerDatetimes input
+      serializer input
         & toList
         & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
-compileUnpreparedStatementData :: ParamsEncoder a -> Bool -> a -> [Maybe (A.Oid, ByteString, A.Format)]
-compileUnpreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) integerDatetimes input =
+compileUnpreparedStatementData :: ParamsEncoder a -> a -> [Maybe (A.Oid, ByteString, A.Format)]
+compileUnpreparedStatementData (ParamsEncoder _ columnsMetadata serializer _) input =
   zipWith
     ( \(oid, format) encoding ->
         (,,) <$> pure oid <*> encoding <*> pure format
     )
     (toList columnsMetadata)
-    (toList (serializer integerDatetimes input))
+    (toList (serializer input))
 
 -- |
 -- Encoder of some representation of a parameters product.
 data ParamsEncoder a = ParamsEncoder
   { size :: Int,
     columnsMetadata :: DList (A.Oid, A.Format),
-    serializer :: Bool -> a -> DList (Maybe ByteString),
+    serializer :: a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
 
 instance Contravariant ParamsEncoder where
   contramap fn (ParamsEncoder size columnsMetadata oldSerializer oldPrinter) = ParamsEncoder {..}
     where
-      serializer idt = oldSerializer idt . fn
+      serializer = oldSerializer . fn
       printer = oldPrinter . fn
 
 instance Divisible ParamsEncoder where
@@ -55,8 +55,8 @@ instance Divisible ParamsEncoder where
       ParamsEncoder
         { size = leftSize + rightSize,
           columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-          serializer = \idt input -> case divisor input of
-            (leftInput, rightInput) -> leftSerializer idt leftInput <> rightSerializer idt rightInput,
+          serializer = \input -> case divisor input of
+            (leftInput, rightInput) -> leftSerializer leftInput <> rightSerializer rightInput,
           printer = \input -> case divisor input of
             (leftInput, rightInput) -> leftPrinter leftInput <> rightPrinter rightInput
         }
@@ -73,7 +73,7 @@ instance Semigroup (ParamsEncoder a) where
     ParamsEncoder
       { size = leftSize + rightSize,
         columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-        serializer = \idt input -> leftSerializer idt input <> rightSerializer idt input,
+        serializer = \input -> leftSerializer input <> rightSerializer input,
         printer = \input -> leftPrinter input <> rightPrinter input
       }
 
@@ -85,7 +85,7 @@ value (C.ValueEncoder _ (Just valueOID) _ serialize print) =
   ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
-      serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
+      serializer = pure . Just . B.encodingBytes . serialize,
       printer = pure . E.toText . print
     }
   where
@@ -94,7 +94,7 @@ value (C.ValueEncoder _ Nothing _ serialize print) =
   ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
-      serializer = \idt -> pure . Just . B.encodingBytes . serialize idt,
+      serializer = pure . Just . B.encodingBytes . serialize,
       printer = pure . E.toText . print
     }
   where
@@ -105,7 +105,7 @@ nullableValue (C.ValueEncoder _ (Just valueOID) _ serialize print) =
   ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
-      serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
+      serializer = pure . fmap (B.encodingBytes . serialize),
       printer = pure . maybe "null" (E.toText . print)
     }
   where
@@ -114,7 +114,7 @@ nullableValue (C.ValueEncoder _ Nothing _ serialize print) =
   ParamsEncoder
     { size = 1,
       columnsMetadata = pure (pqOid, format),
-      serializer = \idt -> pure . fmap (B.encodingBytes . serialize idt),
+      serializer = pure . fmap (B.encodingBytes . serialize),
       printer = pure . maybe "null" (E.toText . print)
     }
   where

@@ -25,15 +25,7 @@ checkServerVersion c = do
           else
             Nothing
 
-{-# INLINE getIntegerDatetimes #-}
-getIntegerDatetimes :: Pq.Connection -> IO Bool
-getIntegerDatetimes c =
-  fmap decodeValue $ Pq.parameterStatus c "integer_datetimes"
-  where
-    decodeValue =
-      \case
-        Just "on" -> True
-        _ -> False
+
 
 {-# INLINE initConnection #-}
 initConnection :: Pq.Connection -> IO ()
