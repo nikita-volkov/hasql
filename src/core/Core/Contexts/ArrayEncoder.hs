@@ -29,8 +29,8 @@ nullableValue valueOID arrayOID encoder renderer =
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> ArrayEncoder b -> ArrayEncoder c
 dimension fold (ArrayEncoder valueOID arrayOID elEncoder elRenderer) =
-  let encoder els =
-        A.dimensionArray fold (elEncoder)
+  let encoder =
+        A.dimensionArray fold elEncoder
       renderer els =
         let folded =
               let step builder el =
