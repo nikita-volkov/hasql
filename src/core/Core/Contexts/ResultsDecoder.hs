@@ -48,7 +48,7 @@ import Platform.Prelude qualified as Prelude
 import Pq qualified
 
 newtype ResultsDecoder a
-  = ResultsDecoder (ReaderT (Bool, Pq.Connection) (ExceptT CommandError IO) a)
+  = ResultsDecoder (ReaderT Pq.Connection (ExceptT CommandError IO) a)
   deriving (Functor, Applicative, Monad)
 
 instance Filterable ResultsDecoder where
@@ -63,8 +63,8 @@ instance Filterable ResultsDecoder where
 {-# INLINE single #-}
 single :: Result.ResultDecoder a -> ResultsDecoder a
 single resultDec =
-  fromCommandByIdt \idt ->
-    Command.consumeResult (Result.toResultConsumerByIdt resultDec idt)
+  fromCommand $
+    Command.consumeResult (Result.toResultConsumerByIdt resultDec)
 
 {-# INLINE dropRemainders #-}
 dropRemainders :: ResultsDecoder ()
@@ -82,31 +82,31 @@ refine refiner (ResultsDecoder stack) = ResultsDecoder
 
 -- ** Handler
 
-type Handler a = Pq.Connection -> Bool -> IO (Either CommandError a)
+type Handler a = Pq.Connection -> IO (Either CommandError a)
 
-toHandler :: ResultsDecoder a -> (Pq.Connection -> Bool -> IO (Either CommandError a))
+toHandler :: ResultsDecoder a -> (Pq.Connection -> IO (Either CommandError a))
 toHandler (ResultsDecoder stack) =
-  \connection idt ->
-    runExceptT (runReaderT stack (idt, connection))
+  \connection ->
+    runExceptT (runReaderT stack connection)
 
 -- | Construct from a handler function.
-fromHandler :: (Pq.Connection -> Bool -> IO (Either CommandError a)) -> ResultsDecoder a
+fromHandler :: (Pq.Connection -> IO (Either CommandError a)) -> ResultsDecoder a
 fromHandler handler =
-  ResultsDecoder $ ReaderT $ \(integerDatetimes, connection) ->
-    ExceptT $ handler connection integerDatetimes
+  ResultsDecoder $ ReaderT $ \connection ->
+    ExceptT $ handler connection
 
 -- ** CommandByIdt
 
-type CommandByIdt a = Bool -> Command.Command a
+type CommandByIdt a = Command.Command a
 
 toCommandByIdt :: ResultsDecoder a -> CommandByIdt a
-toCommandByIdt (ResultsDecoder stack) idt =
+toCommandByIdt (ResultsDecoder stack) =
   Command.Command \connection -> do
-    runExceptT (runReaderT stack (idt, connection))
+    runExceptT (runReaderT stack connection)
 
 fromCommandByIdt :: CommandByIdt a -> ResultsDecoder a
-fromCommandByIdt commandByIdt = fromHandler \connection idt ->
-  let (Command.Command handler) = commandByIdt idt
+fromCommandByIdt commandByIdt = fromHandler \connection ->
+  let (Command.Command handler) = commandByIdt
    in handler connection
 
 -- ** Command
@@ -114,17 +114,17 @@ fromCommandByIdt commandByIdt = fromHandler \connection idt ->
 type Command = Command.Command
 
 fromCommand :: Command a -> ResultsDecoder a
-fromCommand = fromCommandByIdt . const
+fromCommand = fromCommandByIdt
 
 -- ** Roundtrip
 
-type RoundtripByIdt a = Bool -> Roundtrip.Roundtrip a
+type RoundtripByIdt a = Roundtrip.Roundtrip a
 
 toRoundtripByIdt :: ResultsDecoder a -> RoundtripByIdt a
-toRoundtripByIdt (ResultsDecoder stack) idt =
+toRoundtripByIdt (ResultsDecoder stack) =
   Roundtrip.Roundtrip \connection -> do
     pure do
-      runExceptT (runReaderT stack (idt, connection))
+      runExceptT (runReaderT stack connection)
 
 -- * Classes
 

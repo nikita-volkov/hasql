@@ -13,9 +13,7 @@ data ValueDecoder a
       (Maybe PTI.OID)
       -- | Statically known OID for the array-type with this type as the element.
       (Maybe PTI.OID)
-      -- | Decoding function for float timestamps (integerDatetimes = False).
-      (A.Value a)
-      -- | Decoding function for integer timestamps (integerDatetimes = True).
+      -- | Decoding function (always integer timestamps for PostgreSQL 10+).
       (A.Value a)
   deriving (Functor)
 
@@ -28,7 +26,7 @@ instance Filterable ValueDecoder where
 decoder :: A.Value a -> ValueDecoder a
 decoder aDecoder =
   {-# SCC "decoder" #-}
-  ValueDecoder "unknown" Nothing Nothing aDecoder aDecoder
+  ValueDecoder "unknown" Nothing Nothing aDecoder
 
 {-# INLINE decoderFn #-}
 decoderFn :: (Bool -> ByteString -> Either Text a) -> ValueDecoder a
@@ -37,29 +35,27 @@ decoderFn fn =
     "unknown"
     Nothing
     Nothing
-    (A.fn $ fn False)
-    (A.fn $ fn True)
+    (A.fn $ fn True)  -- Always use integer timestamps
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> ValueDecoder a -> ValueDecoder b
-refine fn (ValueDecoder typeName typeOID arrayOID floatDecoder intDecoder) =
-  ValueDecoder typeName typeOID arrayOID (A.refine fn floatDecoder) (A.refine fn intDecoder)
+refine fn (ValueDecoder typeName typeOID arrayOID decoder) =
+  ValueDecoder typeName typeOID arrayOID (A.refine fn decoder)
 
 -- |
 -- Create a decoder from PTI metadata and a decoding function.
 {-# INLINE unsafePTI #-}
-unsafePTI :: Text -> PTI.PTI -> A.Value a -> A.Value a -> ValueDecoder a
-unsafePTI typeName pti floatDecoder intDecoder =
-  ValueDecoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti) floatDecoder intDecoder
+unsafePTI :: Text -> PTI.PTI -> A.Value a -> ValueDecoder a
+unsafePTI typeName pti intDecoder =
+  ValueDecoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti) intDecoder
 
 -- * Relations
 
 toExpectedOid :: ValueDecoder a -> Maybe Pq.Oid
-toExpectedOid (ValueDecoder _ typeOID _ _ _) = PTI.oidPQ <$> typeOID
+toExpectedOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
 
 {-# INLINE toHandler #-}
-toHandler :: ValueDecoder a -> Bool -> A.Value a
-toHandler (ValueDecoder _ _ _ floatDecoder intDecoder) integerDatetimes =
-  if integerDatetimes then intDecoder else floatDecoder
+toHandler :: ValueDecoder a -> A.Value a
+toHandler (ValueDecoder _ _ _ decoder) = decoder

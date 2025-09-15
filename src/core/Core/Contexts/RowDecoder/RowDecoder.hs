@@ -24,14 +24,13 @@ data Env
       Pq.Result
       Pq.Row
       Pq.Column
-      Bool
 
 -- * Functions
 
 {-# INLINE toHandler #-}
-toHandler :: RowDecoder a -> Bool -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
-toHandler (RowDecoder f) integerDatetimes row columnsAmount result =
-  let env = Env result row columnsAmount integerDatetimes
+toHandler :: RowDecoder a -> Pq.Row -> Pq.Column -> Pq.Result -> IO (Either ResultError a)
+toHandler (RowDecoder f) row columnsAmount result =
+  let env = Env result row columnsAmount
    in runExceptT (runReaderT (evalStateT f 0) env)
 
 -- |
@@ -40,7 +39,7 @@ toHandler (RowDecoder f) integerDatetimes row columnsAmount result =
 column :: ValueDecoder.ValueDecoder a -> (Maybe a -> Either RowError b) -> RowDecoder b
 column valueDec processNullable = RowDecoder do
   col <- get
-  Env result row columnsAmount integerDatetimes <- ask
+  Env result row columnsAmount <- ask
   let colInt = Pq.colToInt col
   let packRowError err = RowError (Pq.rowToInt row) colInt err
   put (succ col)
@@ -52,7 +51,7 @@ column valueDec processNullable = RowDecoder do
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
     Just v ->
-      case {-# SCC "decode" #-} A.valueParser (ValueDecoder.toHandler valueDec integerDatetimes) v of
+      case {-# SCC "decode" #-} A.valueParser (ValueDecoder.toHandler valueDec) v of
         Left err -> throwError (packRowError (ValueError err))
         Right decoded -> pure (Just decoded)
 

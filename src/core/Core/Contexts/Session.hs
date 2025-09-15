@@ -46,14 +46,13 @@ liftRoundtrip packError roundtrip = Session \connectionState -> do
 
 liftInformedRoundtrip ::
   (CommandError -> SessionError) ->
-  (Bool -> Bool -> StatementCache.StatementCache -> Roundtrip.Roundtrip (a, StatementCache.StatementCache)) ->
+  (Bool -> StatementCache.StatementCache -> Roundtrip.Roundtrip (a, StatementCache.StatementCache)) ->
   Session a
 liftInformedRoundtrip packError roundtrip = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      integerDatetimes = ConnectionState.integerDatetimes connectionState
       statementCache = ConnectionState.statementCache connectionState
       pqConnection = ConnectionState.connection connectionState
-  result <- join $ Roundtrip.run (roundtrip usePreparedStatements integerDatetimes statementCache) pqConnection
+  result <- join $ Roundtrip.run (roundtrip usePreparedStatements statementCache) pqConnection
   case result of
     Left err -> pure (Left (packError err), connectionState)
     Right (a, newStatementCache) ->
@@ -65,18 +64,17 @@ liftCommand ::
   Command.Command a ->
   Session a
 liftCommand packError command =
-  liftInformedCommand packError \_ _ statementCache -> (,statementCache) <$> command
+  liftInformedCommand packError \_ statementCache -> (,statementCache) <$> command
 
 liftInformedCommand ::
   (CommandError -> SessionError) ->
-  (Bool -> Bool -> StatementCache.StatementCache -> Command.Command (a, StatementCache.StatementCache)) ->
+  (Bool -> StatementCache.StatementCache -> Command.Command (a, StatementCache.StatementCache)) ->
   Session a
 liftInformedCommand packError command = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      integerDatetimes = ConnectionState.integerDatetimes connectionState
       statementCache = ConnectionState.statementCache connectionState
       pqConnection = ConnectionState.connection connectionState
-  result <- Command.run (command usePreparedStatements integerDatetimes statementCache) pqConnection
+  result <- Command.run (command usePreparedStatements statementCache) pqConnection
   case result of
     Left err -> pure (Left (packError err), connectionState)
     Right (a, newStatementCache) ->
@@ -110,10 +108,10 @@ statement sql paramsEncoder decoder preparable params =
 
     prepare :: Session (Maybe (ByteString, [Maybe (ByteString, Pq.Format)]))
     prepare =
-      liftInformedCommand packError \usePreparedStatements integerDatetimes statementCache -> do
+      liftInformedCommand packError \usePreparedStatements statementCache -> do
         if usePreparedStatements && preparable
           then
-            let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder integerDatetimes params
+            let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder params
              in Command.prepareWithCache sql oidList statementCache
                   <&> \(key, statementCache) -> (Just (key, valueAndFormatList), statementCache)
           else
@@ -121,18 +119,18 @@ statement sql paramsEncoder decoder preparable params =
 
     executePrepared :: ByteString -> [Maybe (ByteString, Pq.Format)] -> Session result
     executePrepared key valueAndFormatList =
-      liftInformedCommand packError \_usePreparedStatements integerDatetimes statementCache -> do
+      liftInformedCommand packError \_usePreparedStatements statementCache -> do
         Command.sendQueryPrepared key valueAndFormatList
-        result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+        result <- ResultsDecoder.toCommandByIdt decoder
         Command.drainResults
         pure (result, statementCache)
 
     executeUnprepared :: Session result
     executeUnprepared =
-      liftInformedCommand packError \_ integerDatetimes statementCache -> do
-        let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder integerDatetimes params
+      liftInformedCommand packError \_ statementCache -> do
+        let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder params
         Command.sendQueryParams sql paramsData
-        result <- ResultsDecoder.toCommandByIdt decoder integerDatetimes
+        result <- ResultsDecoder.toCommandByIdt decoder
         Command.drainResults
         pure (result, statementCache)
 
@@ -141,10 +139,9 @@ statement sql paramsEncoder decoder preparable params =
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      integerDatetimes = ConnectionState.integerDatetimes connectionState
       statementCache = ConnectionState.statementCache connectionState
       pqConnection = ConnectionState.connection connectionState
-  (result, newCache) <- Pipeline.run pipeline usePreparedStatements pqConnection integerDatetimes statementCache
+  (result, newCache) <- Pipeline.run pipeline usePreparedStatements pqConnection statementCache
   let newState = ConnectionState.setStatementCache newCache connectionState
   pure (result, newState)
 

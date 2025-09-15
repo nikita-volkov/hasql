@@ -12,8 +12,8 @@ import Pq qualified
 
 type Run = ExceptT SessionError (StateT StatementCache.StatementCache IO)
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> Bool -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
-run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes cache = do
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
+run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
   flip runStateT cache $ runExceptT $ do
     enterPipelineMode
     recvQueries <- sendQueries
@@ -34,7 +34,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
     sendQueries = do
       cache <- get
       res <- liftIO do
-        sendQueriesInIO usePreparedStatements connection integerDatetimes cache
+        sendQueriesInIO usePreparedStatements connection cache
       (recv, newCache) <- case res of
         Left err -> throwError err
         Right ok -> pure ok
@@ -57,7 +57,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection integerDatetimes
     runResultsDecoder :: forall a. ResultsDecoder.ResultsDecoder a -> Run a
     runResultsDecoder decoder = do
       res <- liftIO do
-        ResultsDecoder.toHandler decoder connection integerDatetimes
+        ResultsDecoder.toHandler decoder connection
       case res of
         Right ok -> pure ok
         Left err -> throwError (PipelineError err)
@@ -135,7 +135,6 @@ newtype Pipeline a
   = Pipeline
       ( Bool ->
         Pq.Connection ->
-        Bool ->
         StatementCache.StatementCache ->
         IO (Either SessionError (IO (Either SessionError a), StatementCache.StatementCache))
       )
@@ -143,15 +142,15 @@ newtype Pipeline a
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline (\_ _ _ cache -> pure (Right (pure (Right a), cache)))
+    Pipeline (\_ _ cache -> pure (Right (pure (Right a), cache)))
 
   Pipeline lSend <*> Pipeline rSend =
-    Pipeline \usePreparedStatements conn integerDatetimes cache ->
-      lSend usePreparedStatements conn integerDatetimes cache >>= \case
+    Pipeline \usePreparedStatements conn cache ->
+      lSend usePreparedStatements conn cache >>= \case
         Left sendErr ->
           pure (Left sendErr)
         Right (lRecv, cache1) ->
-          rSend usePreparedStatements conn integerDatetimes cache1 <&> \case
+          rSend usePreparedStatements conn cache1 <&> \case
             Left sendErr ->
               Left sendErr
             Right (rRecv, cache2) ->
@@ -163,7 +162,7 @@ statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultsDecoder.
 statement sql encoder decoder preparable params =
   Pipeline run
   where
-    run usePreparedStatements connection integerDatetimes cache =
+    run usePreparedStatements connection cache =
       if usePreparedStatements && preparable
         then runPrepared
         else runUnprepared
@@ -174,7 +173,7 @@ statement sql encoder decoder preparable params =
           pure (keyRecv *> queryRecv, newCache)
           where
             (oidList, valueAndFormatList) =
-              ParamsEncoder.compilePreparedStatementData encoder integerDatetimes params
+              ParamsEncoder.compilePreparedStatementData encoder params
 
             resolvePreparedStatementKey =
               case StatementCache.lookup localKey cache of
@@ -208,11 +207,11 @@ statement sql encoder decoder preparable params =
                 recv =
                   fmap (first commandToSessionError)
                     $ (<*)
-                    <$> ResultsDecoder.toHandler decoder connection integerDatetimes
-                    <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection integerDatetimes
+                    <$> ResultsDecoder.toHandler decoder connection
+                    <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection
 
         runUnprepared = do
-          sent <- Pq.sendQueryParams connection sql (ParamsEncoder.compileUnpreparedStatementData encoder integerDatetimes params) Pq.Binary
+          sent <- Pq.sendQueryParams connection sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary
           if sent
             then pure (Right (recv, cache))
             else do
@@ -222,8 +221,8 @@ statement sql encoder decoder preparable params =
             recv =
               fmap (first commandToSessionError)
                 $ (<*)
-                <$> ResultsDecoder.toHandler decoder connection integerDatetimes
-                <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection integerDatetimes
+                <$> ResultsDecoder.toHandler decoder connection
+                <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection
 
     commandToSessionError =
       QueryError sql (ParamsEncoder.renderReadable encoder params)

@@ -3,9 +3,7 @@
 module Core.Structures.ConnectionState
   ( ConnectionState (..),
     toStatementCache,
-    toIntegerDatetimes,
     fromConnection,
-    setIntegerDatetimes,
     setPreparedStatements,
     setStatementCache,
     setConnection,
@@ -24,8 +22,6 @@ import Pq qualified
 data ConnectionState = ConnectionState
   { -- | Whether prepared statements are enabled.
     preparedStatements :: Bool,
-    -- | Whether integer datetimes are used.
-    integerDatetimes :: Bool,
     -- | The statement cache for prepared statements.
     statementCache :: StatementCache.StatementCache,
     -- | The underlying database connection.
@@ -35,21 +31,13 @@ data ConnectionState = ConnectionState
 toStatementCache :: ConnectionState -> StatementCache.StatementCache
 toStatementCache ConnectionState {..} = statementCache
 
-toIntegerDatetimes :: ConnectionState -> Bool
-toIntegerDatetimes ConnectionState {..} = integerDatetimes
-
 fromConnection :: Pq.Connection -> ConnectionState
 fromConnection connection =
   ConnectionState
     { preparedStatements = False,
-      integerDatetimes = False,
       statementCache = StatementCache.empty,
       connection = connection
     }
-
-setIntegerDatetimes :: Bool -> ConnectionState -> ConnectionState
-setIntegerDatetimes integerDatetimes connectionState =
-  connectionState {integerDatetimes = integerDatetimes}
 
 setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
 setPreparedStatements preparedStatements connectionState =

@@ -6,22 +6,22 @@ import PostgreSQL.Binary.Encoding qualified as A
 import TextBuilder qualified as C
 
 data ArrayEncoder a
-  = ArrayEncoder B.OID B.OID (Bool -> a -> A.Array) (a -> C.TextBuilder)
+  = ArrayEncoder B.OID B.OID (a -> A.Array) (a -> C.TextBuilder)
 
 instance Contravariant ArrayEncoder where
   contramap fn (ArrayEncoder valueOid arrayOid encoder renderer) =
-    ArrayEncoder valueOid arrayOid (\intDateTimes -> encoder intDateTimes . fn) (renderer . fn)
+    ArrayEncoder valueOid arrayOid (encoder . fn) (renderer . fn)
 
 {-# INLINE value #-}
-value :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> ArrayEncoder a
+value :: B.OID -> B.OID -> (a -> A.Encoding) -> (a -> C.TextBuilder) -> ArrayEncoder a
 value valueOID arrayOID encoder =
-  ArrayEncoder valueOID arrayOID (\params -> A.encodingArray . encoder params)
+  ArrayEncoder valueOID arrayOID (A.encodingArray . encoder)
 
 {-# INLINE nullableValue #-}
-nullableValue :: B.OID -> B.OID -> (Bool -> a -> A.Encoding) -> (a -> C.TextBuilder) -> ArrayEncoder (Maybe a)
+nullableValue :: B.OID -> B.OID -> (a -> A.Encoding) -> (a -> C.TextBuilder) -> ArrayEncoder (Maybe a)
 nullableValue valueOID arrayOID encoder renderer =
-  let maybeEncoder params =
-        maybe A.nullArray (A.encodingArray . encoder params)
+  let maybeEncoder =
+        maybe A.nullArray (A.encodingArray . encoder)
       maybeRenderer =
         maybe (C.string "null") renderer
    in ArrayEncoder valueOID arrayOID maybeEncoder maybeRenderer
@@ -29,8 +29,8 @@ nullableValue valueOID arrayOID encoder renderer =
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> ArrayEncoder b -> ArrayEncoder c
 dimension fold (ArrayEncoder valueOID arrayOID elEncoder elRenderer) =
-  let encoder el =
-        A.dimensionArray fold (elEncoder el)
+  let encoder =
+        A.dimensionArray fold elEncoder
       renderer els =
         let folded =
               let step builder el =
