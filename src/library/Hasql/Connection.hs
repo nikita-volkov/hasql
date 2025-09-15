@@ -46,7 +46,6 @@ acquire settings =
     let connectionState =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = Config.usePreparedStatements config,
-              ConnectionState.integerDatetimes = True,  -- Always True for PostgreSQL 10+
               ConnectionState.statementCache = StatementCache.empty,
               ConnectionState.connection = pqConnection
             }

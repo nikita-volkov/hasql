@@ -4,20 +4,20 @@ import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 
 newtype CompositeDecoder a
-  = CompositeDecoder (ReaderT Bool A.Composite a)
+  = CompositeDecoder (A.Composite a)
   deriving (Functor, Applicative, Monad, MonadFail)
 
 {-# INLINE run #-}
-run :: CompositeDecoder a -> Bool -> A.Value a
-run (CompositeDecoder imp) env =
-  A.composite (runReaderT imp env)
+run :: CompositeDecoder a -> A.Value a
+run (CompositeDecoder imp) =
+  A.composite imp
 
 {-# INLINE value #-}
-value :: (Bool -> A.Value a) -> CompositeDecoder (Maybe a)
+value :: A.Value a -> CompositeDecoder (Maybe a)
 value decoder' =
-  CompositeDecoder $ ReaderT $ A.nullableValueComposite . decoder'
+  CompositeDecoder $ A.nullableValueComposite decoder'
 
 {-# INLINE nonNullValue #-}
-nonNullValue :: (Bool -> A.Value a) -> CompositeDecoder a
+nonNullValue :: A.Value a -> CompositeDecoder a
 nonNullValue decoder' =
-  CompositeDecoder $ ReaderT $ A.valueComposite . decoder'
+  CompositeDecoder $ A.valueComposite decoder'

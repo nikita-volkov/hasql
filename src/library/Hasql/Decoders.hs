@@ -223,19 +223,19 @@ type role Value representational
 -- Decoder of the @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
-bool = Value (Value.unsafePTI "bool" PTI.bool A.bool A.bool)
+bool = Value (Value.unsafePTI "bool" PTI.bool A.bool)
 
 -- |
 -- Decoder of the @INT2@ values.
 {-# INLINEABLE int2 #-}
 int2 :: Value Int16
-int2 = Value (Value.unsafePTI "int2" PTI.int2 A.int A.int)
+int2 = Value (Value.unsafePTI "int2" PTI.int2 A.int)
 
 -- |
 -- Decoder of the @INT4@ values.
 {-# INLINEABLE int4 #-}
 int4 :: Value Int32
-int4 = Value (Value.unsafePTI "int4" PTI.int4 A.int A.int)
+int4 = Value (Value.unsafePTI "int4" PTI.int4 A.int)
 
 -- |
 -- Decoder of the @INT8@ values.
@@ -243,56 +243,56 @@ int4 = Value (Value.unsafePTI "int4" PTI.int4 A.int A.int)
 int8 :: Value Int64
 int8 =
   {-# SCC "int8" #-}
-  Value (Value.unsafePTI "int8" PTI.int8 ({-# SCC "int8.int" #-} A.int) ({-# SCC "int8.int" #-} A.int))
+  Value (Value.unsafePTI "int8" PTI.int8 ({-# SCC "int8.int" #-} A.int))
 
 -- |
 -- Decoder of the @FLOAT4@ values.
 {-# INLINEABLE float4 #-}
 float4 :: Value Float
-float4 = Value (Value.unsafePTI "float4" PTI.float4 A.float4 A.float4)
+float4 = Value (Value.unsafePTI "float4" PTI.float4 A.float4)
 
 -- |
 -- Decoder of the @FLOAT8@ values.
 {-# INLINEABLE float8 #-}
 float8 :: Value Double
-float8 = Value (Value.unsafePTI "float8" PTI.float8 A.float8 A.float8)
+float8 = Value (Value.unsafePTI "float8" PTI.float8 A.float8)
 
 -- |
 -- Decoder of the @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
 numeric :: Value Scientific
-numeric = Value (Value.unsafePTI "numeric" PTI.numeric A.numeric A.numeric)
+numeric = Value (Value.unsafePTI "numeric" PTI.numeric A.numeric)
 
 -- |
 -- Decoder of the @CHAR@ values.
 -- Note that it supports Unicode values.
 {-# INLINEABLE char #-}
 char :: Value Char
-char = Value (Value.unsafePTI "char" PTI.char A.char A.char)
+char = Value (Value.unsafePTI "char" PTI.char A.char)
 
 -- |
 -- Decoder of the @TEXT@ values.
 {-# INLINEABLE text #-}
 text :: Value Text
-text = Value (Value.unsafePTI "text" PTI.text A.text_strict A.text_strict)
+text = Value (Value.unsafePTI "text" PTI.text A.text_strict)
 
 -- |
 -- Decoder of the @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString
-bytea = Value (Value.unsafePTI "bytea" PTI.bytea A.bytea_strict A.bytea_strict)
+bytea = Value (Value.unsafePTI "bytea" PTI.bytea A.bytea_strict)
 
 -- |
 -- Decoder of the @DATE@ values.
 {-# INLINEABLE date #-}
 date :: Value Day
-date = Value (Value.unsafePTI "date" PTI.date A.date A.date)
+date = Value (Value.unsafePTI "date" PTI.date A.date)
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = Value (Value.unsafePTI "timestamp" PTI.timestamp A.timestamp_float A.timestamp_int)
+timestamp = Value (Value.unsafePTI "timestamp" PTI.timestamp A.timestamp_int)
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
@@ -306,13 +306,13 @@ timestamp = Value (Value.unsafePTI "timestamp" PTI.timestamp A.timestamp_float A
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = Value (Value.unsafePTI "timestamptz" PTI.timestamptz A.timestamptz_float A.timestamptz_int)
+timestamptz = Value (Value.unsafePTI "timestamptz" PTI.timestamptz A.timestamptz_int)
 
 -- |
 -- Decoder of the @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = Value (Value.unsafePTI "time" PTI.time A.time_float A.time_int)
+time = Value (Value.unsafePTI "time" PTI.time A.time_int)
 
 -- |
 -- Decoder of the @TIMETZ@ values.
@@ -324,25 +324,25 @@ time = Value (Value.unsafePTI "time" PTI.time A.time_float A.time_int)
 -- to represent a value on the Haskell's side.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = Value (Value.unsafePTI "timetz" PTI.timetz A.timetz_float A.timetz_int)
+timetz = Value (Value.unsafePTI "timetz" PTI.timetz A.timetz_int)
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 {-# INLINEABLE interval #-}
 interval :: Value DiffTime
-interval = Value (Value.unsafePTI "interval" PTI.interval A.interval_float A.interval_int)
+interval = Value (Value.unsafePTI "interval" PTI.interval A.interval_int)
 
 -- |
 -- Decoder of the @UUID@ values.
 {-# INLINEABLE uuid #-}
 uuid :: Value UUID
-uuid = Value (Value.unsafePTI "uuid" PTI.uuid A.uuid A.uuid)
+uuid = Value (Value.unsafePTI "uuid" PTI.uuid A.uuid)
 
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
 inet :: Value Iproute.IPRange
-inet = Value (Value.unsafePTI "inet" PTI.inet A.inet A.inet)
+inet = Value (Value.unsafePTI "inet" PTI.inet A.inet)
 
 -- |
 -- Decoder of the @MACADDR@ values.
@@ -353,13 +353,13 @@ inet = Value (Value.unsafePTI "inet" PTI.inet A.inet A.inet)
 -- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
 {-# INLINEABLE macaddr #-}
 macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = Value (Value.unsafePTI "macaddr" PTI.macaddr A.macaddr A.macaddr)
+macaddr = Value (Value.unsafePTI "macaddr" PTI.macaddr A.macaddr)
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
-json = Value (Value.unsafePTI "json" PTI.json A.json_ast A.json_ast)
+json = Value (Value.unsafePTI "json" PTI.json A.json_ast)
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
@@ -371,7 +371,7 @@ jsonBytes fn = Value (Value.decoder (A.json_bytes fn))
 -- Decoder of the @JSONB@ values into a JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value Aeson.Value
-jsonb = Value (Value.unsafePTI "jsonb" PTI.jsonb A.jsonb_ast A.jsonb_ast)
+jsonb = Value (Value.unsafePTI "jsonb" PTI.jsonb A.jsonb_ast)
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
@@ -383,79 +383,79 @@ jsonbBytes fn = Value (Value.decoder (A.jsonb_bytes fn))
 -- Decoder of the @INT4RANGE@ values.
 {-# INLINEABLE int4range #-}
 int4range :: Value (R.Range Int32)
-int4range = Value (Value.unsafePTI "int4range" PTI.int4range A.int4range A.int4range)
+int4range = Value (Value.unsafePTI "int4range" PTI.int4range A.int4range)
 
 -- |
 -- Decoder of the @INT8RANGE@ values.
 {-# INLINEABLE int8range #-}
 int8range :: Value (R.Range Int64)
-int8range = Value (Value.unsafePTI "int8range" PTI.int8range A.int8range A.int8range)
+int8range = Value (Value.unsafePTI "int8range" PTI.int8range A.int8range)
 
 -- |
 -- Decoder of the @NUMRANGE@ values.
 {-# INLINEABLE numrange #-}
 numrange :: Value (R.Range Scientific)
-numrange = Value (Value.unsafePTI "numrange" PTI.numrange A.numrange A.numrange)
+numrange = Value (Value.unsafePTI "numrange" PTI.numrange A.numrange)
 
 -- |
 -- Decoder of the @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = Value (Value.unsafePTI "tsrange" PTI.tsrange A.tsrange_float A.tsrange_int)
+tsrange = Value (Value.unsafePTI "tsrange" PTI.tsrange A.tsrange_int)
 
 -- |
 -- Decoder of the @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = Value (Value.unsafePTI "tstzrange" PTI.tstzrange A.tstzrange_float A.tstzrange_int)
+tstzrange = Value (Value.unsafePTI "tstzrange" PTI.tstzrange A.tstzrange_int)
 
 -- |
 -- Decoder of the @DATERANGE@ values.
 {-# INLINEABLE daterange #-}
 daterange :: Value (R.Range Day)
-daterange = Value (Value.unsafePTI "daterange" PTI.daterange A.daterange A.daterange)
+daterange = Value (Value.unsafePTI "daterange" PTI.daterange A.daterange)
 
 -- |
 -- Decoder of the @INT4MULTIRANGE@ values.
 {-# INLINEABLE int4multirange #-}
 int4multirange :: Value (R.Multirange Int32)
-int4multirange = Value (Value.unsafePTI "int4multirange" PTI.int4multirange A.int4multirange A.int4multirange)
+int4multirange = Value (Value.unsafePTI "int4multirange" PTI.int4multirange A.int4multirange)
 
 -- |
 -- Decoder of the @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
-int8multirange = Value (Value.unsafePTI "int8multirange" PTI.int8multirange A.int8multirange A.int8multirange)
+int8multirange = Value (Value.unsafePTI "int8multirange" PTI.int8multirange A.int8multirange)
 
 -- |
 -- Decoder of the @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
-nummultirange = Value (Value.unsafePTI "nummultirange" PTI.nummultirange A.nummultirange A.nummultirange)
+nummultirange = Value (Value.unsafePTI "nummultirange" PTI.nummultirange A.nummultirange)
 
 -- |
 -- Decoder of the @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = Value (Value.unsafePTI "tsmultirange" PTI.tsmultirange A.tsmultirange_float A.tsmultirange_int)
+tsmultirange = Value (Value.unsafePTI "tsmultirange" PTI.tsmultirange A.tsmultirange_int)
 
 -- |
 -- Decoder of the @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = Value (Value.unsafePTI "tstzmultirange" PTI.tstzmultirange A.tstzmultirange_float A.tstzmultirange_int)
+tstzmultirange = Value (Value.unsafePTI "tstzmultirange" PTI.tstzmultirange A.tstzmultirange_int)
 
 -- |
 -- Decoder of the @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
-datemultirange = Value (Value.unsafePTI "datemultirange" PTI.datemultirange A.datemultirange A.datemultirange)
+datemultirange = Value (Value.unsafePTI "datemultirange" PTI.datemultirange A.datemultirange)
 
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
 {-# INLINEABLE custom #-}
-custom :: (Bool -> ByteString -> Either Text a) -> Value a
-custom fn = Value (Value.decoderFn fn)
+custom :: (ByteString -> Either Text a) -> Value a
+custom fn = Value (Value.decoder (A.fn fn))
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
@@ -486,7 +486,7 @@ enum mapping = Value (Value.decoder (A.enum mapping))
 -- Lift an 'Array' decoder to a 'Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array a -> Value a
-array (Array imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Array.run imp False) (Array.run imp True))
+array (Array imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Array.run imp))
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -522,7 +522,7 @@ vectorArray = array . dimension GenericVector.replicateM . element
 -- Lift a 'Composite' decoder to a 'Value' decoder.
 {-# INLINEABLE composite #-}
 composite :: Composite a -> Value a
-composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp False) (Composite.run imp True))
+composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
 
 -- * Array decoders
 

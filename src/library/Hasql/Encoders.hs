@@ -250,25 +250,25 @@ date = Value (Value.unsafePTIWithName "date" PTI.date (const A.date) (C.string .
 -- Encoder of @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = Value (Value.unsafePTIWithName "timestamp" PTI.timestamp (Prelude.bool A.timestamp_float A.timestamp_int) (C.string . show))
+timestamp = Value (Value.unsafePTIWithName "timestamp" PTI.timestamp A.timestamp_int (C.string . show))
 
 -- |
 -- Encoder of @TIMESTAMPTZ@ values.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = Value (Value.unsafePTIWithName "timestamptz" PTI.timestamptz (Prelude.bool A.timestamptz_float A.timestamptz_int) (C.string . show))
+timestamptz = Value (Value.unsafePTIWithName "timestamptz" PTI.timestamptz A.timestamptz_int (C.string . show))
 
 -- |
 -- Encoder of @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = Value (Value.unsafePTIWithName "time" PTI.time (Prelude.bool A.time_float A.time_int) (C.string . show))
+time = Value (Value.unsafePTIWithName "time" PTI.time A.time_int (C.string . show))
 
 -- |
 -- Encoder of @TIMETZ@ values.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = Value (Value.unsafePTIWithName "timetz" PTI.timetz (Prelude.bool A.timetz_float A.timetz_int) (C.string . show))
+timetz = Value (Value.unsafePTIWithName "timetz" PTI.timetz A.timetz_int (C.string . show))
 
 -- |
 -- Encoder of @INTERVAL@ values.
@@ -369,13 +369,13 @@ numrange = Value (Value.unsafePTIWithName "numrange" PTI.numrange (const A.numra
 -- Encoder of @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = Value (Value.unsafePTIWithName "tsrange" PTI.tsrange (Prelude.bool A.tsrange_float A.tsrange_int) (C.string . show))
+tsrange = Value (Value.unsafePTIWithName "tsrange" PTI.tsrange A.tsrange_int (C.string . show))
 
 -- |
 -- Encoder of @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = Value (Value.unsafePTIWithName "tstzrange" PTI.tstzrange (Prelude.bool A.tstzrange_float A.tstzrange_int) (C.string . show))
+tstzrange = Value (Value.unsafePTIWithName "tstzrange" PTI.tstzrange A.tstzrange_int (C.string . show))
 
 -- |
 -- Encoder of @DATERANGE@ values.
@@ -405,13 +405,13 @@ nummultirange = Value (Value.unsafePTIWithName "nummultirange" PTI.nummultirange
 -- Encoder of @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = Value (Value.unsafePTIWithName "tsmultirange" PTI.tsmultirange (Prelude.bool A.tsmultirange_float A.tsmultirange_int) (C.string . show))
+tsmultirange = Value (Value.unsafePTIWithName "tsmultirange" PTI.tsmultirange A.tsmultirange_int (C.string . show))
 
 -- |
 -- Encoder of @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = Value (Value.unsafePTIWithName "tstzmultirange" PTI.tstzmultirange (Prelude.bool A.tstzmultirange_float A.tstzmultirange_int) (C.string . show))
+tstzmultirange = Value (Value.unsafePTIWithName "tstzmultirange" PTI.tstzmultirange A.tstzmultirange_int (C.string . show))
 
 -- |
 -- Encoder of @DATEMULTIRANGE@ values.
@@ -465,8 +465,8 @@ composite :: Composite a -> Value a
 composite (Composite encode print) =
   Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
   where
-    encodeValue idt val =
-      A.composite $ encode val idt
+    encodeValue val =
+      A.composite $ encode val
     printValue val =
       "ROW (" <> C.intercalate ", " (print val) <> ")"
 
@@ -543,7 +543,7 @@ dimension foldl (Array imp) = Array (Array.dimension foldl imp)
 -- Composite or row-types encoder.
 data Composite a
   = Composite
-      (a -> Bool -> A.Composite)
+      (a -> A.Composite)
       (a -> [C.TextBuilder])
 
 instance Contravariant Composite where
@@ -553,14 +553,14 @@ instance Contravariant Composite where
 instance Divisible Composite where
   divide f (Composite encodeL printL) (Composite encodeR printR) =
     Composite
-      (\val idt -> case f val of (lVal, rVal) -> encodeL lVal idt <> encodeR rVal idt)
+      (\val -> case f val of (lVal, rVal) -> encodeL lVal <> encodeR rVal)
       (\val -> case f val of (lVal, rVal) -> printL lVal <> printR rVal)
   conquer = mempty
 
 instance Semigroup (Composite a) where
   Composite encodeL printL <> Composite encodeR printR =
     Composite
-      (\val idt -> encodeL val idt <> encodeR val idt)
+      (\val -> encodeL val <> encodeR val)
       (\val -> printL val <> printR val)
 
 instance Monoid (Composite a) where
@@ -571,17 +571,17 @@ field :: NullableOrNot Value a -> Composite a
 field = \case
   NonNullable (Value (Value.ValueEncoder _ (Just elementOID) _ encode print)) ->
     Composite
-      (\val idt -> A.field (PTI.oidWord32 elementOID) (encode idt val))
+      (\val -> A.field (PTI.oidWord32 elementOID) (encode val))
       (\val -> [print val])
   NonNullable (Value (Value.ValueEncoder _ Nothing _ encode print)) ->
     Composite
-      (\val idt -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode idt val))
+      (\val -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode val))
       (\val -> [print val])
   Nullable (Value (Value.ValueEncoder _ (Just elementOID) _ encode print)) ->
     Composite
-      ( \val idt -> case val of
+      ( \val -> case val of
           Nothing -> A.nullField (PTI.oidWord32 elementOID)
-          Just val -> A.field (PTI.oidWord32 elementOID) (encode idt val)
+          Just val -> A.field (PTI.oidWord32 elementOID) (encode val)
       )
       ( \val ->
           case val of
@@ -590,9 +590,9 @@ field = \case
       )
   Nullable (Value (Value.ValueEncoder _ Nothing _ encode print)) ->
     Composite
-      ( \val idt -> case val of
+      ( \val -> case val of
           Nothing -> A.nullField (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown))
-          Just val -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode idt val)
+          Just val -> A.field (PTI.oidWord32 (PTI.ptiOID PTI.binaryUnknown)) (encode val)
       )
       ( \val ->
           case val of
