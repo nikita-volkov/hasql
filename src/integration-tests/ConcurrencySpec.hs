@@ -11,34 +11,32 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnectionSettings True do
   describe "Concurrency" do
-    it "handles concurrent connections properly" \_ -> do
-      -- We need two separate connections for this test
-      Testcontainers.withConnectionSettings \settings -> do
-        connection1 <- Connection.acquire settings >>= either (fail . show) return
-        connection2 <- Connection.acquire settings >>= either (fail . show) return
+    it "handles concurrent connections properly" \settings -> do
+      connection1 <- Connection.acquire settings >>= either (fail . show) return
+      connection2 <- Connection.acquire settings >>= either (fail . show) return
 
-        let selectSleep =
-              Statement.Statement
-                "select pg_sleep($1)"
-                (Encoders.param (Encoders.nonNullable Encoders.float8))
-                Decoders.noResult
-                True
+      let selectSleep =
+            Statement.Statement
+              "select pg_sleep($1)"
+              (Encoders.param (Encoders.nonNullable Encoders.float8))
+              Decoders.noResult
+              True
 
-        beginVar <- newEmptyMVar
-        finishVar <- newEmptyMVar
+      beginVar <- newEmptyMVar
+      finishVar <- newEmptyMVar
 
-        _ <- forkIO do
-          putMVar beginVar ()
-          _ <- Connection.use connection1 (Session.statement (0.2 :: Double) selectSleep)
-          void (tryPutMVar finishVar False)
+      _ <- forkIO do
+        putMVar beginVar ()
+        _ <- Connection.use connection1 (Session.statement (0.2 :: Double) selectSleep)
+        void (tryPutMVar finishVar False)
 
-        _ <- forkIO do
-          takeMVar beginVar
-          _ <- Connection.use connection2 (Session.statement (0.1 :: Double) selectSleep)
-          void (tryPutMVar finishVar True)
+      _ <- forkIO do
+        takeMVar beginVar
+        _ <- Connection.use connection2 (Session.statement (0.1 :: Double) selectSleep)
+        void (tryPutMVar finishVar True)
 
-        -- The second connection should finish first (True)
-        result <- takeMVar finishVar
-        result `shouldBe` True
+      -- The second connection should finish first (True)
+      result <- takeMVar finishVar
+      result `shouldBe` True

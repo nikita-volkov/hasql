@@ -11,7 +11,7 @@ import TestingKit.TestingDsl qualified as Dsl
 import Prelude
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection False do
   describe "Single-statement" do
     describe "Unprepared" do
       it "Collects results and sends params" \connection -> do

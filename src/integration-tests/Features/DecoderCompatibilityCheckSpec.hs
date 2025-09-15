@@ -11,7 +11,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = around Testcontainers.withConnection $ parallel do
+spec = Testcontainers.aroundSpecWithConnection True $ parallel do
   describe "Session" do
     it "reports UnexpectedAmountOfColumns when result has more columns" \connection -> do
       let statement =

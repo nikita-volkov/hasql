@@ -11,7 +11,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = around Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection True do
   describe "Session" do
     it "Failing statements don't cause misses in updates of the prepared statement cache" \connection -> do
       -- Run an intentionally failing prepared statement to set the condition of the bug.

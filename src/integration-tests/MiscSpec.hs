@@ -10,7 +10,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection False do
   describe "Miscellaneous Tests" do
     describe "Interval types" do
       it "encodes intervals correctly" \connection -> do

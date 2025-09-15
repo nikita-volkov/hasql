@@ -13,7 +13,7 @@ import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude hiding (assert)
 
 spec :: Spec
-spec = aroundAll Testcontainers.withConnection do
+spec = Testcontainers.aroundSpecWithConnection False do
   describe "Encoding and Decoding" do
     describe "Array roundtrips" do
       it "handles 1D arrays" \connection -> property $ \(values :: [Int64]) -> monadicIO $ do
