@@ -1,4 +1,4 @@
-module ConnectionSpec (spec) where
+module Features.ConnectionSpec (spec) where
 
 import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified

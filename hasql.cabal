@@ -261,16 +261,16 @@ test-suite integration-tests
   other-modules:
     Bugs.PipelineAbortSpec
     Bugs.PreparedStatementAlreadyExistsSpec
-    ConcurrencySpec
-    ConnectionSpec
-    EncodingDecodingSpec
+    Features.CodecsSpec
+    Features.ConcurrencySpec
+    Features.ConnectionSpec
     Features.DecoderCompatibilityCheckSpec
+    Features.ErrorsSpec
+    Features.PipelineSpec
     Features.ServerVersionCompatibilitySpec
+    Features.SessionSpec
+    Features.StatementSpec
     Features.SyntaxErrorsSpec
-    MiscSpec
-    PipelineSpec
-    SessionSpec
-    StatementSpec
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12

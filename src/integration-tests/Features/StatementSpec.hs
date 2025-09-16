@@ -1,4 +1,4 @@
-module StatementSpec (spec) where
+module Features.StatementSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
