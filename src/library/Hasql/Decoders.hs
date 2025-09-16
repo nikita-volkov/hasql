@@ -67,8 +67,10 @@ module Hasql.Decoders
     listArray,
     vectorArray,
     composite,
+    namedComposite,
     hstore,
     enum,
+    namedEnum,
     custom,
     refine,
 
@@ -522,6 +524,20 @@ vectorArray = array . dimension GenericVector.replicateM . element
 {-# INLINEABLE composite #-}
 composite :: Composite a -> Value a
 composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
+
+-- |
+-- Decoder for a named composite type.
+-- The type name will be resolved to an OID at runtime.
+{-# INLINEABLE namedComposite #-}
+namedComposite :: Text -> Composite a -> Value a
+namedComposite typeName (Composite imp) = Value (Value.ValueDecoder typeName Nothing Nothing (Composite.run imp))
+
+-- |
+-- Decoder for a named enum type.
+-- The type name will be resolved to an OID at runtime.
+{-# INLINEABLE namedEnum #-}
+namedEnum :: Text -> (Text -> Maybe a) -> Value a
+namedEnum typeName mapping = Value (Value.ValueDecoder typeName Nothing Nothing (A.enum mapping))
 
 -- * Array decoders
 

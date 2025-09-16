@@ -56,11 +56,13 @@ module Hasql.Encoders
     name,
     oid,
     enum,
+    namedEnum,
     unknownEnum,
     unknown,
     array,
     foldableArray,
     composite,
+    namedComposite,
 
     -- * Array
     Array,
@@ -463,6 +465,26 @@ array (Array (Array.ArrayEncoder valueOID arrayOID arrayEncoder renderer)) =
 composite :: Composite a -> Value a
 composite (Composite encode print) =
   Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
+  where
+    encodeValue val =
+      A.composite $ encode val
+    printValue val =
+      "ROW (" <> C.intercalate ", " (print val) <> ")"
+
+-- |
+-- Encoder for a named enum type.
+-- The type name will be resolved to an OID at runtime.
+{-# INLINEABLE namedEnum #-}
+namedEnum :: Text -> (a -> Text) -> Value a
+namedEnum typeName mapping = Value (Value.ValueEncoder typeName Nothing Nothing (A.text_strict . mapping) (C.text . mapping))
+
+-- |
+-- Encoder for a named composite type.
+-- The type name will be resolved to an OID at runtime.
+{-# INLINEABLE namedComposite #-}
+namedComposite :: Text -> Composite a -> Value a
+namedComposite typeName (Composite encode print) =
+  Value (Value.ValueEncoder typeName Nothing Nothing encodeValue printValue)
   where
     encodeValue val =
       A.composite $ encode val

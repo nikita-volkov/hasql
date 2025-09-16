@@ -176,3 +176,22 @@ spec = Testcontainers.aroundSpecWithConnection False do
             Session.statement () createStatement
             Session.statement "ok" testStatement
         result `shouldBe` Right "ok"
+
+    describe "Named types" do
+      it "handles named enum encoding and decoding" \connection -> do
+        -- First create the enum type
+        let dropStatement = Statement.Statement "drop type if exists mood" mempty Decoders.noResult True
+        let createStatement = Statement.Statement "create type mood as enum ('sad', 'ok', 'happy')" mempty Decoders.noResult True
+        let testStatement =
+              Statement.Statement
+                "select $1"
+                (Encoders.param (Encoders.nonNullable (Encoders.namedEnum "mood" id)))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum "mood" (Just . id)))))
+                True
+
+        result <-
+          Connection.use connection do
+            Session.statement () dropStatement
+            Session.statement () createStatement
+            Session.statement "ok" testStatement
+        result `shouldBe` Right "ok"

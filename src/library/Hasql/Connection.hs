@@ -13,6 +13,7 @@ where
 import Core.Contexts.Session qualified as Session
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
+import Core.Structures.OIDCache qualified as OIDCache
 import Core.Structures.StatementCache qualified as StatementCache
 import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
@@ -47,6 +48,7 @@ acquire settings =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = Config.usePreparedStatements config,
               ConnectionState.statementCache = StatementCache.empty,
+              ConnectionState.oidCache = OIDCache.empty,
               ConnectionState.connection = pqConnection
             }
     connectionRef <- lift (newMVar connectionState)
