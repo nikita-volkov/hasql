@@ -18,9 +18,16 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
     enterPipelineMode
     recvQueries <- sendQueries
     pipelineSync
-    finallyE recvQueries do
+    -- Execute recvQueries and preserve its error even if cleanup fails
+    result <- catchE (Right <$> recvQueries) (pure . Left)
+    -- Always attempt cleanup, but don't let cleanup errors override the main result
+    _ <- catchE (do
       recvPipelineSync
       exitPipelineMode
+      pure ()) (\_ -> pure ())
+    case result of
+      Left err -> throwError err
+      Right val -> pure val
   where
     enterPipelineMode :: Run ()
     enterPipelineMode =
@@ -42,23 +49,15 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
       pure do
         res <- liftIO recv
         case res of
-          Left err -> do
-            liftIO $ putStrLn $ "recvQueries failed with: " <> show err
-            throwError err
-          Right ok -> do
-            liftIO $ putStrLn $ "recvQueries succeeded"
-            pure ok
+          Left err -> throwError err
+          Right ok -> pure ok
 
     pipelineSync :: Run ()
-    pipelineSync = do
-      -- DEBUG: Add tracing
-      liftIO $ putStrLn "pipelineSync"
+    pipelineSync =
       runCommand $ Pq.pipelineSync connection
 
     recvPipelineSync :: Run ()
-    recvPipelineSync = do
-      -- DEBUG: Add tracing
-      liftIO $ putStrLn "recvPipelineSync"
+    recvPipelineSync =
       runResultsDecoder
         $ ResultsDecoder.single ResultDecoder.pipelineSyncOrAbort
 
@@ -181,12 +180,8 @@ statement sql encoder decoder preparable params =
           let combinedRecv = do
                 keyResult <- keyRecv
                 case keyResult of
-                  Left err -> do
-                    putStrLn $ "keyRecv failed with: " <> show err
-                    pure (Left err)
-                  Right _ -> do
-                    putStrLn "keyRecv succeeded, executing queryRecv"
-                    queryRecv
+                  Left err -> pure (Left err)
+                  Right _ -> queryRecv
           pure (combinedRecv, newCache)
           where
             (oidList, valueAndFormatList) =
@@ -198,16 +193,13 @@ statement sql encoder decoder preparable params =
                 Nothing -> do
                   let (remoteKey, newCache) = StatementCache.insert localKey cache
                   sent <- Pq.sendPrepare connection remoteKey sql (mfilter (not . null) (Just oidList))
-                  -- DEBUG: Add tracing
-                  liftIO $ putStrLn $ "sendPrepare: " <> show remoteKey <> " for LocalKey " <> show sql <> " " <> show oidList
                   if sent
                     then pure (Right (remoteKey, recv, newCache))
                     else do
                       errMsg <- Pq.errorMessage connection
                       pure (Left (commandToSessionError (ClientError errMsg)))
                   where
-                    recv = do
-                      putStrLn "executing keyRecv for prepare"
+                    recv =
                       fmap (first commandToSessionError)
                         $ Command.run command connection
                       where
@@ -224,8 +216,7 @@ statement sql encoder decoder preparable params =
                 False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
                 True -> pure (Right recv)
               where
-                recv = do
-                  putStrLn "executing queryRecv for prepared statement"
+                recv =
                   fmap (first commandToSessionError)
                     $ (<*)
                     <$> ResultsDecoder.toHandler decoder connection
@@ -239,8 +230,7 @@ statement sql encoder decoder preparable params =
               errMsg <- Pq.errorMessage connection
               pure (Left (commandToSessionError (ClientError errMsg)))
           where
-            recv = do
-              putStrLn "executing recv for unprepared statement"
+            recv =
               fmap (first commandToSessionError)
                 $ (<*)
                 <$> ResultsDecoder.toHandler decoder connection
