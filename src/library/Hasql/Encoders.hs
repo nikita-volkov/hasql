@@ -473,18 +473,18 @@ composite (Composite encode print) =
 
 -- |
 -- Encoder for a named enum type.
--- The type name will be resolved to an OID at runtime.
+-- Uses PostgreSQL's type inference, so you may need to provide explicit type casts in your SQL.
 {-# INLINEABLE namedEnum #-}
 namedEnum :: Text -> (a -> Text) -> Value a
-namedEnum typeName mapping = Value (Value.ValueEncoder typeName Nothing Nothing (A.text_strict . mapping) (C.text . mapping))
+namedEnum _typeName mapping = Value (Value.unsafePTIWithName "unknown" PTI.binaryUnknown (A.text_strict . mapping) (C.text . mapping))
 
 -- |
--- Encoder for a named composite type.
--- The type name will be resolved to an OID at runtime.
+-- Encoder for a named composite type.  
+-- Uses PostgreSQL's type inference, so you may need to provide explicit type casts in your SQL.
 {-# INLINEABLE namedComposite #-}
 namedComposite :: Text -> Composite a -> Value a
-namedComposite typeName (Composite encode print) =
-  Value (Value.ValueEncoder typeName Nothing Nothing encodeValue printValue)
+namedComposite _typeName (Composite encode print) =
+  Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
   where
     encodeValue val =
       A.composite $ encode val

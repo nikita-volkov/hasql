@@ -527,17 +527,17 @@ composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing 
 
 -- |
 -- Decoder for a named composite type.
--- The type name will be resolved to an OID at runtime.
+-- Uses PostgreSQL's type inference from context.
 {-# INLINEABLE namedComposite #-}
 namedComposite :: Text -> Composite a -> Value a
-namedComposite typeName (Composite imp) = Value (Value.ValueDecoder typeName Nothing Nothing (Composite.run imp))
+namedComposite _typeName (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
 
 -- |
 -- Decoder for a named enum type.
--- The type name will be resolved to an OID at runtime.
+-- Uses PostgreSQL's type inference from context.
 {-# INLINEABLE namedEnum #-}
 namedEnum :: Text -> (Text -> Maybe a) -> Value a
-namedEnum typeName mapping = Value (Value.ValueDecoder typeName Nothing Nothing (A.enum mapping))
+namedEnum _typeName mapping = Value (Value.ValueDecoder "unknown" Nothing Nothing (A.enum mapping))
 
 -- * Array decoders
 

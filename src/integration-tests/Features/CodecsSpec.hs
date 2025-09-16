@@ -184,7 +184,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
         let createStatement = Statement.Statement "create type mood as enum ('sad', 'ok', 'happy')" mempty Decoders.noResult True
         let testStatement =
               Statement.Statement
-                "select $1"
+                "select $1::mood"
                 (Encoders.param (Encoders.nonNullable (Encoders.namedEnum "mood" id)))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum "mood" (Just . id)))))
                 True
