@@ -1,4 +1,4 @@
-module Regressions.PreparedStatementAlreadyExistsSpec (spec) where
+module Bugs.PreparedStatementAlreadyExistsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

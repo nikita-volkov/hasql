@@ -1,4 +1,4 @@
-module Regressions.PipelineAbortSpec (spec) where
+module Bugs.PipelineAbortSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

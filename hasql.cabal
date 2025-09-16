@@ -259,6 +259,8 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
+    Bugs.PipelineAbortSpec
+    Bugs.PreparedStatementAlreadyExistsSpec
     ConcurrencySpec
     ConnectionSpec
     EncodingDecodingSpec
@@ -266,8 +268,6 @@ test-suite integration-tests
     Features.ServerVersionCompatibilitySpec
     MiscSpec
     PipelineSpec
-    Regressions.PipelineAbortSpec
-    Regressions.PreparedStatementAlreadyExistsSpec
     SessionSpec
     StatementSpec
 
