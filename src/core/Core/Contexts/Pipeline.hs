@@ -54,16 +54,12 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
       runResultConsumer ResultConsumer.pipelineSync
 
     runResultConsumer :: forall a. ResultConsumer.ResultConsumer a -> Run a
-    runResultConsumer decoder = do
+    runResultConsumer resultConsumer = do
       res <- liftIO do
-        resultMb <- Pq.getResult connection
-        case resultMb of
-          Just result -> do
-            ResultConsumer.toHandler decoder result
-          Nothing -> pure (Left (UnexpectedResult "No result"))
+        Command.run (Command.consumeResult resultConsumer) connection
       case res of
-        Right ok -> pure ok
-        Left err -> throwError (PipelineError (ResultError err))
+        Right a -> pure a
+        Left err -> throwError (PipelineError err)
 
     runPqCommand :: IO Bool -> Run ()
     runPqCommand action =
