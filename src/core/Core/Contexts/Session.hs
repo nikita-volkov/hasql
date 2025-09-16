@@ -3,7 +3,7 @@ module Core.Contexts.Session where
 import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Contexts.ResultDecoder qualified as ResultDecoder
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.Roundtrip qualified as Roundtrip
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
@@ -93,7 +93,7 @@ sql sql =
 -- Execute a statement by providing parameters to it.
 statement ::
   forall params result.
-  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultDecoder.ResultDecoder result -> Bool -> params -> Session result
+  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultConsumer.ResultConsumer result -> Bool -> params -> Session result
 statement sql paramsEncoder decoder preparable params =
   do
     prepared <- prepare
@@ -121,7 +121,7 @@ statement sql paramsEncoder decoder preparable params =
     executePrepared key valueAndFormatList =
       liftInformedCommand packError \_usePreparedStatements statementCache -> do
         Command.sendQueryPrepared key valueAndFormatList
-        result <- Command.consumeResult (ResultDecoder.toResultConsumer decoder)
+        result <- Command.consumeResult decoder
         Command.drainResults
         pure (result, statementCache)
 
@@ -130,7 +130,7 @@ statement sql paramsEncoder decoder preparable params =
       liftInformedCommand packError \_ statementCache -> do
         let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder params
         Command.sendQueryParams sql paramsData
-        result <- Command.consumeResult (ResultDecoder.toResultConsumer decoder)
+        result <- Command.consumeResult decoder
         Command.drainResults
         pure (result, statementCache)
 

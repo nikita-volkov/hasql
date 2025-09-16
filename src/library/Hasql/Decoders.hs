@@ -85,7 +85,7 @@ where
 
 import Core.Contexts.ArrayDecoder qualified as Array
 import Core.Contexts.CompositeDecoder qualified as Composite
-import Core.Contexts.ResultDecoder qualified as Result
+import Core.Contexts.ResultConsumer qualified as Result
 import Core.Contexts.RowDecoder qualified as Row
 import Core.Contexts.ValueDecoder qualified as Value
 import Core.PostgresTypeInfo qualified as PTI
@@ -100,7 +100,7 @@ import PostgreSQL.Binary.Range qualified as R
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (Result.ResultDecoder a) deriving (Functor, Filterable)
+newtype Result a = Result (Result.ResultConsumer a) deriving (Functor, Filterable)
 
 instance Result.Wraps Result where
   wrap = Result
