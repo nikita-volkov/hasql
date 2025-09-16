@@ -170,7 +170,7 @@ statement sql encoder decoder preparable params =
         runPrepared = runExceptT do
           (key, keyRecv, newCache) <- ExceptT resolvePreparedStatementKey
           queryRecv <- ExceptT (sendQuery key)
-          pure (keyRecv *> queryRecv, newCache)
+          pure (liftA2 (*>) keyRecv queryRecv, newCache)
           where
             (oidList, valueAndFormatList) =
               ParamsEncoder.compilePreparedStatementData encoder params
