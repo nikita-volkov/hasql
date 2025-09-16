@@ -277,7 +277,6 @@ test-suite integration-tests
 
   build-depends:
     QuickCheck,
-    contravariant-extras >=0.3.5.2 && <0.4,
     hasql,
     hasql:testing-kit,
     hspec ^>=2.11.12,

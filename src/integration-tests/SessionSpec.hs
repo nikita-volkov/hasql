@@ -1,6 +1,5 @@
 module SessionSpec (spec) where
 
-import Contravariant.Extras
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -30,9 +29,10 @@ spec = Testcontainers.aroundSpecWithConnection False do
         let statement =
               Statement.Statement
                 "select true where 1 = any ($1) and $2"
-                ( contrazip2
-                    (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
-                    (Encoders.param (Encoders.nonNullable Encoders.text))
+                ( mconcat
+                    [ fst >$< (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))),
+                      snd >$< (Encoders.param (Encoders.nonNullable Encoders.text))
+                    ]
                 )
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
                 True
