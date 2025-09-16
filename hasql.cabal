@@ -143,7 +143,6 @@ library core
     Core.Contexts.Pipeline
     Core.Contexts.ResultConsumer
     Core.Contexts.ResultDecoder
-    Core.Contexts.ResultsDecoder
     Core.Contexts.Roundtrip
     Core.Contexts.RowDecoder
     Core.Contexts.RowDecoder.RowDecoder

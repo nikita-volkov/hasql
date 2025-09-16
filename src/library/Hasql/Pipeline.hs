@@ -7,7 +7,6 @@ where
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Contexts.ResultDecoder qualified as ResultDecoder
-import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
 import Hasql.Statement qualified as Statement
 
 -- |
@@ -21,4 +20,4 @@ statement
       (ResultDecoder.unwrap -> decoder)
       preparable
     ) =
-    Pipeline.statement sql paramsEncoder (ResultsDecoder.single decoder) preparable params
+    Pipeline.statement sql paramsEncoder decoder preparable params

@@ -4,7 +4,6 @@ import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.ResultDecoder qualified as ResultDecoder
-import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
@@ -53,16 +52,21 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
 
     recvPipelineSync :: Run ()
     recvPipelineSync =
-      runResultsDecoder
-        $ ResultsDecoder.single ResultDecoder.pipelineSync
+      runResultDecoder ResultDecoder.pipelineSync
 
-    runResultsDecoder :: forall a. ResultsDecoder.ResultsDecoder a -> Run a
-    runResultsDecoder decoder = do
+    runResultDecoder :: forall a. ResultDecoder.ResultDecoder a -> Run a
+    runResultDecoder decoder = do
       res <- liftIO do
-        ResultsDecoder.toHandler decoder connection
+        runExceptT do
+          ExceptT do
+            resultMb <- Pq.getResult connection
+            case resultMb of
+              Just result -> do
+                ResultDecoder.toHandler decoder result
+              Nothing -> pure (Left (UnexpectedResult "No result"))
       case res of
         Right ok -> pure ok
-        Left err -> throwError (PipelineError err)
+        Left err -> throwError (PipelineError (ResultError err))
 
     runCommand :: IO Bool -> Run ()
     runCommand action =
@@ -160,7 +164,7 @@ instance Applicative Pipeline where
 
 -- |
 -- Execute a statement in pipelining mode.
-statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultsDecoder.ResultsDecoder result -> Bool -> params -> Pipeline result
+statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
 statement sql encoder decoder preparable params =
   Pipeline run
   where
@@ -211,7 +215,7 @@ statement sql encoder decoder preparable params =
                     $ Command.run command connection
                   where
                     command = do
-                      result <- ResultsDecoder.toCommand decoder
+                      result <- Command.consumeResult (ResultDecoder.toResultConsumer decoder)
                       Command.drainResults
                       pure result
 
@@ -228,7 +232,7 @@ statement sql encoder decoder preparable params =
                 $ Command.run command connection
               where
                 command = do
-                  result <- ResultsDecoder.toCommand decoder
+                  result <- Command.consumeResult (ResultDecoder.toResultConsumer decoder)
                   Command.drainResults
                   pure result
 
