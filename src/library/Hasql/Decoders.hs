@@ -86,7 +86,6 @@ where
 import Core.Contexts.ArrayDecoder qualified as Array
 import Core.Contexts.CompositeDecoder qualified as Composite
 import Core.Contexts.ResultDecoder qualified as Result
-import Core.Contexts.ResultsDecoder qualified as Results
 import Core.Contexts.RowDecoder qualified as Row
 import Core.Contexts.ValueDecoder qualified as Value
 import Core.PostgresTypeInfo qualified as PTI
@@ -101,9 +100,9 @@ import PostgreSQL.Binary.Range qualified as R
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (Results.ResultsDecoder a) deriving (Functor, Filterable)
+newtype Result a = Result (Result.ResultDecoder a) deriving (Functor, Filterable)
 
-instance Results.Wraps Result where
+instance Result.Wraps Result where
   wrap = Result
   unwrap (Result r) = r
 
@@ -113,24 +112,24 @@ instance Results.Wraps Result where
 -- Useful for statements like @INSERT@ or @CREATE@.
 {-# INLINEABLE noResult #-}
 noResult :: Result ()
-noResult = Result (Results.single Result.noResult)
+noResult = Result Result.noResult
 
 -- |
 -- Get the amount of rows affected by such statements as
 -- @UPDATE@ or @DELETE@.
 {-# INLINEABLE rowsAffected #-}
 rowsAffected :: Result Int64
-rowsAffected = Result (Results.single Result.rowsAffected)
+rowsAffected = Result Result.rowsAffected
 
 -- |
 -- Exactly one row.
 -- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
-singleRow (Row row) = Result (Results.single (Result.single row))
+singleRow (Row row) = Result (Result.single row)
 
 refineResult :: (a -> Either Text b) -> Result a -> Result b
-refineResult refiner (Result results) = Result (Results.refine refiner results)
+refineResult refiner (Result resultDecoder) = Result (Result.refine refiner resultDecoder)
 
 -- ** Multi-row traversers
 
@@ -138,13 +137,13 @@ refineResult refiner (Result results) = Result (Results.refine refiner results)
 -- Foldl multiple rows.
 {-# INLINEABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
-foldlRows step init (Row row) = Result (Results.single (Result.foldl step init row))
+foldlRows step init (Row row) = Result (Result.foldl step init row)
 
 -- |
 -- Foldr multiple rows.
 {-# INLINEABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
-foldrRows step init (Row row) = Result (Results.single (Result.foldr step init row))
+foldrRows step init (Row row) = Result (Result.foldr step init row)
 
 -- ** Specialized multi-row results
 
@@ -152,7 +151,7 @@ foldrRows step init (Row row) = Result (Results.single (Result.foldr step init r
 -- Maybe one row or none.
 {-# INLINEABLE rowMaybe #-}
 rowMaybe :: Row a -> Result (Maybe a)
-rowMaybe (Row row) = Result (Results.single (Result.maybe row))
+rowMaybe (Row row) = Result (Result.maybe row)
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -161,7 +160,7 @@ rowMaybe (Row row) = Result (Results.single (Result.maybe row))
 -- since it performs notably better.
 {-# INLINEABLE rowVector #-}
 rowVector :: Row a -> Result (Vector a)
-rowVector (Row row) = Result (Results.single (Result.vector row))
+rowVector (Row row) = Result (Result.vector row)
 
 -- |
 -- Zero or more rows packed into the list.

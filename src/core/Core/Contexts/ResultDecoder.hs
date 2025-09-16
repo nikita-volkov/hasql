@@ -11,6 +11,9 @@ module Core.Contexts.ResultDecoder
     foldl,
     foldr,
 
+    -- * Refinement
+    refine,
+
     -- * Relations
 
     -- ** Handler
@@ -22,6 +25,9 @@ module Core.Contexts.ResultDecoder
     ResultConsumer,
     toResultConsumer,
     fromResultConsumer,
+
+    -- * Classes
+    Wraps (..),
   )
 where
 
@@ -31,11 +37,17 @@ import Core.Errors
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Platform.Prelude hiding (foldl, foldr, many, maybe)
+import Platform.Prelude qualified as Prelude
 import Pq qualified
 
 newtype ResultDecoder a
   = ResultDecoder (ReaderT Pq.Result (ExceptT ResultError IO) a)
   deriving (Functor, Applicative, Monad)
+
+instance Filterable ResultDecoder where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn =
+    refine (Prelude.maybe (Left "Invalid result") Right . fn)
 
 -- * Construction
 
@@ -187,6 +199,15 @@ foldr step init rowDec =
     intToRow =
       Pq.Row . fromIntegral
 
+-- * Refinement
+
+refine :: (a -> Either Text b) -> ResultDecoder a -> ResultDecoder b
+refine refiner (ResultDecoder reader) = ResultDecoder
+  $ ReaderT
+  $ \result -> ExceptT $ do
+    resultEither <- runExceptT $ runReaderT reader result
+    return $ resultEither >>= first UnexpectedResult . refiner
+
 -- * Relations
 
 -- ** ResultConsumer
@@ -216,3 +237,9 @@ fromHandler :: Handler a -> ResultDecoder a
 fromHandler handler =
   ResultDecoder $ ReaderT $ \result ->
     ExceptT $ handler result
+
+-- * Classes
+
+class Wraps f where
+  wrap :: ResultDecoder a -> f a
+  unwrap :: f a -> ResultDecoder a
