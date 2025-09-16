@@ -246,3 +246,29 @@ xid = mkPTI Pq.Binary 28 (Just 1011)
 
 xml :: PTI
 xml = mkPTI Pq.Binary 142 (Just 143)
+
+-- | Lookup array OID from element OID using the PostgreSQL type constants
+lookupArrayOidFromElement :: OID -> Maybe OID
+lookupArrayOidFromElement elementOID = 
+  case oidWord32 elementOID of
+    20 -> Just (mkOID (oidFormat elementOID) 1016)  -- int8 -> int8[]
+    21 -> Just (mkOID (oidFormat elementOID) 1005)  -- int2 -> int2[]
+    23 -> Just (mkOID (oidFormat elementOID) 1007)  -- int4 -> int4[]
+    700 -> Just (mkOID (oidFormat elementOID) 1021) -- float4 -> float4[]
+    701 -> Just (mkOID (oidFormat elementOID) 1022) -- float8 -> float8[]
+    25 -> Just (mkOID (oidFormat elementOID) 1009)  -- text -> text[]
+    16 -> Just (mkOID (oidFormat elementOID) 1000)  -- bool -> bool[]
+    17 -> Just (mkOID (oidFormat elementOID) 1001)  -- bytea -> bytea[]
+    1700 -> Just (mkOID (oidFormat elementOID) 1231) -- numeric -> numeric[]
+    1082 -> Just (mkOID (oidFormat elementOID) 1182) -- date -> date[]
+    1114 -> Just (mkOID (oidFormat elementOID) 1115) -- timestamp -> timestamp[]
+    1184 -> Just (mkOID (oidFormat elementOID) 1185) -- timestamptz -> timestamptz[]
+    1083 -> Just (mkOID (oidFormat elementOID) 1183) -- time -> time[]
+    1266 -> Just (mkOID (oidFormat elementOID) 1270) -- timetz -> timetz[]
+    1186 -> Just (mkOID (oidFormat elementOID) 1187) -- interval -> interval[]
+    2950 -> Just (mkOID (oidFormat elementOID) 2951) -- uuid -> uuid[]
+    869 -> Just (mkOID (oidFormat elementOID) 1041)  -- inet -> inet[]
+    829 -> Just (mkOID (oidFormat elementOID) 1040)  -- macaddr -> macaddr[]
+    114 -> Just (mkOID (oidFormat elementOID) 199)   -- json -> json[]
+    3802 -> Just (mkOID (oidFormat elementOID) 3807) -- jsonb -> jsonb[]
+    _ -> Nothing  -- Unknown type
