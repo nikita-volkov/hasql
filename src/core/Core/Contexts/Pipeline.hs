@@ -18,9 +18,11 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
     enterPipelineMode
     recvQueries <- sendQueries
     pipelineSync
-    finallyE recvQueries do
-      recvPipelineSync
-      exitPipelineMode
+    recvQueriesRes <- tryError recvQueries
+    ExceptT do
+      recvPipelineSyncRes <- runExceptT recvPipelineSync
+      exitPipelineModeRes <- runExceptT exitPipelineMode
+      pure (recvQueriesRes <* recvPipelineSyncRes <* exitPipelineModeRes)
   where
     enterPipelineMode :: Run ()
     enterPipelineMode =
