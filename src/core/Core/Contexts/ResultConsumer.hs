@@ -84,7 +84,6 @@ checkExecStatus expectedList = do
       Pq.BadResponse -> serverError status
       Pq.NonfatalError -> serverError status
       Pq.FatalError -> serverError status
-      Pq.PipelineAbort -> serverError status
       Pq.EmptyQuery -> return ()
       _ ->
         throwError
