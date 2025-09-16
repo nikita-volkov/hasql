@@ -14,7 +14,7 @@ module Hasql.Session
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
-import Core.Contexts.ResultsDecoder qualified as ResultsDecoder
+import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Contexts.Session qualified as Session
 import Core.Errors
 import Hasql.Connection qualified as Connection
@@ -37,7 +37,7 @@ statement
   ( Statement.Statement
       sql
       (ParamsEncoder.unwrap -> paramsEncoder)
-      (ResultsDecoder.unwrap -> decoder)
+      (ResultConsumer.unwrap -> decoder)
       preparable
     ) =
     Session.statement sql paramsEncoder decoder preparable params
