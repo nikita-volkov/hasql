@@ -266,6 +266,7 @@ test-suite integration-tests
     EncodingDecodingSpec
     Features.DecoderCompatibilityCheckSpec
     Features.ServerVersionCompatibilitySpec
+    Features.SyntaxErrorsSpec
     MiscSpec
     PipelineSpec
     SessionSpec
