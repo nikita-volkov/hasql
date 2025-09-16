@@ -121,7 +121,7 @@ statement sql paramsEncoder decoder preparable params =
     executePrepared key valueAndFormatList =
       liftInformedCommand packError \_usePreparedStatements statementCache -> do
         Command.sendQueryPrepared key valueAndFormatList
-        result <- ResultsDecoder.toCommandByIdt decoder
+        result <- ResultsDecoder.toCommand decoder
         Command.drainResults
         pure (result, statementCache)
 
@@ -130,7 +130,7 @@ statement sql paramsEncoder decoder preparable params =
       liftInformedCommand packError \_ statementCache -> do
         let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder params
         Command.sendQueryParams sql paramsData
-        result <- ResultsDecoder.toCommandByIdt decoder
+        result <- ResultsDecoder.toCommand decoder
         Command.drainResults
         pure (result, statementCache)
 

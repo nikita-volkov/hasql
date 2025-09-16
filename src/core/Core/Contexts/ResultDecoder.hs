@@ -18,10 +18,10 @@ module Core.Contexts.ResultDecoder
     toHandler,
     fromHandler,
 
-    -- ** ResultConsumerByIdt
-    ResultConsumerByIdt,
-    toResultConsumerByIdt,
-    fromResultConsumerByIdt,
+    -- ** ResultConsumer
+    ResultConsumer,
+    toResultConsumer,
+    fromResultConsumer,
   )
 where
 
@@ -189,28 +189,19 @@ foldr step init rowDec =
 
 -- * Relations
 
--- ** ResultConsumerByIdt
-
-type ResultConsumerByIdt a = ResultConsumer.ResultConsumer a
-
-toResultConsumerByIdt :: ResultDecoder a -> ResultConsumerByIdt a
-toResultConsumerByIdt (ResultDecoder reader) =
-  ResultConsumer.fromHandler \result -> do
-    runExceptT (runReaderT reader result)
-
-fromResultConsumerByIdt :: ResultConsumerByIdt a -> ResultDecoder a
-fromResultConsumerByIdt resultConsumerByIdt =
-  fromHandler \result ->
-    ResultConsumer.toHandler resultConsumerByIdt result
-
 -- ** ResultConsumer
 
 type ResultConsumer a = ResultConsumer.ResultConsumer a
 
+toResultConsumer :: ResultDecoder a -> ResultConsumer a
+toResultConsumer (ResultDecoder reader) =
+  ResultConsumer.fromHandler \result -> do
+    runExceptT (runReaderT reader result)
+
 fromResultConsumer :: ResultConsumer a -> ResultDecoder a
-fromResultConsumer handler =
+fromResultConsumer resultConsumer =
   fromHandler \result ->
-    ResultConsumer.toHandler handler result
+    ResultConsumer.toHandler resultConsumer result
 
 -- ** Handler
 

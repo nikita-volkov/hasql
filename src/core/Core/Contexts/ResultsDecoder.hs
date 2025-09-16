@@ -25,14 +25,14 @@ module Core.Contexts.ResultsDecoder
     toHandler,
     fromHandler,
 
-    -- ** CommandByIdt
-    CommandByIdt,
-    toCommandByIdt,
-    fromCommandByIdt,
+    -- ** Command
+    Command,
+    toCommand,
+    fromCommand,
 
-    -- ** RoundtripByIdt
-    RoundtripByIdt,
-    toRoundtripByIdt,
+    -- ** Roundtrip
+    Roundtrip,
+    toRoundtrip,
 
     -- * Classes
     Wraps (..),
@@ -64,7 +64,7 @@ instance Filterable ResultsDecoder where
 single :: Result.ResultDecoder a -> ResultsDecoder a
 single resultDec =
   fromCommand
-    $ Command.consumeResult (Result.toResultConsumerByIdt resultDec)
+    $ Command.consumeResult (Result.toResultConsumer resultDec)
 
 {-# INLINE dropRemainders #-}
 dropRemainders :: ResultsDecoder ()
@@ -95,33 +95,26 @@ fromHandler handler =
   ResultsDecoder $ ReaderT $ \connection ->
     ExceptT $ handler connection
 
--- ** CommandByIdt
+-- ** Command
 
-type CommandByIdt a = Command.Command a
+type Command a = Command.Command a
 
-toCommandByIdt :: ResultsDecoder a -> CommandByIdt a
-toCommandByIdt (ResultsDecoder stack) =
+toCommand :: ResultsDecoder a -> Command a
+toCommand (ResultsDecoder stack) =
   Command.Command \connection -> do
     runExceptT (runReaderT stack connection)
 
-fromCommandByIdt :: CommandByIdt a -> ResultsDecoder a
-fromCommandByIdt commandByIdt = fromHandler \connection ->
-  let (Command.Command handler) = commandByIdt
-   in handler connection
-
--- ** Command
-
-type Command = Command.Command
-
 fromCommand :: Command a -> ResultsDecoder a
-fromCommand = fromCommandByIdt
+fromCommand command = fromHandler \connection ->
+  let (Command.Command handler) = command
+   in handler connection
 
 -- ** Roundtrip
 
-type RoundtripByIdt a = Roundtrip.Roundtrip a
+type Roundtrip a = Roundtrip.Roundtrip a
 
-toRoundtripByIdt :: ResultsDecoder a -> RoundtripByIdt a
-toRoundtripByIdt (ResultsDecoder stack) =
+toRoundtrip :: ResultsDecoder a -> Roundtrip a
+toRoundtrip (ResultsDecoder stack) =
   Roundtrip.Roundtrip \connection -> do
     pure do
       runExceptT (runReaderT stack connection)
