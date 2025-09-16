@@ -71,19 +71,18 @@ Following is a complete application, which performs some arithmetic in Postgres 
 
 ```haskell
 {-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
-import Prelude
-import Data.Int
+
 import Data.Functor.Contravariant
+import Data.Int
 import Hasql.Session (Session)
-import Hasql.Statement (Statement(..))
-import qualified Hasql.Session as Session
+import Hasql.Statement (Statement (..))
+import Prelude
+import qualified Hasql.Connection as Connection
+import qualified Hasql.Connection.Setting as Connection.Setting
+import qualified Hasql.Connection.Setting.Connection as Connection.Setting.Connection
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
-import qualified Hasql.Connection as Connection
-import qualified Hasql.Connection.Setting as ConnectionSetting
-import qualified Hasql.Connection.Setting.Connection as ConnectionSettingConnection
-
-
+import qualified Hasql.Session as Session
 
 main :: IO ()
 main = do
@@ -91,16 +90,25 @@ main = do
   result <- Session.run (sumAndDivModSession 3 8 3) connection
   print result
   where
-    connectionSettings = [ConnectionSetting.connection $ ConnectionSettingConnection.string pstr]
-    pstr = "host=localhost dbname=postgres user=postgres port=5432"
-
+    connectionSettings =
+      [ Connection.Setting.connection
+          ( Connection.Setting.Connection.params
+              [ Connection.Setting.Connection.Param.host "localhost",
+                Connection.Setting.Connection.Param.port 5432,
+                Connection.Setting.Connection.Param.user "postgres",
+                Connection.Setting.Connection.Param.password "postgres",
+                Connection.Setting.Connection.Param.dbname "postgres"
+              ]
+          )
+      ]
 
 -- * Sessions
--- 
+
+--
 -- Session is an abstraction over the database connection and all possible errors.
 -- It is used to execute statements.
 -- It is composable and has a Monad instance.
--- 
+--
 -- It's recommended to define sessions in a dedicated 'Sessions'
 -- submodule of your project.
 -------------------------
@@ -112,36 +120,39 @@ sumAndDivModSession a b c = do
   -- Divide the sum by c and get the modulo as well
   Session.statement (sumOfAAndB, c) divModStatement
 
-
 -- * Statements
--- 
+
+--
 -- Statement is a definition of an individual SQL-statement,
 -- accompanied by a specification of how to encode its parameters and
 -- decode its result.
--- 
+--
 -- It's recommended to define statements in a dedicated 'Statements'
 -- submodule of your project.
 -------------------------
 
 sumStatement :: Statement (Int64, Int64) Int64
-sumStatement = Statement sql encoder decoder True where
-  sql = "select $1 + $2"
-  encoder =
-    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
-    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
-  decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))
+sumStatement = Statement sql encoder decoder True
+  where
+    sql = "select $1 + $2"
+    encoder =
+      (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+        <> (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+    decoder = Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
-divModStatement = Statement sql encoder decoder True where
-  sql = "select $1 / $2, $1 % $2"
-  encoder =
-    (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8)) <>
-    (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
-  decoder = Decoders.singleRow row where
-    row =
-      (,) <$>
-      Decoders.column (Decoders.nonNullable Decoders.int8) <*>
-      Decoders.column (Decoders.nonNullable Decoders.int8)
+divModStatement = Statement sql encoder decoder True
+  where
+    sql = "select $1 / $2, $1 % $2"
+    encoder =
+      (fst >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+        <> (snd >$< Encoders.param (Encoders.nonNullable Encoders.int8))
+    decoder = Decoders.singleRow row
+      where
+        row =
+          (,)
+            <$> Decoders.column (Decoders.nonNullable Decoders.int8)
+            <*> Decoders.column (Decoders.nonNullable Decoders.int8)
 ```
 
 For the general use-case it is advised to prefer declaring statements using the "hasql-th" library, which validates the statements at compile-time and generates codecs automatically. So the above two statements could be implemented the following way:
@@ -153,7 +164,7 @@ sumStatement :: Statement (Int64, Int64) Int64
 sumStatement =
   [TH.singletonStatement|
     select ($1 :: int8 + $2 :: int8) :: int8
-    |]
+  |]
 
 divModStatement :: Statement (Int64, Int64) (Int64, Int64)
 divModStatement =
@@ -161,5 +172,5 @@ divModStatement =
     select
       (($1 :: int8) / ($2 :: int8)) :: int8,
       (($1 :: int8) % ($2 :: int8)) :: int8
-    |]
+  |]
 ```
