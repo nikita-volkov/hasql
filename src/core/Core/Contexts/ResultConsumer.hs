@@ -236,20 +236,20 @@ foldl step init rowDec =
     checkCompatibility rowDec
     ResultConsumer
       $ \result ->
-          {-# SCC "traversal" #-}
-          do
-            maxRows <- Pq.ntuples result
-            maxCols <- Pq.nfields result
-            accRef <- newIORef init
-            failureRef <- newIORef Nothing
-            forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-              rowResult <- Row.toDecoder rowDec (intToRow rowIndex) maxCols result
-              case rowResult of
-                Left !err -> writeIORef failureRef (Just err)
-                Right !x -> modifyIORef' accRef (\acc -> step acc x)
-            readIORef failureRef >>= \case
-              Nothing -> Right <$> readIORef accRef
-              Just x -> pure (Left x)
+        {-# SCC "traversal" #-}
+        do
+          maxRows <- Pq.ntuples result
+          maxCols <- Pq.nfields result
+          accRef <- newIORef init
+          failureRef <- newIORef Nothing
+          forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
+            rowResult <- Row.toDecoder rowDec (intToRow rowIndex) maxCols result
+            case rowResult of
+              Left !err -> writeIORef failureRef (Just err)
+              Right !x -> modifyIORef' accRef (\acc -> step acc x)
+          readIORef failureRef >>= \case
+            Nothing -> Right <$> readIORef accRef
+            Just x -> pure (Left x)
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
