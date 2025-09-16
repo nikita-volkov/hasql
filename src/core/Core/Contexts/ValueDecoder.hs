@@ -56,9 +56,8 @@ unsafePTI typeName pti intDecoder =
 toTypeName :: ValueDecoder a -> Text
 toTypeName (ValueDecoder typeName _ _ _) = typeName
 
--- TODO: Rename to 'toBaseOid'
-toExpectedOid :: ValueDecoder a -> Maybe Pq.Oid
-toExpectedOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
+toBaseOid :: ValueDecoder a -> Maybe Pq.Oid
+toBaseOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
 
 toArrayOid :: ValueDecoder a -> Maybe PTI.OID
 toArrayOid (ValueDecoder _ _ oid _) = oid

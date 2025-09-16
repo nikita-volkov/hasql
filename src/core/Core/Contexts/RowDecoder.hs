@@ -42,7 +42,7 @@ instance Applicative RowDecoder where
 nullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder (Maybe a)
 nullableColumn valueDec =
   RowDecoder
-    [ValueDecoder.toExpectedOid valueDec]
+    [ValueDecoder.toBaseOid valueDec]
     (RowDecoder.nullableColumn valueDec)
 
 -- |
@@ -51,7 +51,7 @@ nullableColumn valueDec =
 nonNullableColumn :: ValueDecoder.ValueDecoder a -> RowDecoder a
 nonNullableColumn valueDec =
   RowDecoder
-    [ValueDecoder.toExpectedOid valueDec]
+    [ValueDecoder.toBaseOid valueDec]
     (RowDecoder.nonNullableColumn valueDec)
 
 -- * Relations
