@@ -208,9 +208,12 @@ statement sql encoder decoder preparable params =
               where
                 recv =
                   fmap (first commandToSessionError)
-                    $ (<*)
-                    <$> ResultsDecoder.toHandler decoder connection
-                    <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection
+                    $ Command.run command connection
+                  where
+                    command = do
+                      result <- ResultsDecoder.toCommand decoder
+                      Command.drainResults
+                      pure result
 
         runUnprepared = do
           sent <- Pq.sendQueryParams connection sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary
@@ -222,9 +225,12 @@ statement sql encoder decoder preparable params =
           where
             recv =
               fmap (first commandToSessionError)
-                $ (<*)
-                <$> ResultsDecoder.toHandler decoder connection
-                <*> ResultsDecoder.toHandler ResultsDecoder.dropRemainders connection
+                $ Command.run command connection
+              where
+                command = do
+                  result <- ResultsDecoder.toCommand decoder
+                  Command.drainResults
+                  pure result
 
     commandToSessionError =
       QueryError sql (ParamsEncoder.renderReadable encoder params)
