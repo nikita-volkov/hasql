@@ -24,11 +24,11 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
   where
     enterPipelineMode :: Run ()
     enterPipelineMode =
-      runCommand $ Pq.enterPipelineMode connection
+      runPqCommand $ Pq.enterPipelineMode connection
 
     exitPipelineMode :: Run ()
     exitPipelineMode =
-      runCommand $ Pq.exitPipelineMode connection
+      runPqCommand $ Pq.exitPipelineMode connection
 
     sendQueries :: Run (Run a)
     sendQueries = do
@@ -47,7 +47,7 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
 
     pipelineSync :: Run ()
     pipelineSync =
-      runCommand $ Pq.pipelineSync connection
+      runPqCommand $ Pq.pipelineSync connection
 
     recvPipelineSync :: Run ()
     recvPipelineSync =
@@ -56,19 +56,17 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
     runResultConsumer :: forall a. ResultConsumer.ResultConsumer a -> Run a
     runResultConsumer decoder = do
       res <- liftIO do
-        runExceptT do
-          ExceptT do
-            resultMb <- Pq.getResult connection
-            case resultMb of
-              Just result -> do
-                ResultConsumer.toHandler decoder result
-              Nothing -> pure (Left (UnexpectedResult "No result"))
+        resultMb <- Pq.getResult connection
+        case resultMb of
+          Just result -> do
+            ResultConsumer.toHandler decoder result
+          Nothing -> pure (Left (UnexpectedResult "No result"))
       case res of
         Right ok -> pure ok
         Left err -> throwError (PipelineError (ResultError err))
 
-    runCommand :: IO Bool -> Run ()
-    runCommand action =
+    runPqCommand :: IO Bool -> Run ()
+    runPqCommand action =
       liftIO action >>= \case
         True -> pure ()
         False -> do
