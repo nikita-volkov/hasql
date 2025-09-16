@@ -486,7 +486,7 @@ enum mapping = Value (Value.decoder (A.enum mapping))
 -- Lift an 'Array' decoder to a 'Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array a -> Value a
-array (Array decoder) = Value (Value.ValueDecoder (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.run decoder))
+array (Array decoder) = Value (Value.ValueDecoder (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toDecoder decoder))
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -558,10 +558,20 @@ dimension replicateM (Array imp) = Array (Array.dimension replicateM imp)
 {-# INLINEABLE element #-}
 element :: NullableOrNot Value a -> Array a
 element = \case
-  NonNullable (Value (Value.ValueDecoder typeName typeOID _ imp)) -> 
-    Array (Array.ArrayDecoder typeName typeOID (A.valueArray imp))
-  Nullable (Value (Value.ValueDecoder typeName typeOID _ imp)) -> 
-    Array (Array.ArrayDecoder typeName typeOID (A.nullableValueArray imp))
+  NonNullable (Value imp) ->
+    Array
+      ( Array.nonNullableElement
+          (Value.toTypeName imp)
+          (Value.toArrayOid imp)
+          (Value.toHandler imp)
+      )
+  Nullable (Value imp) ->
+    Array
+      ( Array.nullableElement
+          (Value.toTypeName imp)
+          (Value.toArrayOid imp)
+          (Value.toHandler imp)
+      )
 
 -- * Composite decoders
 
