@@ -49,6 +49,9 @@ consumeResult resultConsumer =
     resultMb <- Pq.getResult connection
     case resultMb of
       Just result -> do
+        -- DEBUG: Add tracing
+        status <- Pq.resultStatus result
+        liftIO $ putStrLn $ "consumeResult: " <> show resultMb
         resultR <- ResultConsumer.toHandler resultConsumer result
         case resultR of
           Left err -> pure (Left (ResultError err))
@@ -65,11 +68,19 @@ drainResults =
     let go !output = do
           resultMb <- Pq.getResult connection
           case resultMb of
-            Nothing -> pure output
+            Nothing -> do
+              liftIO $ putStrLn $ "drainResults: Nothing"
+              pure output
             Just result -> do
+              -- DEBUG: Add tracing
+              liftIO $ putStrLn $ "drainResults: " <> show resultMb
               resultR <- ResultConsumer.toHandler ResultConsumer.ok result
               case resultR of
-                Left err -> go (output *> Left (ResultError err))
+                Left err -> case output of
+                  -- If we already have an error, keep the first one
+                  Left _ -> go output 
+                  -- If no previous error, use this error
+                  Right _ -> go (Left (ResultError err))
                 Right () -> go output
      in go (Right ())
 

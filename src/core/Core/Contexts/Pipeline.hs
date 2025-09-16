@@ -42,17 +42,25 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
       pure do
         res <- liftIO recv
         case res of
-          Left err -> throwError err
-          Right ok -> pure ok
+          Left err -> do
+            liftIO $ putStrLn $ "recvQueries failed with: " <> show err
+            throwError err
+          Right ok -> do
+            liftIO $ putStrLn $ "recvQueries succeeded"
+            pure ok
 
     pipelineSync :: Run ()
-    pipelineSync =
+    pipelineSync = do
+      -- DEBUG: Add tracing
+      liftIO $ putStrLn "pipelineSync"
       runCommand $ Pq.pipelineSync connection
 
     recvPipelineSync :: Run ()
-    recvPipelineSync =
+    recvPipelineSync = do
+      -- DEBUG: Add tracing
+      liftIO $ putStrLn "recvPipelineSync"
       runResultsDecoder
-        $ ResultsDecoder.single ResultDecoder.pipelineSync
+        $ ResultsDecoder.single ResultDecoder.pipelineSyncOrAbort
 
     runResultsDecoder :: forall a. ResultsDecoder.ResultsDecoder a -> Run a
     runResultsDecoder decoder = do
@@ -170,7 +178,16 @@ statement sql encoder decoder preparable params =
         runPrepared = runExceptT do
           (key, keyRecv, newCache) <- ExceptT resolvePreparedStatementKey
           queryRecv <- ExceptT (sendQuery key)
-          pure (keyRecv *> queryRecv, newCache)
+          let combinedRecv = do
+                keyResult <- keyRecv
+                case keyResult of
+                  Left err -> do
+                    putStrLn $ "keyRecv failed with: " <> show err
+                    pure (Left err)
+                  Right _ -> do
+                    putStrLn "keyRecv succeeded, executing queryRecv"
+                    queryRecv
+          pure (combinedRecv, newCache)
           where
             (oidList, valueAndFormatList) =
               ParamsEncoder.compilePreparedStatementData encoder params
@@ -181,13 +198,16 @@ statement sql encoder decoder preparable params =
                 Nothing -> do
                   let (remoteKey, newCache) = StatementCache.insert localKey cache
                   sent <- Pq.sendPrepare connection remoteKey sql (mfilter (not . null) (Just oidList))
+                  -- DEBUG: Add tracing
+                  liftIO $ putStrLn $ "sendPrepare: " <> show remoteKey <> " for LocalKey " <> show sql <> " " <> show oidList
                   if sent
                     then pure (Right (remoteKey, recv, newCache))
                     else do
                       errMsg <- Pq.errorMessage connection
                       pure (Left (commandToSessionError (ClientError errMsg)))
                   where
-                    recv =
+                    recv = do
+                      putStrLn "executing keyRecv for prepare"
                       fmap (first commandToSessionError)
                         $ Command.run command connection
                       where
@@ -204,7 +224,8 @@ statement sql encoder decoder preparable params =
                 False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
                 True -> pure (Right recv)
               where
-                recv =
+                recv = do
+                  putStrLn "executing queryRecv for prepared statement"
                   fmap (first commandToSessionError)
                     $ (<*)
                     <$> ResultsDecoder.toHandler decoder connection
@@ -218,7 +239,8 @@ statement sql encoder decoder preparable params =
               errMsg <- Pq.errorMessage connection
               pure (Left (commandToSessionError (ClientError errMsg)))
           where
-            recv =
+            recv = do
+              putStrLn "executing recv for unprepared statement"
               fmap (first commandToSessionError)
                 $ (<*)
                 <$> ResultsDecoder.toHandler decoder connection

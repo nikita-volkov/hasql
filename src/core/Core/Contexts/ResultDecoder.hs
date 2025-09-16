@@ -3,6 +3,7 @@ module Core.Contexts.ResultDecoder
 
     -- * Constructors
     pipelineSync,
+    pipelineSyncOrAbort,
     noResult,
     rowsAffected,
     maybe,
@@ -42,6 +43,10 @@ newtype ResultDecoder a
 {-# INLINE pipelineSync #-}
 pipelineSync :: ResultDecoder ()
 pipelineSync = fromResultConsumer ResultConsumer.pipelineSync
+
+{-# INLINE pipelineSyncOrAbort #-}
+pipelineSyncOrAbort :: ResultDecoder ()
+pipelineSyncOrAbort = fromResultConsumer ResultConsumer.pipelineSyncOrAbort
 
 {-# INLINE noResult #-}
 noResult :: ResultDecoder ()

@@ -5,6 +5,7 @@ module Core.Contexts.ResultConsumer
     fromHandler,
     ok,
     pipelineSync,
+    pipelineSyncOrAbort,
     rowsAffected,
     checkExecStatus,
     columnOids,
@@ -48,6 +49,10 @@ ok = checkExecStatus [Pq.CommandOk, Pq.TuplesOk]
 pipelineSync :: ResultConsumer ()
 pipelineSync = checkExecStatus [Pq.PipelineSync]
 
+{-# INLINE pipelineSyncOrAbort #-}
+pipelineSyncOrAbort :: ResultConsumer ()
+pipelineSyncOrAbort = checkExecStatus [Pq.PipelineSync, Pq.PipelineAbort]
+
 {-# INLINE rowsAffected #-}
 rowsAffected :: ResultConsumer Int64
 rowsAffected = do
@@ -79,6 +84,10 @@ rowsAffected = do
 checkExecStatus :: [Pq.ExecStatus] -> ResultConsumer ()
 checkExecStatus expectedList = do
   status <- ResultConsumer \result -> Right <$> Pq.resultStatus result
+  -- DEBUG: Add tracing
+  ResultConsumer \_ -> do
+    putStrLn $ "checkExecStatus: " <> show status <> ", expecting one of " <> show expectedList
+    pure (Right ())
   unless (elem status expectedList) $ do
     case status of
       Pq.BadResponse -> serverError status
