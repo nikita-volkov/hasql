@@ -29,7 +29,7 @@ spec = Testcontainers.aroundSpecWithConnection True do
         Right val ->
           expectationFailure ("First statement succeeded unexpectedly: " <> show val)
         Left err -> case err of
-          Session.QueryError _ _ (Session.ResultError (Session.RowError 0 0 Session.UnexpectedNull)) ->
+          Session.QueryError _ _ (Session.ResultError (Session.CellError 0 0 Session.UnexpectedNull)) ->
             pure ()
           _ ->
             expectationFailure ("Unexpected error: " <> show err)

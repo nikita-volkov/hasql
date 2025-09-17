@@ -26,6 +26,8 @@ Major revision happened.
 
 - `EndOfInput` error removed. Now if there are not enough columns in the result, `UnexpectedAmountOfColumns` error is reported instead.
 
+- `RowError` type renamed to `CellError`.
+
 - `ServerError` got a new field: Causal execution status.
 
 # 1.9

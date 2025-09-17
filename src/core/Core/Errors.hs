@@ -85,8 +85,8 @@ instance Exception SessionError where
               <> "\n  Status: "
               <> toList status
           UnexpectedResult message -> "Unexpected result: " <> show message
-          RowError row column rowError ->
-            "Error in row " <> show row <> ", column " <> show column <> ": " <> show rowError
+          CellError row column cellError ->
+            "Error in row " <> show row <> ", column " <> show column <> ": " <> show cellError
           UnexpectedAmountOfRows amount ->
             "Unexpected amount of rows: " <> show amount
           UnexpectedAmountOfColumns expected actual ->
@@ -138,13 +138,13 @@ data ResultError
     UnexpectedResult Text
   | -- |
     -- An error of the row reader, preceded by the indexes of the row and column.
-    RowError
+    CellError
       -- | Row index.
       Int
       -- | Column index.
       Int
-      -- | Row error.
-      RowError
+      -- | Cell error.
+      CellError
   | -- |
     -- An unexpected amount of rows.
     UnexpectedAmountOfRows Int
@@ -168,8 +168,8 @@ data ResultError
   deriving (Show, Eq)
 
 -- |
--- An error during the decoding of a specific row.
-data RowError
+-- An error during the decoding of a specific cell.
+data CellError
   = -- |
     -- Appears on the attempt to parse a @NULL@ as some value.
     UnexpectedNull

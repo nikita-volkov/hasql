@@ -36,12 +36,12 @@ toHandler (RowDecoder f) row columnsAmount result =
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE column #-}
-column :: ValueDecoder.ValueDecoder a -> (Maybe a -> Either RowError b) -> RowDecoder b
+column :: ValueDecoder.ValueDecoder a -> (Maybe a -> Either CellError b) -> RowDecoder b
 column valueDec processNullable = RowDecoder do
   col <- get
   Env result row columnsAmount <- ask
   let colInt = Pq.colToInt col
-  let packRowError err = RowError (Pq.rowToInt row) colInt err
+  let packCellError err = CellError (Pq.rowToInt row) colInt err
   put (succ col)
 
   when (col >= columnsAmount) (throwError (UnexpectedAmountOfColumns (colInt + 1) (Pq.colToInt columnsAmount)))
@@ -52,11 +52,11 @@ column valueDec processNullable = RowDecoder do
     Nothing -> pure Nothing
     Just v ->
       case {-# SCC "decode" #-} A.valueParser (ValueDecoder.toHandler valueDec) v of
-        Left err -> throwError (packRowError (ValueError err))
+        Left err -> throwError (packCellError (ValueError err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
-    Left err -> throwError (packRowError err)
+    Left err -> throwError (packCellError err)
     Right decoded -> pure decoded
 
 -- |

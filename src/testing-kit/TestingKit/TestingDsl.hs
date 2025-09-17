@@ -4,7 +4,7 @@ module TestingKit.TestingDsl
     Session.SessionError (..),
     Session.CommandError (..),
     Session.ResultError (..),
-    Session.RowError (..),
+    Session.CellError (..),
 
     -- * Abstractions
     Session.Session,
