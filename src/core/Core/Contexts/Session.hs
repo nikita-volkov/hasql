@@ -4,7 +4,6 @@ import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Contexts.ResultConsumer qualified as ResultConsumer
-import Core.Contexts.Roundtrip qualified as Roundtrip
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
@@ -35,29 +34,6 @@ newtype Session a
 
 run :: Session a -> ConnectionState.ConnectionState -> IO (Either SessionError a, ConnectionState.ConnectionState)
 run (Session session) connectionState = session connectionState
-
-liftRoundtrip :: (CommandError -> SessionError) -> Roundtrip.Roundtrip a -> Session a
-liftRoundtrip packError roundtrip = Session \connectionState -> do
-  let pqConnection = ConnectionState.connection connectionState
-  result <- join $ Roundtrip.run roundtrip pqConnection
-  case result of
-    Left err -> pure (Left (packError err), connectionState)
-    Right a -> pure (Right a, connectionState)
-
-liftInformedRoundtrip ::
-  (CommandError -> SessionError) ->
-  (Bool -> StatementCache.StatementCache -> Roundtrip.Roundtrip (a, StatementCache.StatementCache)) ->
-  Session a
-liftInformedRoundtrip packError roundtrip = Session \connectionState -> do
-  let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      statementCache = ConnectionState.statementCache connectionState
-      pqConnection = ConnectionState.connection connectionState
-  result <- join $ Roundtrip.run (roundtrip usePreparedStatements statementCache) pqConnection
-  case result of
-    Left err -> pure (Left (packError err), connectionState)
-    Right (a, newStatementCache) ->
-      let newState = connectionState {ConnectionState.statementCache = newStatementCache}
-       in pure (Right a, newState)
 
 liftCommand ::
   (CommandError -> SessionError) ->

@@ -27,6 +27,7 @@ module Core.Contexts.ResultConsumer
   )
 where
 
+import Core.Contexts.Recv qualified as Recv
 import Core.Contexts.RowDecoder qualified as Row
 import Core.Errors
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
@@ -48,6 +49,9 @@ instance Filterable ResultConsumer where
   {-# INLINE mapMaybe #-}
   mapMaybe fn =
     refine (Prelude.maybe (Left "Invalid result") Right . fn)
+
+instance Recv.HandlesResult ResultConsumer where
+  handleResult = toHandler
 
 -- * Relations
 

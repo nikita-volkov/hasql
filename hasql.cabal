@@ -141,10 +141,12 @@ library core
     Core.Contexts.CompositeDecoder
     Core.Contexts.ParamsEncoder
     Core.Contexts.Pipeline
+    Core.Contexts.Recv
     Core.Contexts.ResultConsumer
-    Core.Contexts.Roundtrip
     Core.Contexts.RowDecoder
     Core.Contexts.RowDecoder.RowDecoder
+    Core.Contexts.Send
+    Core.Contexts.SendAndRecv
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
@@ -161,6 +163,7 @@ library core
     hasql:platform,
     hasql:pq,
     postgresql-binary >=0.14.2 && <0.15,
+    text >=1 && <3,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
