@@ -28,8 +28,6 @@ Major revision happened.
 
 - `RowError` type renamed to `CellError`.
 
-- `ServerError` got a new field: Causal execution status.
-
 # 1.9
 
 - Revised the settings construction exposing a tree of modules

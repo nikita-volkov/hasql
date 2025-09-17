@@ -106,9 +106,9 @@ checkExecStatus expectedList = do
   status <- ResultConsumer \result -> Right <$> Pq.resultStatus result
   unless (elem status expectedList) $ do
     case status of
-      Pq.BadResponse -> serverError status
-      Pq.NonfatalError -> serverError status
-      Pq.FatalError -> serverError status
+      Pq.BadResponse -> serverError
+      Pq.NonfatalError -> serverError
+      Pq.FatalError -> serverError
       Pq.EmptyQuery -> return ()
       _ ->
         throwError
@@ -117,8 +117,8 @@ checkExecStatus expectedList = do
           )
 
 {-# INLINE serverError #-}
-serverError :: Pq.ExecStatus -> ResultConsumer ()
-serverError status =
+serverError :: ResultConsumer ()
+serverError =
   ResultConsumer \result -> do
     code <-
       fold <$> Pq.resultErrorField result Pq.DiagSqlstate
@@ -130,7 +130,7 @@ serverError status =
       Pq.resultErrorField result Pq.DiagMessageHint
     position <-
       parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
-    pure $ Left $ ServerError (fromString (show status)) code message detail hint position
+    pure $ Left $ ServerError code message detail hint position
   where
     parsePosition = \case
       Nothing -> Nothing
