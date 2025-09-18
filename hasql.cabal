@@ -139,6 +139,7 @@ library core
     Core.Contexts.ArrayEncoder
     Core.Contexts.Command
     Core.Contexts.CompositeDecoder
+    Core.Contexts.OIDLookup
     Core.Contexts.ParamsEncoder
     Core.Contexts.Pipeline
     Core.Contexts.ResultConsumer
@@ -151,6 +152,7 @@ library core
     Core.Errors
     Core.PostgresTypeInfo
     Core.Structures.ConnectionState
+    Core.Structures.OIDCache
     Core.Structures.StatementCache
 
   other-modules:

@@ -56,11 +56,13 @@ module Hasql.Encoders
     name,
     oid,
     enum,
+    namedEnum,
     unknownEnum,
     unknown,
     array,
     foldableArray,
     composite,
+    namedComposite,
 
     -- * Array
     Array,
@@ -462,6 +464,26 @@ array (Array (Array.ArrayEncoder valueOID arrayOID arrayEncoder renderer)) =
 -- Lift a composite encoder into a value encoder.
 composite :: Composite a -> Value a
 composite (Composite encode print) =
+  Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
+  where
+    encodeValue val =
+      A.composite $ encode val
+    printValue val =
+      "ROW (" <> C.intercalate ", " (print val) <> ")"
+
+-- |
+-- Encoder for a named enum type.
+-- Uses PostgreSQL's type inference, so you may need to provide explicit type casts in your SQL.
+{-# INLINEABLE namedEnum #-}
+namedEnum :: Text -> (a -> Text) -> Value a
+namedEnum _typeName mapping = Value (Value.unsafePTIWithName "unknown" PTI.binaryUnknown (A.text_strict . mapping) (C.text . mapping))
+
+-- |
+-- Encoder for a named composite type.  
+-- Uses PostgreSQL's type inference, so you may need to provide explicit type casts in your SQL.
+{-# INLINEABLE namedComposite #-}
+namedComposite :: Text -> Composite a -> Value a
+namedComposite _typeName (Composite encode print) =
   Value (Value.unsafePTI PTI.binaryUnknown encodeValue printValue)
   where
     encodeValue val =
