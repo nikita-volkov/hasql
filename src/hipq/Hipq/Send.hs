@@ -1,9 +1,5 @@
-module Core.Contexts.Send where
+module Hipq.Send where
 
-import Core.Contexts.ResultConsumer qualified as ResultConsumer
-import Core.Errors
-import Core.Structures.ConnectionState qualified as ConnectionState
-import Core.Structures.StatementCache qualified as StatementCache
 import Data.Text.Encoding qualified as Text.Encoding
 import Data.Text.Encoding.Error qualified as Text.Encoding.Error
 import Platform.Prelude
