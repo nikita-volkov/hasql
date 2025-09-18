@@ -1,7 +1,5 @@
 module Hipq.Send where
 
-import Data.Text.Encoding qualified as Text.Encoding
-import Data.Text.Encoding.Error qualified as Text.Encoding.Error
 import Platform.Prelude
 import Pq qualified
 
@@ -35,6 +33,10 @@ toHandler (Send send) connection = do
 prepare :: ByteString -> ByteString -> Maybe [Pq.Oid] -> Send
 prepare statementName sql oidList =
   Send \connection -> Pq.sendPrepare connection statementName sql oidList
+
+query :: ByteString -> Send
+query sql =
+  Send \connection -> Pq.sendQuery connection sql
 
 queryPrepared :: ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send
 queryPrepared statementName params resultFormat =

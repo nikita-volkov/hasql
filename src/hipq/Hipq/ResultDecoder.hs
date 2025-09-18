@@ -29,6 +29,9 @@ module Hipq.ResultDecoder
 
     -- * Errors
     Error (..),
+
+    -- * Mappings
+    Wraps (..),
   )
 where
 
@@ -195,7 +198,7 @@ maybe rowDec =
           1 -> do
             result <-
               ResultRowMapping.toDecoder rowDec result 0
-                <&> first RowError
+                <&> first (RowError 0)
             pure (fmap Just result)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
@@ -214,7 +217,7 @@ single rowDec =
         case maxRows of
           1 -> do
             ResultRowMapping.toDecoder rowDec result 0
-              <&> first RowError
+              <&> first (RowError 0)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
@@ -234,11 +237,11 @@ vector rowDec =
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
           rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
           case rowResult of
-            Left !err -> writeIORef failureRef (Just err)
+            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
         readIORef failureRef >>= \case
           Nothing -> Right <$> Vector.unsafeFreeze mvector
-          Just x -> pure (Left (RowError x))
+          Just x -> pure (Left x)
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
@@ -262,11 +265,11 @@ foldl step init rowDec =
           forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
             rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
             case rowResult of
-              Left !err -> writeIORef failureRef (Just err)
+              Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
               Right !x -> modifyIORef' accRef (\acc -> step acc x)
           readIORef failureRef >>= \case
             Nothing -> Right <$> readIORef accRef
-            Just x -> pure (Left (RowError x))
+            Just x -> pure (Left x)
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
@@ -288,11 +291,11 @@ foldr step init rowDec =
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
           rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
           case rowResult of
-            Left !err -> writeIORef failureRef (Just err)
+            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> modifyIORef accRef (\acc -> step x acc)
         readIORef failureRef >>= \case
           Nothing -> Right <$> readIORef accRef
-          Just x -> pure (Left (RowError x))
+          Just x -> pure (Left x)
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
@@ -356,5 +359,16 @@ data Error
       Word32
       -- | Actual OID.
       Word32
-  | RowError ResultRowMapping.Error
+  | -- | An error in a specific row, reported by a row decoder.
+    RowError
+      -- | Row index.
+      Int
+      -- | Underlying error.
+      ResultRowMapping.Error
   deriving (Show, Eq)
+
+-- * Classes
+
+class Wraps f where
+  wrap :: ResultDecoder a -> f a
+  unwrap :: f a -> ResultDecoder a

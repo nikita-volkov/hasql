@@ -1,12 +1,11 @@
 module Core.Contexts.Session where
 
-import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
-import Core.Structures.StatementCache qualified as StatementCache
+import Hipq.ResultDecoder qualified as ResultDecoder
+import Hipq.Roundtrip qualified as Roundtrip
 import Platform.Prelude
 import Pq qualified
 
@@ -35,80 +34,31 @@ newtype Session a
 run :: Session a -> ConnectionState.ConnectionState -> IO (Either SessionError a, ConnectionState.ConnectionState)
 run (Session session) connectionState = session connectionState
 
-liftCommand ::
-  (CommandError -> SessionError) ->
-  Command.Command a ->
-  Session a
-liftCommand packError command =
-  liftInformedCommand packError \_ statementCache -> (,statementCache) <$> command
-
-liftInformedCommand ::
-  (CommandError -> SessionError) ->
-  (Bool -> StatementCache.StatementCache -> Command.Command (a, StatementCache.StatementCache)) ->
-  Session a
-liftInformedCommand packError command = Session \connectionState -> do
-  let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      statementCache = ConnectionState.statementCache connectionState
-      pqConnection = ConnectionState.connection connectionState
-  result <- Command.run (command usePreparedStatements statementCache) pqConnection
-  case result of
-    Left err -> pure (Left (packError err), connectionState)
-    Right (a, newStatementCache) ->
-      let newState = connectionState {ConnectionState.statementCache = newStatementCache}
-       in pure (Right a, newState)
-
 -- |
 -- Possibly a multi-statement query,
 -- which however cannot be parameterized or prepared,
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
-sql sql =
-  liftCommand (QueryError sql []) (Command.runSql sql)
+sql sql = Session \connectionState -> do
+  let connection = ConnectionState.connection connectionState
+  result <- Roundtrip.toSerialIO (Roundtrip.query sql) connection
+  case result of
+    Left err -> pure (Left (adaptRoundtripError err), connectionState)
+    Right () -> pure (Right (), connectionState)
+  where
+    adaptRoundtripError :: Roundtrip.Error -> SessionError
+    adaptRoundtripError = \case
+      Roundtrip.ClientError msg -> QueryError sql [] (ClientError msg)
+      Roundtrip.RecvError _err -> error "TODO"
 
 -- |
 -- Execute a statement by providing parameters to it.
 statement ::
   forall params result.
-  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultConsumer.ResultConsumer result -> Bool -> params -> Session result
+  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultDecoder.ResultDecoder result -> Bool -> params -> Session result
 statement sql paramsEncoder decoder preparable params =
-  do
-    prepared <- prepare
-    case prepared of
-      Just (key, valueAndFormatList) ->
-        executePrepared key valueAndFormatList
-      Nothing ->
-        executeUnprepared
-  where
-    packError =
-      QueryError sql (ParamsEncoder.renderReadable paramsEncoder params)
-
-    prepare :: Session (Maybe (ByteString, [Maybe (ByteString, Pq.Format)]))
-    prepare =
-      liftInformedCommand packError \usePreparedStatements statementCache -> do
-        if usePreparedStatements && preparable
-          then
-            let (oidList, valueAndFormatList) = ParamsEncoder.compilePreparedStatementData paramsEncoder params
-             in Command.prepareWithCache sql oidList statementCache
-                  <&> \(key, statementCache) -> (Just (key, valueAndFormatList), statementCache)
-          else
-            pure (Nothing, statementCache)
-
-    executePrepared :: ByteString -> [Maybe (ByteString, Pq.Format)] -> Session result
-    executePrepared key valueAndFormatList =
-      liftInformedCommand packError \_usePreparedStatements statementCache -> do
-        Command.sendQueryPrepared key valueAndFormatList
-        result <- Command.consumeResult decoder
-        Command.drainResults
-        pure (result, statementCache)
-
-    executeUnprepared :: Session result
-    executeUnprepared =
-      liftInformedCommand packError \_ statementCache -> do
-        let paramsData = ParamsEncoder.compileUnpreparedStatementData paramsEncoder params
-        Command.sendQueryParams sql paramsData
-        result <- Command.consumeResult decoder
-        Command.drainResults
-        pure (result, statementCache)
+  pipeline do
+    Pipeline.statement sql paramsEncoder decoder preparable params
 
 -- |
 -- Execute a pipeline.

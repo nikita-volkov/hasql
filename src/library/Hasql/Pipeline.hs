@@ -6,8 +6,8 @@ where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Hasql.Statement qualified as Statement
+import Hipq.ResultDecoder qualified as ResultDecoder
 
 -- |
 -- Execute a statement by providing parameters to it.
@@ -17,7 +17,7 @@ statement
   ( Statement.Statement
       sql
       (ParamsEncoder.unwrap -> paramsEncoder)
-      (ResultConsumer.unwrap -> decoder)
+      (ResultDecoder.unwrap -> decoder)
       preparable
     ) =
     Pipeline.statement sql paramsEncoder decoder preparable params

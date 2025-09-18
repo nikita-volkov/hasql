@@ -13,7 +13,7 @@ module Hipq.ResultRowMapping
     toDecoder,
 
     -- * Errors
-    Error (..),
+    Error,
   )
 where
 
@@ -69,14 +69,7 @@ type Decoder a = Pq.Result -> Pq.Row -> IO (Either Error a)
 toDecoder :: ResultRowMapping a -> Decoder a
 toDecoder (ResultRowMapping _ dec) result row =
   ResultRowDecoder.toHandler dec result row
-    <&> first (Error (Pq.rowToInt row))
 
 -- * Errors
 
-data Error
-  = Error
-      -- | Row index.
-      Int
-      -- | Underlying error.
-      ResultRowDecoder.Error
-  deriving stock (Eq, Show)
+type Error = ResultRowDecoder.Error

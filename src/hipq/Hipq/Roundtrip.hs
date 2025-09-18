@@ -1,11 +1,16 @@
 module Hipq.Roundtrip
   ( Roundtrip,
     toPipelineIO,
+    toSerialIO,
 
     -- * Constructors
     prepare,
     queryPrepared,
     queryParams,
+    query,
+
+    -- * Errors
+    Error (..),
   )
 where
 
@@ -28,7 +33,7 @@ instance Applicative Roundtrip where
 
 toPipelineIO :: Roundtrip a -> Pq.Connection -> IO (Either Error a)
 toPipelineIO sendAndRecv connection = do
-  sendResult <- Send.toHandler send connection
+  sendResult <- Send.toHandler (Send.enterPipelineMode <> send) connection
   case sendResult of
     Left sendError -> pure (Left (ClientError sendError))
     Right () -> do
@@ -37,6 +42,15 @@ toPipelineIO sendAndRecv connection = do
       pure (first RecvError recvResult <* first ClientError exitResult)
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync
+
+toSerialIO :: Roundtrip a -> Pq.Connection -> IO (Either Error a)
+toSerialIO (Roundtrip send recv) connection = do
+  sendResult <- Send.toHandler send connection
+  case sendResult of
+    Left sendError -> pure (Left (ClientError sendError))
+    Right () -> do
+      recvResult <- Recv.toHandler recv connection
+      pure (first RecvError recvResult)
 
 pipelineSync :: Roundtrip ()
 pipelineSync =
@@ -79,6 +93,12 @@ queryParams sql params resultFormat resultDecoder =
   Roundtrip
     (Send.queryParams sql params resultFormat)
     (Recv.singleResult resultDecoder)
+
+query :: ByteString -> Roundtrip ()
+query sql =
+  Roundtrip
+    (Send.query sql)
+    (Recv.singleResult ResultDecoder.ok)
 
 data Error
   = ClientError (Maybe ByteString)
