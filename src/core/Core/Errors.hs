@@ -133,7 +133,7 @@ data ResultError
     -- Indicates an improper statement or a schema mismatch.
     UnexpectedResult Text
   | -- |
-    -- An error of the row reader, preceded by the indexes of the row and column.
+    -- An error of the cell decoder, preceded by the indexes of the row and column.
     CellError
       -- | Row index.
       Int
@@ -170,7 +170,7 @@ data CellError
     -- Appears on the attempt to parse a @NULL@ as some value.
     UnexpectedNull
   | -- |
-    -- Appears when a wrong value parser is used.
+    -- Appears when a wrong value decoder is used.
     -- Comes with the error details.
     ValueError Text
   deriving (Show, Eq)
