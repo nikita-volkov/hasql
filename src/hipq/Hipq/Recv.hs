@@ -10,11 +10,11 @@ import Hipq.ResultDecoder qualified as ResultDecoder
 import Platform.Prelude
 import Pq qualified
 
-newtype Recv a
-  = Recv (Pq.Connection -> IO (Either Error a))
+newtype Recv context a
+  = Recv (Pq.Connection -> IO (Either (Error context) a))
   deriving stock (Functor)
 
-instance Applicative Recv where
+instance Applicative (Recv context) where
   {-# INLINE pure #-}
   pure x = Recv \_ -> pure (Right x)
   {-# INLINE (<*>) #-}
@@ -24,41 +24,44 @@ instance Applicative Recv where
       eg <- recv2 cs
       pure (ef <*> eg)
 
-toHandler :: Recv a -> Pq.Connection -> IO (Either Error a)
+toHandler :: Recv context a -> Pq.Connection -> IO (Either (Error context) a)
 toHandler (Recv recv) = recv
 
 -- | Exactly one result.
-singleResult :: ResultDecoder.ResultDecoder a -> Recv a
-singleResult handler = Recv \connection -> runExceptT do
+singleResult :: context -> ResultDecoder.ResultDecoder a -> Recv context a
+singleResult context handler = Recv \connection -> runExceptT do
   result <- ExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> do
         errorMessage <- Pq.errorMessage connection
-        pure (Left (NoResultsError errorMessage))
+        pure (Left (NoResultsError context errorMessage))
       Just result -> pure (Right result)
   result <- ExceptT do
     result <- ResultDecoder.toHandler handler result
-    pure (first (ResultError 0) result)
+    pure (first (ResultError context 0) result)
   ExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> pure (Right result)
-      Just _ -> pure (Left (TooManyResultsError 1))
+      Just _ -> pure (Left (TooManyResultsError context 1))
   pure result
 
 -- * Errors
 
-data Error
+data Error context
   = ResultError
+      context
       -- | Offset of the result in the series.
       Int
       -- | Underlying error.
       ResultDecoder.Error
   | NoResultsError
+      context
       -- | Details about the error. Possibly empty.
       (Maybe ByteString)
   | TooManyResultsError
+      context
       -- | Expected count.
       Int
   deriving stock (Show, Eq)

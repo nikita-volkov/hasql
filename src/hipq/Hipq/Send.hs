@@ -3,57 +3,63 @@ module Hipq.Send where
 import Platform.Prelude
 import Pq qualified
 
-type SendError = Maybe ByteString
+data Result context
+  = Ok
+  | Error context (Maybe ByteString)
 
-newtype Send
-  = Send (Pq.Connection -> IO Bool)
+newtype Send context
+  = Send (Pq.Connection -> IO (Result context))
 
-instance Semigroup Send where
+instance Semigroup (Send context) where
   {-# INLINE (<>) #-}
-  Send send1 <> Send send2 =
-    Send \cs -> do
-      success1 <- send1 cs
-      if success1
-        then send2 cs
-        else pure False
+  Send send1 <> Send send2 = Send \cs -> do
+    result <- send1 cs
+    case result of
+      Error context details -> pure (Error context details)
+      Ok -> do
+        result2 <- send2 cs
+        pure result2
 
-instance Monoid Send where
+instance Monoid (Send context) where
   {-# INLINE mempty #-}
-  mempty = Send \_ -> pure True
+  mempty = Send \_ -> pure Ok
 
-toHandler :: Send -> Pq.Connection -> IO (Either SendError ())
-toHandler (Send send) connection = do
-  success <- send connection
+toHandler :: Send context -> Pq.Connection -> IO (Result context)
+toHandler (Send send) = send
+
+liftPqSend :: context -> (Pq.Connection -> IO Bool) -> Send context
+liftPqSend context pqSend = Send \connection -> do
+  success <- pqSend connection
   if success
-    then pure (Right ())
+    then pure Ok
     else do
       errorMessage <- Pq.errorMessage connection
-      pure (Left errorMessage)
+      pure (Error context errorMessage)
 
-prepare :: ByteString -> ByteString -> Maybe [Pq.Oid] -> Send
-prepare statementName sql oidList =
-  Send \connection -> Pq.sendPrepare connection statementName sql oidList
+prepare :: context -> ByteString -> ByteString -> Maybe [Pq.Oid] -> Send context
+prepare context statementName sql oidList =
+  liftPqSend context \connection -> Pq.sendPrepare connection statementName sql oidList
 
-query :: ByteString -> Send
-query sql =
-  Send \connection -> Pq.sendQuery connection sql
+query :: context -> ByteString -> Send context
+query context sql =
+  liftPqSend context \connection -> Pq.sendQuery connection sql
 
-queryPrepared :: ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send
-queryPrepared statementName params resultFormat =
-  Send \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
+queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send context
+queryPrepared context statementName params resultFormat =
+  liftPqSend context \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
 
-queryParams :: ByteString -> [Maybe (Pq.Oid, ByteString, Pq.Format)] -> Pq.Format -> Send
-queryParams sql params resultFormat =
-  Send \connection -> Pq.sendQueryParams connection sql params resultFormat
+queryParams :: context -> ByteString -> [Maybe (Pq.Oid, ByteString, Pq.Format)] -> Pq.Format -> Send context
+queryParams context sql params resultFormat =
+  liftPqSend context \connection -> Pq.sendQueryParams connection sql params resultFormat
 
-pipelineSync :: Send
-pipelineSync =
-  Send \connection -> Pq.pipelineSync connection
+pipelineSync :: context -> Send context
+pipelineSync context =
+  liftPqSend context \connection -> Pq.pipelineSync connection
 
-enterPipelineMode :: Send
-enterPipelineMode =
-  Send \connection -> Pq.enterPipelineMode connection
+enterPipelineMode :: context -> Send context
+enterPipelineMode context =
+  liftPqSend context \connection -> Pq.enterPipelineMode connection
 
-exitPipelineMode :: Send
-exitPipelineMode =
-  Send \connection -> Pq.exitPipelineMode connection
+exitPipelineMode :: context -> Send context
+exitPipelineMode context =
+  liftPqSend context \connection -> Pq.exitPipelineMode connection

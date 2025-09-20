@@ -4,8 +4,8 @@ import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
-import Hipq.ResultDecoder qualified as ResultDecoder
-import Hipq.Roundtrip qualified as Roundtrip
+import Hipq.ResultDecoder qualified
+import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -39,23 +39,41 @@ run (Session session) connectionState = session connectionState
 -- which however cannot be parameterized or prepared,
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
-sql sql = Session \connectionState -> do
-  let connection = ConnectionState.connection connectionState
-  result <- Roundtrip.toSerialIO (Roundtrip.query sql) connection
-  case result of
-    Left err -> pure (Left (adaptRoundtripError err), connectionState)
-    Right () -> pure (Right (), connectionState)
-  where
-    adaptRoundtripError :: Roundtrip.Error -> SessionError
-    adaptRoundtripError = \case
-      Roundtrip.ClientError msg -> QueryError sql [] (ClientError msg)
-      Roundtrip.RecvError _err -> error "TODO"
+sql sql =
+  let context =
+        StatementErrorContext sql [] False
+   in Session \connectionState -> do
+        let connection = ConnectionState.connection connectionState
+        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query context sql) connection
+        case result of
+          Left err -> case err of
+            Hipq.Roundtrip.SendError context details -> do
+              Pq.reset connection
+              pure
+                ( Left (addContextToCommandError context (ClientError details)),
+                  ConnectionState.resetPreparedStatementsCache connectionState
+                )
+            Hipq.Roundtrip.RecvError recvError ->
+              pure
+                ( Left (adaptRecvError recvError),
+                  connectionState
+                )
+          Right () ->
+            pure
+              ( Right (),
+                connectionState
+              )
 
 -- |
 -- Execute a statement by providing parameters to it.
 statement ::
   forall params result.
-  ByteString -> ParamsEncoder.ParamsEncoder params -> ResultDecoder.ResultDecoder result -> Bool -> params -> Session result
+  ByteString ->
+  ParamsEncoder.ParamsEncoder params ->
+  Hipq.ResultDecoder.ResultDecoder result ->
+  Bool ->
+  params ->
+  Session result
 statement sql paramsEncoder decoder preparable params =
   pipeline do
     Pipeline.statement sql paramsEncoder decoder preparable params

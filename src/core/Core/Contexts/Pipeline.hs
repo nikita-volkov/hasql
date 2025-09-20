@@ -3,9 +3,7 @@ module Core.Contexts.Pipeline where
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementCache
-import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
-import Hipq.ResultRowDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
@@ -13,36 +11,15 @@ import Pq qualified
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
 run (Pipeline run) usePreparedStatements connection cache = do
   let (roundtrip, newCache) = run usePreparedStatements cache
-  result <- Hipq.Roundtrip.toPipelineIO roundtrip connection
+  result <- Hipq.Roundtrip.toPipelineIO NoErrorContext roundtrip connection
   case result of
-    Left (Hipq.Roundtrip.ClientError details) -> do
+    Left (Hipq.Roundtrip.SendError context details) -> do
       Pq.reset connection
-      pure (Left (PipelineError (ClientError details)), StatementCache.empty)
+      pure (Left (addContextToCommandError context (ClientError details)), StatementCache.empty)
     Left (Hipq.Roundtrip.RecvError recvError) ->
-      pure (Left (PipelineError (ResultError (adaptRecvError recvError))), newCache)
+      pure (Left (adaptRecvError recvError), newCache)
     Right a ->
       pure (Right a, newCache)
-  where
-    adaptRecvError :: Hipq.Recv.Error -> ResultError
-    adaptRecvError = \case
-      Hipq.Recv.ResultError _offset resultError -> adaptResultError resultError
-      Hipq.Recv.NoResultsError details -> error ("TODO: NoResultsError: " <> show details)
-      Hipq.Recv.TooManyResultsError count -> error ("TODO: TooManyResultsError: " <> show count)
-
-    adaptResultError :: Hipq.ResultDecoder.Error -> ResultError
-    adaptResultError = \case
-      Hipq.ResultDecoder.ServerError code message detail hint position -> ServerError code message detail hint position
-      Hipq.ResultDecoder.UnexpectedResult message -> UnexpectedResult message
-      Hipq.ResultDecoder.UnexpectedAmountOfRows actual -> UnexpectedAmountOfRows actual
-      Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual -> UnexpectedAmountOfColumns expected actual
-      Hipq.ResultDecoder.DecoderTypeMismatch column expected actual -> DecoderTypeMismatch column expected actual
-      Hipq.ResultDecoder.RowError rowIndex rowError -> adaptRowError rowIndex rowError
-
-    adaptRowError :: Int -> Hipq.ResultRowDecoder.Error -> ResultError
-    adaptRowError rowIndex = \case
-      Hipq.ResultRowDecoder.CellError column cellError -> CellError rowIndex column case cellError of
-        Hipq.ResultRowDecoder.DecodingCellError message -> ValueError message
-        Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNull
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -108,7 +85,7 @@ newtype Pipeline a
   = Pipeline
       ( Bool ->
         StatementCache.StatementCache ->
-        (Hipq.Roundtrip.Roundtrip a, StatementCache.StatementCache)
+        (Hipq.Roundtrip.Roundtrip ErrorContext a, StatementCache.StatementCache)
       )
   deriving stock (Functor)
 
@@ -129,12 +106,18 @@ statement sql encoder decoder preparable params =
   Pipeline run
   where
     run usePreparedStatements =
-      if usePreparedStatements && preparable
+      if prepare
         then runPrepared
         else runUnprepared
       where
         (oidList, valueAndFormatList) =
           ParamsEncoder.compilePreparedStatementData encoder params
+
+        prepare =
+          usePreparedStatements && preparable
+
+        context =
+          StatementErrorContext sql (ParamsEncoder.renderReadable encoder params) prepare
 
         runPrepared cache =
           (roundtrip, newCache)
@@ -150,12 +133,12 @@ statement sql encoder decoder preparable params =
                   StatementCache.LocalKey sql oidList
 
             roundtrip = do
-              when isNew (Hipq.Roundtrip.prepare remoteKey sql oidList)
-              res <- Hipq.Roundtrip.queryPrepared remoteKey valueAndFormatList Pq.Binary decoder
+              when isNew (Hipq.Roundtrip.prepare context remoteKey sql oidList)
+              res <- Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
               pure res
 
         runUnprepared cache =
           (roundtrip, cache)
           where
             roundtrip =
-              Hipq.Roundtrip.queryParams sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder
+              Hipq.Roundtrip.queryParams context sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder

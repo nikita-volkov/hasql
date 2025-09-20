@@ -20,51 +20,56 @@ import Hipq.Send qualified as Send
 import Platform.Prelude
 import Pq qualified
 
-data Roundtrip a
-  = Roundtrip Send.Send (Recv.Recv a)
+data Roundtrip context a
+  = Roundtrip (Send.Send context) (Recv.Recv context a)
   deriving stock (Functor)
 
-instance Applicative Roundtrip where
+instance Applicative (Roundtrip context) where
   {-# INLINE pure #-}
   pure x = Roundtrip mempty (pure x)
   {-# INLINE (<*>) #-}
   Roundtrip send1 recv1 <*> Roundtrip send2 recv2 =
     Roundtrip (send1 <> send2) (recv1 <*> recv2)
 
-toPipelineIO :: Roundtrip a -> Pq.Connection -> IO (Either Error a)
-toPipelineIO sendAndRecv connection = do
-  sendResult <- Send.toHandler (Send.enterPipelineMode <> send) connection
+toPipelineIO :: context -> Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
+toPipelineIO context sendAndRecv connection = do
+  sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
   case sendResult of
-    Left sendError -> pure (Left (ClientError sendError))
-    Right () -> do
-      recvResult <- Recv.toHandler recv connection
-      exitResult <- Send.toHandler Send.exitPipelineMode connection
-      pure (first RecvError recvResult <* first ClientError exitResult)
+    Send.Error context details -> pure (Left (SendError context details))
+    Send.Ok -> do
+      recvResult <- first RecvError <$> Recv.toHandler recv connection
+      exitResult <- do
+        result <- Send.toHandler (Send.exitPipelineMode context) connection
+        case result of
+          Send.Error context details -> pure (Left (SendError context details))
+          Send.Ok -> pure (Right ())
+      pure (recvResult <* exitResult)
   where
-    Roundtrip send recv = sendAndRecv <* pipelineSync
+    Roundtrip send recv = sendAndRecv <* pipelineSync context
 
-toSerialIO :: Roundtrip a -> Pq.Connection -> IO (Either Error a)
+toSerialIO :: Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Left sendError -> pure (Left (ClientError sendError))
-    Right () -> do
+    Send.Error context details -> pure (Left (SendError context details))
+    Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first RecvError recvResult)
 
-pipelineSync :: Roundtrip ()
-pipelineSync =
+pipelineSync :: context -> Roundtrip context ()
+pipelineSync context =
   Roundtrip
-    Send.pipelineSync
-    (Recv.singleResult ResultDecoder.pipelineSync)
+    (Send.pipelineSync context)
+    (Recv.singleResult context ResultDecoder.pipelineSync)
 
-prepare :: ByteString -> ByteString -> [Pq.Oid] -> Roundtrip ()
-prepare statementName sql oidList =
+prepare :: context -> ByteString -> ByteString -> [Pq.Oid] -> Roundtrip context ()
+prepare context statementName sql oidList =
   Roundtrip
-    (Send.prepare statementName sql (Just oidList))
-    (Recv.singleResult ResultDecoder.ok)
+    (Send.prepare context statementName sql (Just oidList))
+    (Recv.singleResult context ResultDecoder.ok)
 
 queryPrepared ::
+  context ->
   -- | Prepared statement name.
   ByteString ->
   -- | Parameters.
@@ -73,13 +78,14 @@ queryPrepared ::
   Pq.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
-  Roundtrip a
-queryPrepared statementName params resultFormat resultDecoder =
+  Roundtrip context a
+queryPrepared context statementName params resultFormat resultDecoder =
   Roundtrip
-    (Send.queryPrepared statementName params resultFormat)
-    (Recv.singleResult resultDecoder)
+    (Send.queryPrepared context statementName params resultFormat)
+    (Recv.singleResult context resultDecoder)
 
 queryParams ::
+  context ->
   -- | SQL.
   ByteString ->
   -- | Parameters.
@@ -88,19 +94,19 @@ queryParams ::
   Pq.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
-  Roundtrip a
-queryParams sql params resultFormat resultDecoder =
+  Roundtrip context a
+queryParams context sql params resultFormat resultDecoder =
   Roundtrip
-    (Send.queryParams sql params resultFormat)
-    (Recv.singleResult resultDecoder)
+    (Send.queryParams context sql params resultFormat)
+    (Recv.singleResult context resultDecoder)
 
-query :: ByteString -> Roundtrip ()
-query sql =
+query :: context -> ByteString -> Roundtrip context ()
+query context sql =
   Roundtrip
-    (Send.query sql)
-    (Recv.singleResult ResultDecoder.ok)
+    (Send.query context sql)
+    (Recv.singleResult context ResultDecoder.ok)
 
-data Error
-  = ClientError (Maybe ByteString)
-  | RecvError Recv.Error
+data Error context
+  = SendError context (Maybe ByteString)
+  | RecvError (Recv.Error context)
   deriving stock (Show, Eq)
