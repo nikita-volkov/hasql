@@ -85,13 +85,13 @@ where
 
 import Core.Contexts.ArrayDecoder qualified as Array
 import Core.Contexts.CompositeDecoder qualified as Composite
-import Core.Contexts.ResultConsumer qualified as Result
-import Core.Contexts.RowDecoder qualified as Row
 import Core.Contexts.ValueDecoder qualified as Value
 import Core.PostgresTypeInfo qualified as PTI
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
+import Hipq.ResultDecoder qualified as ResultDecoder
+import Hipq.ResultRowMapping qualified as ResultRowMapping
 import Platform.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
@@ -100,9 +100,9 @@ import PostgreSQL.Binary.Range qualified as R
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (Result.ResultConsumer a) deriving (Functor, Filterable)
+newtype Result a = Result (ResultDecoder.ResultDecoder a) deriving (Functor, Filterable)
 
-instance Result.Wraps Result where
+instance ResultDecoder.Wraps Result where
   wrap = Result
   unwrap (Result r) = r
 
@@ -112,24 +112,24 @@ instance Result.Wraps Result where
 -- Useful for statements like @INSERT@ or @CREATE@.
 {-# INLINEABLE noResult #-}
 noResult :: Result ()
-noResult = Result Result.noResult
+noResult = Result ResultDecoder.ok
 
 -- |
 -- Get the amount of rows affected by such statements as
 -- @UPDATE@ or @DELETE@.
 {-# INLINEABLE rowsAffected #-}
 rowsAffected :: Result Int64
-rowsAffected = Result Result.rowsAffected
+rowsAffected = Result ResultDecoder.rowsAffected
 
 -- |
 -- Exactly one row.
 -- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
-singleRow (Row row) = Result (Result.single row)
+singleRow (Row row) = Result (ResultDecoder.single row)
 
 refineResult :: (a -> Either Text b) -> Result a -> Result b
-refineResult refiner (Result resultDecoder) = Result (Result.refine refiner resultDecoder)
+refineResult refiner (Result resultDecoder) = Result (ResultDecoder.refine refiner resultDecoder)
 
 -- ** Multi-row traversers
 
@@ -137,13 +137,13 @@ refineResult refiner (Result resultDecoder) = Result (Result.refine refiner resu
 -- Foldl multiple rows.
 {-# INLINEABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
-foldlRows step init (Row row) = Result (Result.foldl step init row)
+foldlRows step init (Row row) = Result (ResultDecoder.foldl step init row)
 
 -- |
 -- Foldr multiple rows.
 {-# INLINEABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
-foldrRows step init (Row row) = Result (Result.foldr step init row)
+foldrRows step init (Row row) = Result (ResultDecoder.foldr step init row)
 
 -- ** Specialized multi-row results
 
@@ -151,7 +151,7 @@ foldrRows step init (Row row) = Result (Result.foldr step init row)
 -- Maybe one row or none.
 {-# INLINEABLE rowMaybe #-}
 rowMaybe :: Row a -> Result (Maybe a)
-rowMaybe (Row row) = Result (Result.maybe row)
+rowMaybe (Row row) = Result (ResultDecoder.maybe row)
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -160,7 +160,7 @@ rowMaybe (Row row) = Result (Result.maybe row)
 -- since it performs notably better.
 {-# INLINEABLE rowVector #-}
 rowVector :: Row a -> Result (Vector a)
-rowVector (Row row) = Result (Result.vector row)
+rowVector (Row row) = Result (ResultDecoder.vector row)
 
 -- |
 -- Zero or more rows packed into the list.
@@ -180,7 +180,7 @@ rowList = foldrRows strictCons []
 -- x :: 'Row' (Maybe Int64, Text, TimeOfDay)
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
-newtype Row a = Row (Row.RowDecoder a)
+newtype Row a = Row (ResultRowMapping.ResultRowMapping a)
   deriving (Functor, Applicative)
 
 -- |
@@ -188,8 +188,18 @@ newtype Row a = Row (Row.RowDecoder a)
 {-# INLINEABLE column #-}
 column :: NullableOrNot Value a -> Row a
 column = \case
-  NonNullable (Value imp) -> Row (Row.nonNullableColumn imp)
-  Nullable (Value imp) -> Row (Row.nullableColumn imp)
+  Nullable (Value valueDecoder) ->
+    Row
+      ( ResultRowMapping.nullableColumn
+          (Value.toBaseOidAsWord32 valueDecoder)
+          (Value.toHandler valueDecoder)
+      )
+  NonNullable (Value valueDecoder) ->
+    Row
+      ( ResultRowMapping.nonNullableColumn
+          (Value.toBaseOidAsWord32 valueDecoder)
+          (Value.toHandler valueDecoder)
+      )
 
 -- * Nullability
 

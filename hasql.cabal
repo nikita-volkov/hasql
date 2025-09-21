@@ -123,6 +123,7 @@ library
     bytestring >=0.10 && <0.13,
     containers >=0.6 && <0.9,
     hasql:core,
+    hasql:hipq,
     hasql:platform,
     hasql:pq,
     iproute >=1.7 && <1.8,
@@ -137,14 +138,9 @@ library core
   exposed-modules:
     Core.Contexts.ArrayDecoder
     Core.Contexts.ArrayEncoder
-    Core.Contexts.Command
     Core.Contexts.CompositeDecoder
     Core.Contexts.ParamsEncoder
     Core.Contexts.Pipeline
-    Core.Contexts.ResultConsumer
-    Core.Contexts.Roundtrip
-    Core.Contexts.RowDecoder
-    Core.Contexts.RowDecoder.RowDecoder
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
@@ -155,15 +151,14 @@ library core
 
   other-modules:
   build-depends:
-    attoparsec >=0.10 && <0.15,
     bytestring >=0.10 && <0.13,
     bytestring-strict-builder >=0.4.5.1 && <0.5,
+    hasql:hipq,
     hasql:platform,
     hasql:pq,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
-    vector >=0.10 && <0.14,
 
 -- Replacement of the "base" library for all the sublibs here.
 -- Covers such things as Prelude and shared utils.
@@ -172,6 +167,9 @@ library platform
   hs-source-dirs: src/platform
   exposed-modules:
     Platform.Prelude
+
+  other-modules:
+    Platform.Prelude.Text
 
   build-depends:
     base >=4.14 && <5,
@@ -188,6 +186,26 @@ library platform
     uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
     witherable >=0.5 && <0.6,
+
+-- Composable abstraction layer over patterns of using libpq with no extra responsibilities.
+library hipq
+  import: base
+  hs-source-dirs: src/hipq
+  exposed-modules:
+    Hipq.Recv
+    Hipq.ResultDecoder
+    Hipq.ResultRowDecoder
+    Hipq.ResultRowMapping
+    Hipq.Roundtrip
+    Hipq.Send
+
+  build-depends:
+    attoparsec >=0.10 && <0.15,
+    bytestring >=0.10 && <0.13,
+    hasql:platform,
+    hasql:pq,
+    postgresql-binary >=0.14.2 && <0.15,
+    vector >=0.10 && <0.14,
 
 library pq
   import: base

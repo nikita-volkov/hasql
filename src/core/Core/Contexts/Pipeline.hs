@@ -1,74 +1,25 @@
 module Core.Contexts.Pipeline where
 
-import Core.Contexts.Command qualified as Command
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
-import Core.Contexts.ResultConsumer qualified as ResultConsumer
 import Core.Errors
 import Core.Structures.StatementCache qualified as StatementCache
+import Hipq.ResultDecoder qualified
+import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-type Run = ExceptT SessionError (StateT StatementCache.StatementCache IO)
-
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
-run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
-  flip runStateT cache $ runExceptT $ do
-    enterPipelineMode
-    recvQueries <- sendQueries
-    pipelineSync
-    recvQueriesRes <- tryError recvQueries
-    ExceptT do
-      recvPipelineSyncRes <- runExceptT recvPipelineSync
-      exitPipelineModeRes <- runExceptT exitPipelineMode
-      pure (recvQueriesRes <* recvPipelineSyncRes <* exitPipelineModeRes)
-  where
-    enterPipelineMode :: Run ()
-    enterPipelineMode =
-      runPqCommand $ Pq.enterPipelineMode connection
-
-    exitPipelineMode :: Run ()
-    exitPipelineMode =
-      runPqCommand $ Pq.exitPipelineMode connection
-
-    sendQueries :: Run (Run a)
-    sendQueries = do
-      cache <- get
-      res <- liftIO do
-        sendQueriesInIO usePreparedStatements connection cache
-      (recv, newCache) <- case res of
-        Left err -> throwError err
-        Right ok -> pure ok
-      put newCache
-      pure do
-        res <- liftIO recv
-        case res of
-          Left err -> throwError err
-          Right ok -> pure ok
-
-    pipelineSync :: Run ()
-    pipelineSync =
-      runPqCommand $ Pq.pipelineSync connection
-
-    recvPipelineSync :: Run ()
-    recvPipelineSync =
-      runResultConsumer ResultConsumer.pipelineSync
-
-    runResultConsumer :: forall a. ResultConsumer.ResultConsumer a -> Run a
-    runResultConsumer resultConsumer = do
-      res <- liftIO do
-        Command.run (Command.consumeResult resultConsumer) connection
-      case res of
-        Right a -> pure a
-        Left err -> throwError (PipelineError err)
-
-    runPqCommand :: IO Bool -> Run ()
-    runPqCommand action =
-      liftIO action >>= \case
-        True -> pure ()
-        False -> do
-          err <- liftIO do
-            Pq.errorMessage connection
-          throwError . PipelineError . ClientError $ err
+run (Pipeline run) usePreparedStatements connection cache = do
+  let (roundtrip, newCache) = run usePreparedStatements cache
+  result <- Hipq.Roundtrip.toPipelineIO NoErrorContext roundtrip connection
+  case result of
+    Left (Hipq.Roundtrip.ClientError context details) -> do
+      Pq.reset connection
+      pure (Left (addContextToCommandError context (ClientError details)), StatementCache.empty)
+    Left (Hipq.Roundtrip.ServerError recvError) ->
+      pure (Left (adaptServerError recvError), newCache)
+    Right a ->
+      pure (Right a, newCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -133,101 +84,61 @@ run (Pipeline sendQueriesInIO) usePreparedStatements connection cache = do
 newtype Pipeline a
   = Pipeline
       ( Bool ->
-        Pq.Connection ->
         StatementCache.StatementCache ->
-        IO (Either SessionError (IO (Either SessionError a), StatementCache.StatementCache))
+        (Hipq.Roundtrip.Roundtrip ErrorContext a, StatementCache.StatementCache)
       )
-  deriving (Functor)
+  deriving stock (Functor)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline (\_ _ cache -> pure (Right (pure (Right a), cache)))
+    Pipeline (\_ cache -> (pure a, cache))
 
   Pipeline lSend <*> Pipeline rSend =
-    Pipeline \usePreparedStatements conn cache ->
-      lSend usePreparedStatements conn cache >>= \case
-        Left sendErr ->
-          pure (Left sendErr)
-        Right (lRecv, cache1) ->
-          rSend usePreparedStatements conn cache1 <&> \case
-            Left sendErr ->
-              Left sendErr
-            Right (rRecv, cache2) ->
-              Right (liftA2 (<*>) lRecv rRecv, cache2)
+    Pipeline \usePreparedStatements cache ->
+      let (lRecv, cache1) = lSend usePreparedStatements cache
+          (rRecv, cache2) = rSend usePreparedStatements cache1
+       in (lRecv <*> rRecv, cache2)
 
 -- |
 -- Execute a statement in pipelining mode.
-statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> ResultConsumer.ResultConsumer result -> Bool -> params -> Pipeline result
+statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
 statement sql encoder decoder preparable params =
   Pipeline run
   where
-    run usePreparedStatements connection cache =
-      if usePreparedStatements && preparable
+    run usePreparedStatements =
+      if prepare
         then runPrepared
         else runUnprepared
       where
-        runPrepared = runExceptT do
-          (key, keyRecv, newCache) <- ExceptT resolvePreparedStatementKey
-          queryRecv <- ExceptT (sendQuery key)
-          pure (liftA2 (*>) keyRecv queryRecv, newCache)
-          where
-            (oidList, valueAndFormatList) =
-              ParamsEncoder.compilePreparedStatementData encoder params
+        (oidList, valueAndFormatList) =
+          ParamsEncoder.compilePreparedStatementData encoder params
 
-            resolvePreparedStatementKey =
-              case StatementCache.lookup localKey cache of
-                Just remoteKey -> pure (Right (remoteKey, pure (Right ()), cache))
-                Nothing -> do
-                  let (remoteKey, newCache) = StatementCache.insert localKey cache
-                  sent <- Pq.sendPrepare connection remoteKey sql (mfilter (not . null) (Just oidList))
-                  if sent
-                    then pure (Right (remoteKey, recv, newCache))
-                    else do
-                      errMsg <- Pq.errorMessage connection
-                      pure (Left (commandToSessionError (ClientError errMsg)))
-                  where
-                    recv =
-                      fmap (first commandToSessionError)
-                        $ Command.run command connection
-                      where
-                        command = do
-                          Command.consumeResult ResultConsumer.ok
-                          Command.drainResults
-                          pure ()
+        prepare =
+          usePreparedStatements && preparable
+
+        context =
+          StatementErrorContext sql (ParamsEncoder.renderReadable encoder params) prepare
+
+        runPrepared cache =
+          (roundtrip, newCache)
+          where
+            (isNew, remoteKey, newCache) = case StatementCache.lookup localKey cache of
+              Just remoteKey ->
+                (False, remoteKey, cache)
+              Nothing ->
+                let (remoteKey, newCache) = StatementCache.insert localKey cache
+                 in (True, remoteKey, newCache)
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
 
-            sendQuery key =
-              Pq.sendQueryPrepared connection key valueAndFormatList Pq.Binary >>= \case
-                False -> Left . commandToSessionError . ClientError <$> Pq.errorMessage connection
-                True -> pure (Right recv)
-              where
-                recv =
-                  fmap (first commandToSessionError)
-                    $ Command.run command connection
-                  where
-                    command = do
-                      result <- Command.consumeResult decoder
-                      Command.drainResults
-                      pure result
+            roundtrip = do
+              when isNew (Hipq.Roundtrip.prepare context remoteKey sql oidList)
+              res <- Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
+              pure res
 
-        runUnprepared = do
-          sent <- Pq.sendQueryParams connection sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary
-          if sent
-            then pure (Right (recv, cache))
-            else do
-              errMsg <- Pq.errorMessage connection
-              pure (Left (commandToSessionError (ClientError errMsg)))
+        runUnprepared cache =
+          (roundtrip, cache)
           where
-            recv =
-              fmap (first commandToSessionError)
-                $ Command.run command connection
-              where
-                command = do
-                  result <- Command.consumeResult decoder
-                  Command.drainResults
-                  pure result
-
-    commandToSessionError =
-      QueryError sql (ParamsEncoder.renderReadable encoder params)
+            roundtrip =
+              Hipq.Roundtrip.queryParams context sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder

@@ -1,6 +1,9 @@
 module Core.Errors where
 
 import Data.ByteString.Char8 qualified as BC
+import Hipq.Recv qualified
+import Hipq.ResultDecoder qualified
+import Hipq.ResultRowDecoder qualified
 import Platform.Prelude
 
 -- | Error during execution of a session.
@@ -133,7 +136,7 @@ data ResultError
     -- Indicates an improper statement or a schema mismatch.
     UnexpectedResult Text
   | -- |
-    -- An error of the row reader, preceded by the indexes of the row and column.
+    -- An error of the cell decoder, preceded by the indexes of the row and column.
     CellError
       -- | Row index.
       Int
@@ -170,7 +173,50 @@ data CellError
     -- Appears on the attempt to parse a @NULL@ as some value.
     UnexpectedNull
   | -- |
-    -- Appears when a wrong value parser is used.
+    -- Appears when a wrong value decoder is used.
     -- Comes with the error details.
     ValueError Text
   deriving (Show, Eq)
+
+data ErrorContext
+  = StatementErrorContext
+      -- | SQL.
+      ByteString
+      -- | Parameters rendered in human-readable way.
+      [Text]
+      -- | Preparable.
+      Bool
+  | NoErrorContext
+  deriving stock (Show, Eq)
+
+addContextToCommandError :: ErrorContext -> CommandError -> SessionError
+addContextToCommandError = \case
+  StatementErrorContext sql params _preparable -> QueryError sql params
+  NoErrorContext -> PipelineError
+
+adaptServerError :: Hipq.Recv.Error ErrorContext -> SessionError
+adaptServerError = \case
+  Hipq.Recv.ResultError context _offset resultError ->
+    addContextToCommandError context (ResultError (adaptResultError resultError))
+  Hipq.Recv.NoResultsError context details ->
+    let message = case details of
+          Nothing -> "No results"
+          Just d -> "No results: " <> decodeUtf8Lenient d
+     in addContextToCommandError context (ResultError (UnexpectedResult message))
+  Hipq.Recv.TooManyResultsError context count ->
+    addContextToCommandError context (ResultError (UnexpectedResult ("Too many results: " <> fromString (show count))))
+
+adaptResultError :: Hipq.ResultDecoder.Error -> ResultError
+adaptResultError = \case
+  Hipq.ResultDecoder.ServerError code message detail hint position -> ServerError code message detail hint position
+  Hipq.ResultDecoder.UnexpectedResult message -> UnexpectedResult message
+  Hipq.ResultDecoder.UnexpectedAmountOfRows actual -> UnexpectedAmountOfRows actual
+  Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual -> UnexpectedAmountOfColumns expected actual
+  Hipq.ResultDecoder.DecoderTypeMismatch column expected actual -> DecoderTypeMismatch column expected actual
+  Hipq.ResultDecoder.RowError rowIndex rowError -> adaptRowError rowIndex rowError
+
+adaptRowError :: Int -> Hipq.ResultRowDecoder.Error -> ResultError
+adaptRowError rowIndex = \case
+  Hipq.ResultRowDecoder.CellError column cellError -> CellError rowIndex column case cellError of
+    Hipq.ResultRowDecoder.DecodingCellError message -> ValueError message
+    Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNull

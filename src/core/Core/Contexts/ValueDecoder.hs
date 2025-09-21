@@ -59,6 +59,10 @@ toTypeName (ValueDecoder typeName _ _ _) = typeName
 toBaseOid :: ValueDecoder a -> Maybe Pq.Oid
 toBaseOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
 
+toBaseOidAsWord32 :: ValueDecoder a -> Maybe Word32
+toBaseOidAsWord32 (ValueDecoder _ typeOID _ _) =
+  PTI.oidWord32 <$> typeOID
+
 toArrayOid :: ValueDecoder a -> Maybe PTI.OID
 toArrayOid (ValueDecoder _ _ oid _) = oid
 
