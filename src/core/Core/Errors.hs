@@ -196,9 +196,15 @@ addContextToCommandError = \case
 
 adaptServerError :: Hipq.Recv.Error ErrorContext -> SessionError
 adaptServerError = \case
-  Hipq.Recv.ResultError context _offset resultError -> addContextToCommandError context (ResultError (adaptResultError resultError))
-  Hipq.Recv.NoResultsError _context details -> error ("TODO: NoResultsError: " <> show details)
-  Hipq.Recv.TooManyResultsError _context count -> error ("TODO: TooManyResultsError: " <> show count)
+  Hipq.Recv.ResultError context _offset resultError ->
+    addContextToCommandError context (ResultError (adaptResultError resultError))
+  Hipq.Recv.NoResultsError context details ->
+    let message = case details of
+          Nothing -> "No results"
+          Just d -> "No results: " <> decodeUtf8Lenient d
+     in addContextToCommandError context (ResultError (UnexpectedResult message))
+  Hipq.Recv.TooManyResultsError context count ->
+    addContextToCommandError context (ResultError (UnexpectedResult ("Too many results: " <> fromString (show count))))
 
 adaptResultError :: Hipq.ResultDecoder.Error -> ResultError
 adaptResultError = \case
