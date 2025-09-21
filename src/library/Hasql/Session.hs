@@ -9,13 +9,17 @@ module Hasql.Session
     run,
 
     -- * Errors
-    module Core.Errors,
+    Error (..),
+    InPipeline (..),
+    InStatement (..),
+    InResultRow (..),
+    InResultCell (..),
   )
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Session qualified as Session
-import Core.Errors
+import Core.Errors hiding (pipeline, statement)
 import Hasql.Connection qualified as Connection
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder
@@ -26,7 +30,7 @@ import Platform.Prelude
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
 {-# DEPRECATED run "Use @Hasql.Connection.'Hasql.Connection.use'@ instead" #-}
-run :: Session.Session a -> Connection.Connection -> IO (Either SessionError a)
+run :: Session.Session a -> Connection.Connection -> IO (Either Error a)
 run session connection = Connection.use connection session
 
 -- |

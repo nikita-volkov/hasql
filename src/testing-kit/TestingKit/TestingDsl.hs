@@ -1,10 +1,6 @@
 module TestingKit.TestingDsl
   ( -- * Errors
     Error (..),
-    Session.SessionError (..),
-    Session.CommandError (..),
-    Session.ResultError (..),
-    Session.CellError (..),
 
     -- * Abstractions
     Session.Session,
@@ -31,7 +27,7 @@ import TestingKit.Preludes.Base
 
 data Error
   = ConnectionError (Connection.ConnectionError)
-  | SessionError (Session.SessionError)
+  | SessionError (Session.Error)
   deriving (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)

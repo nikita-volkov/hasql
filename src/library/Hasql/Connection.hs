@@ -77,7 +77,7 @@ withLibPQConnection connection action =
 -- Execute a sequence of operations with exclusive access to the connection.
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
-use :: Connection -> Session.Session a -> IO (Either SessionError a)
+use :: Connection -> Session.Session a -> IO (Either Error a)
 use connection session =
   useConnectionState connection \connectionState -> do
     Session.run session connectionState

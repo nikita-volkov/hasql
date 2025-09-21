@@ -26,9 +26,12 @@ spec = Testcontainers.aroundSpecWithConnection True do
             shouldBe
               result
               ( Left
-                  ( Session.QueryError
-                      "-"
-                      []
-                      (Session.ResultError (Session.ServerError "42601" "syntax error at or near \"-\"" Nothing Nothing (Just 1)))
+                  ( Session.ServerError
+                      (Session.InStatement (Session.InPipeline 1) 0 "-" [] preparable)
+                      "42601"
+                      "syntax error at or near \"-\""
+                      Nothing
+                      Nothing
+                      (Just 1)
                   )
               )

@@ -11,6 +11,9 @@ import Prelude
 class ToPlainText a where
   toPlainText :: a -> TextBuilder.TextBuilder
 
+instance ToPlainText String where
+  toPlainText = TextBuilder.string
+
 instance ToPlainText Data.Text.Text where
   toPlainText = TextBuilder.text
 

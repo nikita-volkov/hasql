@@ -25,8 +25,8 @@ data Error
   deriving stock (Eq, Show)
 
 data CellError
-  = DecodingCellError Text
-  | UnexpectedNullCellError
+  = DecodingCellError Pq.Oid Text
+  | UnexpectedNullCellError Pq.Oid
   deriving stock (Eq, Show)
 
 newtype ResultRowDecoder a
@@ -62,13 +62,16 @@ column processNullable valueDec = ResultRowDecoder do
 
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
-    Just v ->
+    Just v -> do
+      oid <- liftIO (Pq.ftype result col)
       case {-# SCC "decode" #-} valueDec v of
-        Left err -> throwError (CellError colInt (DecodingCellError err))
+        Left err -> throwError (CellError colInt (DecodingCellError oid err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
-    Nothing -> throwError (CellError colInt UnexpectedNullCellError)
+    Nothing -> do
+      oid <- liftIO (Pq.ftype result col)
+      throwError (CellError colInt (UnexpectedNullCellError oid))
     Just decoded -> pure decoded
 
 -- |

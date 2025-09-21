@@ -151,7 +151,6 @@ library core
 
   other-modules:
   build-depends:
-    bytestring >=0.10 && <0.13,
     bytestring-strict-builder >=0.4.5.1 && <0.5,
     hasql:hipq,
     hasql:platform,
@@ -295,6 +294,7 @@ test-suite integration-tests
   build-depends:
     QuickCheck,
     hasql,
+    hasql:core,
     hasql:testing-kit,
     hspec ^>=2.11.12,
     quickcheck-instances >=0.3.11 && <0.4,
