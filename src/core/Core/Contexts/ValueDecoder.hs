@@ -1,6 +1,7 @@
 module Core.Contexts.ValueDecoder where
 
 import Core.PostgresTypeInfo qualified as PTI
+import Hipq.ValueDecoder qualified as HipqValueDecoder
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 import Pq qualified
@@ -69,3 +70,7 @@ toArrayOid (ValueDecoder _ _ oid _) = oid
 {-# INLINE toHandler #-}
 toHandler :: ValueDecoder a -> A.Value a
 toHandler (ValueDecoder _ _ _ decoder) = decoder
+
+{-# INLINE toHipqValueDecoder #-}
+toHipqValueDecoder :: ValueDecoder a -> HipqValueDecoder.ValueDecoder a
+toHipqValueDecoder (ValueDecoder _ _ _ decoder) = HipqValueDecoder.fromParser (A.valueParser decoder)
