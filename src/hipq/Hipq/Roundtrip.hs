@@ -35,13 +35,13 @@ toPipelineIO :: context -> Roundtrip context a -> Pq.Connection -> IO (Either (E
 toPipelineIO context sendAndRecv connection = do
   sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
   case sendResult of
-    Send.Error context details -> pure (Left (SendError context details))
+    Send.Error context details -> pure (Left (ClientError context details))
     Send.Ok -> do
-      recvResult <- first RecvError <$> Recv.toHandler recv connection
+      recvResult <- first ServerError <$> Recv.toHandler recv connection
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode context) connection
         case result of
-          Send.Error context details -> pure (Left (SendError context details))
+          Send.Error context details -> pure (Left (ClientError context details))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
@@ -51,10 +51,10 @@ toSerialIO :: Roundtrip context a -> Pq.Connection -> IO (Either (Error context)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error context details -> pure (Left (SendError context details))
+    Send.Error context details -> pure (Left (ClientError context details))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
-      pure (first RecvError recvResult)
+      pure (first ServerError recvResult)
 
 pipelineSync :: context -> Roundtrip context ()
 pipelineSync context =
@@ -107,6 +107,6 @@ query context sql =
     (Recv.singleResult context ResultDecoder.ok)
 
 data Error context
-  = SendError context (Maybe ByteString)
-  | RecvError (Recv.Error context)
+  = ClientError context (Maybe ByteString)
+  | ServerError (Recv.Error context)
   deriving stock (Show, Eq)

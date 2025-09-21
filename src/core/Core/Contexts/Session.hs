@@ -47,15 +47,15 @@ sql sql =
         result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query context sql) connection
         case result of
           Left err -> case err of
-            Hipq.Roundtrip.SendError context details -> do
+            Hipq.Roundtrip.ClientError context details -> do
               Pq.reset connection
               pure
                 ( Left (addContextToCommandError context (ClientError details)),
                   ConnectionState.resetPreparedStatementsCache connectionState
                 )
-            Hipq.Roundtrip.RecvError recvError ->
+            Hipq.Roundtrip.ServerError recvError ->
               pure
-                ( Left (adaptRecvError recvError),
+                ( Left (adaptServerError recvError),
                   connectionState
                 )
           Right () ->

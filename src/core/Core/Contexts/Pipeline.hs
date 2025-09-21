@@ -13,11 +13,11 @@ run (Pipeline run) usePreparedStatements connection cache = do
   let (roundtrip, newCache) = run usePreparedStatements cache
   result <- Hipq.Roundtrip.toPipelineIO NoErrorContext roundtrip connection
   case result of
-    Left (Hipq.Roundtrip.SendError context details) -> do
+    Left (Hipq.Roundtrip.ClientError context details) -> do
       Pq.reset connection
       pure (Left (addContextToCommandError context (ClientError details)), StatementCache.empty)
-    Left (Hipq.Roundtrip.RecvError recvError) ->
-      pure (Left (adaptRecvError recvError), newCache)
+    Left (Hipq.Roundtrip.ServerError recvError) ->
+      pure (Left (adaptServerError recvError), newCache)
     Right a ->
       pure (Right a, newCache)
 
