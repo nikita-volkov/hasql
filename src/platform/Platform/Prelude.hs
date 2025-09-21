@@ -2,8 +2,6 @@ module Platform.Prelude
   ( module Exports,
     LazyByteString,
     ByteStringBuilder,
-    LazyText,
-    TextBuilder,
     forMToZero_,
     forMFromZero_,
     strictCons,
@@ -68,8 +66,6 @@ import Data.Scientific as Exports (Scientific)
 import Data.Semigroup as Exports hiding (First (..), Last (..))
 import Data.String as Exports
 import Data.Text as Exports (Text)
-import Data.Text.Lazy qualified
-import Data.Text.Lazy.Builder qualified
 import Data.Time as Exports
 import Data.Traversable as Exports
 import Data.Tuple as Exports
@@ -90,6 +86,7 @@ import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Numeric as Exports
+import Platform.Prelude.Text as Exports
 import System.Environment as Exports
 import System.Exit as Exports
 import System.IO as Exports (Handle, hClose)
@@ -110,12 +107,6 @@ type LazyByteString =
 
 type ByteStringBuilder =
   Data.ByteString.Builder.Builder
-
-type LazyText =
-  Data.Text.Lazy.Text
-
-type TextBuilder =
-  Data.Text.Lazy.Builder.Builder
 
 {-# INLINE forMToZero_ #-}
 forMToZero_ :: (Applicative m) => Int -> (Int -> m a) -> m ()
