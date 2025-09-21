@@ -18,8 +18,7 @@ module Hipq.ResultRowMapping
 where
 
 import Hipq.ResultRowDecoder qualified as ResultRowDecoder
-import Platform.Prelude hiding (error)
-import PostgreSQL.Binary.Decoding qualified as Binary
+import Platform.Prelude
 import Pq qualified
 
 -- * ResultRowMapping
@@ -40,7 +39,7 @@ instance Applicative ResultRowMapping where
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nullableColumn #-}
-nullableColumn :: Maybe Word32 -> Binary.Value a -> ResultRowMapping (Maybe a)
+nullableColumn :: Maybe Word32 -> (ByteString -> Either Text a) -> ResultRowMapping (Maybe a)
 nullableColumn oid decoder =
   ResultRowMapping
     [Pq.Oid . fromIntegral <$> oid]
@@ -49,7 +48,7 @@ nullableColumn oid decoder =
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nonNullableColumn #-}
-nonNullableColumn :: Maybe Word32 -> Binary.Value a -> ResultRowMapping a
+nonNullableColumn :: Maybe Word32 -> (ByteString -> Either Text a) -> ResultRowMapping a
 nonNullableColumn oid decoder =
   ResultRowMapping
     [Pq.Oid . fromIntegral <$> oid]

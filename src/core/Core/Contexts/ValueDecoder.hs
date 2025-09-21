@@ -69,3 +69,7 @@ toArrayOid (ValueDecoder _ _ oid _) = oid
 {-# INLINE toHandler #-}
 toHandler :: ValueDecoder a -> A.Value a
 toHandler (ValueDecoder _ _ _ decoder) = decoder
+
+{-# INLINE toByteStringParser #-}
+toByteStringParser :: ValueDecoder a -> (ByteString -> Either Text a)
+toByteStringParser (ValueDecoder _ _ _ decoder) = A.valueParser decoder

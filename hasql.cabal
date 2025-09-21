@@ -204,7 +204,6 @@ library hipq
     bytestring >=0.10 && <0.13,
     hasql:platform,
     hasql:pq,
-    postgresql-binary >=0.14.2 && <0.15,
     vector >=0.10 && <0.14,
 
 library pq
