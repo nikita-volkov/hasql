@@ -13,7 +13,6 @@ module Hipq.ResultRowDecoder
   )
 where
 
-import Hipq.ValueDecoder qualified as ValueDecoder
 import Platform.Prelude
 import Pq qualified
 
@@ -52,7 +51,7 @@ toHandler (ResultRowDecoder f) result row =
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE column #-}
-column :: (Maybe a -> Maybe b) -> ValueDecoder.ValueDecoder a -> ResultRowDecoder b
+column :: (Maybe a -> Maybe b) -> (ByteString -> Either Text a) -> ResultRowDecoder b
 column processNullable valueDec = ResultRowDecoder do
   col <- get
   Env result row <- ask
@@ -64,7 +63,7 @@ column processNullable valueDec = ResultRowDecoder do
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
     Just v ->
-      case {-# SCC "decode" #-} ValueDecoder.parse valueDec v of
+      case {-# SCC "decode" #-} valueDec v of
         Left err -> throwError (CellError colInt (DecodingCellError err))
         Right decoded -> pure (Just decoded)
 
@@ -75,11 +74,11 @@ column processNullable valueDec = ResultRowDecoder do
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nullableColumn #-}
-nullableColumn :: ValueDecoder.ValueDecoder a -> ResultRowDecoder (Maybe a)
+nullableColumn :: (ByteString -> Either Text a) -> ResultRowDecoder (Maybe a)
 nullableColumn = column Just
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nonNullableColumn #-}
-nonNullableColumn :: ValueDecoder.ValueDecoder a -> ResultRowDecoder a
+nonNullableColumn :: (ByteString -> Either Text a) -> ResultRowDecoder a
 nonNullableColumn = column id

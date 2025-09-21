@@ -192,13 +192,13 @@ column = \case
     Row
       ( ResultRowMapping.nullableColumn
           (Value.toBaseOidAsWord32 valueDecoder)
-          (Value.toHipqValueDecoder valueDecoder)
+          (Value.toByteStringParser valueDecoder)
       )
   NonNullable (Value valueDecoder) ->
     Row
       ( ResultRowMapping.nonNullableColumn
           (Value.toBaseOidAsWord32 valueDecoder)
-          (Value.toHipqValueDecoder valueDecoder)
+          (Value.toByteStringParser valueDecoder)
       )
 
 -- * Nullability
