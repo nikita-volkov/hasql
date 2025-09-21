@@ -37,14 +37,14 @@ singleResult context handler = Recv \connection -> runExceptT do
         errorMessage <- Pq.errorMessage connection
         pure (Left (NoResultsError context errorMessage))
       Just result -> pure (Right result)
-  result <- ExceptT do
-    result <- ResultDecoder.toHandler handler result
-    pure (first (ResultError context 0) result)
   ExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> pure (Right result)
       Just _ -> pure (Left (TooManyResultsError context 1))
+  result <- ExceptT do
+    result <- ResultDecoder.toHandler handler result
+    pure (first (ResultError context 0) result)
   pure result
 
 -- * Errors
