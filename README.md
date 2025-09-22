@@ -13,6 +13,10 @@ PostgreSQL driver for Haskell, that prioritizes:
 
 Hasql is production-ready, actively maintained and the API is pretty stable. It's used by many companies and most notably by the [Postgrest](https://github.com/PostgREST/postgrest) project.
 
+# Discussions
+
+Join [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions) to ask questions, provide feedback, suggest and vote on features, and help shape the future of Hasql.
+
 # Ecosystem
 
 Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple.
