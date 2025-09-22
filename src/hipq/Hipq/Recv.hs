@@ -24,6 +24,10 @@ instance Applicative (Recv context) where
       eg <- recv2 cs
       pure (ef <*> eg)
 
+instance Bifunctor Recv where
+  {-# INLINE bimap #-}
+  bimap f g (Recv recv) = Recv (fmap (bimap (fmap f) g) . recv)
+
 toHandler :: Recv context a -> Pq.Connection -> IO (Either (Error context) a)
 toHandler (Recv recv) = recv
 
@@ -64,4 +68,4 @@ data Error context
       context
       -- | Expected count.
       Int
-  deriving stock (Show, Eq)
+  deriving stock (Show, Eq, Functor)

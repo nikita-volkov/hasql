@@ -31,6 +31,13 @@ instance Applicative (Roundtrip context) where
   Roundtrip send1 recv1 <*> Roundtrip send2 recv2 =
     Roundtrip (send1 <> send2) (recv1 <*> recv2)
 
+instance Bifunctor Roundtrip where
+  {-# INLINE bimap #-}
+  bimap f g (Roundtrip send recv) =
+    Roundtrip
+      (fmap f send)
+      (bimap f g recv)
+
 toPipelineIO :: context -> Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
 toPipelineIO context sendAndRecv connection = do
   sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection

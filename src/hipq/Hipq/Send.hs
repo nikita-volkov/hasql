@@ -6,9 +6,11 @@ import Pq qualified
 data Result context
   = Ok
   | Error context (Maybe ByteString)
+  deriving stock (Eq, Show, Functor)
 
 newtype Send context
   = Send (Pq.Connection -> IO (Result context))
+  deriving stock (Functor)
 
 instance Semigroup (Send context) where
   {-# INLINE (<>) #-}
