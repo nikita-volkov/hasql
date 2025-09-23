@@ -86,6 +86,7 @@ import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Numeric as Exports
+import Platform.Prelude.PlainText as Exports
 import Platform.Prelude.Text as Exports
 import System.Environment as Exports
 import System.Exit as Exports
@@ -98,6 +99,7 @@ import System.Timeout as Exports
 import Text.ParserCombinators.ReadP as Exports (ReadP, readP_to_S, readS_to_P)
 import Text.ParserCombinators.ReadPrec as Exports (ReadPrec, readP_to_Prec, readPrec_to_P, readPrec_to_S, readS_to_Prec)
 import Text.Printf as Exports (hPrintf, printf)
+import TextBuilder as Exports (TextBuilder)
 import Unsafe.Coerce as Exports
 import Witherable as Exports
 import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, fail, filter, foldl, foldl1, foldr, foldr1, id, mapM, mapM_, maximum, minimum, notElem, or, product, sequence, sequence_, sum, (.))
