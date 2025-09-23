@@ -46,8 +46,26 @@ The project uses modern Haskell with these standard extensions:
 
 ### Error Handling
 - **No Exceptions**: Explicit error handling using `Either` types
-- **SessionError**: Central error type for session operations
 - **Result Types**: All operations return explicit success/failure types
+
+### Applicative syntax
+- Prefer `do` notation with `ApplicativeDo` for clarity in applicative contexts
+
+### Function application and chaining
+- Avoid using `$` for function application; prefer parentheses for clarity
+- When chaining functions instead of nesting parentheses, use the `.` operator and wrap the chain in parentheses to avoid the Ormolu formatter splitting such chains into multiple lines.
+  
+  E.g.,
+  ```haskell
+  (TextBuilder.toText . mconcat)
+    [ ... ]
+  ```
+- Use of the `&` operator is acceptable
+
+### Constructing Text
+- **Text Builders**: Use `TextBuilder` from the "text-builder" library for efficient text construction
+- **Concatenation**: Prefer `mconcat` over series of `(<>)`
+- Use `(TextBuilder.toText . mconcat)` for immediately converting to `Text`
 
 ## Code Generation Guidelines
 
