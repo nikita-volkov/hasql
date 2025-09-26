@@ -1,5 +1,6 @@
 module Core.Errors where
 
+import Core.Location
 import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
 import Hipq.ResultRowDecoder qualified
@@ -31,19 +32,19 @@ data Error
       (Maybe Text)
       -- | Position (1-based index in the SQL string).
       (Maybe Int)
-  | NotEnoughRowsError
+  | UnexpectedResultError
       -- | Location of the statement.
       InStatement
-      -- | Expected minimum count.
-      Int
-      -- | Actual count.
-      Int
-  | TooManyRowsError
+      -- | Details.
+      Text
+  | RowCountError
       -- | Location of the statement.
       InStatement
-      -- | Expected maximum count.
+      -- | Expected minimum.
       Int
-      -- | Actual count.
+      -- | Expected maximum.
+      Int
+      -- | Actual.
       Int
   | UnexpectedAmountOfColumnsError
       -- | Location of the statement.
@@ -59,57 +60,50 @@ data Error
       Text
   deriving stock (Show, Eq)
 
-data InPipeline = InPipeline
-  { totalStatements :: Int
-  }
-  deriving stock (Show, Eq)
-
-data InStatement = InStatement
-  { pipeline :: InPipeline,
-    indexInPipeline :: Int,
-    sql :: ByteString,
-    params :: [Text],
-    prepared :: Bool
-  }
-  deriving stock (Show, Eq)
-
-data InResultRow = InResultRow
-  { statement :: InStatement,
-    -- | Row index.
-    rowIndex :: Int
-  }
-  deriving stock (Show, Eq)
-
-data InResultCell = InResultCell
-  { resultRow :: InResultRow,
-    -- | Column index.
-    columnIndex :: Int
-  }
-  deriving stock (Show, Eq)
-
-instance ToPlainText InPipeline where
-  toPlainText (InPipeline totalStatements) =
-    "In pipeline with " <> TextBuilder.decimal totalStatements <> " statements"
-
 fromRecvError :: Hipq.Recv.Error (Either InPipeline InStatement) -> Error
 fromRecvError = \case
   Hipq.Recv.ResultError location _resultOffset resultError ->
     case location of
       Left pipelineLocation ->
-        DriverError message
-        where
-          message =
-            (TextBuilder.toText . mconcat)
-              [ "Unexpected error outside of statement context.\n",
-                "This indicates a bug in Hasql or the server misbehaving.\n",
-                "Context: ",
-                toPlainText pipelineLocation,
-                "\n",
-                "Error: ",
-                toPlainText (show resultError)
-              ]
+        (DriverError . TextBuilder.toText . mconcat)
+          [ "Unexpected error outside of statement context. ",
+            "This indicates a bug in Hasql or the server misbehaving. ",
+            "Context: ",
+            toPlainText pipelineLocation,
+            ". ",
+            "Error: ",
+            toPlainText (show resultError)
+          ]
       Right stmtLocation ->
         fromStatementResultError stmtLocation resultError
+  Hipq.Recv.NoResultsError location details ->
+    case location of
+      Left pipelineLocation ->
+        (DriverError . TextBuilder.toText . mconcat)
+          [ "Unexpectedly got no results outside of statement context. ",
+            "This indicates a bug in Hasql or the server misbehaving. ",
+            "Context: ",
+            toPlainText pipelineLocation,
+            ". ",
+            "Details: ",
+            toPlainText (show details)
+          ]
+      Right stmtLocation ->
+        RowCountError stmtLocation 1 1 0
+  Hipq.Recv.TooManyResultsError location actual ->
+    case location of
+      Left pipelineLocation ->
+        (DriverError . TextBuilder.toText . mconcat)
+          [ "Unexpectedly got too many results outside of statement context. ",
+            "This indicates a bug in Hasql or the server misbehaving. ",
+            "Context: ",
+            toPlainText pipelineLocation,
+            ". ",
+            "Amount: ",
+            toPlainText actual
+          ]
+      Right stmtLocation ->
+        RowCountError stmtLocation 1 1 actual
 
 fromStatementResultError :: InStatement -> Hipq.ResultDecoder.Error -> Error
 fromStatementResultError stmtLocation = \case
@@ -122,21 +116,20 @@ fromStatementResultError stmtLocation = \case
       (fmap decodeUtf8Lenient hint)
       position
   Hipq.ResultDecoder.UnexpectedResult msg ->
-    DriverError msg
+    UnexpectedResultError stmtLocation msg
   Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
-    TooManyRowsError stmtLocation 1 actual
+    RowCountError stmtLocation 1 1 actual
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsError stmtLocation expected actual
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-    let rowLocation = InResultRow {statement = stmtLocation, rowIndex = 0}
-        cellLocation = InResultCell {resultRow = rowLocation, columnIndex = colIdx}
+    let rowLocation = InResultRow stmtLocation 0
+        cellLocation = InResultCell rowLocation colIdx
      in CellDeserializationError cellLocation actualOid ("Decoder type mismatch. Expected " <> fromString (show expectedOid))
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     let rowLocation =
           InResultRow
-            { statement = stmtLocation,
-              rowIndex = rowIndex
-            }
+            stmtLocation
+            rowIndex
      in fromResultRowError rowLocation rowError
 
 fromResultRowError :: InResultRow -> Hipq.ResultRowDecoder.Error -> Error
@@ -144,11 +137,77 @@ fromResultRowError rowLocation = \case
   Hipq.ResultRowDecoder.CellError column cellError ->
     let location =
           InResultCell
-            { resultRow = rowLocation,
-              columnIndex = column
-            }
+            rowLocation
+            column
      in case cellError of
           Hipq.ResultRowDecoder.DecodingCellError oid message ->
             CellDeserializationError location (Pq.oidToWord32 oid) message
           Hipq.ResultRowDecoder.UnexpectedNullCellError _oid ->
             UnexpectedNullCellError location
+
+instance ToPlainText Error where
+  toPlainText = \case
+    UnexpectedNullCellError location ->
+      mconcat
+        [ "Unexpected null value in ",
+          toPlainText location
+        ]
+    CellDeserializationError location oid message ->
+      mconcat
+        [ "Failed to deserialize cell in ",
+          toPlainText location,
+          ": ",
+          toPlainText message,
+          " (OID: ",
+          toPlainText oid,
+          ")"
+        ]
+    ServerError location code message detail hint position ->
+      mconcat
+        [ "Server error in ",
+          toPlainText location,
+          ": ",
+          toPlainText code,
+          " - ",
+          toPlainText message,
+          maybe "" (\d -> " Detail: " <> toPlainText d) detail,
+          maybe "" (\h -> " Hint: " <> toPlainText h) hint,
+          maybe "" (\p -> " Position: " <> toPlainText (show p)) position
+        ]
+    UnexpectedResultError location message ->
+      mconcat
+        [ "Unexpected result in ",
+          toPlainText location,
+          ": ",
+          toPlainText message
+        ]
+    RowCountError location min max actual ->
+      mconcat
+        [ "Unexpected number of rows in ",
+          toPlainText location,
+          ": expected ",
+          if min == max
+            then toPlainText min
+            else toPlainText min <> " to " <> toPlainText max,
+          ", got ",
+          toPlainText actual
+        ]
+    UnexpectedAmountOfColumnsError location expected actual ->
+      mconcat
+        [ "Unexpected number of columns in ",
+          toPlainText location,
+          ": expected ",
+          toPlainText expected,
+          ", got ",
+          toPlainText actual
+        ]
+    ConnectionError message ->
+      mconcat
+        [ "Connection error: ",
+          toPlainText message
+        ]
+    DriverError message ->
+      mconcat
+        [ "Driver error: ",
+          toPlainText message
+        ]

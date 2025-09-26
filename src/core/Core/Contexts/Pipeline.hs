@@ -2,6 +2,7 @@ module Core.Contexts.Pipeline where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Errors
+import Core.Location
 import Core.Structures.StatementCache qualified as StatementCache
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
@@ -151,10 +152,9 @@ statement sql encoder decoder preparable params =
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
-            roundtrip = do
-              when isNew do
-                Hipq.Roundtrip.prepare context remoteKey sql oidList
-              Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
+            roundtrip =
+              when isNew (Hipq.Roundtrip.prepare context remoteKey sql oidList)
+                *> Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
 
         runUnprepared cache =
           let roundtrip =

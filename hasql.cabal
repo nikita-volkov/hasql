@@ -145,6 +145,7 @@ library core
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
     Core.Errors
+    Core.Location
     Core.PostgresTypeInfo
     Core.Structures.ConnectionState
     Core.Structures.StatementCache

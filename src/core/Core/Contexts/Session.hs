@@ -2,7 +2,8 @@ module Core.Contexts.Session where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Errors hiding (pipeline)
+import Core.Errors
+import Core.Location
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
@@ -40,35 +41,28 @@ run (Session session) connectionState = session connectionState
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  Session \connectionState -> do
-    let connection = ConnectionState.connection connectionState
-        total = 1
-        context =
-          InStatement
-            (InPipeline total)
-            0
-            sql
-            []
-            False
-    result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Right context) sql) connection
-    case result of
-      Left err -> case err of
-        Hipq.Roundtrip.ClientError _ details -> do
-          Pq.reset connection
-          pure
-            ( Left (ConnectionError (maybe "Connection error" decodeUtf8Lenient details)),
-              ConnectionState.resetPreparedStatementsCache connectionState
-            )
-        Hipq.Roundtrip.ServerError recvError ->
-          pure
-            ( Left (fromRecvError recvError),
-              connectionState
-            )
-      Right () ->
-        pure
-          ( Right (),
-            connectionState
-          )
+  let context = InStatement (InPipeline 1) 0 sql [] False
+   in Session \connectionState -> do
+        let connection = ConnectionState.connection connectionState
+        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Right context) sql) connection
+        case result of
+          Left err -> case err of
+            Hipq.Roundtrip.ClientError _ details -> do
+              Pq.reset connection
+              pure
+                ( Left (ConnectionError (maybe "Connection error" decodeUtf8Lenient details)),
+                  ConnectionState.resetPreparedStatementsCache connectionState
+                )
+            Hipq.Roundtrip.ServerError recvError ->
+              pure
+                ( Left (fromRecvError recvError),
+                  connectionState
+                )
+          Right () ->
+            pure
+              ( Right (),
+                connectionState
+              )
 
 -- |
 -- Execute a statement by providing parameters to it.
