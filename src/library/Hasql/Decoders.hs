@@ -67,8 +67,10 @@ module Hasql.Decoders
     listArray,
     vectorArray,
     composite,
+    namedComposite,
     hstore,
     enum,
+    namedEnum,
     custom,
     refine,
 
@@ -532,6 +534,20 @@ vectorArray = array . dimension GenericVector.replicateM . element
 {-# INLINEABLE composite #-}
 composite :: Composite a -> Value a
 composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
+
+-- |
+-- Decoder for a named composite type.
+-- Uses PostgreSQL's type inference from context.
+{-# INLINEABLE namedComposite #-}
+namedComposite :: Text -> Composite a -> Value a
+namedComposite _typeName (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
+
+-- |
+-- Decoder for a named enum type.
+-- Uses PostgreSQL's type inference from context.
+{-# INLINEABLE namedEnum #-}
+namedEnum :: Text -> (Text -> Maybe a) -> Value a
+namedEnum _typeName mapping = Value (Value.ValueDecoder "unknown" Nothing Nothing (A.enum mapping))
 
 -- * Array decoders
 
