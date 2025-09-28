@@ -1,4 +1,9 @@
-module Core.Contexts.Pipeline where
+module Core.Contexts.Pipeline
+  ( Pipeline,
+    run,
+    statement,
+  )
+where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Errors
@@ -8,18 +13,24 @@ import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
-run (Pipeline run) usePreparedStatements connection cache = do
-  let (roundtrip, newCache) = run usePreparedStatements cache
-  result <- Hipq.Roundtrip.toPipelineIO NoErrorContext roundtrip connection
+run :: Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
+run (Pipeline _totalStatements run) usePreparedStatements connection cache = do
+  let (roundtrip, newCache) = run 0 usePreparedStatements cache
+      adaptedRoundtrip = first Just roundtrip
+  result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
   case result of
     Left (Hipq.Roundtrip.ClientError context details) -> do
       Pq.reset connection
-      pure (Left (addContextToCommandError context (ClientError details)), StatementCache.empty)
+      pure (Left (addContextToCommandError (adaptErrorContext context) (ClientError details)), StatementCache.empty)
     Left (Hipq.Roundtrip.ServerError recvError) ->
-      pure (Left (adaptServerError recvError), newCache)
+      pure (Left (adaptServerError (fmap adaptErrorContext recvError)), newCache)
     Right a ->
       pure (Right a, newCache)
+  where
+    adaptErrorContext :: Maybe Context -> ErrorContext
+    adaptErrorContext = \case
+      Nothing -> NoErrorContext
+      Just (Context _offset sql params preparable) -> StatementErrorContext sql params preparable
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -81,31 +92,64 @@ run (Pipeline run) usePreparedStatements connection cache = do
 --     transactions <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderFinancialTransactions
 --     pure (details, products, transactions)
 -- @
-newtype Pipeline a
+data Pipeline a
   = Pipeline
-      ( Bool ->
+      -- | Amount of statements in this pipeline.
+      Int
+      -- | Function that runs the pipeline.
+      --
+      -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
+      --
+      -- The boolean parameter indicates whether prepared statements should be used when possible.
+      --
+      -- The function takes the current statement cache and returns a tuple of:
+      -- 1. The actual roundtrip action to be executed in the pipeline.
+      -- 2. The updated statement cache after executing this part of the pipeline.
+      ( Int ->
+        Bool ->
         StatementCache.StatementCache ->
-        (Hipq.Roundtrip.Roundtrip ErrorContext a, StatementCache.StatementCache)
+        (Hipq.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
-  deriving stock (Functor)
+
+data Context
+  = Context
+      -- | Offset of the statement in the pipeline (0-based).
+      Int
+      -- | SQL.
+      ByteString
+      -- | Parameters in a human-readable form.
+      [Text]
+      -- | Whether the statement is prepared.
+      Bool
+  deriving stock (Show, Eq)
+
+-- * Instances
+
+instance Functor Pipeline where
+  fmap f (Pipeline count run) = Pipeline count \offset usePreparedStatements cache ->
+    let (roundtrip, newCache) = run offset usePreparedStatements cache
+     in (fmap f roundtrip, newCache)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline (\_ cache -> (pure a, cache))
+    Pipeline 0 (\_ _ cache -> (pure a, cache))
 
-  Pipeline lSend <*> Pipeline rSend =
-    Pipeline \usePreparedStatements cache ->
-      let (lRecv, cache1) = lSend usePreparedStatements cache
-          (rRecv, cache2) = rSend usePreparedStatements cache1
-       in (lRecv <*> rRecv, cache2)
+  Pipeline lCount lRun <*> Pipeline rCount rRun =
+    Pipeline (lCount + rCount) \offset usePreparedStatements cache ->
+      let (lRoundtrip, cache1) = lRun offset usePreparedStatements cache
+          offset1 = offset + lCount
+          (rRoundtrip, cache2) = rRun offset1 usePreparedStatements cache1
+       in (lRoundtrip <*> rRoundtrip, cache2)
+
+-- * Construction
 
 -- |
 -- Execute a statement in pipelining mode.
 statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
 statement sql encoder decoder preparable params =
-  Pipeline run
+  Pipeline 1 run
   where
-    run usePreparedStatements =
+    run offset usePreparedStatements =
       if prepare
         then runPrepared
         else runUnprepared
@@ -117,28 +161,29 @@ statement sql encoder decoder preparable params =
           usePreparedStatements && preparable
 
         context =
-          StatementErrorContext sql (ParamsEncoder.renderReadable encoder params) prepare
+          Context
+            offset
+            sql
+            (ParamsEncoder.renderReadable encoder params)
+            prepare
 
         runPrepared cache =
           (roundtrip, newCache)
           where
-            (isNew, remoteKey, newCache) = case StatementCache.lookup localKey cache of
-              Just remoteKey ->
-                (False, remoteKey, cache)
-              Nothing ->
-                let (remoteKey, newCache) = StatementCache.insert localKey cache
-                 in (True, remoteKey, newCache)
+            (isNew, remoteKey, newCache) =
+              case StatementCache.lookup localKey cache of
+                Just remoteKey -> (False, remoteKey, cache)
+                Nothing ->
+                  let (remoteKey, newCache) = StatementCache.insert localKey cache
+                   in (True, remoteKey, newCache)
               where
                 localKey =
                   StatementCache.LocalKey sql oidList
-
-            roundtrip = do
+            roundtrip =
               when isNew (Hipq.Roundtrip.prepare context remoteKey sql oidList)
-              res <- Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
-              pure res
+                *> Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
 
         runUnprepared cache =
-          (roundtrip, cache)
-          where
-            roundtrip =
-              Hipq.Roundtrip.queryParams context sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder
+          let roundtrip =
+                Hipq.Roundtrip.queryParams context sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder
+           in (roundtrip, cache)
