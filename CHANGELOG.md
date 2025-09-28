@@ -4,9 +4,9 @@ Major revision happened.
 
 ## New Features
 
-- Safety increment. Decoder compatibility checks.
+- **Decoder compatibility checks**.
 
-  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of a column matches the expected type of a decoder and report `DecoderTypeMismatch` error if they do not match. They also match the amount of columns in the result with the amount of decoders used and report `UnexpectedAmountOfColumns` error if they do not match.
+  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `DecoderTypeMismatch` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
 
 ## Breaking changes
 
