@@ -10,7 +10,6 @@ module Hasql.Session
 
     -- * Errors
     Error (..),
-    InPipeline (..),
     InStatement (..),
     InResultRow (..),
     InResultCell (..),

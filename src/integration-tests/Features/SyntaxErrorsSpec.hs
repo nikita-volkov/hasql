@@ -27,7 +27,7 @@ spec = Testcontainers.aroundSpecWithConnection True do
               result
               ( Left
                   ( Session.ServerError
-                      (Session.InStatement (Session.InPipeline 1) 0 "-" [] preparable)
+                      (Session.InStatement 0 1 "-" [] preparable)
                       "42601"
                       "syntax error at or near \"-\""
                       Nothing

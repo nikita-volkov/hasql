@@ -60,49 +60,40 @@ data Error
       Text
   deriving stock (Show, Eq)
 
-fromRecvError :: Hipq.Recv.Error (Either InPipeline InStatement) -> Error
+fromRecvError :: Hipq.Recv.Error (Maybe InStatement) -> Error
 fromRecvError = \case
   Hipq.Recv.ResultError location _resultOffset resultError ->
     case location of
-      Left pipelineLocation ->
+      Nothing ->
         (DriverError . TextBuilder.toText . mconcat)
           [ "Unexpected error outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
-            "Context: ",
-            toPlainText pipelineLocation,
-            ". ",
             "Error: ",
             toPlainText (show resultError)
           ]
-      Right stmtLocation ->
+      Just stmtLocation ->
         fromStatementResultError stmtLocation resultError
   Hipq.Recv.NoResultsError location details ->
     case location of
-      Left pipelineLocation ->
+      Nothing ->
         (DriverError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got no results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
-            "Context: ",
-            toPlainText pipelineLocation,
-            ". ",
             "Details: ",
             toPlainText (show details)
           ]
-      Right stmtLocation ->
+      Just stmtLocation ->
         RowCountError stmtLocation 1 1 0
   Hipq.Recv.TooManyResultsError location actual ->
     case location of
-      Left pipelineLocation ->
+      Nothing ->
         (DriverError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got too many results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
-            "Context: ",
-            toPlainText pipelineLocation,
-            ". ",
             "Amount: ",
             toPlainText actual
           ]
-      Right stmtLocation ->
+      Just stmtLocation ->
         RowCountError stmtLocation 1 1 actual
 
 fromStatementResultError :: InStatement -> Hipq.ResultDecoder.Error -> Error

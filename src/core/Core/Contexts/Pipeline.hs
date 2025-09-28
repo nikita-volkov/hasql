@@ -16,16 +16,21 @@ import Pq qualified
 
 run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either Error a, StatementCache.StatementCache)
 run (Pipeline totalStatements run) usePreparedStatements connection cache = do
-  let (roundtrip, newCache) = run usePreparedStatements cache
-  result <- Hipq.Roundtrip.toPipelineIO (Left (InPipeline totalStatements)) roundtrip connection
+  let (roundtrip, newCache) = run 0 usePreparedStatements cache
+      adaptedRoundtrip = first adaptContext roundtrip
+  result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
   case result of
-    Left (Hipq.Roundtrip.ClientError _ details) -> do
+    Left (Hipq.Roundtrip.ClientError _context details) -> do
       Pq.reset connection
       pure (Left (ConnectionError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
     Left (Hipq.Roundtrip.ServerError recvError) ->
       pure (Left (fromRecvError recvError), newCache)
     Right a ->
       pure (Right a, newCache)
+  where
+    adaptContext :: Context -> Maybe InStatement
+    adaptContext (Context index sql params prepared) =
+      Just (InStatement index totalStatements sql params prepared)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -93,30 +98,50 @@ data Pipeline a
       Int
       -- | Function that runs the pipeline.
       --
+      -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
+      --
       -- The boolean parameter indicates whether prepared statements should be used when possible.
       --
       -- The function takes the current statement cache and returns a tuple of:
       -- 1. The actual roundtrip action to be executed in the pipeline.
       -- 2. The updated statement cache after executing this part of the pipeline.
-      ( Bool ->
+      ( Int ->
+        Bool ->
         StatementCache.StatementCache ->
-        (Hipq.Roundtrip.Roundtrip (Either InPipeline InStatement) a, StatementCache.StatementCache)
+        (Hipq.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
 
+data Context
+  = Context
+      -- | Offset of the statement in the pipeline (0-based).
+      Int
+      -- | SQL.
+      ByteString
+      -- | Parameters in a human-readable form.
+      [Text]
+      -- | Whether the statement is prepared.
+      Bool
+  deriving stock (Show, Eq)
+
+-- * Instances
+
 instance Functor Pipeline where
-  fmap f (Pipeline count run) = Pipeline count \usePreparedStatements cache ->
-    let (roundtrip, newCache) = run usePreparedStatements cache
+  fmap f (Pipeline count run) = Pipeline count \offset usePreparedStatements cache ->
+    let (roundtrip, newCache) = run offset usePreparedStatements cache
      in (fmap f roundtrip, newCache)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline 0 (\_ cache -> (pure a, cache))
+    Pipeline 0 (\_ _ cache -> (pure a, cache))
 
   Pipeline lCount lRun <*> Pipeline rCount rRun =
-    Pipeline (lCount + rCount) \usePreparedStatements cache ->
-      let (lRoundtrip, cache1) = lRun usePreparedStatements cache
-          (rRoundtrip, cache2) = rRun usePreparedStatements cache1
+    Pipeline (lCount + rCount) \offset usePreparedStatements cache ->
+      let (lRoundtrip, cache1) = lRun offset usePreparedStatements cache
+          offset1 = offset + lCount
+          (rRoundtrip, cache2) = rRun offset1 usePreparedStatements cache1
        in (lRoundtrip <*> rRoundtrip, cache2)
+
+-- * Construction
 
 -- |
 -- Execute a statement in pipelining mode.
@@ -124,7 +149,7 @@ statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> Hipq.ResultDeco
 statement sql encoder decoder preparable params =
   Pipeline 1 run
   where
-    run usePreparedStatements =
+    run offset usePreparedStatements =
       if prepare
         then runPrepared
         else runUnprepared
@@ -136,14 +161,11 @@ statement sql encoder decoder preparable params =
           usePreparedStatements && preparable
 
         context =
-          Right
-            ( InStatement
-                (InPipeline 1)
-                0
-                sql
-                (ParamsEncoder.renderReadable encoder params)
-                prepare
-            )
+          Context
+            offset
+            sql
+            (ParamsEncoder.renderReadable encoder params)
+            prepare
 
         runPrepared cache =
           (roundtrip, newCache)

@@ -41,10 +41,10 @@ run (Session session) connectionState = session connectionState
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  let context = InStatement (InPipeline 1) 0 sql [] False
+  let context = InStatement 0 1 sql [] False
    in Session \connectionState -> do
         let connection = ConnectionState.connection connectionState
-        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Right context) sql) connection
+        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Just context) sql) connection
         case result of
           Left err -> case err of
             Hipq.Roundtrip.ClientError _ details -> do

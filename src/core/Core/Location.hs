@@ -1,23 +1,17 @@
 module Core.Location where
 
+import Data.Text qualified as Text
 import Platform.Prelude
 import TextBuilder qualified
-
--- |
--- Location of an error in a pipeline of statements.
-data InPipeline
-  = InPipeline
-      -- | Total number of statements in the pipeline.
-      Int
-  deriving stock (Show, Eq)
+import TextBuilderExtras qualified
 
 -- |
 -- Location of an error in a statement.
 data InStatement
   = InStatement
-      -- | Location of the pipeline.
-      InPipeline
       -- | 0-based index of the statement in the pipeline.
+      Int
+      -- | Total number of statements in the pipeline.
       Int
       -- | SQL template.
       ByteString
@@ -47,27 +41,21 @@ data InResultCell
       Int
   deriving stock (Show, Eq)
 
-instance ToPlainText InPipeline where
-  toPlainText (InPipeline totalStatements) =
-    mconcat
-      [ "In pipeline with ",
-        TextBuilder.decimal totalStatements,
-        " statements"
-      ]
-
 instance ToPlainText InStatement where
-  toPlainText (InStatement pipeline index sql params prepared) =
+  toPlainText (InStatement index total sql params prepared) =
     mconcat
-      [ "In statement ",
+      [ "In ",
+        if prepared then "prepared" else "unprepared",
+        " statement at offset ",
         TextBuilder.decimal index,
-        " of ",
-        toPlainText pipeline,
-        ", SQL: ",
-        TextBuilder.text (decodeUtf8Lenient sql),
-        ", params: ",
-        TextBuilder.intercalate (", ") (map TextBuilder.text params),
-        ", prepared: ",
-        TextBuilder.text (if prepared then "true" else "false")
+        " of pipeline with ",
+        TextBuilder.decimal total,
+        " statements.\n  SQL:\n    ",
+        TextBuilderExtras.textWithEachLinePrefixed "    " (decodeUtf8Lenient sql),
+        "\n  Params:\n    ",
+        params
+          & TextBuilder.intercalateMap "\n" (mappend "- " . TextBuilderExtras.textWithEachLinePrefixed "  ")
+          & TextBuilderExtras.prefixEachLine "    "
       ]
 
 instance ToPlainText InResultRow where
