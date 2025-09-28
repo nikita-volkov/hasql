@@ -218,5 +218,5 @@ adaptResultError = \case
 adaptRowError :: Int -> Hipq.ResultRowDecoder.Error -> ResultError
 adaptRowError rowIndex = \case
   Hipq.ResultRowDecoder.CellError column cellError -> CellError rowIndex column case cellError of
-    Hipq.ResultRowDecoder.DecodingCellError message -> ValueError message
-    Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNull
+    Hipq.ResultRowDecoder.DecodingCellError _ message -> ValueError message
+    Hipq.ResultRowDecoder.UnexpectedNullCellError _ -> UnexpectedNull
