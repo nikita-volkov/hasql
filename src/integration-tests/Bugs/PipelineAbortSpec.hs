@@ -52,5 +52,28 @@ spec = Testcontainers.aroundSpecWithConnection True do
         Left result ->
           expectationFailure ("Unexpected error: " <> show result)
 
-    it "Handles failures within the same pipeline gracefully" \_ -> do
-      pending
+    it "Handles failures within the same pipeline gracefully" \connection -> do
+      -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
+      result <- Connection.use connection do
+        Session.pipeline do
+          Pipeline.statement
+            ()
+            ( Statement.Statement
+                "select null :: int4"
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                True
+            )
+            <* Pipeline.statement
+              ()
+              ( Statement.Statement
+                  "select 1"
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                  True
+              )
+      case result of
+        Right val ->
+          expectationFailure ("First statement succeeded unexpectedly: " <> show val)
+        Left _ ->
+          pure ()
