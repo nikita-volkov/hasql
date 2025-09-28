@@ -50,40 +50,40 @@ data InResultCell
 instance ToPlainText InPipeline where
   toPlainText (InPipeline totalStatements) =
     mconcat
-      $ [ TextBuilder.text "In pipeline with ",
-          TextBuilder.decimal totalStatements,
-          TextBuilder.text " statements"
-        ]
+      [ "In pipeline with ",
+        TextBuilder.decimal totalStatements,
+        " statements"
+      ]
 
 instance ToPlainText InStatement where
   toPlainText (InStatement pipeline index sql params prepared) =
     mconcat
-      $ [ TextBuilder.text "In statement ",
-          TextBuilder.decimal index,
-          TextBuilder.text " of ",
-          toPlainText pipeline,
-          TextBuilder.text ", SQL: ",
-          TextBuilder.text (decodeUtf8Lenient sql),
-          TextBuilder.text ", params: ",
-          TextBuilder.intercalate (TextBuilder.text ", ") (map TextBuilder.text params),
-          TextBuilder.text ", prepared: ",
-          TextBuilder.text (if prepared then "true" else "false")
-        ]
+      [ "In statement ",
+        TextBuilder.decimal index,
+        " of ",
+        toPlainText pipeline,
+        ", SQL: ",
+        TextBuilder.text (decodeUtf8Lenient sql),
+        ", params: ",
+        TextBuilder.intercalate (", ") (map TextBuilder.text params),
+        ", prepared: ",
+        TextBuilder.text (if prepared then "true" else "false")
+      ]
 
 instance ToPlainText InResultRow where
   toPlainText (InResultRow statement rowIndex) =
     mconcat
-      $ [ TextBuilder.text "In row ",
-          TextBuilder.decimal rowIndex,
-          TextBuilder.text " of ",
-          toPlainText statement
-        ]
+      [ "In row ",
+        TextBuilder.decimal rowIndex,
+        " of ",
+        toPlainText statement
+      ]
 
 instance ToPlainText InResultCell where
   toPlainText (InResultCell row columnIndex) =
     mconcat
-      $ [ TextBuilder.text "In column ",
-          TextBuilder.decimal columnIndex,
-          TextBuilder.text " of ",
-          toPlainText row
-        ]
+      [ "In column ",
+        TextBuilder.decimal columnIndex,
+        " of ",
+        toPlainText row
+      ]
