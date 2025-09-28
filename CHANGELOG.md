@@ -4,9 +4,13 @@ Major revision happened.
 
 ## New Features
 
-- Safety increment. Decoder compatibility checks.
+- **Decoder compatibility checks**.
 
-  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of a column matches the expected type of a decoder and report `DecoderTypeMismatch` error if they do not match. They also match the amount of columns in the result with the amount of decoders used and report `UnexpectedAmountOfColumns` error if they do not match.
+  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `DecoderTypeMismatch` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
+
+- **Flat error model**.
+
+  Previously errors were nested according to the library's internal context they happened in. The user had to unwrap multiple layers of errors to get to the actual reason. Now the reason is at the top level and the context is described by the `Location` types.
 
 ## Breaking changes
 
@@ -16,19 +20,15 @@ Major revision happened.
 - Due to the above the oldest supported PostgreSQL version now is 10. In older versions some types had different OIDs.
 
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
-  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT SessionError IO)`.
+  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT Error IO)`.
 
 - Dropped `MonadReader Connection` instance for `Session`.
 
-- Dropped `Monad` and `MonadFail` instances for `Row`. Applicative is enough for all practical purposes.
+- Dropped `Monad` and `MonadFail` instances for `Row`. `Applicative` is enough for all practical purposes.
 
-- `UnexpectedAmountOfColumns` error added to `ResultError` type. It is reported when there are not enough columns in the result for the decoders used.
+- Errors model completely redesigned to be flat with context being described by the location types.
 
-- `DecoderTypeMismatch` error added to `ResultError` type. It is reported when the actual type of a column does not match the expected type of a decoder.
-
-- `EndOfInput` error removed. Now if there are not enough columns in the result, `UnexpectedAmountOfColumns` error is reported instead.
-
-- `RowError` type renamed to `CellError`.
+- Errors are no longer exported by the `Hasql.Session` module.
 
 # 1.9
 
