@@ -1,4 +1,9 @@
-module Core.Contexts.Pipeline where
+module Core.Contexts.Pipeline
+  ( Pipeline,
+    run,
+    statement,
+  )
+where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Errors
