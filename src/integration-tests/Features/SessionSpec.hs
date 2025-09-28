@@ -3,6 +3,7 @@ module Features.SessionSpec (spec) where
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
+import Hasql.Error qualified as Error
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Test.Hspec
@@ -38,7 +39,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
                 True
         result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
-          Left (Session.ServerError {}) -> pure ()
+          Left (Error.ServerError {}) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
 
     describe "IN simulation" do

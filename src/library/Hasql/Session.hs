@@ -7,19 +7,12 @@ module Hasql.Session
 
     -- * Execution
     run,
-
-    -- * Errors
-    Error (..),
-    InStatement (..),
-    InResultRow (..),
-    InResultCell (..),
   )
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Session qualified as Session
 import Core.Errors
-import Core.Location
 import Hasql.Connection qualified as Connection
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder

@@ -19,6 +19,7 @@ where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Setting qualified as Connection.Setting
+import Hasql.Error qualified as Error
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
@@ -27,7 +28,7 @@ import TestingKit.Preludes.Base
 
 data Error
   = ConnectionError (Connection.ConnectionError)
-  | SessionError (Session.Error)
+  | SessionError (Error.Error)
   deriving (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
