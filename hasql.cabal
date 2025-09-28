@@ -242,6 +242,7 @@ library testing-kit
     TestingKit.Constants
     TestingKit.Preludes.Base
     TestingKit.Statements.BrokenSyntax
+    TestingKit.Statements.ErrorGenerators
     TestingKit.Statements.GenerateSeries
     TestingKit.Statements.WrongDecoder
     TestingKit.Testcontainers
@@ -290,9 +291,11 @@ test-suite integration-tests
     Bugs.PipelineAbortSpec
     Bugs.PreparedStatementAlreadyExistsSpec
     Features.CodecsSpec
+    Features.ComprehensiveErrorsSpec
     Features.ConcurrencySpec
     Features.ConnectionSpec
     Features.DecoderCompatibilityCheckSpec
+    Features.ErrorGeneratorsSpec
     Features.ErrorsSpec
     Features.PipelineSpec
     Features.ServerVersionCompatibilitySpec
