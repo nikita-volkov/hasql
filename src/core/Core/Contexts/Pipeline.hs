@@ -30,7 +30,7 @@ run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   where
     adaptContext :: Context -> Maybe InStatement
     adaptContext (Context index sql params prepared) =
-      Just (InStatement index totalStatements sql params prepared)
+      Just (InStatement totalStatements index sql params prepared)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

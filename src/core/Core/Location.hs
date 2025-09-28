@@ -8,9 +8,9 @@ import TextBuilderExtras qualified
 -- Location of an error in a statement.
 data InStatement
   = InStatement
-      -- | 0-based index of the statement in the pipeline.
-      Int
       -- | Total number of statements in the pipeline.
+      Int
+      -- | 0-based index of the statement in the pipeline.
       Int
       -- | SQL template.
       ByteString
@@ -41,7 +41,7 @@ data InResultCell
   deriving stock (Show, Eq)
 
 instance ToPlainText InStatement where
-  toPlainText (InStatement index total sql params prepared) =
+  toPlainText (InStatement total index sql params prepared) =
     mconcat
       [ "In ",
         if prepared then "prepared" else "unprepared",
