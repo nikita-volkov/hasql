@@ -1,6 +1,5 @@
 module Core.Location where
 
-import Data.Text qualified as Text
 import Platform.Prelude
 import TextBuilder qualified
 import TextBuilderExtras qualified
