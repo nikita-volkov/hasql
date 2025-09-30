@@ -59,3 +59,43 @@ spec = Testcontainers.aroundSpecWithConnection False do
           return s
 
       result `shouldBe` Right (3 :: Int64)
+
+  describe "Multiple errors in sequence" do
+    describe "In Session" do
+      it "Get captured correctly" $ \connection -> do
+        result1 <-
+          Connection.use
+            connection
+            ( Session.statement
+                ()
+                ( Statement.Statement
+                    "INVALID SQL SYNTAX HERE"
+                    Encoders.noParams
+                    Decoders.noResult
+                    False
+                )
+            )
+        result2 <-
+          Connection.use
+            connection
+            ( Session.statement
+                ()
+                ( Statement.Statement
+                    "SELECT 1/0"
+                    Encoders.noParams
+                    (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                    False
+                )
+            )
+
+        -- All should be errors of the expected types
+        case (result1, result2) of
+          ( Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "42601" _ _ _ _))),
+            Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "22012" _ _ _ _)))
+            ) ->
+              pure ()
+          _ -> expectationFailure ("Expected both error types, got: " <> show (result1, result2))
+
+        -- Connection should still be usable after errors
+        result3 <- Connection.use connection (Session.sql "SELECT 1")
+        result3 `shouldBe` Right ()
