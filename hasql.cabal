@@ -242,7 +242,6 @@ library testing-kit
     TestingKit.Constants
     TestingKit.Preludes.Base
     TestingKit.Statements.BrokenSyntax
-    TestingKit.Statements.ErrorGenerators
     TestingKit.Statements.GenerateSeries
     TestingKit.Statements.WrongDecoder
     TestingKit.Testcontainers
