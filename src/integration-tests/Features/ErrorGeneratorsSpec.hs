@@ -2,6 +2,7 @@ module Features.ErrorGeneratorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
+import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Test.Hspec
 import TestingKit.Statements.ErrorGenerators qualified as Errors
@@ -11,7 +12,6 @@ import Prelude
 spec :: Spec
 spec = Testcontainers.aroundSpecWithConnection False do
   describe "Error Generator Utilities" do
-    
     describe "ServerError generators" do
       forM_ [False, True] $ \preparable -> do
         describe (if preparable then "Prepared" else "Unprepared") do
@@ -40,7 +40,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
       forM_ [False, True] $ \preparable -> do
         describe (if preparable then "Prepared" else "Unprepared") do
           it "generates division by zero with parameters" $ \connection -> do
-            let params = Errors.DivisionParams { dividend = 10, divisor = 0 }
+            let params = Errors.DivisionParams {dividend = 10, divisor = 0}
             result <- Connection.use connection (Errors.runParametricDivision preparable params)
             case result of
               Left (Session.QueryError _ renderedParams (Session.ResultError (Session.ServerError "22012" _ _ _ _))) -> do
@@ -49,7 +49,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               _ -> expectationFailure ("Expected division by zero with parameters, got: " <> show result)
 
           it "generates successful division with non-zero divisor" $ \connection -> do
-            let params = Errors.DivisionParams { dividend = 10, divisor = 2 }
+            let params = Errors.DivisionParams {dividend = 10, divisor = 2}
             result <- Connection.use connection (Errors.runParametricDivision preparable params)
             result `shouldBe` Right 5
 
@@ -67,7 +67,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
       forM_ [False, True] $ \preparable -> do
         describe (if preparable then "Prepared" else "Unprepared") do
           it "generates syntax errors in pipelines" $ \connection -> do
-            result <- Connection.use connection (Session.pipeline (Errors.pipelineSyntaxError preparable))
+            result <- Connection.use connection (Session.pipeline (Pipeline.statement () (Errors.syntaxErrorStatement preparable)))
             case result of
               Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "42601" _ _ _ _))) ->
                 pure ()
@@ -78,14 +78,15 @@ spec = Testcontainers.aroundSpecWithConnection False do
       -- Test that error generators work reliably in sequence
       result1 <- Connection.use connection (Errors.runSyntaxError False)
       result2 <- Connection.use connection (Errors.runDivisionByZero False)
-      
+
       -- All should be errors of the expected types
       case (result1, result2) of
-        (Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "42601" _ _ _ _))),
-         Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "22012" _ _ _ _)))) ->
-          pure ()
+        ( Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "42601" _ _ _ _))),
+          Left (Session.QueryError _ _ (Session.ResultError (Session.ServerError "22012" _ _ _ _)))
+          ) ->
+            pure ()
         _ -> expectationFailure ("Expected both error types, got: " <> show (result1, result2))
-      
+
       -- Connection should still be usable after errors
       result3 <- Connection.use connection (Session.sql "SELECT 1")
       result3 `shouldBe` Right ()
