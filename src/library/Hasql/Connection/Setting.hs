@@ -1,7 +1,7 @@
 module Hasql.Connection.Setting
   ( Setting,
     connection,
-    usePreparedStatements,
+    disablePreparedStatements,
   )
 where
 
@@ -21,15 +21,15 @@ connection :: Connection.Connection -> Setting
 connection =
   Setting . Config.setConnectionString . Config.ConnectionString.construct
 
--- | Whether prepared statements are allowed.
+-- | Disables prepared statements.
 --
--- When 'False', even the statements marked as preparable will be executed without preparation.
+-- When specified, even the statements marked as preparable will be executed without preparation at the cost of reduced performance.
 --
 -- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
--- Consult their docs or just set it to 'False' to stay on the safe side.
+-- Consult their docs or just provide this setting to stay on the safe side.
 -- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
 --
--- 'True' by default.
-usePreparedStatements :: Bool -> Setting
-usePreparedStatements =
-  Setting . Config.setUsePreparedStatements
+-- By default, prepared statements are enabled.
+disablePreparedStatements :: Setting
+disablePreparedStatements =
+  Setting (Config.setUsePreparedStatements False)

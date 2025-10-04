@@ -30,6 +30,8 @@ Major revision happened.
 
 - `RowError` type renamed to `CellError`.
 
+- `usePreparedStatements` setting dropped. Use `disablePreparedStatements` instead.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules
