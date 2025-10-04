@@ -18,7 +18,7 @@ spec = parallel do
     describe "postgres:17" do
       testVersionCompatibility TestcontainersPostgresql.Distro17 Nothing
 
-testVersionCompatibility :: TestcontainersPostgresql.Distro -> Maybe ByteString -> Spec
+testVersionCompatibility :: TestcontainersPostgresql.Distro -> Maybe Text -> Spec
 testVersionCompatibility distro expectedError = do
   it
     ( "connection" <> case expectedError of
@@ -54,6 +54,6 @@ testVersionCompatibility distro expectedError = do
                   Nothing -> pure ()
               Left err -> do
                 case expectedError of
-                  Just expectedErr -> err `shouldBe` Just expectedErr
+                  Just expectedErr -> err `shouldBe` Connection.CompatibilityAcquisitionError expectedErr
                   Nothing -> expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
         )
