@@ -33,8 +33,16 @@ newtype Connection
 data AcquisitionError
   = NetworkingAcquisitionError
   | AuthenticationAcquisitionError
-  | CompatibilityAcquisitionError Text
-  | OtherAcquisitionError Text
+  | CompatibilityAcquisitionError
+      -- | Human readable details indended for logging.
+      Text
+  | TimeoutAcquisitionError
+      -- | The maximal duration that got surpassed.
+      DiffTime
+  | -- | Uncategorized error coming from "libpq". May be empty text.
+    OtherAcquisitionError
+      -- | Human readable details intended for logging.
+      Text
   deriving stock (Show, Eq)
 
 -- |
