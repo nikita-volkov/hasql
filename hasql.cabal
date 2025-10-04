@@ -108,7 +108,6 @@ library
     Hasql.Connection.Setting.Connection.Param
     Hasql.Decoders
     Hasql.Encoders
-    Hasql.Error
     Hasql.Pipeline
     Hasql.Session
     Hasql.Statement

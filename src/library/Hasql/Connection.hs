@@ -3,6 +3,7 @@
 module Hasql.Connection
   ( Connection,
     ConnectionError,
+    UsageError (..),
     acquire,
     release,
     use,
