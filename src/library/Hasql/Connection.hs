@@ -37,9 +37,6 @@ data AcquisitionError
   | CompatibilityAcquisitionError
       -- | Human readable details indended for logging.
       Text
-  | TimeoutAcquisitionError
-      -- | The maximal duration that got surpassed.
-      DiffTime
   | -- | Uncategorized error coming from "libpq". May be empty text.
     OtherAcquisitionError
       -- | Human readable details intended for logging.

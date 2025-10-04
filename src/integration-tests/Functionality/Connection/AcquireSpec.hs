@@ -9,13 +9,91 @@ import TestcontainersPostgresql qualified
 import Prelude
 
 spec :: Spec
-spec = parallel do
+spec = do
+  describe "By result" do
+    describe "Left" do
+      describe "Networking" do
+        it "Fails on server missing" do
+          let settings =
+                [ Setting.connection
+                    ( ConnectionSetting.params
+                        [ Param.host "nopostgresql.net",
+                          Param.port 5432
+                        ]
+                    )
+                ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left err ->
+              err `shouldBe` Connection.NetworkingAcquisitionError
+
   describe "postgres:9" do
     itFails TestcontainersPostgresql.Distro9 (Connection.CompatibilityAcquisitionError "Server version is lower than 10: 9.6.24")
+
   describe "postgres:10" do
     itSucceeds TestcontainersPostgresql.Distro10
+
   describe "postgres:17" do
+    let distro = TestcontainersPostgresql.Distro17
+
     itSucceeds TestcontainersPostgresql.Distro17
+
+    it "Fails with authentication error on wrong password" do
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { forwardLogs = False,
+            distro,
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres"
+          }
+        \(host, port) -> do
+          let settings =
+                [ Setting.connection
+                    ( ConnectionSetting.params
+                        [ Param.host host,
+                          Param.port (fromIntegral port),
+                          Param.user "postgres",
+                          Param.password "",
+                          Param.dbname "postgres1"
+                        ]
+                    )
+                ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left err ->
+              err `shouldBe` Connection.AuthenticationAcquisitionError
+
+    it "Fails with authentication error on wrong user" do
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { forwardLogs = False,
+            distro,
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres"
+          }
+        \(host, port) -> do
+          let settings =
+                [ Setting.connection
+                    ( ConnectionSetting.params
+                        [ Param.host host,
+                          Param.port (fromIntegral port),
+                          Param.user "postgres1",
+                          Param.password "",
+                          Param.dbname "postgres"
+                        ]
+                    )
+                ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left err ->
+              err `shouldBe` Connection.AuthenticationAcquisitionError
 
 itFails :: TestcontainersPostgresql.Distro -> Connection.AcquisitionError -> Spec
 itFails distro expectedError =
