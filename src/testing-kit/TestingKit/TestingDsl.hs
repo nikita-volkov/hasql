@@ -26,9 +26,9 @@ import TestingKit.Constants qualified as Constants
 import TestingKit.Preludes.Base
 
 data Error
-  = AcquisitionError (Connection.AcquisitionError)
-  | UsageError (Connection.UsageError)
-  deriving (Show, Eq)
+  = AcquisitionError Connection.AcquisitionError
+  | UsageError Connection.UsageError
+  deriving stock (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
 runSessionOnLocalDb = runSessionWithSettings Constants.localConnectionSettings

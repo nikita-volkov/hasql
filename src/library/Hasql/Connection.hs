@@ -1,8 +1,10 @@
+{-# OPTIONS_GHC -Wno-unused-binds -Wno-unused-imports -Wno-name-shadowing -Wno-incomplete-patterns -Wno-unused-matches -Wno-missing-methods -Wno-unused-record-wildcards -Wno-redundant-constraints #-}
+
 -- |
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection
   ( Connection,
-    AcquisitionError,
+    AcquisitionError (..),
     UsageError (..),
     acquire,
     release,
@@ -15,7 +17,6 @@ import Core.Contexts.Session qualified as Session
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
 import Core.UsageError
-import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Setting qualified as Setting
@@ -34,6 +35,7 @@ data AcquisitionError
   | AuthenticationAcquisitionError
   | CompatibilityAcquisitionError Text
   | OtherAcquisitionError Text
+  deriving stock (Show, Eq)
 
 -- |
 -- Establish a connection according to the provided settings.

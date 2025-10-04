@@ -116,7 +116,6 @@ library
     Hasql.Connection.Config
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
-    Hasql.Connection.PqProcedures
     Hasql.Connection.ServerVersion
 
   build-depends:
