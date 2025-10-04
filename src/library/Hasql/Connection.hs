@@ -15,6 +15,7 @@ import Core.Contexts.Session qualified as Session
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
 import Core.UsageError
+import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
@@ -34,6 +35,7 @@ data AcquisitionError
   | AuthenticationAcquisitionError
   | CompatibilityAcquisitionError Text
   | OtherAcquisitionError Text
+  deriving stock (Show, Eq)
 
 -- |
 -- Establish a connection according to the provided settings.
@@ -51,7 +53,7 @@ acquire settings =
       Pq.ConnectionOk -> pure ()
       _ -> do
         errorMessage <- lift (Pq.errorMessage pqConnection)
-        error "TODO: Interpret errorMessage" errorMessage
+        throwError (interpretConnectionError errorMessage)
 
     -- Check version:
     version <- lift (ServerVersion.load pqConnection)
@@ -74,6 +76,35 @@ acquire settings =
     pure (Connection connectionRef)
   where
     config = Config.fromUpdates settings
+
+    interpretConnectionError :: Maybe ByteString -> AcquisitionError
+    interpretConnectionError errorMessage =
+      case errorMessage of
+        Nothing -> OtherAcquisitionError "Unknown connection error"
+        Just msg ->
+          let msgLower = Text.toLower (decodeUtf8Lenient msg)
+           in if
+                  | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquisitionError
+                  | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquisitionError
+                  | otherwise -> OtherAcquisitionError (decodeUtf8Lenient msg)
+
+    networkingErrors :: [Text]
+    networkingErrors =
+      [ "could not connect to server",
+        "no such file or directory",
+        "connection refused",
+        "timeout expired",
+        "host not found",
+        "could not translate host name"
+      ]
+
+    authenticationErrors :: [Text]
+    authenticationErrors =
+      [ "authentication failed",
+        "password authentication failed",
+        "no password supplied",
+        "peer authentication failed"
+      ]
 
 -- |
 -- Release the connection.
