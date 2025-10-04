@@ -102,13 +102,12 @@ library
   hs-source-dirs: src/library
   exposed-modules:
     Hasql.Connection
+    Hasql.Connection.Location
     Hasql.Connection.Setting
     Hasql.Connection.Setting.Connection
     Hasql.Connection.Setting.Connection.Param
     Hasql.Decoders
     Hasql.Encoders
-    Hasql.Error
-    Hasql.Location
     Hasql.Pipeline
     Hasql.Session
     Hasql.Statement
@@ -146,11 +145,11 @@ library core
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
-    Core.Errors
     Core.Location
     Core.PostgresTypeInfo
     Core.Structures.ConnectionState
     Core.Structures.StatementCache
+    Core.UsageError
 
   other-modules:
   build-depends:

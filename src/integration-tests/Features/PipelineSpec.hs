@@ -1,7 +1,6 @@
 module Features.PipelineSpec (spec) where
 
 import Hasql.Connection qualified as Connection
-import Hasql.Error qualified as Error
 import Hasql.Session qualified as Session
 import Test.Hspec
 import TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
@@ -55,7 +54,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Error.ServerError {}) -> pure ()
+            Left (Connection.ServerUsageError {}) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \connection -> do
@@ -80,7 +79,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Error.CellDeserializationError {}) -> pure ()
+            Left (Connection.CellDeserializationUsageError {}) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \connection -> do
