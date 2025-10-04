@@ -1,6 +1,6 @@
 module Hasql.Error
-  ( Error (..),
+  ( UsageError (..),
   )
 where
 
-import Core.Errors
+import Core.UsageError

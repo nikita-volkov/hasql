@@ -11,9 +11,9 @@ module Hasql.Connection
 where
 
 import Core.Contexts.Session qualified as Session
-import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
+import Core.UsageError
 import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.PqProcedures qualified as PqProcedures
@@ -77,7 +77,7 @@ withLibPQConnection connection action =
 -- Execute a sequence of operations with exclusive access to the connection.
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
-use :: Connection -> Session.Session a -> IO (Either Error a)
+use :: Connection -> Session.Session a -> IO (Either UsageError a)
 use connection session =
   useConnectionState connection \connectionState -> do
     Session.run session connectionState

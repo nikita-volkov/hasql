@@ -28,7 +28,7 @@ spec = Testcontainers.aroundSpecWithConnection True do
             shouldBe
               result
               ( Left
-                  ( Error.ServerError
+                  ( Error.ServerUsageError
                       (Location.InStatement 1 0 "-" [] preparable)
                       "42601"
                       "syntax error at or near \"-\""

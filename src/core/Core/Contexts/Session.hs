@@ -2,9 +2,9 @@ module Core.Contexts.Session where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Errors
 import Core.Location
 import Core.Structures.ConnectionState qualified as ConnectionState
+import Core.UsageError
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
@@ -19,7 +19,7 @@ import Pq qualified
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
 -- concurrent access to the shared connection state and returns either a
--- 'SessionError' or the result:
+-- 'UsageError' or the result:
 --
 -- > result <- Hasql.Connection.use connection mySession
 --
@@ -27,12 +27,12 @@ import Pq qualified
 -- inside a session may still throw exceptions; in that case the driver will
 -- reset the connection to a clean state.
 newtype Session a
-  = Session (ConnectionState.ConnectionState -> IO (Either Error a, ConnectionState.ConnectionState))
+  = Session (ConnectionState.ConnectionState -> IO (Either UsageError a, ConnectionState.ConnectionState))
   deriving
-    (Functor, Applicative, Monad, MonadError Error, MonadIO)
-    via (ExceptT Error (StateT ConnectionState.ConnectionState IO))
+    (Functor, Applicative, Monad, MonadError UsageError, MonadIO)
+    via (ExceptT UsageError (StateT ConnectionState.ConnectionState IO))
 
-run :: Session a -> ConnectionState.ConnectionState -> IO (Either Error a, ConnectionState.ConnectionState)
+run :: Session a -> ConnectionState.ConnectionState -> IO (Either UsageError a, ConnectionState.ConnectionState)
 run (Session session) connectionState = session connectionState
 
 -- |
@@ -50,7 +50,7 @@ sql sql =
             Hipq.Roundtrip.ClientError _ details -> do
               Pq.reset connection
               pure
-                ( Left (ConnectionError (maybe "Connection error" decodeUtf8Lenient details)),
+                ( Left (ConnectionUsageError (maybe "Connection error" decodeUtf8Lenient details)),
                   ConnectionState.resetPreparedStatementsCache connectionState
                 )
             Hipq.Roundtrip.ServerError recvError ->
@@ -100,7 +100,7 @@ pipeline pipeline = Session \connectionState -> do
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
 -- Throwing exceptions is okay. It will lead to the connection getting reset.
-onLibpqConnection :: (Pq.Connection -> IO (Either Error a, Pq.Connection)) -> Session a
+onLibpqConnection :: (Pq.Connection -> IO (Either UsageError a, Pq.Connection)) -> Session a
 onLibpqConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection

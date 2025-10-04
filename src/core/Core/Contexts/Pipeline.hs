@@ -6,15 +6,15 @@ module Core.Contexts.Pipeline
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
-import Core.Errors
 import Core.Location
 import Core.Structures.StatementCache qualified as StatementCache
+import Core.UsageError
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either Error a, StatementCache.StatementCache)
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either UsageError a, StatementCache.StatementCache)
 run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   let (roundtrip, newCache) = run 0 usePreparedStatements cache
       adaptedRoundtrip = first adaptContext roundtrip
@@ -22,7 +22,7 @@ run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   case result of
     Left (Hipq.Roundtrip.ClientError _context details) -> do
       Pq.reset connection
-      pure (Left (ConnectionError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
+      pure (Left (ConnectionUsageError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
     Left (Hipq.Roundtrip.ServerError recvError) ->
       pure (Left (fromRecvError recvError), newCache)
     Right a ->
