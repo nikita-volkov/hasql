@@ -296,10 +296,10 @@ test-suite integration-tests
     Features.DecoderCompatibilityCheckSpec
     Features.ErrorsSpec
     Features.PipelineSpec
-    Features.ServerVersionCompatibilitySpec
     Features.SessionSpec
     Features.StatementSpec
     Features.SyntaxErrorsSpec
+    Functionality.Connection.AcquireSpec
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12

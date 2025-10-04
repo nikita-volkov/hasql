@@ -1,4 +1,4 @@
-module Features.ServerVersionCompatibilitySpec (spec) where
+module Functionality.Connection.AcquireSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Setting qualified as Setting
@@ -10,13 +10,12 @@ import Prelude
 
 spec :: Spec
 spec = parallel do
-  describe "Server Version Compatibility" do
-    describe "postgres:9" do
-      itFails TestcontainersPostgresql.Distro9 (Connection.CompatibilityAcquisitionError "Server version is lower than 10: 9.6.24")
-    describe "postgres:10" do
-      itSucceeds TestcontainersPostgresql.Distro10
-    describe "postgres:17" do
-      itSucceeds TestcontainersPostgresql.Distro17
+  describe "postgres:9" do
+    itFails TestcontainersPostgresql.Distro9 (Connection.CompatibilityAcquisitionError "Server version is lower than 10: 9.6.24")
+  describe "postgres:10" do
+    itSucceeds TestcontainersPostgresql.Distro10
+  describe "postgres:17" do
+    itSucceeds TestcontainersPostgresql.Distro17
 
 itFails :: TestcontainersPostgresql.Distro -> Connection.AcquisitionError -> Spec
 itFails distro expectedError =
