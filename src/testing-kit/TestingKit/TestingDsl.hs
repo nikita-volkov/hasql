@@ -26,7 +26,7 @@ import TestingKit.Constants qualified as Constants
 import TestingKit.Preludes.Base
 
 data Error
-  = ConnectionError (Connection.ConnectionError)
+  = AcquisitionError (Connection.AcquisitionError)
   | UsageError (Connection.UsageError)
   deriving (Show, Eq)
 
@@ -42,7 +42,7 @@ runSessionWithSettings settings session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ fmap (first ConnectionError) $ Connection.acquire settings
+      ExceptT $ fmap (first AcquisitionError) $ Connection.acquire settings
     use connection =
       ExceptT
         $ fmap (first UsageError)

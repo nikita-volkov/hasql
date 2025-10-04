@@ -28,7 +28,9 @@ Major revision happened.
 
 - Errors model completely redesigned to be flat with context being described by the location types.
 
-- Errors are no longer exported by the `Hasql.Session` module.
+- `SessionError` is renamed to `UsageError` and moved from the `Hasql.Session` module to `Hasql.Connection`.
+
+- `ConnectionError` is renamed to `AcquisitionError`.
 
 # 1.9
 

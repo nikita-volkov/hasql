@@ -2,7 +2,7 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection
   ( Connection,
-    ConnectionError,
+    AcquisitionError,
     UsageError (..),
     acquire,
     release,
@@ -29,14 +29,14 @@ newtype Connection
 
 -- |
 -- Possible details of the connection acquistion error.
-type ConnectionError =
+type AcquisitionError =
   Maybe ByteString
 
 -- |
 -- Establish a connection according to the provided settings.
 acquire ::
   [Setting.Setting] ->
-  IO (Either ConnectionError Connection)
+  IO (Either AcquisitionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
   runExceptT $ do
