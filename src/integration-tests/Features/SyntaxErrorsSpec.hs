@@ -2,9 +2,9 @@ module Features.SyntaxErrorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
+import Hasql.Connection.Location qualified as Location
 import Hasql.Decoders qualified as Decoders
 import Hasql.Error qualified as Error
-import Hasql.Location qualified as Location
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement

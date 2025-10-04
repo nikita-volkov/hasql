@@ -1,4 +1,4 @@
-module Hasql.Location
+module Hasql.Connection.Location
   ( InStatement (..),
     InResultCell (..),
     InResultRow (..),
