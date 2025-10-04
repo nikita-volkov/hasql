@@ -117,7 +117,7 @@ library
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.PqProcedures
-    Hasql.Connection.PqProcedures.ServerVersion
+    Hasql.Connection.ServerVersion
 
   build-depends:
     aeson >=2 && <3,

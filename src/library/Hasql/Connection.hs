@@ -17,7 +17,7 @@ import Core.Structures.StatementCache qualified as StatementCache
 import Core.UsageError
 import Data.Text.Encoding qualified as Text.Encoding
 import Hasql.Connection.Config qualified as Config
-import Hasql.Connection.PqProcedures qualified as PqProcedures
+import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Setting qualified as Setting
 import Platform.Prelude
 import Pq qualified
@@ -28,9 +28,12 @@ newtype Connection
   = Connection (MVar ConnectionState.ConnectionState)
 
 -- |
--- Possible details of the connection acquistion error.
-type AcquisitionError =
-  Maybe ByteString
+-- Connection acquistion error.
+data AcquisitionError
+  = NetworkingAcquisitionError
+  | AuthenticationAcquisitionError
+  | CompatibilityAcquisitionError Text
+  | OtherAcquisitionError Text
 
 -- |
 -- Establish a connection according to the provided settings.
@@ -39,11 +42,28 @@ acquire ::
   IO (Either AcquisitionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
-  runExceptT $ do
+  runExceptT do
     pqConnection <- lift (Pq.connectdb (Config.connectionString config))
-    lift (PqProcedures.checkConnectionStatus pqConnection) >>= traverse throwError
-    lift (PqProcedures.checkServerVersion pqConnection) >>= traverse (throwError . Just . Text.Encoding.encodeUtf8)
-    lift (PqProcedures.initConnection pqConnection)
+
+    -- Check status:
+    status <- lift (Pq.status pqConnection)
+    case status of
+      Pq.ConnectionOk -> pure ()
+      _ -> do
+        errorMessage <- lift (Pq.errorMessage pqConnection)
+        error "TODO: Interpret errorMessage" errorMessage
+
+    -- Check version:
+    version <- lift (ServerVersion.load pqConnection)
+    when (version < ServerVersion.minimum) do
+      throwError (CompatibilityAcquisitionError ("Server version is lower than 10: " <> ServerVersion.toText version))
+
+    -- Initialize:
+    lift do
+      Pq.exec pqConnection do
+        "SET client_encoding = 'UTF8';\n\
+        \SET client_min_messages TO WARNING;"
+
     let connectionState =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = Config.usePreparedStatements config,
