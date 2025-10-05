@@ -4,10 +4,6 @@ import Platform.Prelude
 import TextBuilder qualified
 import TextBuilderExtras qualified
 
-data InScript
-  = InScript ByteString
-  deriving stock (Show, Eq)
-
 -- |
 -- Location of an error in a statement.
 data InStatement
