@@ -33,7 +33,11 @@ newtype Connection
 -- Connection acquistion error.
 data AcquisitionError
   = NetworkingAcquisitionError
+      -- | Human readable details indended for logging.
+      Text
   | AuthenticationAcquisitionError
+      -- | Human readable details indended for logging.
+      Text
   | CompatibilityAcquisitionError
       -- | Human readable details indended for logging.
       Text
@@ -88,10 +92,11 @@ acquire settings =
       case errorMessage of
         Nothing -> OtherAcquisitionError "Unknown connection error"
         Just msg ->
-          let msgLower = Text.toLower (decodeUtf8Lenient msg)
+          let msgText = decodeUtf8Lenient msg
+              msgLower = Text.toLower msgText
            in if
-                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquisitionError
-                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquisitionError
+                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquisitionError msgText
+                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquisitionError msgText
                 | otherwise -> OtherAcquisitionError (decodeUtf8Lenient msg)
 
     networkingErrors :: [Text]

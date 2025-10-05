@@ -68,7 +68,7 @@ byDistro distro = do
                 )
             ]
         case result of
-          Left Hasql.Connection.NetworkingAcquisitionError -> pure ()
+          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
           Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
@@ -85,7 +85,7 @@ byDistro distro = do
                 )
             ]
         case result of
-          Left Hasql.Connection.NetworkingAcquisitionError -> pure ()
+          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
           Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
@@ -111,7 +111,7 @@ byDistro distro = do
                       )
                   ]
               case result of
-                Left Hasql.Connection.AuthenticationAcquisitionError -> pure ()
+                Left (Hasql.Connection.AuthenticationAcquisitionError _) -> pure ()
                 Left err -> expectationFailure ("Expected AuthenticationAcquisitionError, got: " <> show err)
                 Right _conn -> expectationFailure "Expected connection to fail with authentication error"
           )

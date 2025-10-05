@@ -27,8 +27,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left (Connection.NetworkingAcquisitionError _) ->
+              pure ()
             Left err ->
-              err `shouldBe` Connection.NetworkingAcquisitionError
+              expectationFailure ("Expected NetworkingAcquisitionError, but got: " <> show err)
 
   describe "postgres:9" do
     itFails TestcontainersPostgresql.Distro9 (Connection.CompatibilityAcquisitionError "Server version is lower than 10: 9.6.24")
@@ -65,8 +67,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left (Connection.AuthenticationAcquisitionError _) ->
+              pure ()
             Left err ->
-              err `shouldBe` Connection.AuthenticationAcquisitionError
+              expectationFailure ("Expected AuthenticationAcquisitionError, but got: " <> show err)
 
     it "Fails with authentication error on wrong user" do
       TestcontainersPostgresql.run
@@ -92,8 +96,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left (Connection.AuthenticationAcquisitionError _) ->
+              pure ()
             Left err ->
-              err `shouldBe` Connection.AuthenticationAcquisitionError
+              expectationFailure ("Expected AuthenticationAcquisitionError, but got: " <> show err)
 
 itFails :: TestcontainersPostgresql.Distro -> Connection.AcquisitionError -> Spec
 itFails distro expectedError =
