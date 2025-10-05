@@ -1,13 +1,10 @@
-{-# LANGUAGE TypeApplications #-}
-
 module Features.ErrorsSpec (spec) where
 
-import Core.Contexts.Session (sql)
 import Data.Either
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Hasql.Session qualified as Session hiding (sql)
+import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Test.Hspec
 import TestingKit.Testcontainers qualified as Testcontainers
@@ -28,7 +25,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
         -- First successful query
         a <- Session.statement (1 :: Int64) tryStatement
         -- This should fail but connection should remain usable
-        () <- catchError (sql "absurd") (const (pure ()))
+        () <- catchError (Session.sql "absurd") (const (pure ()))
         -- Second successful query
         b <- Session.statement (2 :: Int64) tryStatement
         pure (a, b)
@@ -50,15 +47,15 @@ spec = Testcontainers.aroundSpecWithConnection False do
 
       result <-
         Connection.use connection do
-          sql "."
+          Session.sql "."
 
       result `shouldSatisfy` isLeft
 
       result <-
         Connection.use connection do
-          sql "begin;"
+          Session.sql "begin;"
           s <- Session.statement (1 :: Int64, 2 :: Int64) sumStatement
-          sql "end;"
+          Session.sql "end;"
           return s
 
       result `shouldBe` Right (3 :: Int64)

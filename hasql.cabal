@@ -307,7 +307,6 @@ test-suite integration-tests
   build-depends:
     QuickCheck,
     hasql,
-    hasql:core,
     hasql:testing-kit,
     hspec ^>=2.11.12,
     quickcheck-instances >=0.3.11 && <0.4,
