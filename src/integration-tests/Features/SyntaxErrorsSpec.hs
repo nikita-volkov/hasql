@@ -2,6 +2,7 @@ module Features.SyntaxErrorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
+import Hasql.Connection.Location qualified as Location
 import Hasql.Decoders qualified as Decoders
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
@@ -26,9 +27,12 @@ spec = Testcontainers.aroundSpecWithConnection True do
             shouldBe
               result
               ( Left
-                  ( Session.QueryError
-                      "-"
-                      []
-                      (Session.ResultError (Session.ServerError "42601" "syntax error at or near \"-\"" Nothing Nothing (Just 1)))
+                  ( Connection.ServerUsageError
+                      (Location.InStatement 1 0 "-" [] preparable)
+                      "42601"
+                      "syntax error at or near \"-\""
+                      Nothing
+                      Nothing
+                      (Just 1)
                   )
               )

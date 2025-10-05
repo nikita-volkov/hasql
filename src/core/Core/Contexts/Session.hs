@@ -2,8 +2,9 @@ module Core.Contexts.Session where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Errors
+import Core.Location qualified as Location
 import Core.Structures.ConnectionState qualified as ConnectionState
+import Core.UsageError qualified as UsageError
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
@@ -18,7 +19,7 @@ import Pq qualified
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
 -- concurrent access to the shared connection state and returns either a
--- 'SessionError' or the result:
+-- 'UsageError.UsageError' or the result:
 --
 -- > result <- Hasql.Connection.use connection mySession
 --
@@ -26,12 +27,12 @@ import Pq qualified
 -- inside a session may still throw exceptions; in that case the driver will
 -- reset the connection to a clean state.
 newtype Session a
-  = Session (ConnectionState.ConnectionState -> IO (Either SessionError a, ConnectionState.ConnectionState))
+  = Session (ConnectionState.ConnectionState -> IO (Either UsageError.UsageError a, ConnectionState.ConnectionState))
   deriving
-    (Functor, Applicative, Monad, MonadError SessionError, MonadIO)
-    via (ExceptT SessionError (StateT ConnectionState.ConnectionState IO))
+    (Functor, Applicative, Monad, MonadError UsageError.UsageError, MonadIO)
+    via (ExceptT UsageError.UsageError (StateT ConnectionState.ConnectionState IO))
 
-run :: Session a -> ConnectionState.ConnectionState -> IO (Either SessionError a, ConnectionState.ConnectionState)
+run :: Session a -> ConnectionState.ConnectionState -> IO (Either UsageError.UsageError a, ConnectionState.ConnectionState)
 run (Session session) connectionState = session connectionState
 
 -- |
@@ -40,22 +41,21 @@ run (Session session) connectionState = session connectionState
 -- nor can any results of it be collected.
 sql :: ByteString -> Session ()
 sql sql =
-  let context =
-        StatementErrorContext sql [] False
+  let context = Location.InStatement 1 0 sql [] False
    in Session \connectionState -> do
         let connection = ConnectionState.connection connectionState
-        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query context sql) connection
+        result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Just context) sql) connection
         case result of
           Left err -> case err of
-            Hipq.Roundtrip.ClientError context details -> do
+            Hipq.Roundtrip.ClientError _ details -> do
               Pq.reset connection
               pure
-                ( Left (addContextToCommandError context (ClientError details)),
+                ( Left (UsageError.ConnectionUsageError (maybe "Connection error" decodeUtf8Lenient details)),
                   ConnectionState.resetPreparedStatementsCache connectionState
                 )
             Hipq.Roundtrip.ServerError recvError ->
               pure
-                ( Left (adaptServerError recvError),
+                ( Left (UsageError.fromRecvError recvError),
                   connectionState
                 )
           Right () ->
@@ -75,8 +75,7 @@ statement ::
   params ->
   Session result
 statement sql paramsEncoder decoder preparable params =
-  pipeline do
-    Pipeline.statement sql paramsEncoder decoder preparable params
+  pipeline (Pipeline.statement sql paramsEncoder decoder preparable params)
 
 -- |
 -- Execute a pipeline.
@@ -101,7 +100,9 @@ pipeline pipeline = Session \connectionState -> do
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
 -- Throwing exceptions is okay. It will lead to the connection getting reset.
-onLibpqConnection :: (Pq.Connection -> IO (Either SessionError a, Pq.Connection)) -> Session a
+onLibpqConnection ::
+  (Pq.Connection -> IO (Either UsageError.UsageError a, Pq.Connection)) ->
+  Session a
 onLibpqConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection

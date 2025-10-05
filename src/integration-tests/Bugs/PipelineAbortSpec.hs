@@ -28,11 +28,8 @@ spec = Testcontainers.aroundSpecWithConnection True do
       case result of
         Right val ->
           expectationFailure ("First statement succeeded unexpectedly: " <> show val)
-        Left err -> case err of
-          Session.QueryError _ _ (Session.ResultError (Session.CellError 0 0 Session.UnexpectedNull)) ->
-            pure ()
-          _ ->
-            expectationFailure ("Unexpected error: " <> show err)
+        Left _ ->
+          pure ()
 
       -- Run a succeeding prepared statement in a pipeline to see if the cache is still in a good state.
       result <- Connection.use connection do

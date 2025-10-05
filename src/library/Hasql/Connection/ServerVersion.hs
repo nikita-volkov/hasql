@@ -1,11 +1,16 @@
-module Hasql.Connection.PqProcedures.ServerVersion
+module Hasql.Connection.ServerVersion
   ( ServerVersion (..),
-    fromInt,
     toText,
+    fromInt,
+    minimum,
+
+    -- * PQ operations
+    load,
   )
 where
 
-import Platform.Prelude
+import Platform.Prelude hiding (minimum)
+import Pq qualified
 import TextBuilder qualified
 
 data ServerVersion = ServerVersion Int Int Int
@@ -55,3 +60,12 @@ toText (ServerVersion major minor patch) =
       ".",
       TextBuilder.decimal patch
     ]
+
+-- | Minimum supported version.
+minimum :: ServerVersion
+minimum = ServerVersion 10 0 0
+
+-- | Load from PQ connection.
+load :: Pq.Connection -> IO ServerVersion
+load connection =
+  fromInt <$> Pq.serverVersion connection

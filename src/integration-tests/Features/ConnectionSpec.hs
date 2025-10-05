@@ -52,3 +52,66 @@ byDistro distro = do
         itConnects "user" "new\\password"
         itConnects "user" "new'password"
         itConnects "new user" "password"
+
+  describe "Connection errors" do
+    describe "NetworkingAcquisitionError" do
+      it "is reported for invalid host" do
+        result <-
+          Hasql.Connection.acquire
+            [ Hasql.Connection.Setting.connection
+                ( Hasql.Connection.Setting.Connection.params
+                    [ Hasql.Connection.Setting.Connection.Param.host "nonexistent.invalid.host",
+                      Hasql.Connection.Setting.Connection.Param.port 5432,
+                      Hasql.Connection.Setting.Connection.Param.user "postgres",
+                      Hasql.Connection.Setting.Connection.Param.password ""
+                    ]
+                )
+            ]
+        case result of
+          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
+          Right _conn -> expectationFailure "Expected connection to fail"
+
+      it "is reported for connection refused" do
+        result <-
+          Hasql.Connection.acquire
+            [ Hasql.Connection.Setting.connection
+                ( Hasql.Connection.Setting.Connection.params
+                    [ Hasql.Connection.Setting.Connection.Param.host "127.0.0.1",
+                      Hasql.Connection.Setting.Connection.Param.port 1,
+                      Hasql.Connection.Setting.Connection.Param.user "postgres",
+                      Hasql.Connection.Setting.Connection.Param.password ""
+                    ]
+                )
+            ]
+        case result of
+          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
+          Right _conn -> expectationFailure "Expected connection to fail"
+
+    describe "AuthenticationAcquisitionError" do
+      it "is reported for invalid credentials" do
+        TestcontainersPostgresql.run
+          ( TestcontainersPostgresql.Config
+              { forwardLogs = False,
+                distro,
+                auth = TestcontainersPostgresql.CredentialsAuth "postgres" "correctpassword"
+              }
+          )
+          ( \(host, port) -> do
+              result <-
+                Hasql.Connection.acquire
+                  [ Hasql.Connection.Setting.connection
+                      ( Hasql.Connection.Setting.Connection.params
+                          [ Hasql.Connection.Setting.Connection.Param.host host,
+                            Hasql.Connection.Setting.Connection.Param.port (fromIntegral port),
+                            Hasql.Connection.Setting.Connection.Param.user "postgres",
+                            Hasql.Connection.Setting.Connection.Param.password "wrongpassword"
+                          ]
+                      )
+                  ]
+              case result of
+                Left (Hasql.Connection.AuthenticationAcquisitionError _) -> pure ()
+                Left err -> expectationFailure ("Expected AuthenticationAcquisitionError, got: " <> show err)
+                Right _conn -> expectationFailure "Expected connection to fail with authentication error"
+          )

@@ -1,10 +1,6 @@
 module TestingKit.TestingDsl
   ( -- * Errors
     Error (..),
-    Session.SessionError (..),
-    Session.CommandError (..),
-    Session.ResultError (..),
-    Session.CellError (..),
 
     -- * Abstractions
     Session.Session,
@@ -30,9 +26,9 @@ import TestingKit.Constants qualified as Constants
 import TestingKit.Preludes.Base
 
 data Error
-  = ConnectionError (Connection.ConnectionError)
-  | SessionError (Session.SessionError)
-  deriving (Show, Eq)
+  = AcquisitionError Connection.AcquisitionError
+  | UsageError Connection.UsageError
+  deriving stock (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
 runSessionOnLocalDb = runSessionWithSettings Constants.localConnectionSettings
@@ -46,10 +42,10 @@ runSessionWithSettings settings session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ fmap (first ConnectionError) $ Connection.acquire settings
+      ExceptT $ fmap (first AcquisitionError) $ Connection.acquire settings
     use connection =
       ExceptT
-        $ fmap (first SessionError)
+        $ fmap (first UsageError)
         $ Connection.use connection session
     release connection =
       lift $ Connection.release connection

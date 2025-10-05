@@ -6,31 +6,31 @@ module Core.Contexts.Pipeline
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
-import Core.Errors
+import Core.Location
 import Core.Structures.StatementCache qualified as StatementCache
+import Core.UsageError
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-run :: Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
-run (Pipeline _totalStatements run) usePreparedStatements connection cache = do
+run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either UsageError a, StatementCache.StatementCache)
+run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   let (roundtrip, newCache) = run 0 usePreparedStatements cache
-      adaptedRoundtrip = first Just roundtrip
+      adaptedRoundtrip = first adaptContext roundtrip
   result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
   case result of
-    Left (Hipq.Roundtrip.ClientError context details) -> do
+    Left (Hipq.Roundtrip.ClientError _context details) -> do
       Pq.reset connection
-      pure (Left (addContextToCommandError (adaptErrorContext context) (ClientError details)), StatementCache.empty)
+      pure (Left (ConnectionUsageError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
     Left (Hipq.Roundtrip.ServerError recvError) ->
-      pure (Left (adaptServerError (fmap adaptErrorContext recvError)), newCache)
+      pure (Left (fromRecvError recvError), newCache)
     Right a ->
       pure (Right a, newCache)
   where
-    adaptErrorContext :: Maybe Context -> ErrorContext
-    adaptErrorContext = \case
-      Nothing -> NoErrorContext
-      Just (Context _offset sql params preparable) -> StatementErrorContext sql params preparable
+    adaptContext :: Context -> Maybe InStatement
+    adaptContext (Context index sql params prepared) =
+      Just (InStatement totalStatements index sql params prepared)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

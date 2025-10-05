@@ -102,6 +102,7 @@ library
   hs-source-dirs: src/library
   exposed-modules:
     Hasql.Connection
+    Hasql.Connection.Location
     Hasql.Connection.Setting
     Hasql.Connection.Setting.Connection
     Hasql.Connection.Setting.Connection.Param
@@ -115,8 +116,7 @@ library
     Hasql.Connection.Config
     Hasql.Connection.Config.ConnectionString
     Hasql.Connection.Config.ConnectionString.Params
-    Hasql.Connection.PqProcedures
-    Hasql.Connection.PqProcedures.ServerVersion
+    Hasql.Connection.ServerVersion
 
   build-depends:
     aeson >=2 && <3,
@@ -144,18 +144,19 @@ library core
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
-    Core.Errors
+    Core.Location
     Core.PostgresTypeInfo
     Core.Structures.ConnectionState
     Core.Structures.StatementCache
+    Core.UsageError
 
   other-modules:
   build-depends:
-    bytestring >=0.10 && <0.13,
     bytestring-strict-builder >=0.4.5.1 && <0.5,
     hasql:hipq,
     hasql:platform,
     hasql:pq,
+    hasql:text-builder-extras,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
@@ -295,10 +296,10 @@ test-suite integration-tests
     Features.DecoderCompatibilityCheckSpec
     Features.ErrorsSpec
     Features.PipelineSpec
-    Features.ServerVersionCompatibilitySpec
     Features.SessionSpec
     Features.StatementSpec
     Features.SyntaxErrorsSpec
+    Functionality.Connection.AcquireSpec
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
