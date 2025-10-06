@@ -20,21 +20,8 @@ data UsageError
       -- | Underlying error.
       Text
   | ServerUsageError
-      -- | Location of the statement.
-      InStatement
-      -- | Code.
-      Text
-      -- | Message.
-      Text
-      -- | Detail.
-      (Maybe Text)
-      -- | Hint.
-      (Maybe Text)
-      -- | Position (1-based index in the SQL string).
-      (Maybe Int)
-  | ScriptUsageError
-      -- | Location of the script.
-      InScript
+      -- | Location.
+      InStatementOrScript
       -- | Code.
       Text
       -- | Message.
@@ -113,7 +100,7 @@ fromStatementResultError :: InStatement -> Hipq.ResultDecoder.Error -> UsageErro
 fromStatementResultError stmtLocation = \case
   Hipq.ResultDecoder.ServerError code message detail hint position ->
     ServerUsageError
-      stmtLocation
+      (StatementInStatementOrScript stmtLocation)
       (decodeUtf8Lenient code)
       (decodeUtf8Lenient message)
       (fmap decodeUtf8Lenient detail)
@@ -171,8 +158,8 @@ fromRecvErrorInScript scriptLocation = \case
 fromResultErrorInScript :: InScript -> Hipq.ResultDecoder.Error -> UsageError
 fromResultErrorInScript scriptLocation = \case
   Hipq.ResultDecoder.ServerError code message detail hint position ->
-    ScriptUsageError
-      scriptLocation
+    ServerUsageError
+      (ScriptInStatementOrScript scriptLocation)
       (decodeUtf8Lenient code)
       (decodeUtf8Lenient message)
       (fmap decodeUtf8Lenient detail)
@@ -267,18 +254,6 @@ instance ToPlainText UsageError where
           toPlainText expected,
           ", got ",
           toPlainText actual
-        ]
-    ScriptUsageError location code message detail hint position ->
-      mconcat
-        [ "Server error in ",
-          toPlainText location,
-          ": ",
-          toPlainText code,
-          " - ",
-          toPlainText message,
-          maybe "" (\d -> " Detail: " <> toPlainText d) detail,
-          maybe "" (\h -> " Hint: " <> toPlainText h) hint,
-          maybe "" (\p -> " Position: " <> toPlainText (show p)) position
         ]
     ConnectionUsageError message ->
       mconcat

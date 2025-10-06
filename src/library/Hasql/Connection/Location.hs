@@ -3,6 +3,7 @@ module Hasql.Connection.Location
     InResultCell (..),
     InResultRow (..),
     InScript (..),
+    InStatementOrScript (..),
   )
 where
 
