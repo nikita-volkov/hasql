@@ -100,3 +100,9 @@ When suggesting new functionality, consider whether it belongs in:
 - Include practical examples in documentation
 - Reference the broader ecosystem when relevant
 - Maintain clear separation between core functionality and extensions
+
+## Integration tests
+
+- Split the integration tests into two categories: those that are safe to run with a shared database and those that require isolated test environments. Depending on this place them in either the `Sharing` or `Isolated` namespace.
+
+- Ideally all tests should be modularized by the tested functionality unit. I.e., a specific function. One test module per unit. E.g., tests for the `Hasql.Session.script` function should be located in either `Sharing.Functionality.Session.ScriptSpec` or `Isolated.Functionality.Session.ScriptSpec`.
