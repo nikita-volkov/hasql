@@ -1,4 +1,4 @@
-module Features.SyntaxErrorsSpec (spec) where
+module Isolated.Features.SyntaxErrorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

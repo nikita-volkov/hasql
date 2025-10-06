@@ -1,4 +1,4 @@
-module Features.CodecsSpec (spec) where
+module Isolated.Features.CodecsSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders

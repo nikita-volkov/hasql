@@ -1,8 +1,7 @@
-module Features.ErrorsSpec (spec) where
+module Isolated.Features.ErrorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
-import Hasql.Connection.Location qualified as Connection.Location
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
@@ -60,10 +59,3 @@ spec = Testcontainers.aroundSpecWithConnection False do
           return s
 
       result `shouldBe` Right (3 :: Int64)
-
-  describe "Script errors" do
-    it "returns ServerUsageError for script syntax errors" \connection -> do
-      result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
-      case result of
-        Left (Connection.ServerUsageError (Connection.Location.ScriptInStatementOrScript _) _ _ _ _ _) -> pure ()
-        _ -> expectationFailure $ "Expected ServerUsageError in Script, got: " <> show result

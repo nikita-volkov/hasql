@@ -1,4 +1,4 @@
-module Features.SessionSpec (spec) where
+module Isolated.Features.SessionSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders

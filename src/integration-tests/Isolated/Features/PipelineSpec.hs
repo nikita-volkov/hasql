@@ -1,4 +1,4 @@
-module Features.PipelineSpec (spec) where
+module Isolated.Features.PipelineSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Session qualified as Session

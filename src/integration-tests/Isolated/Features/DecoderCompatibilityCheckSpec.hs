@@ -1,4 +1,4 @@
-module Features.DecoderCompatibilityCheckSpec (spec) where
+module Isolated.Features.DecoderCompatibilityCheckSpec (spec) where
 
 import Data.Either
 import Data.Vector qualified as Vector

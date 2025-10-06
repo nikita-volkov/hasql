@@ -288,18 +288,20 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
-    Bugs.PipelineAbortSpec
-    Bugs.PreparedStatementAlreadyExistsSpec
-    Features.CodecsSpec
-    Features.ConcurrencySpec
-    Features.ConnectionSpec
-    Features.DecoderCompatibilityCheckSpec
-    Features.ErrorsSpec
-    Features.PipelineSpec
-    Features.SessionSpec
-    Features.StatementSpec
-    Features.SyntaxErrorsSpec
-    Functionality.Connection.AcquireSpec
+    Isolated.Bugs.PipelineAbortSpec
+    Isolated.Bugs.PreparedStatementAlreadyExistsSpec
+    Isolated.Features.CodecsSpec
+    Isolated.Features.ConcurrencySpec
+    Isolated.Features.ConnectionSpec
+    Isolated.Features.DecoderCompatibilityCheckSpec
+    Isolated.Features.ErrorsSpec
+    Isolated.Features.PipelineSpec
+    Isolated.Features.SessionSpec
+    Isolated.Features.StatementSpec
+    Isolated.Features.SyntaxErrorsSpec
+    Isolated.Functionality.Connection.AcquireSpec
+    Sharing.Functionality.Session.ScriptSpec
+    Sharing.SpecHook
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
