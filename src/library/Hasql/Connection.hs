@@ -4,17 +4,19 @@
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection
   ( Connection,
-    AcquisitionError (..),
-    SessionError (..),
     acquire,
     release,
     use,
     withLibPQConnection,
+
+    -- * Reexports
+    AcquisitionError (..),
+    SessionError (..),
   )
 where
 
 import Core.Contexts.Session qualified as Session
-import Core.SessionError
+import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
 import Core.Structures.StatementCache qualified as StatementCache
 import Data.Text qualified as Text
@@ -28,24 +30,6 @@ import Pq qualified
 -- A single connection to the database.
 newtype Connection
   = Connection (MVar ConnectionState.ConnectionState)
-
--- |
--- Connection acquistion error.
-data AcquisitionError
-  = NetworkingAcquisitionError
-      -- | Human readable details indended for logging.
-      Text
-  | AuthenticationAcquisitionError
-      -- | Human readable details indended for logging.
-      Text
-  | CompatibilityAcquisitionError
-      -- | Human readable details indended for logging.
-      Text
-  | -- | Uncategorized error coming from "libpq". May be empty text.
-    OtherAcquisitionError
-      -- | Human readable details intended for logging.
-      Text
-  deriving stock (Show, Eq)
 
 -- |
 -- Establish a connection according to the provided settings.

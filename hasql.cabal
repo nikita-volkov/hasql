@@ -108,6 +108,7 @@ library
     Hasql.Connection.Setting.Connection.Param
     Hasql.Decoders
     Hasql.Encoders
+    Hasql.Errors
     Hasql.Pipeline
     Hasql.Session
     Hasql.Statement
@@ -144,6 +145,7 @@ library core
     Core.Contexts.Session
     Core.Contexts.ValueDecoder
     Core.Contexts.ValueEncoder
+    Core.Errors
     Core.Location
     Core.PostgresTypeInfo
     Core.SessionError
