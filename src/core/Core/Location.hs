@@ -40,6 +40,21 @@ data InResultCell
       Int
   deriving stock (Show, Eq)
 
+-- |
+-- Location of an error in a script.
+data InScript
+  = InScript ByteString
+  deriving stock (Show, Eq)
+
+-- |
+-- Location of an error in either a statement or a script.
+data InStatementOrScript
+  = ScriptInStatementOrScript InScript
+  | StatementInStatementOrScript InStatement
+  deriving stock (Show, Eq)
+
+-- * Instances
+
 instance ToPlainText InStatement where
   toPlainText (InStatement total index sql params prepared) =
     mconcat
@@ -74,3 +89,15 @@ instance ToPlainText InResultCell where
         " of ",
         toPlainText row
       ]
+
+instance ToPlainText InScript where
+  toPlainText (InScript sql) =
+    mconcat
+      [ "In script.\n  SQL:\n    ",
+        TextBuilderExtras.textWithEachLinePrefixed "    " (decodeUtf8Lenient sql)
+      ]
+
+instance ToPlainText InStatementOrScript where
+  toPlainText = \case
+    ScriptInStatementOrScript scriptLocation -> toPlainText scriptLocation
+    StatementInStatementOrScript statementLocation -> toPlainText statementLocation
