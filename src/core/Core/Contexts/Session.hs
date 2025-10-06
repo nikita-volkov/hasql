@@ -39,8 +39,8 @@ run (Session session) connectionState = session connectionState
 -- Possibly a multi-statement query,
 -- which however cannot be parameterized or prepared,
 -- nor can any results of it be collected.
-sql :: ByteString -> Session ()
-sql sql =
+script :: ByteString -> Session ()
+script sql =
   let context = Location.InStatement 1 0 sql [] False
    in Session \connectionState -> do
         let connection = ConnectionState.connection connectionState

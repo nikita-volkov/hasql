@@ -1,7 +1,7 @@
 module Hasql.Session
   ( Session.Session,
     Session.pipeline,
-    Session.sql,
+    Session.script,
     statement,
     Session.onLibpqConnection,
 

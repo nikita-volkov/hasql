@@ -25,7 +25,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
         -- First successful query
         a <- Session.statement (1 :: Int64) tryStatement
         -- This should fail but connection should remain usable
-        () <- catchError (Session.sql "absurd") (const (pure ()))
+        () <- catchError (Session.script "absurd") (const (pure ()))
         -- Second successful query
         b <- Session.statement (2 :: Int64) tryStatement
         pure (a, b)
@@ -47,15 +47,15 @@ spec = Testcontainers.aroundSpecWithConnection False do
 
       result <-
         Connection.use connection do
-          Session.sql "."
+          Session.script "."
 
       result `shouldSatisfy` isLeft
 
       result <-
         Connection.use connection do
-          Session.sql "begin;"
+          Session.script "begin;"
           s <- Session.statement (1 :: Int64, 2 :: Int64) sumStatement
-          Session.sql "end;"
+          Session.script "end;"
           return s
 
       result `shouldBe` Right (3 :: Int64)

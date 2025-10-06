@@ -34,6 +34,8 @@ Major revision happened.
 
 - `usePreparedStatements` setting dropped. Use `disablePreparedStatements` instead.
 
+- `Hasql.Session.sql` is renamed to `Hasql.Session.script` to better reflect its purpose.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules
