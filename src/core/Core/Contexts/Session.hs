@@ -41,7 +41,7 @@ run (Session session) connectionState = session connectionState
 -- nor can any results of it be collected.
 script :: ByteString -> Session ()
 script sql =
-  let context = Location.InStatement 1 0 sql [] False
+  let context = Location.InScript sql
    in Session \connectionState -> do
         let connection = ConnectionState.connection connectionState
         result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Just context) sql) connection
@@ -55,7 +55,7 @@ script sql =
                 )
             Hipq.Roundtrip.ServerError recvError ->
               pure
-                ( Left (UsageError.fromRecvError recvError),
+                ( Left (UsageError.fromScriptRecvError context recvError),
                   connectionState
                 )
           Right () ->

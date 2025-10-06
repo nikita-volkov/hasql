@@ -53,6 +53,19 @@ data UsageError
       Int
       -- | Actual count.
       Int
+  | ScriptUsageError
+      -- | Location of the script.
+      InScript
+      -- | Code.
+      Text
+      -- | Message.
+      Text
+      -- | Detail.
+      (Maybe Text)
+      -- | Hint.
+      (Maybe Text)
+      -- | Position (1-based index in the SQL string).
+      (Maybe Int)
   | ConnectionUsageError
       Text
   | -- | Either the server misbehaves or there is a bug in Hasql.
@@ -136,6 +149,69 @@ fromResultRowError rowLocation = \case
           Hipq.ResultRowDecoder.UnexpectedNullCellError _oid ->
             UnexpectedNullCellUsageError location
 
+fromScriptRecvError :: InScript -> Hipq.Recv.Error (Maybe InScript) -> UsageError
+fromScriptRecvError scriptLocation = \case
+  Hipq.Recv.ResultError _ _ resultError ->
+    fromScriptResultError scriptLocation resultError
+  Hipq.Recv.NoResultsError _ details ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Unexpectedly got no results in script. ",
+        "This indicates a bug in Hasql or the server misbehaving. ",
+        "Details: ",
+        toPlainText (show details)
+      ]
+  Hipq.Recv.TooManyResultsError _ actual ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Unexpectedly got too many results in script. ",
+        "This indicates a bug in Hasql or the server misbehaving. ",
+        "Amount: ",
+        toPlainText actual
+      ]
+
+fromScriptResultError :: InScript -> Hipq.ResultDecoder.Error -> UsageError
+fromScriptResultError scriptLocation = \case
+  Hipq.ResultDecoder.ServerError code message detail hint position ->
+    ScriptUsageError
+      scriptLocation
+      (decodeUtf8Lenient code)
+      (decodeUtf8Lenient message)
+      (fmap decodeUtf8Lenient detail)
+      (fmap decodeUtf8Lenient hint)
+      position
+  Hipq.ResultDecoder.UnexpectedResult msg ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Unexpected result in script: ",
+        toPlainText msg
+      ]
+  Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Unexpected amount of rows in script: ",
+        toPlainText actual
+      ]
+  Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Unexpected amount of columns in script: expected ",
+        toPlainText expected,
+        ", got ",
+        toPlainText actual
+      ]
+  Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Decoder type mismatch in script: expected OID ",
+        toPlainText (show expectedOid),
+        " at column ",
+        toPlainText colIdx,
+        ", got ",
+        toPlainText (show actualOid)
+      ]
+  Hipq.ResultDecoder.RowError rowIndex rowError ->
+    (DriverUsageError . TextBuilder.toText . mconcat)
+      [ "Row error in script at row ",
+        toPlainText rowIndex,
+        ": ",
+        toPlainText (show rowError)
+      ]
+
 instance ToPlainText UsageError where
   toPlainText = \case
     UnexpectedNullCellUsageError location ->
@@ -191,6 +267,18 @@ instance ToPlainText UsageError where
           toPlainText expected,
           ", got ",
           toPlainText actual
+        ]
+    ScriptUsageError location code message detail hint position ->
+      mconcat
+        [ "Server error in ",
+          toPlainText location,
+          ": ",
+          toPlainText code,
+          " - ",
+          toPlainText message,
+          maybe "" (\d -> " Detail: " <> toPlainText d) detail,
+          maybe "" (\h -> " Hint: " <> toPlainText h) hint,
+          maybe "" (\p -> " Position: " <> toPlainText (show p)) position
         ]
     ConnectionUsageError message ->
       mconcat
