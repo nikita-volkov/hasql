@@ -32,6 +32,19 @@ data UsageError
       (Maybe Text)
       -- | Position (1-based index in the SQL string).
       (Maybe Int)
+  | ScriptUsageError
+      -- | Location of the script.
+      InScript
+      -- | Code.
+      Text
+      -- | Message.
+      Text
+      -- | Detail.
+      (Maybe Text)
+      -- | Hint.
+      (Maybe Text)
+      -- | Position (1-based index in the SQL string).
+      (Maybe Int)
   | UnexpectedResultUsageError
       -- | Location of the statement.
       InStatement
@@ -53,19 +66,6 @@ data UsageError
       Int
       -- | Actual count.
       Int
-  | ScriptUsageError
-      -- | Location of the script.
-      InScript
-      -- | Code.
-      Text
-      -- | Message.
-      Text
-      -- | Detail.
-      (Maybe Text)
-      -- | Hint.
-      (Maybe Text)
-      -- | Position (1-based index in the SQL string).
-      (Maybe Int)
   | ConnectionUsageError
       Text
   | -- | Either the server misbehaves or there is a bug in Hasql.
@@ -149,10 +149,10 @@ fromResultRowError rowLocation = \case
           Hipq.ResultRowDecoder.UnexpectedNullCellError _oid ->
             UnexpectedNullCellUsageError location
 
-fromScriptRecvError :: InScript -> Hipq.Recv.Error (Maybe InScript) -> UsageError
-fromScriptRecvError scriptLocation = \case
+fromRecvErrorInScript :: InScript -> Hipq.Recv.Error (Maybe InScript) -> UsageError
+fromRecvErrorInScript scriptLocation = \case
   Hipq.Recv.ResultError _ _ resultError ->
-    fromScriptResultError scriptLocation resultError
+    fromResultErrorInScript scriptLocation resultError
   Hipq.Recv.NoResultsError _ details ->
     (DriverUsageError . TextBuilder.toText . mconcat)
       [ "Unexpectedly got no results in script. ",
@@ -168,8 +168,8 @@ fromScriptRecvError scriptLocation = \case
         toPlainText actual
       ]
 
-fromScriptResultError :: InScript -> Hipq.ResultDecoder.Error -> UsageError
-fromScriptResultError scriptLocation = \case
+fromResultErrorInScript :: InScript -> Hipq.ResultDecoder.Error -> UsageError
+fromResultErrorInScript scriptLocation = \case
   Hipq.ResultDecoder.ServerError code message detail hint position ->
     ScriptUsageError
       scriptLocation

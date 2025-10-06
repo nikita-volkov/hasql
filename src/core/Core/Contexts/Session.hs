@@ -55,7 +55,7 @@ script sql =
                 )
             Hipq.Roundtrip.ServerError recvError ->
               pure
-                ( Left (UsageError.fromScriptRecvError context recvError),
+                ( Left (UsageError.fromRecvErrorInScript context recvError),
                   connectionState
                 )
           Right () ->
