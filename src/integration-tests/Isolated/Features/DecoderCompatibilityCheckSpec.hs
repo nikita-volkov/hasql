@@ -37,7 +37,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                   preparable
           result <- Connection.use connection (executor statement)
           case result of
-            Left (Connection.UnexpectedAmountOfColumnsUsageError _ expected actual) -> do
+            Left (Connection.UnexpectedAmountOfColumnsSessionError _ expected actual) -> do
               shouldBe expected 1
               shouldBe actual 2
             Left err ->
@@ -59,7 +59,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                   preparable
           result <- Connection.use connection (executor statement)
           case result of
-            Left (Connection.UnexpectedAmountOfColumnsUsageError _ expected actual) -> do
+            Left (Connection.UnexpectedAmountOfColumnsSessionError _ expected actual) -> do
               shouldBe expected 2
               shouldBe actual 1
             Left err ->
@@ -83,7 +83,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationUsageError (Location.InResultCell _ column) oid msg) -> do
+              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
                 shouldBe column 1
                 (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
               Left err ->
@@ -106,7 +106,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationUsageError (Location.InResultCell _ column) oid msg) -> do
+              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
                 shouldBe column 1
                 (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
               Left err ->
@@ -129,7 +129,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationUsageError (Location.InResultCell _ column) oid msg) -> do
+              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
                 shouldBe column 1
                 (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
               Left err ->
@@ -151,7 +151,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                         preparable
                 result <- Connection.use connection (executor statement)
                 case result of
-                  Left (Connection.CellDeserializationUsageError (Location.InResultCell _ column) oid msg) -> do
+                  Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
                     shouldBe column 0
                     (oid, msg) `shouldBe` (20, "Decoder type mismatch. Expected 1016")
                   Left err ->
@@ -186,7 +186,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                         preparable
                 result <- Connection.use connection (executor statement)
                 case result of
-                  Left (Connection.CellDeserializationUsageError (Location.InResultCell _ column) oid msg) -> do
+                  Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
                     shouldBe column 0
                     (oid, msg) `shouldBe` (1016, "Decoder type mismatch. Expected 20")
                   Left err ->

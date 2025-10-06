@@ -1,4 +1,4 @@
-module Core.UsageError where
+module Core.SessionError where
 
 import Core.Location
 import Hipq.Recv qualified
@@ -8,18 +8,18 @@ import Platform.Prelude
 import Pq qualified
 import TextBuilder qualified
 
-data UsageError
-  = UnexpectedNullCellUsageError
+data SessionError
+  = UnexpectedNullCellSessionError
       -- | Location of the cell.
       InResultCell
-  | CellDeserializationUsageError
+  | CellDeserializationSessionError
       -- | Location of the cell.
       InResultCell
       -- | Type OID.
       Word32
       -- | Underlying error.
       Text
-  | ServerUsageError
+  | ServerSessionError
       -- | Location.
       InStatementOrScript
       -- | Code.
@@ -32,12 +32,12 @@ data UsageError
       (Maybe Text)
       -- | Position (1-based index in the SQL string).
       (Maybe Int)
-  | UnexpectedResultUsageError
+  | UnexpectedResultSessionError
       -- | Location of the statement.
       InStatement
       -- | Details.
       Text
-  | RowCountUsageError
+  | RowCountSessionError
       -- | Location of the statement.
       InStatement
       -- | Expected minimum.
@@ -46,26 +46,26 @@ data UsageError
       Int
       -- | Actual.
       Int
-  | UnexpectedAmountOfColumnsUsageError
+  | UnexpectedAmountOfColumnsSessionError
       -- | Location of the statement.
       InStatement
       -- | Expected count.
       Int
       -- | Actual count.
       Int
-  | ConnectionUsageError
+  | ConnectionSessionError
       Text
   | -- | Either the server misbehaves or there is a bug in Hasql.
-    DriverUsageError
+    DriverSessionError
       Text
   deriving stock (Show, Eq)
 
-fromRecvError :: Hipq.Recv.Error (Maybe InStatement) -> UsageError
+fromRecvError :: Hipq.Recv.Error (Maybe InStatement) -> SessionError
 fromRecvError = \case
   Hipq.Recv.ResultError location _resultOffset resultError ->
     case location of
       Nothing ->
-        (DriverUsageError . TextBuilder.toText . mconcat)
+        (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected error outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Error: ",
@@ -76,30 +76,30 @@ fromRecvError = \case
   Hipq.Recv.NoResultsError location details ->
     case location of
       Nothing ->
-        (DriverUsageError . TextBuilder.toText . mconcat)
+        (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got no results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Details: ",
             toPlainText (show details)
           ]
       Just stmtLocation ->
-        RowCountUsageError stmtLocation 1 1 0
+        RowCountSessionError stmtLocation 1 1 0
   Hipq.Recv.TooManyResultsError location actual ->
     case location of
       Nothing ->
-        (DriverUsageError . TextBuilder.toText . mconcat)
+        (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got too many results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Amount: ",
             toPlainText actual
           ]
       Just stmtLocation ->
-        RowCountUsageError stmtLocation 1 1 actual
+        RowCountSessionError stmtLocation 1 1 actual
 
-fromStatementResultError :: InStatement -> Hipq.ResultDecoder.Error -> UsageError
+fromStatementResultError :: InStatement -> Hipq.ResultDecoder.Error -> SessionError
 fromStatementResultError stmtLocation = \case
   Hipq.ResultDecoder.ServerError code message detail hint position ->
-    ServerUsageError
+    ServerSessionError
       (StatementInStatementOrScript stmtLocation)
       (decodeUtf8Lenient code)
       (decodeUtf8Lenient message)
@@ -107,15 +107,15 @@ fromStatementResultError stmtLocation = \case
       (fmap decodeUtf8Lenient hint)
       position
   Hipq.ResultDecoder.UnexpectedResult msg ->
-    UnexpectedResultUsageError stmtLocation msg
+    UnexpectedResultSessionError stmtLocation msg
   Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
-    RowCountUsageError stmtLocation 1 1 actual
+    RowCountSessionError stmtLocation 1 1 actual
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
-    UnexpectedAmountOfColumnsUsageError stmtLocation expected actual
+    UnexpectedAmountOfColumnsSessionError stmtLocation expected actual
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
     let rowLocation = InResultRow stmtLocation 0
         cellLocation = InResultCell rowLocation colIdx
-     in CellDeserializationUsageError cellLocation actualOid ("Decoder type mismatch. Expected " <> fromString (show expectedOid))
+     in CellDeserializationSessionError cellLocation actualOid ("Decoder type mismatch. Expected " <> fromString (show expectedOid))
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     let rowLocation =
           InResultRow
@@ -123,7 +123,7 @@ fromStatementResultError stmtLocation = \case
             rowIndex
      in fromResultRowError rowLocation rowError
 
-fromResultRowError :: InResultRow -> Hipq.ResultRowDecoder.Error -> UsageError
+fromResultRowError :: InResultRow -> Hipq.ResultRowDecoder.Error -> SessionError
 fromResultRowError rowLocation = \case
   Hipq.ResultRowDecoder.CellError column cellError ->
     let location =
@@ -132,33 +132,33 @@ fromResultRowError rowLocation = \case
             column
      in case cellError of
           Hipq.ResultRowDecoder.DecodingCellError oid message ->
-            CellDeserializationUsageError location (Pq.oidToWord32 oid) message
+            CellDeserializationSessionError location (Pq.oidToWord32 oid) message
           Hipq.ResultRowDecoder.UnexpectedNullCellError _oid ->
-            UnexpectedNullCellUsageError location
+            UnexpectedNullCellSessionError location
 
-fromRecvErrorInScript :: InScript -> Hipq.Recv.Error (Maybe InScript) -> UsageError
+fromRecvErrorInScript :: InScript -> Hipq.Recv.Error (Maybe InScript) -> SessionError
 fromRecvErrorInScript scriptLocation = \case
   Hipq.Recv.ResultError _ _ resultError ->
     fromResultErrorInScript scriptLocation resultError
   Hipq.Recv.NoResultsError _ details ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Unexpectedly got no results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Details: ",
         toPlainText (show details)
       ]
   Hipq.Recv.TooManyResultsError _ actual ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Unexpectedly got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Amount: ",
         toPlainText actual
       ]
 
-fromResultErrorInScript :: InScript -> Hipq.ResultDecoder.Error -> UsageError
+fromResultErrorInScript :: InScript -> Hipq.ResultDecoder.Error -> SessionError
 fromResultErrorInScript scriptLocation = \case
   Hipq.ResultDecoder.ServerError code message detail hint position ->
-    ServerUsageError
+    ServerSessionError
       (ScriptInStatementOrScript scriptLocation)
       (decodeUtf8Lenient code)
       (decodeUtf8Lenient message)
@@ -166,24 +166,24 @@ fromResultErrorInScript scriptLocation = \case
       (fmap decodeUtf8Lenient hint)
       position
   Hipq.ResultDecoder.UnexpectedResult msg ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Unexpected result in script: ",
         toPlainText msg
       ]
   Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Unexpected amount of rows in script: ",
         toPlainText actual
       ]
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Unexpected amount of columns in script: expected ",
         toPlainText expected,
         ", got ",
         toPlainText actual
       ]
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Decoder type mismatch in script: expected OID ",
         toPlainText (show expectedOid),
         " at column ",
@@ -192,21 +192,21 @@ fromResultErrorInScript scriptLocation = \case
         toPlainText (show actualOid)
       ]
   Hipq.ResultDecoder.RowError rowIndex rowError ->
-    (DriverUsageError . TextBuilder.toText . mconcat)
+    (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Row error in script at row ",
         toPlainText rowIndex,
         ": ",
         toPlainText (show rowError)
       ]
 
-instance ToPlainText UsageError where
+instance ToPlainText SessionError where
   toPlainText = \case
-    UnexpectedNullCellUsageError location ->
+    UnexpectedNullCellSessionError location ->
       mconcat
         [ "Unexpected null value in ",
           toPlainText location
         ]
-    CellDeserializationUsageError location oid message ->
+    CellDeserializationSessionError location oid message ->
       mconcat
         [ "Failed to deserialize cell in ",
           toPlainText location,
@@ -216,7 +216,7 @@ instance ToPlainText UsageError where
           toPlainText oid,
           ")"
         ]
-    ServerUsageError location code message detail hint position ->
+    ServerSessionError location code message detail hint position ->
       mconcat
         [ "Server error in ",
           toPlainText location,
@@ -228,14 +228,14 @@ instance ToPlainText UsageError where
           maybe "" (\h -> " Hint: " <> toPlainText h) hint,
           maybe "" (\p -> " Position: " <> toPlainText (show p)) position
         ]
-    UnexpectedResultUsageError location message ->
+    UnexpectedResultSessionError location message ->
       mconcat
         [ "Unexpected result in ",
           toPlainText location,
           ": ",
           toPlainText message
         ]
-    RowCountUsageError location min max actual ->
+    RowCountSessionError location min max actual ->
       mconcat
         [ "Unexpected number of rows in ",
           toPlainText location,
@@ -246,7 +246,7 @@ instance ToPlainText UsageError where
           ", got ",
           toPlainText actual
         ]
-    UnexpectedAmountOfColumnsUsageError location expected actual ->
+    UnexpectedAmountOfColumnsSessionError location expected actual ->
       mconcat
         [ "Unexpected number of columns in ",
           toPlainText location,
@@ -255,12 +255,12 @@ instance ToPlainText UsageError where
           ", got ",
           toPlainText actual
         ]
-    ConnectionUsageError message ->
+    ConnectionSessionError message ->
       mconcat
         [ "Connection error: ",
           toPlainText message
         ]
-    DriverUsageError message ->
+    DriverSessionError message ->
       mconcat
         [ "Driver error: ",
           toPlainText message

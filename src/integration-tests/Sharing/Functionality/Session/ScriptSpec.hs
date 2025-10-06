@@ -10,9 +10,9 @@ import Prelude
 
 spec :: SpecWith (Text, Word16)
 spec = do
-  it "returns ServerUsageError on syntax errors" \config -> do
+  it "returns ServerSessionError on syntax errors" \config -> do
     Scripts.onConnection config \connection -> do
       result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
       case result of
-        Left (Connection.ServerUsageError (Connection.Location.ScriptInStatementOrScript _) _ _ _ _ _) -> pure ()
-        _ -> expectationFailure $ "Expected ServerUsageError in Script, got: " <> show result
+        Left (Connection.ServerSessionError (Connection.Location.ScriptInStatementOrScript _) _ _ _ _ _) -> pure ()
+        _ -> expectationFailure $ "Expected ServerSessionError in Script, got: " <> show result

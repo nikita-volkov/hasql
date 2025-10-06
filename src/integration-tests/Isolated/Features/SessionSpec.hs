@@ -38,7 +38,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
                 True
         result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
-          Left (Connection.ServerUsageError {}) -> pure ()
+          Left (Connection.ServerSessionError {}) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
 
     describe "IN simulation" do

@@ -146,9 +146,9 @@ library core
     Core.Contexts.ValueEncoder
     Core.Location
     Core.PostgresTypeInfo
+    Core.SessionError
     Core.Structures.ConnectionState
     Core.Structures.StatementCache
-    Core.UsageError
 
   other-modules:
   build-depends:

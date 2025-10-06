@@ -20,7 +20,7 @@ Major revision happened.
 - Due to the above the oldest supported PostgreSQL version now is 10. In older versions some types had different OIDs.
 
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
-  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT UsageError IO)`.
+  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT SessionError IO)`.
 
 - Dropped `MonadReader Connection` instance for `Session`.
 
@@ -28,7 +28,7 @@ Major revision happened.
 
 - Errors model completely redesigned to be flat with context being described by the location types.
 
-- `SessionError` is renamed to `UsageError` and moved from the `Hasql.Session` module to `Hasql.Connection`.
+- `SessionError` is renamed to `SessionError` and moved from the `Hasql.Session` module to `Hasql.Connection`.
 
 - `ConnectionError` is renamed to `AcquisitionError`.
 

@@ -27,7 +27,7 @@ import TestingKit.Preludes.Base
 
 data Error
   = AcquisitionError Connection.AcquisitionError
-  | UsageError Connection.UsageError
+  | SessionError Connection.SessionError
   deriving stock (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
@@ -45,7 +45,7 @@ runSessionWithSettings settings session =
       ExceptT $ fmap (first AcquisitionError) $ Connection.acquire settings
     use connection =
       ExceptT
-        $ fmap (first UsageError)
+        $ fmap (first SessionError)
         $ Connection.use connection session
     release connection =
       lift $ Connection.release connection

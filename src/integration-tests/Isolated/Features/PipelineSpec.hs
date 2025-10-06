@@ -54,7 +54,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               <*> BrokenSyntax.pipeline True BrokenSyntax.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Connection.ServerUsageError {}) -> pure ()
+            Left (Connection.ServerSessionError {}) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \connection -> do
@@ -79,7 +79,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Connection.CellDeserializationUsageError {}) -> pure ()
+            Left (Connection.CellDeserializationSessionError {}) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \connection -> do
