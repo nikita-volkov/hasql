@@ -59,3 +59,10 @@ spec = Testcontainers.aroundSpecWithConnection False do
           return s
 
       result `shouldBe` Right (3 :: Int64)
+
+  describe "Script errors" do
+    it "returns ScriptUsageError for script syntax errors" \connection -> do
+      result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
+      case result of
+        Left (Connection.ScriptUsageError {}) -> pure ()
+        _ -> expectationFailure $ "Expected ScriptUsageError, got: " <> show result
