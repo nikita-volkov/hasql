@@ -1,11 +1,29 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
 module Sharing.SpecHook where
 
-import Hasql.Connection qualified as Connection
 import Test.Hspec
-import TestingKit.Testcontainers qualified as Testcontainers
+import TestcontainersPostgresql qualified
 import Prelude
 
-hook :: SpecWith Connection.Connection -> Spec
-hook =
-  Testcontainers.aroundSpecWithConnection False . parallel
+type HookedSpec = SpecWith (Text, Word16)
+
+hook :: HookedSpec -> Spec
+hook hookedSpec = parallel do
+  byDistro "postgres:10" TestcontainersPostgresql.Distro10
+  byDistro "postgres:17" TestcontainersPostgresql.Distro17
+  where
+    byDistro name distro =
+      describe name do
+        aroundAll
+          ( \handler ->
+              TestcontainersPostgresql.run
+                TestcontainersPostgresql.Config
+                  { forwardLogs = False,
+                    distro,
+                    auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres"
+                  }
+                ( \(host, portInt) ->
+                    handler (host, fromIntegral portInt)
+                )
+          )
+          (parallel hookedSpec)
