@@ -295,12 +295,13 @@ test-suite integration-tests
     Isolated.Features.ConcurrencySpec
     Isolated.Features.ConnectionSpec
     Isolated.Features.DecoderCompatibilityCheckSpec
-    Isolated.Features.ErrorsSpec
     Isolated.Features.PipelineSpec
     Isolated.Features.SessionSpec
     Isolated.Features.StatementSpec
     Isolated.Features.SyntaxErrorsSpec
     Isolated.Functionality.Connection.AcquireSpec
+    Sharing.Functionality.Connection.UseSpec
+    Sharing.Functionality.Session.CatchErrorSpec
     Sharing.Functionality.Session.ScriptSpec
     Sharing.SpecHook
 
