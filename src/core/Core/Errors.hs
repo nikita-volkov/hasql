@@ -4,7 +4,6 @@ import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
 import Hipq.ResultRowDecoder qualified
 import Platform.Prelude
-import Pq qualified
 import TextBuilder qualified
 import TextBuilderExtras qualified
 
@@ -32,7 +31,7 @@ data ConnectionError
 -- Execution error from PostgreSQL server.
 data ExecutionError
   = ExecutionError
-      -- | Code.
+      -- | SQL State Code.
       Text
       -- | Message.
       Text
@@ -56,7 +55,8 @@ data CellError
 -- |
 -- Statement-level error.
 data StatementError
-  = ExecutionStatementError ExecutionError
+  = -- | The server rejected the statement with an error.
+    ExecutionStatementError ExecutionError
   | RowCountStatementError
       -- | Expected minimum.
       Int
@@ -69,13 +69,18 @@ data StatementError
       Int
       -- | Actual count.
       Int
+  | UnexpectedColumnTypeStatementError
+      -- | 0-based column index.
+      Int
+      -- | Expected type OID.
+      Word32
+      -- | Actual type OID.
+      Word32
   | ResultCellStatementError
       -- | 0-based row index.
       Int
       -- | 0-based column index.
       Int
-      -- | Type OID.
-      Word32
       -- | Underlying cell error.
       CellError
   | -- | Either the server misbehaves or there is a bug in Hasql.
@@ -182,18 +187,16 @@ fromStatementResultError = \case
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-    ResultCellStatementError
-      0
+    UnexpectedColumnTypeStatementError
       colIdx
+      expectedOid
       actualOid
-      (DeserializationCellError ("Decoder type mismatch. Expected " <> fromString (show expectedOid)))
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     case rowError of
-      Hipq.ResultRowDecoder.CellError column oid cellErr ->
+      Hipq.ResultRowDecoder.CellError column _oid cellErr ->
         ResultCellStatementError
           rowIndex
           column
-          (Pq.oidToWord32 oid)
           ( case cellErr of
               Hipq.ResultRowDecoder.DecodingCellError msg -> DeserializationCellError msg
               Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNullCellError
@@ -307,14 +310,21 @@ instance ToPlainText StatementError where
           ", got ",
           toPlainText actual
         ]
-    ResultCellStatementError rowIdx colIdx actualOid cellErr ->
+    UnexpectedColumnTypeStatementError colIdx expected actual ->
+      mconcat
+        [ "Unexpected column type at index ",
+          TextBuilder.decimal colIdx,
+          ": expected OID ",
+          TextBuilder.decimal expected,
+          ", got OID ",
+          TextBuilder.decimal actual
+        ]
+    ResultCellStatementError rowIdx colIdx cellErr ->
       mconcat
         [ "In row ",
           TextBuilder.decimal rowIdx,
           ", column ",
           TextBuilder.decimal colIdx,
-          ", OID ",
-          TextBuilder.decimal actualOid,
           ": ",
           toPlainText cellErr
         ]

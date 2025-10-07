@@ -80,7 +80,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
               <*> WrongDecoder.pipeline True WrongDecoder.Params {start = 0, end = 2}
               <*> GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ResultCellStatementError {})) -> pure ()
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {})) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \connection -> do
