@@ -76,7 +76,7 @@ data StatementError
       Word32
       -- | Actual type OID.
       Word32
-  | ResultCellStatementError
+  | CellStatementError
       -- | 0-based row index.
       Int
       -- | 0-based column index.
@@ -194,7 +194,7 @@ fromStatementResultError = \case
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     case rowError of
       Hipq.ResultRowDecoder.CellError column _oid cellErr ->
-        ResultCellStatementError
+        CellStatementError
           rowIndex
           column
           ( case cellErr of
@@ -319,7 +319,7 @@ instance ToPlainText StatementError where
           ", got OID ",
           TextBuilder.decimal actual
         ]
-    ResultCellStatementError rowIdx colIdx cellErr ->
+    CellStatementError rowIdx colIdx cellErr ->
       mconcat
         [ "In row ",
           TextBuilder.decimal rowIdx,
