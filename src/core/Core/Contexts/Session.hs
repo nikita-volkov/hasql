@@ -46,10 +46,9 @@ script sql =
     case result of
       Left err -> case err of
         Hipq.Roundtrip.ClientError _ details -> do
-          Pq.reset connection
           pure
             ( Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)),
-              ConnectionState.resetPreparedStatementsCache connectionState
+              connectionState
             )
         Hipq.Roundtrip.ServerError recvError ->
           pure

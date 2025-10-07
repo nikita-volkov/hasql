@@ -18,8 +18,10 @@ import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Setting qualified as Setting
+import Hasql.Errors qualified as Errors
 import Platform.Prelude
 import Pq qualified
+import TextBuilder qualified
 
 -- |
 -- A single connection to the database.
@@ -109,31 +111,47 @@ release (Connection connectionRef) =
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
-use connection session =
-  useConnectionState connection \connectionState -> do
-    Session.run session connectionState
-
-useConnectionState :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
-useConnectionState (Connection var) handler =
+use (Connection var) session =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
-    result <- try @SomeException (restore (handler connectionState))
+    result <- try @SomeException (restore (Session.run session connectionState))
     case result of
       Left exception -> do
         -- If an exception happened, we need to check the connection status.
         -- If the connection is not idle, we need to reset it
         -- and clear the prepared statement registry.
         Pq.transactionStatus connection >>= \case
+          -- The connection is idle.
           Pq.TransIdle -> do
             -- If the connection is idle, just put back the connection state.
             putMVar var connectionState
-          _ -> do
-            -- If the connection is not idle, reset the prepared statement registry
-            -- and reset the connection itself.
-            Pq.reset connection
-            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
+            throwIO exception
 
-        throwIO exception
+          -- A command is in progress. This is unexpected. The connection is corrupted.
+          -- Probably a leak in the masking of asynchronous exceptions.
+          Pq.TransActive -> do
+            putMVar var connectionState
+            (pure . Left . Errors.DriverSessionError . TextBuilder.toText . mconcat)
+              [ "Connection is in an unexpected state: a command is in progress. Report this as a bug. In the meantime, we've intercepted the following exception: ",
+                TextBuilder.string (displayException exception)
+              ]
+
+          -- Idle, in a valid transaction block.
+          Pq.TransInTrans -> do
+            -- Abort the transaction.
+            _ <- Pq.exec connection "ABORT;"
+            putMVar var connectionState
+            throwIO exception
+
+          -- Idle, in a failed transaction block.
+          Pq.TransInError -> do
+            putMVar var connectionState
+            throwIO exception
+
+          -- The connection is bad.
+          Pq.TransUnknown -> do
+            putMVar var connectionState
+            throwIO exception
       Right (result, !newState) -> do
         putMVar var newState
         pure result
