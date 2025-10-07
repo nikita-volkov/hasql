@@ -48,7 +48,7 @@ script sql =
         Hipq.Roundtrip.ClientError _ details -> do
           Pq.reset connection
           pure
-            ( Left (Errors.ConnectionSessionError (maybe "Connection error" decodeUtf8Lenient details)),
+            ( Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)),
               ConnectionState.resetPreparedStatementsCache connectionState
             )
         Hipq.Roundtrip.ServerError recvError ->
