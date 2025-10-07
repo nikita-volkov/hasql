@@ -289,6 +289,8 @@ test-suite integration-tests
   main-is: Main.hs
   other-modules:
     Helpers.Scripts
+    Helpers.Statements.SelectOne
+    Helpers.Statements.Sleep
     Isolated.Bugs.PipelineAbortSpec
     Isolated.Bugs.PreparedStatementAlreadyExistsSpec
     Isolated.Features.CodecsSpec
