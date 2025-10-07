@@ -313,6 +313,7 @@ test-suite integration-tests
     Sharing.Functionality.Connection.UseSpec
     Sharing.Functionality.Session.CatchErrorSpec
     Sharing.Functionality.Session.ScriptSpec
+    Sharing.Functionality.SessionSpec
     Sharing.SpecHook
 
   build-tool-depends:
