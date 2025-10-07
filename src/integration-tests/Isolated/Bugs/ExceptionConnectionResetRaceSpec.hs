@@ -8,6 +8,7 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Helpers.Statements.SelectProvidedInt8 qualified as Statements.SelectProvidedInt8
 import System.Timeout
 import Test.Hspec
 import TestingKit.Testcontainers qualified as Testcontainers
@@ -26,13 +27,6 @@ spec = Testcontainers.aroundSpecWithConnection True do
       -- 1. Thread A starts a session that will throw an exception
       -- 2. Thread B repeatedly tries to use the connection
       -- 3. The exception in Thread A should not corrupt the connection for Thread B
-
-      let simpleStatement =
-            Statement.Statement
-              "select $1 :: int8"
-              (Encoders.param (Encoders.nonNullable Encoders.int8))
-              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-              True
 
       -- Counter to track successful operations by Thread B
       successCount <- newIORef (0 :: Int)
@@ -60,7 +54,7 @@ spec = Testcontainers.aroundSpecWithConnection True do
       _ <- forkIO do
         takeMVar startBarrier
         replicateM_ 20 do
-          result <- Connection.use connection (Session.statement (42 :: Int64) simpleStatement)
+          result <- Connection.use connection (Session.statement 42 Statements.SelectProvidedInt8.statement)
           case result of
             Right 42 -> atomicModifyIORef' successCount (\n -> (n + 1, ()))
             _ -> atomicModifyIORef' errorCount (\n -> (n + 1, ()))
@@ -93,5 +87,5 @@ spec = Testcontainers.aroundSpecWithConnection True do
           successes `shouldSatisfy` (> 0)
 
           -- Verify connection is still usable after all this
-          finalResult <- Connection.use connection (Session.statement (99 :: Int64) simpleStatement)
+          finalResult <- Connection.use connection (Session.statement 99 Statements.SelectProvidedInt8.statement)
           finalResult `shouldBe` Right 99

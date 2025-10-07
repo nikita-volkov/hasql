@@ -290,6 +290,7 @@ test-suite integration-tests
   other-modules:
     Helpers.Scripts
     Helpers.Statements.SelectOne
+    Helpers.Statements.SelectProvidedInt8
     Helpers.Statements.Sleep
     Isolated.Bugs.ExceptionConnectionResetRaceSpec
     Isolated.Bugs.PipelineAbortSpec
