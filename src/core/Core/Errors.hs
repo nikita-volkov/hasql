@@ -57,9 +57,6 @@ data CellError
 -- Statement-level error.
 data StatementError
   = ExecutionStatementError ExecutionError
-  | UnexpectedResultStatementError
-      -- | Details.
-      Text
   | RowCountStatementError
       -- | Expected minimum.
       Int
@@ -81,6 +78,10 @@ data StatementError
       Word32
       -- | Underlying cell error.
       CellError
+  | -- | Either the server misbehaves or there is a bug in Hasql.
+    DriverStatementError
+      -- | Details.
+      Text
   deriving stock (Show, Eq)
 
 data SessionError
@@ -175,7 +176,7 @@ fromStatementResultError = \case
           position
       )
   Hipq.ResultDecoder.UnexpectedResult msg ->
-    UnexpectedResultStatementError msg
+    DriverStatementError msg
   Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
     RowCountStatementError 1 1 actual
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
@@ -290,11 +291,6 @@ instance ToPlainText StatementError where
         [ "Server error: ",
           toPlainText executionError
         ]
-    UnexpectedResultStatementError message ->
-      mconcat
-        [ "Unexpected result: ",
-          toPlainText message
-        ]
     RowCountStatementError min max actual ->
       mconcat
         [ "Unexpected number of rows: expected ",
@@ -321,6 +317,11 @@ instance ToPlainText StatementError where
           TextBuilder.decimal actualOid,
           ": ",
           toPlainText cellErr
+        ]
+    DriverStatementError message ->
+      mconcat
+        [ "Driver error: ",
+          toPlainText message
         ]
 
 instance ToPlainText SessionError where
