@@ -4,10 +4,7 @@ import Control.Concurrent
 import Control.Exception
 import Data.IORef
 import Hasql.Connection qualified as Connection
-import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
-import Hasql.Statement qualified as Statement
 import Helpers.Statements.SelectProvidedInt8 qualified as Statements.SelectProvidedInt8
 import System.Timeout
 import Test.Hspec
@@ -85,6 +82,8 @@ spec = Testcontainers.aroundSpecWithConnection True do
           -- Thread B should have succeeded at least some times
           -- If the bug exists, we'd expect Thread B to get errors due to corrupted connection state
           successes `shouldSatisfy` (> 0)
+
+          errors `shouldBe` 0
 
           -- Verify connection is still usable after all this
           finalResult <- Connection.use connection (Session.statement 99 Statements.SelectProvidedInt8.statement)
