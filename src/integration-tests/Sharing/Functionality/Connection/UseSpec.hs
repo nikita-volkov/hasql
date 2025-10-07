@@ -6,9 +6,10 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Helpers.Frameworks.Execution qualified as Execution
+import Helpers.NewStatements.Sleep qualified as Statements
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectOne qualified as Statements.SelectOne
-import Helpers.Statements.Sleep qualified as Statements.Sleep
 import Test.Hspec
 import Prelude
 
@@ -49,7 +50,7 @@ spec = do
         result <-
           timeout 50_000 do
             Connection.use connection do
-              Session.statement (0.1 :: Double) Statements.Sleep.statement
+              Execution.sessionByParams (Statements.Sleep 0.1)
 
         result `shouldBe` Nothing
 
@@ -66,7 +67,7 @@ spec = do
           timeout 50_000 do
             Connection.use connection do
               Session.script "begin;"
-              Session.statement (0.1 :: Double) Statements.Sleep.statement
+              Execution.sessionByParams (Statements.Sleep 0.1)
               Session.script "commit;"
 
         result `shouldBe` Nothing
@@ -91,7 +92,7 @@ spec = do
                 timeout 50_000 do
                   Connection.use connection do
                     Session.script "begin;"
-                    Session.statement (0.1 :: Double) Statements.Sleep.statement
+                    Execution.sessionByParams (Statements.Sleep 0.1)
 
               result `shouldBe` Nothing
 
@@ -125,7 +126,7 @@ spec = do
                 timeout 50_000 do
                   Connection.use connection do
                     Session.script "begin;"
-                    Session.statement (0.1 :: Double) Statements.Sleep.statement
+                    Execution.sessionByParams (Statements.Sleep 0.1)
                     Session.script "commit;"
 
               result `shouldBe` Nothing
