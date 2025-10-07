@@ -142,8 +142,8 @@ useConnectionState (Connection var) handler =
           _ -> do
             -- If the connection is not idle, reset the prepared statement registry
             -- and reset the connection itself.
-            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             Pq.reset connection
+            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
 
         throwIO exception
       Right (result, !newState) -> do
