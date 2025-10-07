@@ -8,6 +8,7 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import System.Timeout
 import Test.Hspec
 import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
@@ -70,18 +71,27 @@ spec = Testcontainers.aroundSpecWithConnection True do
       putMVar startBarrier ()
       putMVar startBarrier ()
 
-      -- Wait for both threads to complete
-      takeMVar doneBarrier
-      takeMVar doneBarrier
+      -- Wait for both threads to complete with a timeout
+      -- If the bug exists, threads may hang waiting for a corrupted connection
+      result <- timeout (5 * 1000000) do
+        -- 5 seconds timeout
+        takeMVar doneBarrier
+        takeMVar doneBarrier
 
-      -- Check results
-      successes <- readIORef successCount
-      errors <- readIORef errorCount
+      case result of
+        Nothing -> do
+          -- Test timed out - this indicates the bug is present
+          expectationFailure "Test timed out waiting for threads to complete. This indicates the connection became deadlocked due to the race condition bug."
+        Just () -> do
+          -- Threads completed successfully
+          -- Check results
+          successes <- readIORef successCount
+          errors <- readIORef errorCount
 
-      -- Thread B should have succeeded at least some times
-      -- If the bug exists, we'd expect Thread B to get errors due to corrupted connection state
-      successes `shouldSatisfy` (> 0)
+          -- Thread B should have succeeded at least some times
+          -- If the bug exists, we'd expect Thread B to get errors due to corrupted connection state
+          successes `shouldSatisfy` (> 0)
 
-      -- Verify connection is still usable after all this
-      finalResult <- Connection.use connection (Session.statement (99 :: Int64) simpleStatement)
-      finalResult `shouldBe` Right 99
+          -- Verify connection is still usable after all this
+          finalResult <- Connection.use connection (Session.statement (99 :: Int64) simpleStatement)
+          finalResult `shouldBe` Right 99
