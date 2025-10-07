@@ -28,9 +28,9 @@ Major revision happened.
 
 - Errors model completely redesigned to be flat with context being described by the location types.
 
-- `SessionError` is renamed to `SessionError` and moved from the `Hasql.Session` module to `Hasql.Connection`.
+- `ConnectionError` restructured and moved from the `Hasql.Connection` module to `Hasql.Errors`.
 
-- `ConnectionError` is renamed to `AcquisitionError`.
+- `SessionError` restructured and moved from the `Hasql.Session` module to `Hasql.Errors`.
 
 - `usePreparedStatements` setting dropped. Use `disablePreparedStatements` instead.
 

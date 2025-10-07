@@ -1,12 +1,5 @@
 module Core.Location
-  ( module Core.Errors,
+  {-# DEPRECATED "Location types have been removed. SessionError now forms a tree hierarchy instead." #-}
+  (
   )
 where
-
-import Core.Errors
-  ( InResultCell (..),
-    InResultRow (..),
-    InScript (..),
-    InStatement (..),
-    InStatementOrScript (..),
-  )

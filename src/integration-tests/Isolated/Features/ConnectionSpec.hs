@@ -4,6 +4,7 @@ import Hasql.Connection qualified
 import Hasql.Connection.Setting qualified
 import Hasql.Connection.Setting.Connection qualified
 import Hasql.Connection.Setting.Connection.Param qualified
+import Hasql.Errors qualified as Errors
 import Test.Hspec
 import TestcontainersPostgresql qualified
 import Prelude
@@ -54,7 +55,7 @@ byDistro distro = do
         itConnects "new user" "password"
 
   describe "Connection errors" do
-    describe "NetworkingAcquisitionError" do
+    describe "NetworkingConnectionError" do
       it "is reported for invalid host" do
         result <-
           Hasql.Connection.acquire
@@ -68,8 +69,8 @@ byDistro distro = do
                 )
             ]
         case result of
-          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
+          Left (Errors.NetworkingConnectionError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
       it "is reported for connection refused" do
@@ -85,11 +86,11 @@ byDistro distro = do
                 )
             ]
         case result of
-          Left (Hasql.Connection.NetworkingAcquisitionError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingAcquisitionError, got: " <> show err)
+          Left (Errors.NetworkingConnectionError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
-    describe "AuthenticationAcquisitionError" do
+    describe "AuthenticationConnectionError" do
       it "is reported for invalid credentials" do
         TestcontainersPostgresql.run
           ( TestcontainersPostgresql.Config
@@ -111,7 +112,7 @@ byDistro distro = do
                       )
                   ]
               case result of
-                Left (Hasql.Connection.AuthenticationAcquisitionError _) -> pure ()
-                Left err -> expectationFailure ("Expected AuthenticationAcquisitionError, got: " <> show err)
+                Left (Errors.AuthenticationConnectionError _) -> pure ()
+                Left err -> expectationFailure ("Expected AuthenticationConnectionError, got: " <> show err)
                 Right _conn -> expectationFailure "Expected connection to fail with authentication error"
           )

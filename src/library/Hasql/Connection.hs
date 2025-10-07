@@ -8,10 +8,6 @@ module Hasql.Connection
     release,
     use,
     withLibPQConnection,
-
-    -- * Reexports
-    AcquisitionError (..),
-    SessionError (..),
   )
 where
 
@@ -35,7 +31,7 @@ newtype Connection
 -- Establish a connection according to the provided settings.
 acquire ::
   [Setting.Setting] ->
-  IO (Either AcquisitionError Connection)
+  IO (Either ConnectionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
   runExceptT do
@@ -52,7 +48,7 @@ acquire settings =
     -- Check version:
     version <- lift (ServerVersion.load pqConnection)
     when (version < ServerVersion.minimum) do
-      throwError (CompatibilityAcquisitionError ("Server version is lower than 10: " <> ServerVersion.toText version))
+      throwError (CompatibilityConnectionError ("Server version is lower than 10: " <> ServerVersion.toText version))
 
     -- Initialize:
     lift do
@@ -71,17 +67,17 @@ acquire settings =
   where
     config = Config.fromUpdates settings
 
-    interpretConnectionError :: Maybe ByteString -> AcquisitionError
+    interpretConnectionError :: Maybe ByteString -> ConnectionError
     interpretConnectionError errorMessage =
       case errorMessage of
-        Nothing -> OtherAcquisitionError "Unknown connection error"
+        Nothing -> OtherConnectionError "Unknown connection error"
         Just msg ->
           let msgText = decodeUtf8Lenient msg
               msgLower = Text.toLower msgText
            in if
-                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquisitionError msgText
-                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquisitionError msgText
-                | otherwise -> OtherAcquisitionError (decodeUtf8Lenient msg)
+                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingConnectionError msgText
+                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationConnectionError msgText
+                | otherwise -> OtherConnectionError (decodeUtf8Lenient msg)
 
     networkingErrors :: [Text]
     networkingErrors =

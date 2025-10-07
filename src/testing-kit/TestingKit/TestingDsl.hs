@@ -19,6 +19,7 @@ where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Setting qualified as Connection.Setting
+import Hasql.Errors qualified as Errors
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
@@ -26,8 +27,8 @@ import TestingKit.Constants qualified as Constants
 import TestingKit.Preludes.Base
 
 data Error
-  = AcquisitionError Connection.AcquisitionError
-  | SessionError Connection.SessionError
+  = ConnectionError Errors.ConnectionError
+  | SessionError Errors.SessionError
   deriving stock (Show, Eq)
 
 runSessionOnLocalDb :: Session.Session a -> IO (Either Error a)
@@ -42,7 +43,7 @@ runSessionWithSettings settings session =
   runExceptT $ acquire >>= \connection -> use connection <* release connection
   where
     acquire =
-      ExceptT $ fmap (first AcquisitionError) $ Connection.acquire settings
+      ExceptT $ fmap (first ConnectionError) $ Connection.acquire settings
     use connection =
       ExceptT
         $ fmap (first SessionError)

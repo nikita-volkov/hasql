@@ -102,7 +102,6 @@ library
   hs-source-dirs: src/library
   exposed-modules:
     Hasql.Connection
-    Hasql.Connection.Location
     Hasql.Connection.Setting
     Hasql.Connection.Setting.Connection
     Hasql.Connection.Setting.Connection.Param
@@ -148,7 +147,6 @@ library core
     Core.Errors
     Core.Location
     Core.PostgresTypeInfo
-    Core.SessionError
     Core.Structures.ConnectionState
     Core.Structures.StatementCache
 
