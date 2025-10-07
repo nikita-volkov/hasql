@@ -1,4 +1,4 @@
-module Isolated.Features.SyntaxErrorsSpec (spec) where
+module Sharing.Functionality.Session.SyntaxErrorsSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
@@ -7,17 +7,17 @@ import Hasql.Errors qualified as Errors
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Helpers.Scripts qualified as Scripts
 import Test.Hspec
-import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
-spec :: Spec
-spec = Testcontainers.aroundSpecWithConnection True do
+spec :: SpecWith (Text, Word16)
+spec = do
   forM_ [False, True] \inPipeline -> do
     describe (if inPipeline then "Pipeline" else "Session") do
       forM_ [False, True] \preparable -> do
         describe (if preparable then "Preparable" else "Unpreparable") do
-          it "gets reported properly" \connection -> do
+          it "gets reported properly" \config -> Scripts.onConnection config \connection -> do
             result <- Connection.use connection do
               let statement = Statement.Statement "-" mempty Decoders.noResult preparable
               if inPipeline

@@ -1,28 +1,28 @@
-module Isolated.Features.PipelineSpec (spec) where
+module Sharing.Functionality.Session.PipelineSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
+import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import TestingKit.Statements.BrokenSyntax qualified as BrokenSyntax
 import TestingKit.Statements.GenerateSeries qualified as GenerateSeries
 import TestingKit.Statements.WrongDecoder qualified as WrongDecoder
-import TestingKit.Testcontainers qualified as Testcontainers
 import TestingKit.TestingDsl qualified as Dsl
 import Prelude
 
-spec :: Spec
-spec = Testcontainers.aroundSpecWithConnection False do
+spec :: SpecWith (Text, Word16)
+spec = do
   describe "Single-statement" do
     describe "Unprepared" do
-      it "Collects results and sends params" \connection -> do
+      it "Collects results and sends params" \config -> Scripts.onConnection config \connection -> do
         result <-
           (Connection.use connection . Session.pipeline)
             $ GenerateSeries.pipeline False GenerateSeries.Params {start = 0, end = 2}
         shouldBe result (Right [0 .. 2])
 
     describe "Prepared" do
-      it "Collects results and sends params" \connection -> do
+      it "Collects results and sends params" \config -> Scripts.onConnection config \connection -> do
         result <-
           (Connection.use connection . Session.pipeline)
             $ GenerateSeries.pipeline True GenerateSeries.Params {start = 0, end = 2}
@@ -30,7 +30,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
 
   describe "Multi-statement" do
     describe "On unprepared statements" do
-      it "Collects results and sends params" \connection -> do
+      it "Collects results and sends params" \config -> Scripts.onConnection config \connection -> do
         result <-
           (Connection.use connection . Session.pipeline)
             $ replicateM 2
@@ -38,7 +38,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
         shouldBe result (Right [[0 .. 2], [0 .. 2]])
 
     describe "On prepared statements" do
-      it "Collects results and sends params" \connection -> do
+      it "Collects results and sends params" \config -> Scripts.onConnection config \connection -> do
         result <-
           (Connection.use connection . Session.pipeline)
             $ replicateM 2
@@ -47,7 +47,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
 
     describe "When a part in the middle fails" do
       describe "With query error" do
-        it "Captures the error" \connection -> do
+        it "Captures the error" \config -> Scripts.onConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ (,,)
@@ -58,7 +58,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
-        it "Leaves the connection usable" \connection -> do
+        it "Leaves the connection usable" \config -> Scripts.onConnection config \connection -> do
           result <-
             Connection.use connection do
               _ <-
@@ -72,7 +72,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
           shouldBe result (Right [0])
 
       describe "With decoding error" do
-        it "Captures the error" \connection -> do
+        it "Captures the error" \config -> Scripts.onConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ (,,)
@@ -83,7 +83,7 @@ spec = Testcontainers.aroundSpecWithConnection False do
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {})) -> pure ()
             _ -> expectationFailure $ "Unexpected result: " <> show result
 
-        it "Leaves the connection usable" \connection -> do
+        it "Leaves the connection usable" \config -> Scripts.onConnection config \connection -> do
           result <-
             Connection.use connection do
               _ <-
