@@ -251,14 +251,15 @@ fromRecvErrorInScript scriptSql = \case
           ]
   Hipq.Recv.NoResultsError _ details ->
     (DriverSessionError . TextBuilder.toText . mconcat)
-      [ "Unexpectedly got no results in script. ",
-        "This indicates a bug in Hasql or the server misbehaving. ",
-        "Details: ",
-        toPlainText (show details)
+      [ "Got no results in script.",
+        " This indicates a bug in Hasql or the server misbehaving.",
+        details
+          & filter (/= "")
+          & foldMap (mappend " Details: " . toPlainText . decodeUtf8Lenient)
       ]
   Hipq.Recv.TooManyResultsError _ actual ->
     (DriverSessionError . TextBuilder.toText . mconcat)
-      [ "Unexpectedly got too many results in script. ",
+      [ "Got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Amount: ",
         toPlainText actual
