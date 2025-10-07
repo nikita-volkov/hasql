@@ -20,13 +20,15 @@ data Error
   = CellError
       -- | Column index, 0-based.
       Int
+      -- | OID of the column type as reported by Postgres.
+      Pq.Oid
       -- | Underlying error.
       CellError
   deriving stock (Eq, Show)
 
 data CellError
-  = DecodingCellError Pq.Oid Text
-  | UnexpectedNullCellError Pq.Oid
+  = DecodingCellError Text
+  | UnexpectedNullCellError
   deriving stock (Eq, Show)
 
 newtype ResultRowDecoder a
@@ -65,13 +67,13 @@ column processNullable valueDec = ResultRowDecoder do
     Just v -> do
       oid <- liftIO (Pq.ftype result col)
       case {-# SCC "decode" #-} valueDec v of
-        Left err -> throwError (CellError colInt (DecodingCellError oid err))
+        Left err -> throwError (CellError colInt oid (DecodingCellError err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
     Nothing -> do
       oid <- liftIO (Pq.ftype result col)
-      throwError (CellError colInt (UnexpectedNullCellError oid))
+      throwError (CellError colInt oid UnexpectedNullCellError)
     Just decoded -> pure decoded
 
 -- |

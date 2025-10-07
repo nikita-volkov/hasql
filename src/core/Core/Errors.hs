@@ -48,9 +48,7 @@ data ExecutionError
 -- Cell-level decoding error.
 data CellError
   = UnexpectedNullCellError
-  | CellDeserializationError
-      -- | Type OID.
-      Word32
+  | DeserializationCellError
       -- | Underlying error.
       Text
   deriving stock (Show, Eq)
@@ -79,6 +77,8 @@ data StatementError
       Int
       -- | 0-based column index.
       Int
+      -- | Type OID.
+      Word32
       -- | Underlying cell error.
       CellError
   deriving stock (Show, Eq)
@@ -185,17 +185,19 @@ fromStatementResultError = \case
     CellStatementError
       0
       colIdx
-      (CellDeserializationError actualOid ("Decoder type mismatch. Expected " <> fromString (show expectedOid)))
+      actualOid
+      (DeserializationCellError ("Decoder type mismatch. Expected " <> fromString (show expectedOid)))
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     -- Inline RowError conversion
     case rowError of
-      Hipq.ResultRowDecoder.CellError column cellErr ->
+      Hipq.ResultRowDecoder.CellError column oid cellErr ->
         CellStatementError
           rowIndex
           column
+          (Pq.oidToWord32 oid)
           ( case cellErr of
-              Hipq.ResultRowDecoder.DecodingCellError oid msg -> CellDeserializationError (Pq.oidToWord32 oid) msg
-              Hipq.ResultRowDecoder.UnexpectedNullCellError _ -> UnexpectedNullCellError
+              Hipq.ResultRowDecoder.DecodingCellError msg -> DeserializationCellError msg
+              Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNullCellError
           )
 
 fromRecvErrorInScript :: ByteString -> Hipq.Recv.Error (Maybe ByteString) -> SessionError
@@ -277,13 +279,10 @@ instance ToPlainText CellError where
   toPlainText = \case
     UnexpectedNullCellError ->
       "Unexpected null value"
-    CellDeserializationError oid message ->
+    DeserializationCellError message ->
       mconcat
         [ "Failed to deserialize cell: ",
-          toPlainText message,
-          " (OID: ",
-          toPlainText oid,
-          ")"
+          toPlainText message
         ]
 
 instance ToPlainText StatementError where
@@ -314,12 +313,14 @@ instance ToPlainText StatementError where
           ", got ",
           toPlainText actual
         ]
-    CellStatementError rowIdx colIdx cellErr ->
+    CellStatementError rowIdx colIdx actualOid cellErr ->
       mconcat
         [ "In row ",
           TextBuilder.decimal rowIdx,
           ", column ",
           TextBuilder.decimal colIdx,
+          ", OID ",
+          TextBuilder.decimal actualOid,
           ": ",
           toPlainText cellErr
         ]
