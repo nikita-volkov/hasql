@@ -6,15 +6,14 @@ module Core.Contexts.Pipeline
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
-import Core.Location
-import Core.SessionError
+import Core.Errors qualified as Errors
 import Core.Structures.StatementCache qualified as StatementCache
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-run :: forall a. Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either SessionError a, StatementCache.StatementCache)
+run :: Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either Errors.SessionError a, StatementCache.StatementCache)
 run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   let (roundtrip, newCache) = run 0 usePreparedStatements cache
       adaptedRoundtrip = first adaptContext roundtrip
@@ -22,15 +21,15 @@ run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   case result of
     Left (Hipq.Roundtrip.ClientError _context details) -> do
       Pq.reset connection
-      pure (Left (ConnectionSessionError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
+      pure (Left (Errors.ConnectionSessionError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
     Left (Hipq.Roundtrip.ServerError recvError) ->
-      pure (Left (fromRecvError recvError), newCache)
+      pure (Left (Errors.fromRecvError recvError), newCache)
     Right a ->
       pure (Right a, newCache)
   where
-    adaptContext :: Context -> Maybe InStatement
+    adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
     adaptContext (Context index sql params prepared) =
-      Just (InStatement totalStatements index sql params prepared)
+      Just (totalStatements, index, sql, params, prepared)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

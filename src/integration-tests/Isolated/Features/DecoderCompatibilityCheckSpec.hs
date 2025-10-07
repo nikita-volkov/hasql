@@ -3,8 +3,8 @@ module Isolated.Features.DecoderCompatibilityCheckSpec (spec) where
 import Data.Either
 import Data.Vector qualified as Vector
 import Hasql.Connection qualified as Connection
-import Hasql.Connection.Location qualified as Location
 import Hasql.Decoders qualified as Decoders
+import Hasql.Errors qualified as Errors
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
@@ -37,7 +37,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                   preparable
           result <- Connection.use connection (executor statement)
           case result of
-            Left (Connection.UnexpectedAmountOfColumnsSessionError _ expected actual) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
               shouldBe expected 1
               shouldBe actual 2
             Left err ->
@@ -59,7 +59,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                   preparable
           result <- Connection.use connection (executor statement)
           case result of
-            Left (Connection.UnexpectedAmountOfColumnsSessionError _ expected actual) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
               shouldBe expected 2
               shouldBe actual 1
             Left err ->
@@ -83,9 +83,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                 shouldBe column 1
-                (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
+                (expected, actual) `shouldBe` (20, 25)
               Left err ->
                 expectationFailure ("Unexpected type of error: " <> show err)
               result ->
@@ -106,9 +106,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                 shouldBe column 1
-                (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
+                (expected, actual) `shouldBe` (20, 25)
               Left err ->
                 expectationFailure ("Unexpected type of error: " <> show err)
               result ->
@@ -118,7 +118,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           it "gets reported when column type mismatches decoder" \connection -> do
             let statement =
                   Statement.Statement
-                    "select 1::int8, 'text'"
+                    "select int8 '1', text 'text'"
                     mempty
                     ( Decoders.rowVector
                         ( (,)
@@ -129,9 +129,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     preparable
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                 shouldBe column 1
-                (oid, msg) `shouldBe` (25, "Decoder type mismatch. Expected 20")
+                (expected, actual) `shouldBe` (20, 25)
               Left err ->
                 expectationFailure ("Unexpected type of error: " <> show err)
               result ->
@@ -151,9 +151,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                         preparable
                 result <- Connection.use connection (executor statement)
                 case result of
-                  Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
+                  Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                     shouldBe column 0
-                    (oid, msg) `shouldBe` (20, "Decoder type mismatch. Expected 1016")
+                    (expected, actual) `shouldBe` (1016, 20)
                   Left err ->
                     expectationFailure ("Unexpected type of error: " <> show err)
                   result ->
@@ -186,9 +186,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                         preparable
                 result <- Connection.use connection (executor statement)
                 case result of
-                  Left (Connection.CellDeserializationSessionError (Location.InResultCell _ column) oid msg) -> do
+                  Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                     shouldBe column 0
-                    (oid, msg) `shouldBe` (1016, "Decoder type mismatch. Expected 20")
+                    (expected, actual) `shouldBe` (20, 1016)
                   Left err ->
                     expectationFailure ("Unexpected type of error: " <> show err)
                   result ->

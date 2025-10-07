@@ -2,7 +2,7 @@ module Sharing.Functionality.Session.ScriptSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
-import Hasql.Connection.Location qualified as Connection.Location
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Helpers.Scripts qualified as Scripts
 import Test.Hspec
@@ -14,5 +14,5 @@ spec = do
     Scripts.onConnection config \connection -> do
       result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
       case result of
-        Left (Connection.ServerSessionError (Connection.Location.ScriptInStatementOrScript _) _ _ _ _ _) -> pure ()
-        _ -> expectationFailure $ "Expected ServerSessionError in Script, got: " <> show result
+        Left (Errors.ScriptSessionError _ _) -> pure ()
+        _ -> expectationFailure $ "Expected ScriptSessionError with ExecutionScriptError, got: " <> show result

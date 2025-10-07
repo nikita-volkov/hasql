@@ -4,6 +4,7 @@ import Hasql.Connection qualified as Connection
 import Hasql.Connection.Setting qualified as Setting
 import Hasql.Connection.Setting.Connection qualified as ConnectionSetting
 import Hasql.Connection.Setting.Connection.Param qualified as Param
+import Hasql.Errors qualified as Errors
 import Test.Hspec
 import TestcontainersPostgresql qualified
 import Prelude
@@ -27,13 +28,13 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Connection.NetworkingAcquisitionError _) ->
+            Left (Errors.NetworkingConnectionError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected NetworkingAcquisitionError, but got: " <> show err)
+              expectationFailure ("Expected NetworkingConnectionError, but got: " <> show err)
 
   describe "postgres:9" do
-    itFails TestcontainersPostgresql.Distro9 (Connection.CompatibilityAcquisitionError "Server version is lower than 10: 9.6.24")
+    itFails TestcontainersPostgresql.Distro9 (Errors.CompatibilityConnectionError "Server version is lower than 10: 9.6.24")
 
   describe "postgres:10" do
     itSucceeds TestcontainersPostgresql.Distro10
@@ -67,10 +68,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Connection.AuthenticationAcquisitionError _) ->
+            Left (Errors.AuthenticationConnectionError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationAcquisitionError, but got: " <> show err)
+              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
     it "Fails with authentication error on wrong user" do
       TestcontainersPostgresql.run
@@ -96,12 +97,12 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Connection.AuthenticationAcquisitionError _) ->
+            Left (Errors.AuthenticationConnectionError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationAcquisitionError, but got: " <> show err)
+              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
-itFails :: TestcontainersPostgresql.Distro -> Connection.AcquisitionError -> Spec
+itFails :: TestcontainersPostgresql.Distro -> Errors.ConnectionError -> Spec
 itFails distro expectedError =
   let config =
         TestcontainersPostgresql.Config

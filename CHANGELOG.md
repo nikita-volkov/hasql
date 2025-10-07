@@ -6,35 +6,29 @@ Major revision happened.
 
 - **Decoder compatibility checks**.
 
-  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `DecoderTypeMismatch` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
-
-- **Flat error model**.
-
-  Previously errors were nested according to the library's internal context they happened in. The user had to unwrap multiple layers of errors to get to the actual reason. Now the reason is at the top level and the context is described by the `Location` types.
+  Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `UnexpectedColumnTypeStatementError` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
 
 ## Breaking changes
 
-- Decoder checks are now more strict and report `DecoderTypeMismatch` when the actual type of a column does not match the expected type of a decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors later on.
-  - E.g., `int4` column decoded with `int8` decoder will now report `DecoderTypeMismatch` instead of silently accepting the value.
+- Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
+  - E.g., `int4` column decoded with `int8` decoder will now report `UnexpectedColumnTypeStatementError` instead of silently accepting the value.
 
 - Due to the above the oldest supported PostgreSQL version now is 10. In older versions some types had different OIDs.
 
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
-  - If you need the old behaviour, you can either use "hasql-pool" or use `ReaderT Connection (ExceptT SessionError IO)`.
+  - If you need the old behaviour, you can use `ReaderT Connection (ExceptT SessionError IO)`.
 
 - Dropped `MonadReader Connection` instance for `Session`.
 
-- Dropped `Monad` and `MonadFail` instances for `Row`. `Applicative` is enough for all practical purposes.
+- Dropped `Monad` and `MonadFail` instances for the `Row` decoder. `Applicative` is enough for all practical purposes.
 
-- Errors model completely redesigned to be flat with context being described by the location types.
-
-- `SessionError` is renamed to `SessionError` and moved from the `Hasql.Session` module to `Hasql.Connection`.
-
-- `ConnectionError` is renamed to `AcquisitionError`.
+- Errors model completely overhauled.
+  - `ConnectionError` restructured and moved from the `Hasql.Connection` module to `Hasql.Errors`.
+  - `SessionError` restructured and moved from the `Hasql.Session` module to `Hasql.Errors`.
 
 - `usePreparedStatements` setting dropped. Use `disablePreparedStatements` instead.
 
-- `Hasql.Session.sql` is renamed to `Hasql.Session.script` to better reflect its purpose.
+- `Hasql.Session.sql` renamed to `Hasql.Session.script` to better reflect its purpose.
 
 # 1.9
 
