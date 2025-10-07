@@ -181,14 +181,12 @@ fromStatementResultError = \case
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-    -- Inline row error: create ResultCellStatementError for decoder mismatch
     ResultCellStatementError
       0
       colIdx
       actualOid
       (DeserializationCellError ("Decoder type mismatch. Expected " <> fromString (show expectedOid)))
   Hipq.ResultDecoder.RowError rowIndex rowError ->
-    -- Inline RowError conversion
     case rowError of
       Hipq.ResultRowDecoder.CellError column oid cellErr ->
         ResultCellStatementError
