@@ -72,7 +72,7 @@ data StatementError
       Int
       -- | Actual count.
       Int
-  | CellStatementError
+  | ResultCellStatementError
       -- | 0-based row index.
       Int
       -- | 0-based column index.
@@ -181,8 +181,8 @@ fromStatementResultError = \case
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
   Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-    -- Inline row error: create CellStatementError for decoder mismatch
-    CellStatementError
+    -- Inline row error: create ResultCellStatementError for decoder mismatch
+    ResultCellStatementError
       0
       colIdx
       actualOid
@@ -191,7 +191,7 @@ fromStatementResultError = \case
     -- Inline RowError conversion
     case rowError of
       Hipq.ResultRowDecoder.CellError column oid cellErr ->
-        CellStatementError
+        ResultCellStatementError
           rowIndex
           column
           (Pq.oidToWord32 oid)
@@ -313,7 +313,7 @@ instance ToPlainText StatementError where
           ", got ",
           toPlainText actual
         ]
-    CellStatementError rowIdx colIdx actualOid cellErr ->
+    ResultCellStatementError rowIdx colIdx actualOid cellErr ->
       mconcat
         [ "In row ",
           TextBuilder.decimal rowIdx,
