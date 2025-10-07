@@ -4,27 +4,13 @@ module Hasql.Session
     Session.script,
     statement,
     Session.onLibpqConnection,
-
-    -- * Execution
-    run,
   )
 where
 
 import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Session qualified as Session
-import Core.Errors qualified as Errors
-import Hasql.Connection qualified as Connection
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder
-import Platform.Prelude
-
--- |
--- Execute a sequence of operations with exclusive access to the connection.
---
--- Blocks until the connection is available when there is another session running upon the connection.
-{-# DEPRECATED run "Use @Hasql.Connection.'Hasql.Connection.use'@ instead" #-}
-run :: Session.Session a -> Connection.Connection -> IO (Either Errors.SessionError a)
-run session connection = Connection.use connection session
 
 -- |
 -- Execute a statement by providing parameters to it.

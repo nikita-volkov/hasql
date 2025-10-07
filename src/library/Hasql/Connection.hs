@@ -7,7 +7,6 @@ module Hasql.Connection
     acquire,
     release,
     use,
-    withLibPQConnection,
   )
 where
 
@@ -104,17 +103,6 @@ release (Connection connectionRef) =
   mask_ do
     connectionState <- readMVar connectionRef
     Pq.finish (ConnectionState.connection connectionState)
-
--- |
--- Execute an operation on the raw @libpq@ 'Pq.Connection'.
---
--- The access to the connection is exclusive.
-{-# DEPRECATED withLibPQConnection "Use @Hasql.Session.'Hasql.Session.onLibpqConnection'@ instead" #-}
-withLibPQConnection :: Connection -> (Pq.Connection -> IO a) -> IO a
-withLibPQConnection connection action =
-  useConnectionState connection \connectionState ->
-    (,connectionState)
-      <$> action (ConnectionState.connection connectionState)
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
