@@ -133,7 +133,7 @@ use (Connection var) session =
                     ]
             pure (Left (DriverSessionError message))
           Right () -> do
-            putMVar var connectionState
+            putMVar var (ConnectionState.reset connectionState)
             throwIO exception
       Right (result, !newState) -> do
         putMVar var newState

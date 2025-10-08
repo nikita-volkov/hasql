@@ -28,6 +28,7 @@ type Error = Text
 -- This includes:
 -- - Leaving pipeline mode if we are in it.
 -- - Bringing the transaction status to idle if we are in a transaction.
+-- - Deallocating all prepared statements.
 cleanUpAfterInterruption :: Session ()
 cleanUpAfterInterruption = do
   drainResults
@@ -37,6 +38,7 @@ cleanUpAfterInterruption = do
   leavePipeline
   -- Ensure we are in idle transaction state.
   bringTransactionStatusToIdle
+  deallocateAllPreparedStatements
 
 bringTransactionStatusToIdle :: Session ()
 bringTransactionStatusToIdle = do
@@ -89,6 +91,10 @@ leavePipeline = do
               Nothing -> "Failed to exit pipeline mode after draining results"
               Just details -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient details
         throwError message
+
+deallocateAllPreparedStatements :: Session ()
+deallocateAllPreparedStatements =
+  runScript "DEALLOCATE ALL"
 
 cancel :: Session ()
 cancel = Session \connection -> do
