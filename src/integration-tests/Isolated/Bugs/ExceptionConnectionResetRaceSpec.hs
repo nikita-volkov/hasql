@@ -5,7 +5,7 @@ import Control.Exception
 import Data.IORef
 import Hasql.Connection qualified as Connection
 import Hasql.Session qualified as Session
-import Helpers.Frameworks.Execution qualified as Execution
+import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Statements.SelectProvidedInt8 qualified as Statements
 import System.Timeout
 import Test.Hspec

@@ -289,8 +289,8 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
-    Helpers.Frameworks.Execution
-    Helpers.Frameworks.Statement
+    Helpers.Dsls.Execution
+    Helpers.Dsls.Statement
     Helpers.Scripts
     Helpers.Statements
     Helpers.Statements.CurrentSetting
