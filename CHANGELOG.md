@@ -8,6 +8,10 @@ Major revision happened.
 
   Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `UnexpectedColumnTypeStatementError` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
 
+- **No resets on errors**.
+
+  Previously when an async exception was raised during the execution of a session, the connection would get reestablished to recover from any possible half-finished states. That led to a loss of the connection-local state on the server side. Now the connection recovers without resetting.
+
 ## Breaking changes
 
 - Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
