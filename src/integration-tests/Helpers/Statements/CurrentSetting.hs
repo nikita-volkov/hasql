@@ -1,4 +1,4 @@
-module Helpers.NewStatements.CurrentSetting where
+module Helpers.Statements.CurrentSetting where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
