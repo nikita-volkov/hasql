@@ -56,7 +56,7 @@ spec = do
 
         result <-
           Connection.use connection do
-            Session.statement () Statements.SelectOne.statement
+            Execution.sessionByParams Statements.SelectOne.SelectOne
 
         result `shouldBe` Right 1
 
@@ -75,7 +75,7 @@ spec = do
         -- Connection should still be usable after timeout in transaction
         result <-
           Connection.use connection do
-            Session.statement () Statements.SelectOne.statement
+            Execution.sessionByParams Statements.SelectOne.SelectOne
 
         result `shouldBe` Right 1
 
