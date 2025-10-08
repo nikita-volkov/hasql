@@ -91,7 +91,7 @@ import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
 import Hipq.ResultDecoder qualified as ResultDecoder
-import Hipq.ResultRowMapping qualified as ResultRowMapping
+import Hipq.RowDecoder qualified as RowDecoder
 import Platform.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
 import PostgreSQL.Binary.Range qualified as R
@@ -180,7 +180,7 @@ rowList = foldrRows strictCons []
 -- x :: 'Row' (Maybe Int64, Text, TimeOfDay)
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
-newtype Row a = Row (ResultRowMapping.ResultRowMapping a)
+newtype Row a = Row (RowDecoder.RowDecoder a)
   deriving (Functor, Applicative)
 
 -- |
@@ -190,13 +190,13 @@ column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable (Value valueDecoder) ->
     Row
-      ( ResultRowMapping.nullableColumn
+      ( RowDecoder.nullableColumn
           (Value.toBaseOidAsWord32 valueDecoder)
           (Value.toByteStringParser valueDecoder)
       )
   NonNullable (Value valueDecoder) ->
     Row
-      ( ResultRowMapping.nonNullableColumn
+      ( RowDecoder.nonNullableColumn
           (Value.toBaseOidAsWord32 valueDecoder)
           (Value.toByteStringParser valueDecoder)
       )

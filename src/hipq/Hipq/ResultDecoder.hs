@@ -39,7 +39,7 @@ import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
-import Hipq.ResultRowMapping qualified as ResultRowMapping
+import Hipq.RowDecoder qualified as RowDecoder
 import Platform.Prelude hiding (foldl, foldr, maybe)
 import Platform.Prelude qualified as Prelude
 import Pq qualified
@@ -159,9 +159,9 @@ columnOids = ResultDecoder \result -> do
 -- * Higher-level decoders
 
 {-# INLINE checkCompatibility #-}
-checkCompatibility :: ResultRowMapping.ResultRowMapping a -> ResultDecoder ()
+checkCompatibility :: RowDecoder.RowDecoder a -> ResultDecoder ()
 checkCompatibility rowDec =
-  let oids = ResultRowMapping.toExpectedOids rowDec
+  let oids = RowDecoder.toExpectedOids rowDec
    in ResultDecoder \result -> do
         maxCols <- Pq.nfields result
         if length oids == Pq.colToInt maxCols
@@ -185,7 +185,7 @@ checkCompatibility rowDec =
           else pure (Left (UnexpectedAmountOfColumns (length oids) (Pq.colToInt maxCols)))
 
 {-# INLINE maybe #-}
-maybe :: ResultRowMapping.ResultRowMapping a -> ResultDecoder (Maybe a)
+maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
 maybe rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
@@ -197,7 +197,7 @@ maybe rowDec =
           0 -> return (Right Nothing)
           1 -> do
             result <-
-              ResultRowMapping.toDecoder rowDec result 0
+              RowDecoder.toDecoder rowDec result 0
                 <&> first (RowError 0)
             pure (fmap Just result)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
@@ -206,7 +206,7 @@ maybe rowDec =
       fromIntegral n
 
 {-# INLINE single #-}
-single :: ResultRowMapping.ResultRowMapping a -> ResultDecoder a
+single :: RowDecoder.RowDecoder a -> ResultDecoder a
 single rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
@@ -216,7 +216,7 @@ single rowDec =
         maxRows <- Pq.ntuples result
         case maxRows of
           1 -> do
-            ResultRowMapping.toDecoder rowDec result 0
+            RowDecoder.toDecoder rowDec result 0
               <&> first (RowError 0)
           _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
   where
@@ -224,7 +224,7 @@ single rowDec =
       fromIntegral n
 
 {-# INLINE vector #-}
-vector :: ResultRowMapping.ResultRowMapping a -> ResultDecoder (Vector a)
+vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
 vector rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
@@ -235,7 +235,7 @@ vector rowDec =
         mvector <- MutableVector.unsafeNew (rowToInt maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
+          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
           case rowResult of
             Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
@@ -249,7 +249,7 @@ vector rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldl #-}
-foldl :: (a -> b -> a) -> a -> ResultRowMapping.ResultRowMapping b -> ResultDecoder a
+foldl :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
 foldl step init rowDec =
   {-# SCC "foldl" #-}
   do
@@ -263,7 +263,7 @@ foldl step init rowDec =
           accRef <- newIORef init
           failureRef <- newIORef Nothing
           forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-            rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
+            rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
             case rowResult of
               Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
               Right !x -> modifyIORef' accRef (\acc -> step acc x)
@@ -277,7 +277,7 @@ foldl step init rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldr #-}
-foldr :: (b -> a -> a) -> a -> ResultRowMapping.ResultRowMapping b -> ResultDecoder a
+foldr :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
 foldr step init rowDec =
   {-# SCC "foldr" #-}
   do
@@ -289,7 +289,7 @@ foldr step init rowDec =
         accRef <- newIORef init
         failureRef <- newIORef Nothing
         forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- ResultRowMapping.toDecoder rowDec result (intToRow rowIndex)
+          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
           case rowResult of
             Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> modifyIORef accRef (\acc -> step x acc)
@@ -364,7 +364,7 @@ data Error
       -- | Row index.
       Int
       -- | Underlying error.
-      ResultRowMapping.Error
+      RowDecoder.Error
   deriving (Show, Eq)
 
 -- * Classes

@@ -1,6 +1,6 @@
 -- | Lower level context focused on just the actual decoding of values. No metadata involved.
-module Hipq.ResultRowDecoder
-  ( ResultRowDecoder,
+module Hipq.RowReader
+  ( RowReader,
     nullableColumn,
     nonNullableColumn,
 
@@ -31,8 +31,8 @@ data CellError
   | UnexpectedNullCellError
   deriving stock (Eq, Show)
 
-newtype ResultRowDecoder a
-  = ResultRowDecoder (StateT Pq.Column (ReaderT Env (ExceptT Error IO)) a)
+newtype RowReader a
+  = RowReader (StateT Pq.Column (ReaderT Env (ExceptT Error IO)) a)
   deriving
     (Functor, Applicative)
     via (StateT Pq.Column (ReaderT Env (ExceptT Error IO)))
@@ -45,16 +45,16 @@ data Env
 -- * Functions
 
 {-# INLINE toHandler #-}
-toHandler :: ResultRowDecoder a -> Pq.Result -> Pq.Row -> IO (Either Error a)
-toHandler (ResultRowDecoder f) result row =
+toHandler :: RowReader a -> Pq.Result -> Pq.Row -> IO (Either Error a)
+toHandler (RowReader f) result row =
   let env = Env result row
    in runExceptT (runReaderT (evalStateT f 0) env)
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE column #-}
-column :: (Maybe a -> Maybe b) -> (ByteString -> Either Text a) -> ResultRowDecoder b
-column processNullable valueDec = ResultRowDecoder do
+column :: (Maybe a -> Maybe b) -> (ByteString -> Either Text a) -> RowReader b
+column processNullable valueDec = RowReader do
   col <- get
   Env result row <- ask
   let colInt = Pq.colToInt col
@@ -79,11 +79,11 @@ column processNullable valueDec = ResultRowDecoder do
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nullableColumn #-}
-nullableColumn :: (ByteString -> Either Text a) -> ResultRowDecoder (Maybe a)
+nullableColumn :: (ByteString -> Either Text a) -> RowReader (Maybe a)
 nullableColumn = column Just
 
 -- |
 -- Next value, decoded using the provided value decoder.
 {-# INLINE nonNullableColumn #-}
-nonNullableColumn :: (ByteString -> Either Text a) -> ResultRowDecoder a
+nonNullableColumn :: (ByteString -> Either Text a) -> RowReader a
 nonNullableColumn = column id

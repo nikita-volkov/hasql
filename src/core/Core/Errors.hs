@@ -2,7 +2,7 @@ module Core.Errors where
 
 import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
-import Hipq.ResultRowDecoder qualified
+import Hipq.RowReader qualified
 import Platform.Prelude
 import TextBuilder qualified
 import TextBuilderExtras qualified
@@ -193,13 +193,13 @@ fromStatementResultError = \case
       actualOid
   Hipq.ResultDecoder.RowError rowIndex rowError ->
     case rowError of
-      Hipq.ResultRowDecoder.CellError column _oid cellErr ->
+      Hipq.RowReader.CellError column _oid cellErr ->
         CellStatementError
           rowIndex
           column
           ( case cellErr of
-              Hipq.ResultRowDecoder.DecodingCellError msg -> DeserializationCellError msg
-              Hipq.ResultRowDecoder.UnexpectedNullCellError -> UnexpectedNullCellError
+              Hipq.RowReader.DecodingCellError msg -> DeserializationCellError msg
+              Hipq.RowReader.UnexpectedNullCellError -> UnexpectedNullCellError
           )
 
 fromRecvErrorInScript :: ByteString -> Hipq.Recv.Error (Maybe ByteString) -> SessionError

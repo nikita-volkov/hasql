@@ -198,9 +198,9 @@ library hipq
   exposed-modules:
     Hipq.Recv
     Hipq.ResultDecoder
-    Hipq.ResultRowDecoder
-    Hipq.ResultRowMapping
     Hipq.Roundtrip
+    Hipq.RowDecoder
+    Hipq.RowReader
     Hipq.Send
     Hipq.Session
 
