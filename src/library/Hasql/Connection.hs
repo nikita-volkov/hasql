@@ -122,7 +122,7 @@ use (Connection var) session =
             -- If cleanup failed, we have to close the connection.
             -- There's not much else we can do.
             Pq.finish connection
-            putMVar var (ConnectionState.reset connectionState)
+            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             let message =
                   mconcat
                     [ "Failed to clean up after interruption.\n",
@@ -133,7 +133,7 @@ use (Connection var) session =
                     ]
             pure (Left (DriverSessionError message))
           Right () -> do
-            putMVar var (ConnectionState.reset connectionState)
+            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             throwIO exception
       Right (result, !newState) -> do
         putMVar var newState
