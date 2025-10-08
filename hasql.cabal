@@ -202,6 +202,7 @@ library hipq
     Hipq.ResultRowMapping
     Hipq.Roundtrip
     Hipq.Send
+    Hipq.Session
 
   build-depends:
     attoparsec >=0.10 && <0.15,

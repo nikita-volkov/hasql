@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-unused-binds -Wno-unused-imports -Wno-name-shadowing -Wno-incomplete-patterns -Wno-unused-matches -Wno-missing-methods -Wno-unused-record-wildcards -Wno-redundant-constraints #-}
-
 -- |
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection
@@ -18,6 +16,7 @@ import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Setting qualified as Setting
+import Hipq.Session qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -109,31 +108,33 @@ release (Connection connectionRef) =
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
-use connection session =
-  useConnectionState connection \connectionState -> do
-    Session.run session connectionState
-
-useConnectionState :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
-useConnectionState (Connection var) handler =
+use (Connection var) session =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
-    result <- try @SomeException (restore (handler connectionState))
+    result <- try @SomeException (restore (Session.run session connectionState))
     case result of
       Left exception -> do
-        -- If an exception happened, we need to check the connection status.
-        -- If the connection is not idle, we need to reset it
-        -- and clear the prepared statement registry.
-        Pq.transactionStatus connection >>= \case
-          Pq.TransIdle -> do
-            -- If the connection is idle, just put back the connection state.
-            putMVar var connectionState
-          _ -> do
-            -- If the connection is not idle, reset the prepared statement registry
-            -- and reset the connection itself.
-            Pq.reset connection
+        -- If an exception happened, we need to bring the connection back to idle
+        -- without resetting (to preserve session state).
+        result <- Hipq.Session.toHandler Hipq.Session.cleanUpAfterInterruption connection
+        case result of
+          Left err -> do
+            -- If cleanup failed, we have to close the connection.
+            -- There's not much else we can do.
+            Pq.finish connection
             putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
-
-        throwIO exception
+            let message =
+                  mconcat
+                    [ "Failed to clean up after interruption.\n",
+                      err,
+                      "\n",
+                      "The following exception was raised during the operation:\n",
+                      Text.pack (displayException exception)
+                    ]
+            pure (Left (DriverSessionError message))
+          Right () -> do
+            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
+            throwIO exception
       Right (result, !newState) -> do
         putMVar var newState
         pure result

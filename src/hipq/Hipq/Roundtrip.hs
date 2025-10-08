@@ -39,12 +39,12 @@ instance Bifunctor Roundtrip where
       (bimap f g recv)
 
 toPipelineIO :: context -> Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
-toPipelineIO context sendAndRecv connection = do
+toPipelineIO context sendAndRecv connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
   case sendResult of
     Send.Error context details -> pure (Left (ClientError context details))
     Send.Ok -> do
-      recvResult <- first ServerError <$> Recv.toHandler recv connection
+      recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode context) connection
         case result of
