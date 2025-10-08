@@ -124,7 +124,7 @@ fromRecvError = \case
           [ "Unexpected error outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Error: ",
-            toPlainText (show resultError)
+            TextBuilder.string (show resultError)
           ]
       Just (totalStatements, statementIndex, sql, parameters, prepared) ->
         StatementSessionError
@@ -141,7 +141,7 @@ fromRecvError = \case
           [ "Unexpectedly got no results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Details: ",
-            toPlainText (show details)
+            TextBuilder.string (show details)
           ]
       Just (totalStatements, statementIndex, sql, parameters, prepared) ->
         StatementSessionError
@@ -158,7 +158,7 @@ fromRecvError = \case
           [ "Unexpectedly got too many results outside of statement context. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Amount: ",
-            toPlainText actual
+            TextBuilder.decimal actual
           ]
       Just (totalStatements, statementIndex, sql, parameters, prepared) ->
         StatementSessionError
@@ -219,35 +219,35 @@ fromRecvErrorInScript scriptSql = \case
       Hipq.ResultDecoder.UnexpectedResult msg ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected result in script: ",
-            toPlainText msg
+            TextBuilder.text msg
           ]
       Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of rows in script: ",
-            toPlainText actual
+            TextBuilder.decimal actual
           ]
       Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of columns in script: expected ",
-            toPlainText expected,
+            TextBuilder.decimal expected,
             ", got ",
-            toPlainText actual
+            TextBuilder.decimal actual
           ]
       Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Decoder type mismatch in script: expected OID ",
-            toPlainText (show expectedOid),
+            TextBuilder.string (show expectedOid),
             " at column ",
-            toPlainText colIdx,
+            TextBuilder.decimal colIdx,
             ", got ",
-            toPlainText (show actualOid)
+            TextBuilder.string (show actualOid)
           ]
       Hipq.ResultDecoder.RowError rowIndex rowError ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Row error in script at row ",
-            toPlainText rowIndex,
+            TextBuilder.decimal rowIndex,
             ": ",
-            toPlainText (show rowError)
+            TextBuilder.string (show rowError)
           ]
   Hipq.Recv.NoResultsError _ details ->
     (DriverSessionError . TextBuilder.toText . mconcat)
@@ -255,14 +255,14 @@ fromRecvErrorInScript scriptSql = \case
         " This indicates a bug in Hasql or the server misbehaving.",
         details
           & filter (/= "")
-          & foldMap (mappend " Details: " . toPlainText . decodeUtf8Lenient)
+          & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
       ]
   Hipq.Recv.TooManyResultsError _ actual ->
     (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Amount: ",
-        toPlainText actual
+        TextBuilder.decimal actual
       ]
 
 -- * Instances
