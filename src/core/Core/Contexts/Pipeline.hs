@@ -13,22 +13,31 @@ import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
-run :: Pipeline a -> Bool -> Pq.Connection -> StatementCache.StatementCache -> IO (Either Errors.SessionError a, StatementCache.StatementCache)
-run (Pipeline totalStatements run) usePreparedStatements connection cache = do
+run ::
+  Pipeline a ->
+  Bool ->
+  Pq.Connection ->
+  StatementCache.StatementCache ->
+  ( IO (Either Errors.SessionError a),
+    StatementCache.StatementCache
+  )
+run (Pipeline totalStatements run) usePreparedStatements connection cache =
   let (roundtrip, newCache) = run 0 usePreparedStatements cache
       adaptedRoundtrip = first adaptContext roundtrip
-  result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
-  case result of
-    Left (Hipq.Roundtrip.ClientError _context details) -> do
-      pure (Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)), newCache)
-    Left (Hipq.Roundtrip.ServerError recvError) ->
-      pure (Left (Errors.fromRecvError recvError), newCache)
-    Right a ->
-      pure (Right a, newCache)
-  where
-    adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
-    adaptContext (Context index sql params prepared) =
-      Just (totalStatements, index, sql, params, prepared)
+        where
+          adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
+          adaptContext (Context index sql params prepared) =
+            Just (totalStatements, index, sql, params, prepared)
+      io = do
+        result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
+        case result of
+          Left (Hipq.Roundtrip.ClientError _context details) -> do
+            pure (Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)))
+          Left (Hipq.Roundtrip.ServerError recvError) ->
+            pure (Left (Errors.fromRecvError recvError))
+          Right a ->
+            pure (Right a)
+   in (io, newCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
