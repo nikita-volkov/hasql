@@ -11,7 +11,7 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   it "Does not lose the server-side session state on timeout" \config -> do
-    Scripts.onConnection config \connection -> do
+    Scripts.onPreparableConnection config \connection -> do
       varname <- Execution.generateVarname
       result <- timeout 50_000 do
         Connection.use connection do
@@ -26,7 +26,7 @@ spec = do
       result `shouldBe` Right (Just "1")
 
   it "Does not lose the server-side session state between uses" \config -> do
-    Scripts.onConnection config \connection -> do
+    Scripts.onPreparableConnection config \connection -> do
       varname <- Execution.generateVarname
 
       result <- Connection.use connection do

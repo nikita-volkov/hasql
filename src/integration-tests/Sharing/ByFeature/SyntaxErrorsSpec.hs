@@ -18,7 +18,7 @@ spec = do
       forM_ [False, True] \preparable -> do
         describe (if preparable then "Preparable" else "Unpreparable") do
           it "gets reported properly" \config -> do
-            Scripts.onConnection config \connection -> do
+            Scripts.onPreparableConnection config \connection -> do
               result <- Connection.use connection do
                 let statement = Statement.Statement "-" mempty Decoders.noResult preparable
                 if inPipeline

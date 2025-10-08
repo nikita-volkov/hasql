@@ -15,7 +15,7 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Roundtrips" do
     it "handles simple values correctly" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select $1"
@@ -27,7 +27,7 @@ spec = do
 
   describe "Error Handling" do
     it "captures query errors correctly" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 1 = any ($1) and $2"
@@ -45,7 +45,7 @@ spec = do
 
   describe "IN simulation" do
     it "works with arrays" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 1 = any ($1)"
@@ -60,7 +60,7 @@ spec = do
 
   describe "NOT IN simulation" do
     it "works with arrays" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 3 <> all ($1)"

@@ -14,7 +14,7 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Session" do
     it "Failing statements don't cause misses in updates of the prepared statement cache" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         -- Run an intentionally failing prepared statement to set the condition of the bug.
         result <- Connection.use connection do
           Session.statement
@@ -45,7 +45,7 @@ spec = do
 
   describe "Pipeline" do
     it "Failing pipeline statements don't cause misses in updates of the prepared statement cache" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
         result <- Connection.use connection do
           Session.pipeline do

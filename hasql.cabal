@@ -237,28 +237,6 @@ library text-builder-extras
     text >=1 && <3,
     text-builder >=1 && <1.1,
 
-library testing-kit
-  import: base
-  visibility: private
-  hs-source-dirs: src/testing-kit
-  exposed-modules:
-    TestingKit.Constants
-    TestingKit.Preludes.Base
-    TestingKit.Statements.BrokenSyntax
-    TestingKit.Statements.GenerateSeries
-    TestingKit.Statements.WrongDecoder
-    TestingKit.Testcontainers
-    TestingKit.TestingDsl
-
-  build-depends:
-    base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    hasql,
-    hspec ^>=2.11.12,
-    testcontainers-postgresql >=0.0.2 && <0.1,
-    transformers >=0.6 && <0.7,
-    uuid >=1.3 && <2,
-
 benchmark benchmarks
   import: executable
   type: exitcode-stdio-1.0
@@ -281,8 +259,8 @@ test-suite profiling
 
   build-depends:
     hasql,
-    hasql:testing-kit,
     rerebase >=1 && <2,
+    testcontainers-postgresql >=0.0.2 && <0.1,
 
 test-suite integration-tests
   import: test
@@ -294,11 +272,14 @@ test-suite integration-tests
     Helpers.Dsls.Statement
     Helpers.Scripts
     Helpers.Statements
+    Helpers.Statements.BrokenSyntax
     Helpers.Statements.CurrentSetting
+    Helpers.Statements.GenerateSeries
     Helpers.Statements.SelectOne
     Helpers.Statements.SelectProvidedInt8
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
+    Helpers.Statements.WrongDecoder
     Isolated.ByUnit.Connection.AcquireSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
     Sharing.ByFeature.ConcurrencySpec
@@ -320,7 +301,6 @@ test-suite integration-tests
   build-depends:
     QuickCheck,
     hasql,
-    hasql:testing-kit,
     hspec ^>=2.11.12,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,

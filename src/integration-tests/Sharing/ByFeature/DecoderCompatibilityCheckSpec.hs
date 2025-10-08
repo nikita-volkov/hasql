@@ -29,7 +29,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
     describe (toList executorName) do
       describe "UnexpectedAmountOfColumns" do
         it "gets reported when result has more columns" \config -> do
-          Scripts.onConnection config \connection -> do
+          Scripts.onPreparableConnection config \connection -> do
             let statement =
                   Statement.Statement
                     "select 1, 2"
@@ -47,7 +47,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                 expectationFailure ("Not an error: " <> show result)
 
         it "gets reported when result has fewer columns" \config -> do
-          Scripts.onConnection config \connection -> do
+          Scripts.onPreparableConnection config \connection -> do
             let statement =
                   Statement.Statement
                     "select 1"
@@ -72,7 +72,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
       describe "DecoderTypeMismatch" do
         describe "singleRow" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onConnection config \connection -> do
+            Scripts.onPreparableConnection config \connection -> do
               let statement =
                     Statement.Statement
                       "select 1::int8, 'text'"
@@ -96,7 +96,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
 
         describe "rowMaybe" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onConnection config \connection -> do
+            Scripts.onPreparableConnection config \connection -> do
               let statement =
                     Statement.Statement
                       "select 1::int8, 'text'"
@@ -120,7 +120,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
 
         describe "rowVector" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onConnection config \connection -> do
+            Scripts.onPreparableConnection config \connection -> do
               let statement =
                     Statement.Statement
                       "select int8 '1', text 'text'"
@@ -146,7 +146,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8[]" do
             describe "column:int8" do
               it "reports properly" \config -> do
-                Scripts.onConnection config \connection -> do
+                Scripts.onPreparableConnection config \connection -> do
                   let statement =
                         Statement.Statement
                           "select 1::int8"
@@ -168,7 +168,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8[]" do
             describe "column:int8[]" do
               it "decodes properly" \config -> do
-                Scripts.onConnection config \connection -> do
+                Scripts.onPreparableConnection config \connection -> do
                   let statement =
                         Statement.Statement
                           "select ARRAY[1::int8, 2::int8]"
@@ -183,7 +183,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8" do
             describe "column:int8[]" do
               it "reports properly" \config -> do
-                Scripts.onConnection config \connection -> do
+                Scripts.onPreparableConnection config \connection -> do
                   let statement =
                         Statement.Statement
                           "select ARRAY[1::int8, 2::int8]"

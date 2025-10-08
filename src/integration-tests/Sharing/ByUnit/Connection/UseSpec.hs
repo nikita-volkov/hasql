@@ -17,7 +17,7 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Transactions" do
     it "Do not cause \"in progress after error\"" \config -> do
-      Scripts.onConnection config \connection -> do
+      Scripts.onPreparableConnection config \connection -> do
         let sumStatement =
               Statement.Statement
                 "select ($1 + $2)"
@@ -46,7 +46,7 @@ spec = do
 
   describe "Timing out" do
     describe "On a statement" do
-      it "Leaves the connection usable" \config -> Scripts.onConnection config \connection -> do
+      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
         result <-
           timeout 50_000 do
             Connection.use connection do
@@ -61,7 +61,7 @@ spec = do
         result `shouldBe` Right 1
 
     describe "On a transaction" do
-      it "Leaves the connection usable" \config -> Scripts.onConnection config \connection -> do
+      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
         -- Start a transaction and timeout during it
         result <-
           timeout 50_000 do
@@ -86,7 +86,7 @@ spec = do
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
                 True
-         in \config -> Scripts.onConnection config \connection -> do
+         in \config -> Scripts.onPreparableConnection config \connection -> do
               -- Timeout during a transaction
               result <-
                 timeout 50_000 do
@@ -113,7 +113,7 @@ spec = do
                 (Encoders.param (Encoders.nonNullable Encoders.int4))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
                 True
-         in \config -> Scripts.onConnection config \connection -> do
+         in \config -> Scripts.onPreparableConnection config \connection -> do
               -- Use a prepared statement first
               result <-
                 Connection.use connection do

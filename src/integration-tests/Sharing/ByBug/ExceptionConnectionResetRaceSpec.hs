@@ -15,7 +15,7 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   describe "Exception during session with concurrent access" do
-    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onConnection config \connection -> do
+    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparableConnection config \connection -> do
       -- This test reproduces the bug fixed in commit 62ebef2.
       -- The bug was that when an exception occurred during a session,
       -- the connection state was put back into the MVar BEFORE resetting the connection.

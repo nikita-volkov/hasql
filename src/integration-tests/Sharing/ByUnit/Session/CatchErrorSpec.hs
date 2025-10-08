@@ -13,7 +13,7 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   it "Leaves the session usable" \config -> do
-    Scripts.onConnection config \connection -> do
+    Scripts.onPreparableConnection config \connection -> do
       let tryStatement =
             Statement.Statement
               "select $1 :: int8"

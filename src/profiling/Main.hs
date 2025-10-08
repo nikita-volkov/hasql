@@ -1,16 +1,20 @@
 module Main where
 
+import Control.Exception
 import Data.Vector qualified as F
 import Hasql.Connection qualified as Connection
+import Hasql.Connection.Setting qualified
+import Hasql.Connection.Setting.Connection qualified
+import Hasql.Connection.Setting.Connection.Param qualified
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
-import TestingKit.Testcontainers qualified as Testcontainers
+import TestcontainersPostgresql qualified
 import Prelude
 
 main :: IO ()
 main =
-  Testcontainers.withConnection \connection -> do
+  withConnection \connection -> do
     traceEventIO "START Session"
     result <- Connection.use connection sessionWithManySmallResults
     traceEventIO "STOP Session"
@@ -83,3 +87,37 @@ statementWithManyRowsInVector =
 statementWithManyRowsInList :: C.Statement () [(Int64, Int64)]
 statementWithManyRowsInList =
   statementWithManyRows D.rowList
+
+-- * Testcontainers
+
+withConnection :: (Connection.Connection -> IO ()) -> IO ()
+withConnection = withConnectionByDistro TestcontainersPostgresql.Distro17
+
+withConnectionByDistro :: TestcontainersPostgresql.Distro -> (Connection.Connection -> IO ()) -> IO ()
+withConnectionByDistro distro action = withConnectionSettings distro \settings -> do
+  connection <- Connection.acquire settings
+  case connection of
+    Left err -> fail ("Connection failed: " <> show err)
+    Right conn -> finally (action conn) (Connection.release conn)
+
+withConnectionSettings :: TestcontainersPostgresql.Distro -> ([Hasql.Connection.Setting.Setting] -> IO ()) -> IO ()
+withConnectionSettings distro action = do
+  TestcontainersPostgresql.run config \(host, port) -> do
+    action
+      [ Hasql.Connection.Setting.connection
+          ( Hasql.Connection.Setting.Connection.params
+              [ Hasql.Connection.Setting.Connection.Param.host host,
+                Hasql.Connection.Setting.Connection.Param.port (fromIntegral port),
+                Hasql.Connection.Setting.Connection.Param.user "postgres",
+                Hasql.Connection.Setting.Connection.Param.password "",
+                Hasql.Connection.Setting.Connection.Param.dbname "postgres"
+              ]
+          )
+      ]
+  where
+    config =
+      TestcontainersPostgresql.Config
+        { forwardLogs = False,
+          distro,
+          auth = TestcontainersPostgresql.TrustAuth
+        }

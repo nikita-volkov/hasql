@@ -13,22 +13,33 @@ import Prelude
 -- Host and port of a running isolated postgres server.
 type ScopeParams = (Text, Word16)
 
-onConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onConnection (host, port) =
+onPreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onPreparableConnection = onConnection False
+
+onUnpreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onUnpreparableConnection = onConnection True
+
+onConnection :: Bool -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onConnection unpreparable (host, port) =
   bracket
     ( do
         res <-
           Connection.acquire
-            [ Connection.Setting.connection
-                ( Connection.Setting.Connection.params
-                    [ Connection.Setting.Connection.Param.host host,
-                      Connection.Setting.Connection.Param.port (fromIntegral port),
-                      Connection.Setting.Connection.Param.user "postgres",
-                      Connection.Setting.Connection.Param.password "postgres",
-                      Connection.Setting.Connection.Param.dbname "postgres"
-                    ]
-                )
-            ]
+            $ mconcat
+              [ [ Connection.Setting.connection
+                    ( Connection.Setting.Connection.params
+                        [ Connection.Setting.Connection.Param.host host,
+                          Connection.Setting.Connection.Param.port (fromIntegral port),
+                          Connection.Setting.Connection.Param.user "postgres",
+                          Connection.Setting.Connection.Param.password "postgres",
+                          Connection.Setting.Connection.Param.dbname "postgres"
+                        ]
+                    )
+                ],
+                if unpreparable
+                  then [Connection.Setting.disablePreparedStatements]
+                  else []
+              ]
         case res of
           Left err -> fail ("Connection failed: " <> show err)
           Right conn -> pure conn
