@@ -126,10 +126,11 @@ useConnectionState (Connection var) handler =
         -- First, check if we're in pipeline mode and try to exit it.
         pipelineStatus <- Pq.pipelineStatus connection
         when (pipelineStatus == Pq.PipelineOn) do
-          -- Try to exit pipeline mode first.
+          -- Try to exit pipeline mode.
+          -- This might fail if there are pending results that need to be consumed.
           success <- Pq.exitPipelineMode connection
-          -- If exit failed, it might be due to pending results. Drain them and try again.
           unless success do
+            -- If exit failed, drain results and try again.
             drainResults connection
             _ <- Pq.exitPipelineMode connection
             pure ()
@@ -153,11 +154,10 @@ useConnectionState (Connection var) handler =
                 _ <- Pq.cancel cancel
                 pure ()
               Nothing -> pure ()
-            -- Consume any pending data.
+            -- Consume any pending data and drain results.
             _ <- Pq.consumeInput connection
-            -- Drain all pending results.
             drainResults connection
-            -- After draining, check status again and handle accordingly.
+            -- Check status again after draining.
             Pq.transactionStatus connection >>= \case
               Pq.TransIdle -> putMVar var connectionState
               Pq.TransInTrans -> do
@@ -167,7 +167,7 @@ useConnectionState (Connection var) handler =
                 _ <- Pq.exec connection "ABORT"
                 putMVar var connectionState
               _ -> do
-                -- For other states, reset as fallback but this shouldn't happen.
+                -- For other states, reset as fallback.
                 Pq.reset connection
                 putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
           Pq.TransInError -> do
