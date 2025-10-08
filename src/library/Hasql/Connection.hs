@@ -120,8 +120,21 @@ useConnectionState (Connection var) handler =
     result <- try @SomeException (restore (handler connectionState))
     case result of
       Left exception -> do
-        -- If an exception happened, we need to check the connection status
-        -- and bring it back to idle without resetting (to preserve session state).
+        -- If an exception happened, we need to bring the connection back to idle
+        -- without resetting (to preserve session state).
+        
+        -- First, check if we're in pipeline mode and try to exit it.
+        pipelineStatus <- Pq.pipelineStatus connection
+        when (pipelineStatus == Pq.PipelineOn) do
+          -- Try to exit pipeline mode first.
+          success <- Pq.exitPipelineMode connection
+          -- If exit failed, it might be due to pending results. Drain them and try again.
+          unless success do
+            drainResults connection
+            _ <- Pq.exitPipelineMode connection
+            pure ()
+        
+        -- Now handle the transaction status to ensure we're back to idle.
         Pq.transactionStatus connection >>= \case
           Pq.TransIdle -> do
             -- Connection is already idle, just put back the connection state.
@@ -132,7 +145,17 @@ useConnectionState (Connection var) handler =
             _ <- Pq.exec connection "ABORT"
             putMVar var connectionState
           Pq.TransActive -> do
-            -- A command is in progress: consume all results to complete it.
+            -- A command is still in progress.
+            -- Cancel it and drain results.
+            mCancel <- Pq.getCancel connection
+            case mCancel of
+              Just cancel -> do
+                _ <- Pq.cancel cancel
+                pure ()
+              Nothing -> pure ()
+            -- Consume any pending data.
+            _ <- Pq.consumeInput connection
+            -- Drain all pending results.
             drainResults connection
             -- After draining, check status again and handle accordingly.
             Pq.transactionStatus connection >>= \case
