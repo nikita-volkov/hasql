@@ -120,16 +120,39 @@ useConnectionState (Connection var) handler =
     result <- try @SomeException (restore (handler connectionState))
     case result of
       Left exception -> do
-        -- If an exception happened, we need to check the connection status.
-        -- If the connection is not idle, we need to reset it
-        -- and clear the prepared statement registry.
+        -- If an exception happened, we need to check the connection status
+        -- and bring it back to idle without resetting (to preserve session state).
         Pq.transactionStatus connection >>= \case
           Pq.TransIdle -> do
-            -- If the connection is idle, just put back the connection state.
+            -- Connection is already idle, just put back the connection state.
             putMVar var connectionState
-          _ -> do
-            -- If the connection is not idle, reset the prepared statement registry
-            -- and reset the connection itself.
+          Pq.TransInTrans -> do
+            -- In a transaction block: abort the transaction to return to idle.
+            -- This preserves session-level state while cleaning up the transaction.
+            _ <- Pq.exec connection "ABORT"
+            putMVar var connectionState
+          Pq.TransActive -> do
+            -- A command is in progress: consume all results to complete it.
+            drainResults connection
+            -- After draining, check status again and handle accordingly.
+            Pq.transactionStatus connection >>= \case
+              Pq.TransIdle -> putMVar var connectionState
+              Pq.TransInTrans -> do
+                _ <- Pq.exec connection "ABORT"
+                putMVar var connectionState
+              Pq.TransInError -> do
+                _ <- Pq.exec connection "ABORT"
+                putMVar var connectionState
+              _ -> do
+                -- For other states, reset as fallback but this shouldn't happen.
+                Pq.reset connection
+                putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
+          Pq.TransInError -> do
+            -- Transaction is in error state: abort to return to idle.
+            _ <- Pq.exec connection "ABORT"
+            putMVar var connectionState
+          Pq.TransUnknown -> do
+            -- Unknown state (connection issue): reset the connection.
             Pq.reset connection
             putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
 
@@ -137,3 +160,11 @@ useConnectionState (Connection var) handler =
       Right (result, !newState) -> do
         putMVar var newState
         pure result
+
+-- | Drain all pending results from the connection.
+drainResults :: Pq.Connection -> IO ()
+drainResults conn = do
+  mResult <- Pq.getResult conn
+  case mResult of
+    Nothing -> pure ()
+    Just _ -> drainResults conn
