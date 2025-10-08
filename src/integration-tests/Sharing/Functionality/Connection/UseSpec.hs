@@ -6,9 +6,10 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectOne qualified as Statements.SelectOne
-import Helpers.Statements.Sleep qualified as Statements.Sleep
+import Helpers.Statements.Sleep qualified as Statements
 import Test.Hspec
 import Prelude
 
@@ -49,13 +50,13 @@ spec = do
         result <-
           timeout 50_000 do
             Connection.use connection do
-              Session.statement (0.1 :: Double) Statements.Sleep.statement
+              Execution.sessionByParams (Statements.Sleep 0.1)
 
         result `shouldBe` Nothing
 
         result <-
           Connection.use connection do
-            Session.statement () Statements.SelectOne.statement
+            Execution.sessionByParams Statements.SelectOne.SelectOne
 
         result `shouldBe` Right 1
 
@@ -66,7 +67,7 @@ spec = do
           timeout 50_000 do
             Connection.use connection do
               Session.script "begin;"
-              Session.statement (0.1 :: Double) Statements.Sleep.statement
+              Execution.sessionByParams (Statements.Sleep 0.1)
               Session.script "commit;"
 
         result `shouldBe` Nothing
@@ -74,7 +75,7 @@ spec = do
         -- Connection should still be usable after timeout in transaction
         result <-
           Connection.use connection do
-            Session.statement () Statements.SelectOne.statement
+            Execution.sessionByParams Statements.SelectOne.SelectOne
 
         result `shouldBe` Right 1
 
@@ -91,7 +92,7 @@ spec = do
                 timeout 50_000 do
                   Connection.use connection do
                     Session.script "begin;"
-                    Session.statement (0.1 :: Double) Statements.Sleep.statement
+                    Execution.sessionByParams (Statements.Sleep 0.1)
 
               result `shouldBe` Nothing
 
@@ -125,7 +126,7 @@ spec = do
                 timeout 50_000 do
                   Connection.use connection do
                     Session.script "begin;"
-                    Session.statement (0.1 :: Double) Statements.Sleep.statement
+                    Execution.sessionByParams (Statements.Sleep 0.1)
                     Session.script "commit;"
 
               result `shouldBe` Nothing

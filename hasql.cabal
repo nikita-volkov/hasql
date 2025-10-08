@@ -52,6 +52,7 @@ common base
     DeriveGeneric
     DeriveTraversable
     DerivingVia
+    DuplicateRecordFields
     EmptyDataDecls
     FlexibleContexts
     FlexibleInstances
@@ -288,9 +289,14 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
+    Helpers.Dsls.Execution
+    Helpers.Dsls.Statement
     Helpers.Scripts
+    Helpers.Statements
+    Helpers.Statements.CurrentSetting
     Helpers.Statements.SelectOne
     Helpers.Statements.SelectProvidedInt8
+    Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
     Isolated.Bugs.ExceptionConnectionResetRaceSpec
     Isolated.Bugs.PipelineAbortSpec
@@ -307,6 +313,7 @@ test-suite integration-tests
     Sharing.Functionality.Connection.UseSpec
     Sharing.Functionality.Session.CatchErrorSpec
     Sharing.Functionality.Session.ScriptSpec
+    Sharing.Functionality.SessionSpec
     Sharing.SpecHook
 
   build-tool-depends:
@@ -318,6 +325,7 @@ test-suite integration-tests
     hasql:testing-kit,
     hspec ^>=2.11.12,
     quickcheck-instances >=0.3.11 && <0.4,
+    random >=1.3 && <1.4,
     random ^>=1.3.1,
     rerebase >=1 && <2,
     testcontainers-postgresql >=0.0.1 && <0.1,
