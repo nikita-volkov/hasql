@@ -20,8 +20,7 @@ run (Pipeline totalStatements run) usePreparedStatements connection cache = do
   result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
   case result of
     Left (Hipq.Roundtrip.ClientError _context details) -> do
-      Pq.reset connection
-      pure (Left (Errors.ConnectionSessionError (maybe "Connection error" decodeUtf8Lenient details)), StatementCache.empty)
+      pure (Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)), newCache)
     Left (Hipq.Roundtrip.ServerError recvError) ->
       pure (Left (Errors.fromRecvError recvError), newCache)
     Right a ->
