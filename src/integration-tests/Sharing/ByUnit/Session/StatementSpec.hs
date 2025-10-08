@@ -1,21 +1,21 @@
-module Isolated.Features.SessionSpec (spec) where
+module Sharing.ByUnit.Session.StatementSpec (spec) where
 
+import Data.Either
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
+import Helpers.Scripts qualified as Scripts
 import Test.Hspec
-import Test.QuickCheck.Instances ()
-import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
-spec :: Spec
-spec = Testcontainers.aroundSpecWithConnection False do
-  describe "Basic Session Operations" do
-    describe "Roundtrips" do
-      it "handles simple values correctly" \connection -> do
+spec :: SpecWith (Text, Word16)
+spec = do
+  describe "Roundtrips" do
+    it "handles simple values correctly" \config -> do
+      Scripts.onConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select $1"
@@ -25,8 +25,9 @@ spec = Testcontainers.aroundSpecWithConnection False do
         result <- Connection.use connection (Session.statement (42 :: Int64) statement)
         result `shouldBe` Right 42
 
-    describe "Error Handling" do
-      it "captures query errors correctly" \connection -> do
+  describe "Error Handling" do
+    it "captures query errors correctly" \config -> do
+      Scripts.onConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 1 = any ($1) and $2"
@@ -42,8 +43,9 @@ spec = Testcontainers.aroundSpecWithConnection False do
           Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
 
-    describe "IN simulation" do
-      it "works with arrays" \connection -> do
+  describe "IN simulation" do
+    it "works with arrays" \config -> do
+      Scripts.onConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 1 = any ($1)"
@@ -56,8 +58,9 @@ spec = Testcontainers.aroundSpecWithConnection False do
           return (result1, result2)
         result `shouldBe` Right (True, False)
 
-    describe "NOT IN simulation" do
-      it "works with arrays" \connection -> do
+  describe "NOT IN simulation" do
+    it "works with arrays" \config -> do
+      Scripts.onConnection config \connection -> do
         let statement =
               Statement.Statement
                 "select true where 3 <> all ($1)"

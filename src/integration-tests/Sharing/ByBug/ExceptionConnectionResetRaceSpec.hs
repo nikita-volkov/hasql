@@ -1,4 +1,4 @@
-module Isolated.Bugs.ExceptionConnectionResetRaceSpec (spec) where
+module Sharing.ByBug.ExceptionConnectionResetRaceSpec (spec) where
 
 import Control.Concurrent
 import Control.Exception
@@ -6,16 +6,16 @@ import Data.IORef
 import Hasql.Connection qualified as Connection
 import Hasql.Session qualified as Session
 import Helpers.Dsls.Execution qualified as Execution
+import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectProvidedInt8 qualified as Statements
 import System.Timeout
 import Test.Hspec
-import TestingKit.Testcontainers qualified as Testcontainers
 import Prelude
 
-spec :: Spec
-spec = Testcontainers.aroundSpecWithConnection True do
+spec :: SpecWith (Text, Word16)
+spec = do
   describe "Exception during session with concurrent access" do
-    it "Connection remains usable after exception in non-idle state with concurrent threads" \connection -> do
+    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onConnection config \connection -> do
       -- This test reproduces the bug fixed in commit 62ebef2.
       -- The bug was that when an exception occurred during a session,
       -- the connection state was put back into the MVar BEFORE resetting the connection.

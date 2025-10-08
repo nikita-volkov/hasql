@@ -1,4 +1,4 @@
-module Sharing.Functionality.Connection.UseSpec (spec) where
+module Sharing.ByUnit.Connection.UseSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

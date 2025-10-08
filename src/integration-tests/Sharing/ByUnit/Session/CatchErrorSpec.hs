@@ -1,4 +1,4 @@
-module Sharing.Functionality.Session.CatchErrorSpec (spec) where
+module Sharing.ByUnit.Session.CatchErrorSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection

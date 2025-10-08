@@ -13,7 +13,7 @@ import Prelude
 -- Host and port of a running isolated postgres server.
 type ScopeParams = (Text, Word16)
 
-onConnection :: ScopeParams -> (Connection.Connection -> IO ()) -> IO ()
+onConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
 onConnection (host, port) =
   bracket
     ( do
@@ -35,8 +35,11 @@ onConnection (host, port) =
     )
     Connection.release
 
-generateName :: Text -> IO Text
-generateName prefix = do
+-- | Generate a unique name of the following pattern:
+--
+-- > <prefix><uniqueNum1><infix><uniqueNum2><suffix>
+generateName :: Text -> Text -> Text -> IO Text
+generateName prefix infix_ suffix = do
   uniqueNum1 <- Random.uniformWord64 Random.globalStdGen
   uniqueNum2 <- Random.uniformWord64 Random.globalStdGen
   pure
@@ -44,18 +47,15 @@ generateName prefix = do
     $ mconcat
     $ [ TextBuilder.text prefix,
         TextBuilder.decimal uniqueNum1,
-        TextBuilder.decimal uniqueNum2
+        TextBuilder.text infix_,
+        TextBuilder.decimal uniqueNum2,
+        TextBuilder.text suffix
       ]
 
 generateVarname :: IO Text
 generateVarname = do
-  uniqueNum1 <- Random.uniformWord64 Random.globalStdGen
-  uniqueNum2 <- Random.uniformWord64 Random.globalStdGen
-  pure
-    $ TextBuilder.toText
-    $ mconcat
-    $ [ "testing.v",
-        TextBuilder.decimal uniqueNum1,
-        "v",
-        TextBuilder.decimal uniqueNum2
-      ]
+  generateName "testing.v" "v" ""
+
+generateSymname :: IO Text
+generateSymname =
+  generateName "test_" "_" ""

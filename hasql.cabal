@@ -299,22 +299,19 @@ test-suite integration-tests
     Helpers.Statements.SelectProvidedInt8
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
-    Isolated.Bugs.ExceptionConnectionResetRaceSpec
-    Isolated.Bugs.PipelineAbortSpec
-    Isolated.Bugs.PreparedStatementAlreadyExistsSpec
-    Isolated.Features.CodecsSpec
-    Isolated.Features.ConcurrencySpec
-    Isolated.Features.ConnectionSpec
-    Isolated.Features.DecoderCompatibilityCheckSpec
-    Isolated.Features.PipelineSpec
-    Isolated.Features.SessionSpec
-    Isolated.Features.StatementSpec
-    Isolated.Features.SyntaxErrorsSpec
-    Isolated.Functionality.Connection.AcquireSpec
-    Sharing.Functionality.Connection.UseSpec
-    Sharing.Functionality.Session.CatchErrorSpec
-    Sharing.Functionality.Session.ScriptSpec
-    Sharing.Functionality.SessionSpec
+    Isolated.ByUnit.Connection.AcquireSpec
+    Sharing.ByBug.ExceptionConnectionResetRaceSpec
+    Sharing.ByFeature.ConcurrencySpec
+    Sharing.ByFeature.DecoderCompatibilityCheckSpec
+    Sharing.ByFeature.PreparedStatementCacheSpec
+    Sharing.ByFeature.SyntaxErrorsSpec
+    Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.PipelineSpec
+    Sharing.ByUnit.Session.CatchErrorSpec
+    Sharing.ByUnit.Session.ScriptSpec
+    Sharing.ByUnit.Session.StatementSpec
+    Sharing.ByUnit.SessionSpec
+    Sharing.ByUnit.StatementSpec
     Sharing.SpecHook
 
   build-tool-depends:

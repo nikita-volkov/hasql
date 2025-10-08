@@ -1,4 +1,4 @@
-module Sharing.Functionality.Session.ScriptSpec (spec) where
+module Sharing.ByUnit.Session.ScriptSpec (spec) where
 
 import Data.Either
 import Hasql.Connection qualified as Connection
