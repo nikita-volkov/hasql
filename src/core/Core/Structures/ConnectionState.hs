@@ -9,12 +9,12 @@ module Core.Structures.ConnectionState
     setConnection,
     mapStatementCache,
     traverseStatementCache,
-    resetPreparedStatementsCache,
+    reset,
   )
 where
 
 import Core.Structures.StatementCache qualified as StatementCache
-import Platform.Prelude
+import Platform.Prelude hiding (reset)
 import Pq qualified
 
 -- |
@@ -74,6 +74,6 @@ traverseStatementCache f ConnectionState {..} =
     )
     (f statementCache)
 
-resetPreparedStatementsCache :: ConnectionState -> ConnectionState
-resetPreparedStatementsCache =
+reset :: ConnectionState -> ConnectionState
+reset =
   mapStatementCache (const StatementCache.empty)

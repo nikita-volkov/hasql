@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-unused-binds -Wno-unused-imports -Wno-name-shadowing -Wno-incomplete-patterns -Wno-unused-matches -Wno-missing-methods -Wno-unused-record-wildcards -Wno-redundant-constraints #-}
-
 -- |
 -- This module provides a low-level effectful API dealing with the connections to the database.
 module Hasql.Connection
@@ -18,6 +16,7 @@ import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Setting qualified as Setting
+import Hipq.Session qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -109,85 +108,33 @@ release (Connection connectionRef) =
 --
 -- Blocks until the connection is available when there is another session running upon the connection.
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
-use connection session =
-  useConnectionState connection \connectionState -> do
-    Session.run session connectionState
-
-useConnectionState :: Connection -> (ConnectionState.ConnectionState -> IO (a, ConnectionState.ConnectionState)) -> IO a
-useConnectionState (Connection var) handler =
+use (Connection var) session =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
-    result <- try @SomeException (restore (handler connectionState))
+    result <- try @SomeException (restore (Session.run session connectionState))
     case result of
       Left exception -> do
         -- If an exception happened, we need to bring the connection back to idle
         -- without resetting (to preserve session state).
-        
-        -- First, check if we're in pipeline mode and try to exit it.
-        pipelineStatus <- Pq.pipelineStatus connection
-        when (pipelineStatus == Pq.PipelineOn) do
-          -- Try to exit pipeline mode.
-          -- This might fail if there are pending results that need to be consumed.
-          success <- Pq.exitPipelineMode connection
-          unless success do
-            -- If exit failed, drain results and try again.
-            drainResults connection
-            _ <- Pq.exitPipelineMode connection
-            pure ()
-        
-        -- Now handle the transaction status to ensure we're back to idle.
-        Pq.transactionStatus connection >>= \case
-          Pq.TransIdle -> do
-            -- Connection is already idle, just put back the connection state.
+        result <- Hipq.Session.toHandler Hipq.Session.cleanUpAfterInterruption connection
+        case result of
+          Left err -> do
+            -- If cleanup failed, we have to close the connection.
+            -- There's not much else we can do.
+            Pq.finish connection
+            putMVar var (ConnectionState.reset connectionState)
+            let message =
+                  mconcat
+                    [ "Failed to clean up after interruption.\n",
+                      err,
+                      "\n",
+                      "The following exception was raised during the operation:\n",
+                      Text.pack (displayException exception)
+                    ]
+            pure (Left (DriverSessionError message))
+          Right () -> do
             putMVar var connectionState
-          Pq.TransInTrans -> do
-            -- In a transaction block: abort the transaction to return to idle.
-            -- This preserves session-level state while cleaning up the transaction.
-            _ <- Pq.exec connection "ABORT"
-            putMVar var connectionState
-          Pq.TransActive -> do
-            -- A command is still in progress.
-            -- Cancel it and drain results.
-            mCancel <- Pq.getCancel connection
-            case mCancel of
-              Just cancel -> do
-                _ <- Pq.cancel cancel
-                pure ()
-              Nothing -> pure ()
-            -- Consume any pending data and drain results.
-            _ <- Pq.consumeInput connection
-            drainResults connection
-            -- Check status again after draining.
-            Pq.transactionStatus connection >>= \case
-              Pq.TransIdle -> putMVar var connectionState
-              Pq.TransInTrans -> do
-                _ <- Pq.exec connection "ABORT"
-                putMVar var connectionState
-              Pq.TransInError -> do
-                _ <- Pq.exec connection "ABORT"
-                putMVar var connectionState
-              _ -> do
-                -- For other states, reset as fallback.
-                Pq.reset connection
-                putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
-          Pq.TransInError -> do
-            -- Transaction is in error state: abort to return to idle.
-            _ <- Pq.exec connection "ABORT"
-            putMVar var connectionState
-          Pq.TransUnknown -> do
-            -- Unknown state (connection issue): reset the connection.
-            Pq.reset connection
-            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
-
-        throwIO exception
+            throwIO exception
       Right (result, !newState) -> do
         putMVar var newState
         pure result
-
--- | Drain all pending results from the connection.
-drainResults :: Pq.Connection -> IO ()
-drainResults conn = do
-  mResult <- Pq.getResult conn
-  case mResult of
-    Nothing -> pure ()
-    Just _ -> drainResults conn
