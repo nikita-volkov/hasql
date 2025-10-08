@@ -127,6 +127,7 @@ library
     hasql:hipq,
     hasql:platform,
     hasql:pq,
+    hasql:text-extras,
     iproute >=1.7 && <1.8,
     postgresql-binary >=0.14.2 && <0.15,
     text >=1 && <3,
@@ -157,7 +158,6 @@ library core
     hasql:hipq,
     hasql:platform,
     hasql:pq,
-    hasql:text-builder-extras,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
@@ -226,16 +226,15 @@ library pq
     hasql:platform,
     postgresql-libpq >=0.10.1 && <0.12,
 
-library text-builder-extras
+library text-extras
   import: base
-  hs-source-dirs: src/text-builder-extras
+  hs-source-dirs: src/text-extras
   exposed-modules:
-    TextBuilderExtras
+    TextExtras
 
   build-depends:
     hasql:platform,
     text >=1 && <3,
-    text-builder >=1 && <1.1,
 
 benchmark benchmarks
   import: executable
