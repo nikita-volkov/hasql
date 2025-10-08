@@ -25,21 +25,17 @@ onConnection unpreparable (host, port) =
     ( do
         res <-
           Connection.acquire
-            $ mconcat
-              [ [ Connection.Setting.connection
-                    ( Connection.Setting.Connection.params
-                        [ Connection.Setting.Connection.Param.host host,
-                          Connection.Setting.Connection.Param.port (fromIntegral port),
-                          Connection.Setting.Connection.Param.user "postgres",
-                          Connection.Setting.Connection.Param.password "postgres",
-                          Connection.Setting.Connection.Param.dbname "postgres"
-                        ]
-                    )
-                ],
-                if unpreparable
-                  then [Connection.Setting.disablePreparedStatements]
-                  else []
-              ]
+            [ Connection.Setting.connection
+                ( Connection.Setting.Connection.params
+                    [ Connection.Setting.Connection.Param.host host,
+                      Connection.Setting.Connection.Param.port (fromIntegral port),
+                      Connection.Setting.Connection.Param.user "postgres",
+                      Connection.Setting.Connection.Param.password "postgres",
+                      Connection.Setting.Connection.Param.dbname "postgres"
+                    ]
+                ),
+              Connection.Setting.noPreparedStatements unpreparable
+            ]
         case res of
           Left err -> fail ("Connection failed: " <> show err)
           Right conn -> pure conn
