@@ -1,4 +1,4 @@
-module Helpers.NewStatements.Sleep where
+module Helpers.Statements.Sleep where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders

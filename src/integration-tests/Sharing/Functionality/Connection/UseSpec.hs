@@ -7,9 +7,9 @@ import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Frameworks.Execution qualified as Execution
-import Helpers.NewStatements.Sleep qualified as Statements
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectOne qualified as Statements.SelectOne
+import Helpers.Statements.Sleep qualified as Statements
 import Test.Hspec
 import Prelude
 

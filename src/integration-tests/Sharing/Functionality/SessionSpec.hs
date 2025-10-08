@@ -3,7 +3,7 @@ module Sharing.Functionality.SessionSpec (spec) where
 import Data.Either
 import Hasql.Connection qualified as Connection
 import Helpers.Frameworks.Execution qualified as Execution
-import Helpers.NewStatements qualified as Statements
+import Helpers.Statements qualified as Statements
 import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
