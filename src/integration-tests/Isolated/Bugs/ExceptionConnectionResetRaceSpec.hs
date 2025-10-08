@@ -5,7 +5,8 @@ import Control.Exception
 import Data.IORef
 import Hasql.Connection qualified as Connection
 import Hasql.Session qualified as Session
-import Helpers.Statements.SelectProvidedInt8 qualified as Statements.SelectProvidedInt8
+import Helpers.Dsls.Execution qualified as Execution
+import Helpers.Statements.SelectProvidedInt8 qualified as Statements
 import System.Timeout
 import Test.Hspec
 import TestingKit.Testcontainers qualified as Testcontainers
@@ -51,7 +52,7 @@ spec = Testcontainers.aroundSpecWithConnection True do
       _ <- forkIO do
         takeMVar startBarrier
         replicateM_ 20 do
-          result <- Connection.use connection (Session.statement 42 Statements.SelectProvidedInt8.statement)
+          result <- Connection.use connection (Execution.sessionByParams (Statements.SelectProvidedInt8 42))
           case result of
             Right 42 -> atomicModifyIORef' successCount (\n -> (n + 1, ()))
             _ -> atomicModifyIORef' errorCount (\n -> (n + 1, ()))
@@ -86,5 +87,5 @@ spec = Testcontainers.aroundSpecWithConnection True do
           errors `shouldBe` 0
 
           -- Verify connection is still usable after all this
-          finalResult <- Connection.use connection (Session.statement 99 Statements.SelectProvidedInt8.statement)
+          finalResult <- Connection.use connection (Execution.sessionByParams (Statements.SelectProvidedInt8 99))
           finalResult `shouldBe` Right 99

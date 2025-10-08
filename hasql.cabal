@@ -289,15 +289,15 @@ test-suite integration-tests
   hs-source-dirs: src/integration-tests
   main-is: Main.hs
   other-modules:
-    Helpers.Frameworks.Execution
-    Helpers.Frameworks.Statement
-    Helpers.NewStatements
-    Helpers.NewStatements.CurrentSetting
-    Helpers.NewStatements.SetConfig
-    Helpers.NewStatements.Sleep
+    Helpers.Dsls.Execution
+    Helpers.Dsls.Statement
     Helpers.Scripts
+    Helpers.Statements
+    Helpers.Statements.CurrentSetting
     Helpers.Statements.SelectOne
     Helpers.Statements.SelectProvidedInt8
+    Helpers.Statements.SetConfig
+    Helpers.Statements.Sleep
     Isolated.Bugs.ExceptionConnectionResetRaceSpec
     Isolated.Bugs.PipelineAbortSpec
     Isolated.Bugs.PreparedStatementAlreadyExistsSpec

@@ -1,9 +1,9 @@
-module Helpers.NewStatements.SetConfig where
+module Helpers.Statements.SetConfig where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Statement qualified as Statement
-import Helpers.Frameworks.Statement
+import Helpers.Dsls.Statement
 import Prelude hiding (local)
 
 data SetConfig = SetConfig

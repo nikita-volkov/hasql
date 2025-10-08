@@ -1,4 +1,4 @@
-module Helpers.Frameworks.Statement where
+module Helpers.Dsls.Statement where
 
 import Hasql.Statement qualified as Statement
 

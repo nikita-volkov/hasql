@@ -1,4 +1,4 @@
-module Helpers.Frameworks.Execution
+module Helpers.Dsls.Execution
   ( Session,
     sessionByParams,
     Pipeline,
@@ -11,20 +11,20 @@ import Hasql.Pipeline (Pipeline)
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session (Session)
 import Hasql.Session qualified as Session
-import Helpers.Frameworks.Statement qualified as StatementModule
+import Helpers.Dsls.Statement qualified as StatementDsl
 import System.Random.Stateful qualified as Random
 import TextBuilder qualified
 import Prelude
 
 sessionByParams ::
-  (StatementModule.StatementModule params result) =>
+  (StatementDsl.StatementModule params result) =>
   params -> Session result
 sessionByParams = Session.pipeline . pipelineByParams
 
 pipelineByParams ::
-  (StatementModule.StatementModule params result) =>
+  (StatementDsl.StatementModule params result) =>
   params -> Pipeline result
-pipelineByParams params = Pipeline.statement params StatementModule.statement
+pipelineByParams params = Pipeline.statement params StatementDsl.statement
 
 generateVarname :: IO Text
 generateVarname = do
