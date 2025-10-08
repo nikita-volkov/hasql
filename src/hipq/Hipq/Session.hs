@@ -30,6 +30,9 @@ type Error = Text
 -- - Bringing the transaction status to idle if we are in a transaction.
 cleanUpAfterInterruption :: Session ()
 cleanUpAfterInterruption = do
+  drainResults
+  cancel
+  drainResults
   -- Ensure we are out of pipeline mode.
   leavePipeline
   -- Ensure we are in idle transaction state.
@@ -44,8 +47,6 @@ bringTransactionStatusToIdle = do
       runScript "ABORT"
     Pq.TransActive -> do
       -- A command is still in progress.
-      -- Cancel it and drain results.
-      cancel
       drainResults
       -- Check status again after draining.
       transactionStatus <- getTransactionStatus
@@ -83,7 +84,11 @@ leavePipeline = do
       unless success do
         -- If it still fails, there's not much we can do.
         -- The connection is probably in a bad state.
-        throwError "Failed to exit pipeline mode after draining results"
+        errorMessage <- getErrorMessage
+        let message = case errorMessage of
+              Nothing -> "Failed to exit pipeline mode after draining results"
+              Just details -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient details
+        throwError message
 
 cancel :: Session ()
 cancel = Session \connection -> do
@@ -97,6 +102,10 @@ cancel = Session \connection -> do
         Right () ->
           pure (Right ())
     Nothing -> pure (Right ())
+
+getErrorMessage :: Session (Maybe ByteString)
+getErrorMessage = Session \connection -> do
+  Right <$> Pq.errorMessage connection
 
 getTransactionStatus :: Session Pq.TransactionStatus
 getTransactionStatus = Session \connection -> do
