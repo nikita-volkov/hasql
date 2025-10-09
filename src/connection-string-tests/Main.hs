@@ -404,8 +404,8 @@ main = hspec do
                 Left err -> expectationFailure ("URL roundtrip parse error: " <> Text.unpack err)
                 Right cs2 -> cs2 `shouldBe` cs
 
-        it "postgresql://host1:port1,host2:port2,host3:port3/" do
-          let input = "postgresql://host1:port1,host2:port2,host3:port3/"
+        it "postgresql://host1:1,host2:2,host3:3/" do
+          let input = "postgresql://host1:1,host2:2,host3:3/"
           case ConnectionString.parseText input of
             Left err -> expectationFailure ("Parse error: " <> Text.unpack err)
             Right cs -> do
@@ -420,8 +420,8 @@ main = hspec do
                 Left err -> expectationFailure ("URL roundtrip parse error: " <> Text.unpack err)
                 Right cs2 -> cs2 `shouldBe` cs
 
-        it "host=host1,host2,host3 port=port1,port2,port3" do
-          let input = "host=host1,host2,host3 port=port1,port2,port3"
+        it "host=host1,host2,host3 port=1,2,3" do
+          let input = "host=host1,host2,host3 port=1,2,3"
           case ConnectionString.parseText input of
             Left err -> expectationFailure ("Parse error: " <> Text.unpack err)
             Right cs -> do
@@ -432,9 +432,9 @@ main = hspec do
               length hosts `shouldSatisfy` (> 0)
 
       describe "equivalence tests" do
-        it "postgresql://host1:port1,host2:port2,host3:port3/ is equivalent to host=host1,host2,host3 port=port1,port2,port3" do
-          let url = "postgresql://host1:port1,host2:port2,host3:port3/"
-              kv = "host=host1,host2,host3 port=port1,port2,port3"
+        it "postgresql://host1:1,host2:2,host3:3/ is equivalent to host=host1,host2,host3 port=1,2,3" do
+          let url = "postgresql://host1:1,host2:2,host3:3/"
+              kv = "host=host1,host2,host3 port=1,2,3"
           case (ConnectionString.parseText url, ConnectionString.parseText kv) of
             (Right cs1, Right cs2) -> do
               -- They should represent the same connection

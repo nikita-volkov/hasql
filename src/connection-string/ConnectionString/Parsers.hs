@@ -43,7 +43,10 @@ getUriConnectionString = do
                     continueFromHostspec (Just user) (Just password) [],
                   do
                     port <- try do
-                      decimal <?> "Port"
+                      p <- decimal <?> "Port"
+                      -- Ensure we're followed by valid continuation (not more alphanumeric)
+                      notFollowedBy alphaNumChar
+                      return p
                     let host = unqualifiedWord
                     continueAfterHostspec Nothing Nothing [Host host (Just port)]
                 ],
@@ -85,12 +88,15 @@ getKeyValueConnectionString = do
         )
           params
 
-      -- Parse hosts if present - just single host for now
+      -- Parse hosts if present - handle comma-separated hosts and ports
       hosts = case hostText of
         Nothing -> []
         Just h ->
-          let port = portText >>= parsePort
-           in [Host h port]
+          let hostList = Text.splitOn "," h
+              portList = maybe [] (Text.splitOn ",") portText
+              -- Pair up hosts with ports, padding with Nothing if needed
+              pairs = zipWith (\host mPort -> (host, mPort)) hostList (map Just portList ++ repeat Nothing)
+           in map (\(host, mPortText) -> Host host (mPortText >>= parsePort)) pairs
 
   pure (ConnectionString user password hosts dbname remainingParams)
   where
@@ -143,6 +149,11 @@ getWord = PercentEncoding.parser (flip CharSet.member controlCharset)
   where
     controlCharset = CharSet.fromList ":@?/=&,"
 
+getParamValue :: P Text
+getParamValue = PercentEncoding.parser (flip CharSet.member paramControlCharset)
+  where
+    paramControlCharset = CharSet.fromList "&"
+
 continueAfterHostspec :: Maybe Text -> Maybe Text -> [Host] -> P ConnectionString
 continueAfterHostspec user password hosts = do
   asum
@@ -170,16 +181,12 @@ continueFromHostspec user password hosts = do
         continueFromParams user password hosts Nothing,
       do
         -- Parse first host
-        host1 <- getWord
-        port1 <- optional (char ':' *> decimal)
-        let firstHost = Host host1 port1
+        firstHost <- getHost
 
         -- Parse additional hosts (comma-separated)
         moreHosts <- many do
-          char ','
-          host <- getWord
-          port <- optional (char ':' *> decimal)
-          pure (Host host port)
+          try (char ',')
+          getHost
 
         let allHosts = hosts <> [firstHost] <> moreHosts
 
@@ -194,6 +201,16 @@ continueFromHostspec user password hosts = do
           ],
       pure (ConnectionString user password hosts Nothing Map.empty)
     ]
+
+getHost :: P Host
+getHost = do
+  host <- getWord
+  port <- optional do
+    -- Try to parse as numeric port
+    try do
+      char ':'
+    label "Port" decimal <* notFollowedBy alphaNumChar
+  pure (Host host port)
 
 continueFromDbname :: Maybe Text -> Maybe Text -> [Host] -> P ConnectionString
 continueFromDbname user password hosts = do
@@ -222,5 +239,5 @@ getParam :: P (Text, Text)
 getParam = do
   key <- getWord
   char '='
-  value <- getWord
+  value <- getParamValue
   pure (key, value)
