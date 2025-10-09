@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-unused-binds -Wno-unused-imports -Wno-name-shadowing -Wno-incomplete-patterns -Wno-unused-matches -Wno-missing-methods -Wno-unused-record-wildcards -Wno-redundant-constraints #-}
-
 module ConnectionString
   ( ConnectionString,
     parseText,
@@ -122,24 +120,25 @@ toUrl = TextBuilder.toText . renderConnectionString
 toKeyValueString :: ConnectionString -> Text
 toKeyValueString (ConnectionString user password hostspec dbname paramspec) =
   (TextBuilder.toText . TextBuilder.intercalateMap " " id)
-    (catMaybes
-      [ fmap (\h -> renderKeyValue "host" (renderHostForKeyValue h)) (listToMaybe hostspec),
-        fmap (\p -> renderKeyValue "port" (TextBuilder.decimal p)) (listToMaybe hostspec >>= \(Host _ p) -> p),
-        fmap (renderKeyValue "user" . TextBuilder.text) user,
-        fmap (renderKeyValue "password" . TextBuilder.text) password,
-        fmap (renderKeyValue "dbname" . TextBuilder.text) dbname
-      ]
-    <> map (\(k, v) -> renderKeyValue k (TextBuilder.text v)) (Map.toList paramspec))
+    ( catMaybes
+        [ fmap (\h -> renderKeyValue "host" (renderHostForKeyValue h)) (listToMaybe hostspec),
+          fmap (\p -> renderKeyValue "port" (TextBuilder.decimal p)) (listToMaybe hostspec >>= \(Host _ p) -> p),
+          fmap (renderKeyValue "user" . TextBuilder.text) user,
+          fmap (renderKeyValue "password" . TextBuilder.text) password,
+          fmap (renderKeyValue "dbname" . TextBuilder.text) dbname
+        ]
+        <> map (\(k, v) -> renderKeyValue k (TextBuilder.text v)) (Map.toList paramspec)
+    )
   where
     renderHostForKeyValue (Host host _) = TextBuilder.text host
-    
+
     renderKeyValue key value =
       mconcat
         [ TextBuilder.text key,
           "=",
           escapeValue value
         ]
-    
+
     -- Escape values according to the keyword/value format rules
     escapeValue :: TextBuilder -> TextBuilder
     escapeValue valueBuilder =
@@ -147,13 +146,13 @@ toKeyValueString (ConnectionString user password hostspec dbname paramspec) =
        in if needsQuoting value
             then mconcat ["'", TextBuilder.text (escapeForQuoted value), "'"]
             else TextBuilder.text value
-    
+
     -- Check if a value needs quoting
     needsQuoting :: Text -> Bool
     needsQuoting value =
       Text.null value
         || Text.any (\c -> c == ' ' || c == '\'' || c == '\\' || c == '=') value
-    
+
     -- Escape backslashes and single quotes for quoted values
     escapeForQuoted :: Text -> Text
     escapeForQuoted = Text.concatMap escapeChar
