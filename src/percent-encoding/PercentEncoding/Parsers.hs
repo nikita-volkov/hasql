@@ -1,14 +1,17 @@
-module PercentEncoding.AttoparsecParsers where
+module PercentEncoding.Parsers where
 
 import Control.Exception qualified as Exception
-import Data.Attoparsec.Text
 import Data.ByteString qualified as ByteString
 import Data.ByteString.Internal qualified as ByteString
 import Data.Text.Encoding qualified as Text.Encoding
 import Data.Text.Encoding.Error qualified as Text.Encoding
 import PercentEncoding.MonadPlus qualified as MonadPlus
-import Platform.Prelude
+import Platform.Prelude hiding (try)
+import Text.Megaparsec
+import Text.Megaparsec.Char
 import TextBuilder qualified as TextBuilder
+
+type Parser = Parsec Void Text
 
 {-# INLINEABLE urlEncodedComponentText #-}
 urlEncodedComponentText :: (Char -> Bool) -> Parser Text
@@ -19,8 +22,10 @@ urlEncodedComponentText stopCharPredicate =
     $ parser
   where
     parser =
-      (TextBuilder.text <$> takeWhile1 unencodedCharPredicate)
-        <|> urlEncodedSequenceTextBuilder
+      asum
+        [ TextBuilder.text <$> takeWhile1P (Just "Unencoded char") unencodedCharPredicate,
+          urlEncodedSequenceTextBuilder
+        ]
       where
         unencodedCharPredicate c =
           not (c == '%' || stopCharPredicate c)
@@ -47,28 +52,26 @@ urlEncodedSequenceTextBuilder =
 
 {-# INLINE urlEncodedByte #-}
 urlEncodedByte :: Parser Word8
-urlEncodedByte =
-  do
-    _ <- char '%'
-    digit1 <- fromIntegral <$> hexadecimalDigit
-    digit2 <- fromIntegral <$> hexadecimalDigit
-    return (shiftL digit1 4 .|. digit2)
+urlEncodedByte = do
+  _ <- try (char '%')
+  digit1 <- fromIntegral <$> hexadecimalDigit
+  digit2 <- fromIntegral <$> hexadecimalDigit
+  return (shiftL digit1 4 .|. digit2)
 
 {-# INLINE hexadecimalDigit #-}
 hexadecimalDigit :: Parser Int
-hexadecimalDigit =
-  do
-    c <- anyChar
-    let x = ord c
-    if x >= 48 && x < 58
-      then return (x - 48)
-      else
-        if x >= 65 && x < 71
-          then return (x - 55)
-          else
-            if x >= 97 && x < 103
-              then return (x - 97)
-              else fail ("Not a hexadecimal digit: " <> show c)
+hexadecimalDigit = label "Hex digit" do
+  c <- anySingle
+  let x = ord c
+  if x >= 48 && x < 58
+    then return (x - 48)
+    else
+      if x >= 65 && x < 71
+        then return (x - 55)
+        else
+          if x >= 97 && x < 103
+            then return (x - 97)
+            else fail ("Not a hexadecimal digit: " <> show c)
 
 {-# INLINE labeled #-}
 labeled :: String -> Parser a -> Parser a
