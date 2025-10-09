@@ -2,7 +2,6 @@ module PercentEncoding.Parsers where
 
 import Control.Exception qualified as Exception
 import Data.ByteString qualified as ByteString
-import Data.ByteString.Internal qualified as ByteString
 import Data.Text.Encoding qualified as Text.Encoding
 import Data.Text.Encoding.Error qualified as Text.Encoding
 import PercentEncoding.MonadPlus qualified as MonadPlus
@@ -18,12 +17,12 @@ urlEncodedComponentText :: (Char -> Bool) -> Parser Text
 urlEncodedComponentText stopCharPredicate =
   labeled "URL-encoded component"
     $ fmap TextBuilder.toText
-    $ MonadPlus.foldl mappend mempty
+    $ MonadPlus.scanl1 mappend
     $ parser
   where
     parser =
       asum
-        [ TextBuilder.text <$> takeWhile1P (Just "Unencoded char") unencodedCharPredicate,
+        [ TextBuilder.text <$> try (takeWhile1P (Just "Unencoded char") unencodedCharPredicate),
           urlEncodedSequenceTextBuilder
         ]
       where
@@ -35,7 +34,7 @@ urlEncodedSequenceTextBuilder :: Parser TextBuilder.TextBuilder
 urlEncodedSequenceTextBuilder =
   labeled "URL-encoded sequence" $ do
     start <- progress (mempty, mempty, Text.Encoding.streamDecodeUtf8) =<< urlEncodedByte
-    MonadPlus.foldlM progress start urlEncodedByte >>= finish
+    MonadPlus.scanlM progress start urlEncodedByte >>= finish
   where
     progress (!builder, _ :: ByteString, decode) byte =
       case unsafeDupablePerformIO (Exception.try (evaluate (decode (ByteString.singleton byte)))) of

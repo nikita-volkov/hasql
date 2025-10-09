@@ -4,7 +4,6 @@ import PercentEncoding.Parsers qualified as Parsers
 import PercentEncoding.TextBuilders qualified as TextBuilders
 import Platform.Prelude
 import Text.Megaparsec qualified as Megaparsec
-import TextBuilder (TextBuilder)
 
 encodeText :: Text -> TextBuilder
 encodeText = TextBuilders.urlEncodedText

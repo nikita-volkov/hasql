@@ -242,11 +242,18 @@ library connection-string
   exposed-modules:
     ConnectionString
 
+  other-modules:
+    ConnectionString.Parsers
+    ConnectionString.Types
+    ConnectionString.Types.Gens
+
   build-depends:
-    attoparsec >=0.10 && <0.15,
+    QuickCheck >=2.14 && <2.16,
+    charset ^>=0.3.12,
     containers >=0.6 && <0.9,
     hasql:percent-encoding,
     hasql:platform,
+    megaparsec >=9.7 && <10.0,
     text >=1 && <3,
     text-builder >=1 && <1.1,
 
@@ -267,10 +274,8 @@ library percent-encoding
     base >=4.14 && <5,
     bytestring >=0.10 && <0.13,
     charset ^>=0.3.12,
-    containers >=0.6 && <0.9,
     hasql:platform,
     megaparsec >=9.7 && <10.0,
-    parser-combinators >=1.0 && <2.0,
     text >=1 && <3,
     text-builder >=1 && <1.1,
 
@@ -345,3 +350,17 @@ test-suite integration-tests
     rerebase >=1 && <2,
     testcontainers-postgresql >=0.0.1 && <0.1,
     text-builder >=1 && <1.1,
+
+test-suite connection-string-tests
+  import: test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: src/connection-string-tests
+  main-is: Main.hs
+  build-depends:
+    QuickCheck >=2.14 && <2.16,
+    containers >=0.6 && <0.9,
+    hasql:connection-string,
+    hasql:platform,
+    hspec ^>=2.11.12,
+    quickcheck-classes >=0.6.5 && <0.7,
+    text >=1 && <3,
