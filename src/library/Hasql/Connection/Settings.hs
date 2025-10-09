@@ -30,18 +30,24 @@ data Settings
   deriving stock (Eq, Ord, Generic)
   deriving anyclass (Hashable)
 
+-- | Combines settings, with the rightmost taking precedence in case of conflicts.
+--
+-- In case of host addresses, they get combined as alternatives.
 instance Semigroup Settings where
   Settings connectionString1 _noPreparedStatements1 <> Settings connectionString2 noPreparedStatements2 =
     Settings
       (connectionString1 <> connectionString2)
       noPreparedStatements2
 
+-- | Provides default settings.
 instance Monoid Settings where
   mempty = Settings mempty False
 
+-- | Renders as a string literal with a URL.
 instance Show Settings where
   showsPrec d = showsPrec d . toConnectionString
 
+-- | Constructs from a connection string in either URI or key-value format.
 instance IsString Settings where
   fromString = fromConnectionString . fromString
 
