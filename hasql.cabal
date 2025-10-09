@@ -107,6 +107,7 @@ library
     Hasql.Connection.Setting
     Hasql.Connection.Setting.Connection
     Hasql.Connection.Setting.Connection.Param
+    Hasql.Connection.Settings
     Hasql.Decoders
     Hasql.Encoders
     Hasql.Errors
@@ -124,6 +125,7 @@ library
     aeson >=2 && <3,
     bytestring >=0.10 && <0.13,
     containers >=0.6 && <0.9,
+    hasql:connection-string,
     hasql:core,
     hasql:hipq,
     hasql:platform,
