@@ -236,6 +236,39 @@ library text-extras
     hasql:platform,
     text >=1 && <3,
 
+library connection-string
+  import: base
+  hs-source-dirs: src/connection-string
+  exposed-modules:
+    ConnectionString
+
+  build-depends:
+    attoparsec >=0.10 && <0.15,
+    containers >=0.6 && <0.9,
+    hasql:percent-encoding,
+    hasql:platform,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+
+library percent-encoding
+  import: base
+  hs-source-dirs: src/percent-encoding
+  exposed-modules:
+    PercentEncoding
+
+  other-modules:
+    PercentEncoding.Charsets
+    PercentEncoding.TextBuilders
+    PercentEncoding.Utf8CharView
+
+  build-depends:
+    attoparsec >=0.10 && <0.15,
+    charset ^>=0.3.12,
+    containers >=0.6 && <0.9,
+    hasql:platform,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+
 benchmark benchmarks
   import: executable
   type: exitcode-stdio-1.0
