@@ -2,6 +2,7 @@
 
 module ConnectionString where
 
+import Data.Attoparsec.Text qualified as Attoparsec
 import Data.Map.Strict qualified as Map
 import PercentEncoding qualified
 import Platform.Prelude
@@ -85,7 +86,11 @@ toUrl = TextBuilder.toText . renderConnectionString
     renderParamspec paramspec =
       case Map.toList paramspec of
         [] -> mempty
-        list -> mconcat ["?", TextBuilder.intercalateMap "&" renderParam list]
+        list ->
+          mconcat
+            [ "?",
+              TextBuilder.intercalateMap "&" renderParam list
+            ]
 
     renderParam (key, value) =
       mconcat
@@ -93,3 +98,12 @@ toUrl = TextBuilder.toText . renderConnectionString
           "=",
           PercentEncoding.encodeText value
         ]
+
+fromText :: Text -> Either Text ConnectionString
+fromText input =
+  Attoparsec.parseOnly (attoparsecParser <* Attoparsec.endOfInput) input
+    & first fromString
+
+attoparsecParser :: Attoparsec.Parser ConnectionString
+attoparsecParser =
+  error "TODO: Implement parser for both URI and keyword/value formats"

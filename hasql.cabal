@@ -257,12 +257,16 @@ library percent-encoding
     PercentEncoding
 
   other-modules:
+    PercentEncoding.AttoparsecParsers
     PercentEncoding.Charsets
+    PercentEncoding.MonadPlus
     PercentEncoding.TextBuilders
     PercentEncoding.Utf8CharView
 
   build-depends:
     attoparsec >=0.10 && <0.15,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
     charset ^>=0.3.12,
     containers >=0.6 && <0.9,
     hasql:platform,
