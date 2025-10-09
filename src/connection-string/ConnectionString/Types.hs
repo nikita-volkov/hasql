@@ -30,7 +30,7 @@ data ConnectionString
       (Maybe Text)
       -- | Key-value parameters.
       (Map.Map Text Text)
-  deriving (Show, Eq)
+  deriving (Eq)
 
 data Host
   = Host

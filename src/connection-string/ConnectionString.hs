@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module ConnectionString
   ( ConnectionString,
     parseText,
@@ -29,6 +31,15 @@ import PercentEncoding qualified
 import Platform.Prelude
 import Text.Megaparsec qualified as Megaparsec
 import TextBuilder qualified
+
+instance IsString ConnectionString where
+  fromString =
+    either fromError id . parseText . fromString
+    where
+      fromError = const mempty
+
+instance Show ConnectionString where
+  showsPrec d = showsPrec d . toUrl
 
 toHosts :: ConnectionString -> [(Text, Maybe Word16)]
 toHosts (ConnectionString _ _ hostspec _ _) =
