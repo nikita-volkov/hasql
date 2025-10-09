@@ -14,6 +14,9 @@ module ConnectionString
     toUrl,
     toKeyValueString,
 
+    -- * Transformations
+    interceptParam,
+
     -- * Constructors
     hostAndPort,
     user,
@@ -171,6 +174,28 @@ toKeyValueString (ConnectionString user password hostspec dbname paramspec) =
         escapeChar '\\' = "\\\\"
         escapeChar '\'' = "\\'"
         escapeChar c = Text.singleton c
+
+-- * Transformations
+
+-- | Look for a parameter by key, remove it from the connection string if found,
+-- and return its value along with the updated connection string.
+interceptParam ::
+  -- | The key of the parameter to intercept.
+  Text ->
+  ConnectionString ->
+  Maybe (Text, ConnectionString)
+interceptParam key (ConnectionString user password hostspec dbname paramspec) =
+  let (foundValue, updatedParamspec) =
+        Map.alterF
+          ( \case
+              Just value -> (Just value, Nothing)
+              Nothing -> (Nothing, Nothing)
+          )
+          key
+          paramspec
+   in do
+        value <- foundValue
+        pure (value, ConnectionString user password hostspec dbname updatedParamspec)
 
 -- * Parsing
 
