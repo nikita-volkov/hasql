@@ -30,7 +30,8 @@ data ConnectionString
       (Maybe Text)
       -- | Key-value parameters.
       (Map.Map Text Text)
-  deriving (Eq)
+  deriving stock (Eq, Ord, Generic)
+  deriving anyclass (Hashable)
 
 data Host
   = Host
@@ -38,7 +39,8 @@ data Host
       Text
       -- | Port number.
       (Maybe Word16)
-  deriving (Show, Eq)
+  deriving stock (Show, Eq, Ord, Generic)
+  deriving anyclass (Hashable)
 
 instance Semigroup ConnectionString where
   ConnectionString user1 password1 hosts1 dbname1 params1 <> ConnectionString user2 password2 hosts2 dbname2 params2 =

@@ -100,7 +100,8 @@ import PostgreSQL.Binary.Range qualified as R
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (ResultDecoder.ResultDecoder a) deriving (Functor, Filterable)
+newtype Result a = Result (ResultDecoder.ResultDecoder a)
+  deriving newtype (Functor, Filterable)
 
 instance ResultDecoder.Wraps Result where
   wrap = Result
@@ -181,7 +182,7 @@ rowList = foldrRows strictCons []
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a = Row (RowDecoder.RowDecoder a)
-  deriving (Functor, Applicative)
+  deriving newtype (Functor, Applicative)
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.
@@ -224,7 +225,7 @@ nullable = Nullable
 -- |
 -- Decoder of a value.
 newtype Value a = Value (Value.ValueDecoder a)
-  deriving (Functor, Filterable)
+  deriving newtype (Functor, Filterable)
 
 type role Value representational
 
@@ -587,7 +588,7 @@ element = \case
 -- |
 -- Composable decoder of composite values (rows, records).
 newtype Composite a = Composite (Composite.CompositeDecoder a)
-  deriving (Functor, Applicative, Monad, MonadFail)
+  deriving newtype (Functor, Applicative, Monad, MonadFail)
 
 -- |
 -- Lift a 'Value' decoder into a 'Composite' decoder for parsing of component values.

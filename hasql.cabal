@@ -47,6 +47,7 @@ common base
     ConstraintKinds
     DataKinds
     DefaultSignatures
+    DeriveAnyClass
     DeriveFoldable
     DeriveFunctor
     DeriveGeneric

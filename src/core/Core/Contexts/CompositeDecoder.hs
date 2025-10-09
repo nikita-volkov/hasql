@@ -5,7 +5,7 @@ import PostgreSQL.Binary.Decoding qualified as A
 
 newtype CompositeDecoder a
   = CompositeDecoder (A.Composite a)
-  deriving (Functor, Applicative, Monad, MonadFail)
+  deriving newtype (Functor, Applicative, Monad, MonadFail)
 
 {-# INLINE run #-}
 run :: CompositeDecoder a -> A.Value a

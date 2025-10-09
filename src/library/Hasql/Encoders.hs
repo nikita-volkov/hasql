@@ -132,7 +132,7 @@ import TextBuilder qualified as C
 --     Female -> "female"
 -- @
 newtype Params a = Params (Params.ParamsEncoder a)
-  deriving (Contravariant, Divisible, Monoid, Semigroup)
+  deriving newtype (Contravariant, Divisible, Monoid, Semigroup)
 
 instance Params.Wraps Params where
   wrap = Params
@@ -174,7 +174,7 @@ nullable = Nullable
 -- |
 -- Value encoder.
 newtype Value a = Value (Value.ValueEncoder a)
-  deriving (Contravariant)
+  deriving newtype (Contravariant)
 
 -- |
 -- Encoder of @BOOL@ values.
@@ -506,7 +506,7 @@ foldableArray = array . dimension foldl' . element
 -- Please note that the PostgreSQL @IN@ keyword does not accept an array, but rather a syntactical list of
 -- values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condition instead.
 newtype Array a = Array (Array.ArrayEncoder a)
-  deriving (Contravariant)
+  deriving newtype (Contravariant)
 
 -- |
 -- Lifts a 'Value' encoder into an 'Array' encoder.
