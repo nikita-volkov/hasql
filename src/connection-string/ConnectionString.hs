@@ -22,21 +22,16 @@ import TextBuilder qualified
 -- > postgresql://host1:123,host2:456/somedb?target_session_attrs=any&application_name=myapp
 data ConnectionString
   = ConnectionString
-      -- | User specification.
-      (Maybe Userspec)
+      -- | User.
+      (Maybe Text)
+      -- | Password.
+      (Maybe Text)
       -- | Host specification.
       [Host]
       -- | Database name.
       (Maybe Text)
       -- | Key-value parameters.
       (Map.Map Text Text)
-
-data Userspec
-  = Userspec
-      -- | User name.
-      Text
-      -- | Password.
-      (Maybe Text)
 
 data Host
   = Host
@@ -46,34 +41,39 @@ data Host
       Word16
 
 instance Semigroup ConnectionString where
-  ConnectionString userspec1 hostspec1 dbname1 paramspec1 <> ConnectionString userspec2 hostspec2 dbname2 paramspec2 =
+  ConnectionString user1 password1 hosts1 dbname1 params1 <> ConnectionString user2 password2 hosts2 dbname2 params2 =
     ConnectionString
-      (userspec1 <|> userspec2)
-      (hostspec1 <> hostspec2)
+      (user1 <|> user2)
+      (password1 <|> password2)
+      (hosts1 <> hosts2)
       (dbname1 <|> dbname2)
-      (Map.union paramspec1 paramspec2)
+      (Map.union params2 params1)
 
 instance Monoid ConnectionString where
-  mempty = ConnectionString Nothing [] Nothing Map.empty
+  mempty = ConnectionString Nothing Nothing [] Nothing Map.empty
 
 toUrl :: ConnectionString -> Text
 toUrl = TextBuilder.toText . renderConnectionString
   where
-    renderConnectionString (ConnectionString userspec hostspec dbname paramspec) =
+    renderConnectionString (ConnectionString user password hostspec dbname paramspec) =
       -- postgresql://[userspec@][hostspec][/dbname][?paramspec]
       mconcat
         [ "postgresql://",
-          foldMap (flip mappend "@" . renderUserspec) userspec,
+          renderUserspec user password,
           TextBuilder.intercalateMap "," renderHost hostspec,
           foldMap (mappend "/" . PercentEncoding.encodeText) dbname,
           renderParamspec paramspec
         ]
 
-    renderUserspec (Userspec user password) =
-      mconcat
-        [ PercentEncoding.encodeText user,
-          foldMap (mappend ":" . PercentEncoding.encodeText) password
-        ]
+    renderUserspec user password =
+      case user of
+        Nothing -> mempty
+        Just user ->
+          mconcat
+            [ PercentEncoding.encodeText user,
+              foldMap (mappend ":" . PercentEncoding.encodeText) password,
+              "@"
+            ]
 
     renderHost (Host host port) =
       mconcat
