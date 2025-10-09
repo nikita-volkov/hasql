@@ -27,8 +27,7 @@ data Settings
       ConnectionString.ConnectionString
       -- | Disable the use of prepared statements.
       Bool
-  deriving stock (Eq, Ord, Generic)
-  deriving anyclass (Hashable)
+  deriving stock (Eq)
 
 -- | Combines settings, with the rightmost taking precedence in case of conflicts.
 --
