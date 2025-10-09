@@ -5,7 +5,7 @@ module Hasql.Connection.Settings
     -- * Constructors
     connectionString,
     noPreparedStatements,
-    hosts,
+    hostAndPort,
     user,
     password,
     dbname,
@@ -75,11 +75,12 @@ fromConnectionString connectionString =
 noPreparedStatements :: Bool -> Settings
 noPreparedStatements = Settings mempty
 
--- | Hosts (and optional ports).
+-- | Host domain name or IP-address.
 --
--- If multiple hosts are specified, they will be tried in order until a connection is successfully established.
-hosts :: [(Text, Maybe Word16)] -> Settings
-hosts = fromConnectionString . foldMap (uncurry ConnectionString.hostAndPort)
+-- To specify multiple alternate hosts, combine the produced settings via 'Monoid'.
+hostAndPort :: Text -> Maybe Word16 -> Settings
+hostAndPort host port =
+  fromConnectionString (ConnectionString.hostAndPort host port)
 
 -- | User name.
 user :: Text -> Settings
