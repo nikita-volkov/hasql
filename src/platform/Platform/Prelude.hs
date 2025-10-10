@@ -1,7 +1,6 @@
 module Platform.Prelude
   ( module Exports,
     LazyByteString,
-    ByteStringBuilder,
     forMToZero_,
     forMFromZero_,
     strictCons,
@@ -32,7 +31,6 @@ import Data.Bifunctor as Exports
 import Data.Bits as Exports
 import Data.Bool as Exports
 import Data.ByteString as Exports (ByteString)
-import Data.ByteString.Builder qualified
 import Data.ByteString.Lazy qualified
 import Data.Char as Exports
 import Data.Coerce as Exports
@@ -86,7 +84,6 @@ import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Numeric as Exports
-import Platform.Prelude.PlainText as Exports
 import Platform.Prelude.Text as Exports
 import System.Environment as Exports
 import System.Exit as Exports
@@ -106,9 +103,6 @@ import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, 
 
 type LazyByteString =
   Data.ByteString.Lazy.ByteString
-
-type ByteStringBuilder =
-  Data.ByteString.Builder.Builder
 
 {-# INLINE forMToZero_ #-}
 forMToZero_ :: (Applicative m) => Int -> (Int -> m a) -> m ()
