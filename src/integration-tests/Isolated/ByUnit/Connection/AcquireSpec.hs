@@ -2,12 +2,7 @@ module Isolated.ByUnit.Connection.AcquireSpec (spec) where
 
 import Hasql.Connection qualified
 import Hasql.Connection qualified as Connection
-import Hasql.Connection.Setting qualified
-import Hasql.Connection.Setting qualified as Setting
-import Hasql.Connection.Setting.Connection qualified
-import Hasql.Connection.Setting.Connection qualified as ConnectionSetting
-import Hasql.Connection.Setting.Connection.Param qualified
-import Hasql.Connection.Setting.Connection.Param qualified as Param
+import Hasql.Connection.Settings qualified as Settings
 import Hasql.Errors qualified as Errors
 import Test.Hspec
 import TestcontainersPostgresql qualified
@@ -20,13 +15,7 @@ spec = do
       describe "Networking" do
         it "Fails on server missing" do
           let settings =
-                [ Setting.connection
-                    ( ConnectionSetting.params
-                        [ Param.host "nopostgresql.net",
-                          Param.port 5432
-                        ]
-                    )
-                ]
+                Settings.hostAndPort "nopostgresql.net" 5432
           result <- Connection.acquire settings
           case result of
             Right conn -> do
@@ -57,16 +46,12 @@ spec = do
           }
         \(host, port) -> do
           let settings =
-                [ Setting.connection
-                    ( ConnectionSetting.params
-                        [ Param.host host,
-                          Param.port (fromIntegral port),
-                          Param.user "postgres",
-                          Param.password "",
-                          Param.dbname "postgres1"
-                        ]
-                    )
-                ]
+                mconcat
+                  [ Settings.hostAndPort host (fromIntegral port),
+                    Settings.user "postgres",
+                    Settings.password "",
+                    Settings.dbname "postgres1"
+                  ]
           result <- Connection.acquire settings
           case result of
             Right conn -> do
@@ -86,16 +71,12 @@ spec = do
           }
         \(host, port) -> do
           let settings =
-                [ Setting.connection
-                    ( ConnectionSetting.params
-                        [ Param.host host,
-                          Param.port (fromIntegral port),
-                          Param.user "postgres1",
-                          Param.password "",
-                          Param.dbname "postgres"
-                        ]
-                    )
-                ]
+                mconcat
+                  [ Settings.hostAndPort host (fromIntegral port),
+                    Settings.user "postgres1",
+                    Settings.password "",
+                    Settings.dbname "postgres"
+                  ]
           result <- Connection.acquire settings
           case result of
             Right conn -> do
@@ -123,16 +104,12 @@ itFails distro expectedError =
    in it "Fails with error" do
         TestcontainersPostgresql.run config \(host, port) -> do
           let settings =
-                [ Setting.connection
-                    ( ConnectionSetting.params
-                        [ Param.host host,
-                          Param.port (fromIntegral port),
-                          Param.user "postgres",
-                          Param.password "",
-                          Param.dbname "postgres"
-                        ]
-                    )
-                ]
+                mconcat
+                  [ Settings.hostAndPort host (fromIntegral port),
+                    Settings.user "postgres",
+                    Settings.password "",
+                    Settings.dbname "postgres"
+                  ]
           result <- Connection.acquire settings
           case result of
             Right conn -> do
@@ -152,16 +129,12 @@ itSucceeds distro =
    in it "Succeeds" do
         TestcontainersPostgresql.run config \(host, port) -> do
           let settings =
-                [ Setting.connection
-                    ( ConnectionSetting.params
-                        [ Param.host host,
-                          Param.port (fromIntegral port),
-                          Param.user "postgres",
-                          Param.password "",
-                          Param.dbname "postgres"
-                        ]
-                    )
-                ]
+                mconcat
+                  [ Settings.hostAndPort host (fromIntegral port),
+                    Settings.user "postgres",
+                    Settings.password "",
+                    Settings.dbname "postgres"
+                  ]
           result <- Connection.acquire settings
           case result of
             Right conn -> do
@@ -186,15 +159,12 @@ byDistro distro = do
                 ( \(host, port) -> do
                     result <-
                       Hasql.Connection.acquire
-                        [ Hasql.Connection.Setting.connection
-                            ( Hasql.Connection.Setting.Connection.params
-                                [ Hasql.Connection.Setting.Connection.Param.host host,
-                                  Hasql.Connection.Setting.Connection.Param.port (fromIntegral port),
-                                  Hasql.Connection.Setting.Connection.Param.user username,
-                                  Hasql.Connection.Setting.Connection.Param.password password
-                                ]
-                            )
-                        ]
+                        ( mconcat
+                            [ Settings.hostAndPort host (fromIntegral port),
+                              Settings.user username,
+                              Settings.password password
+                            ]
+                        )
                     case result of
                       Left err -> expectationFailure ("Connection failed: " <> show err <> ". Host: " <> show host <> ", port: " <> show port)
                       Right connection -> do
@@ -212,15 +182,12 @@ byDistro distro = do
       it "is reported for invalid host" do
         result <-
           Hasql.Connection.acquire
-            [ Hasql.Connection.Setting.connection
-                ( Hasql.Connection.Setting.Connection.params
-                    [ Hasql.Connection.Setting.Connection.Param.host "nonexistent.invalid.host",
-                      Hasql.Connection.Setting.Connection.Param.port 5432,
-                      Hasql.Connection.Setting.Connection.Param.user "postgres",
-                      Hasql.Connection.Setting.Connection.Param.password ""
-                    ]
-                )
-            ]
+            ( mconcat
+                [ Settings.hostAndPort "nonexistent.invalid.host" 5432,
+                  Settings.user "postgres",
+                  Settings.password ""
+                ]
+            )
         case result of
           Left (Errors.NetworkingConnectionError _) -> pure ()
           Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
@@ -229,15 +196,12 @@ byDistro distro = do
       it "is reported for connection refused" do
         result <-
           Hasql.Connection.acquire
-            [ Hasql.Connection.Setting.connection
-                ( Hasql.Connection.Setting.Connection.params
-                    [ Hasql.Connection.Setting.Connection.Param.host "127.0.0.1",
-                      Hasql.Connection.Setting.Connection.Param.port 1,
-                      Hasql.Connection.Setting.Connection.Param.user "postgres",
-                      Hasql.Connection.Setting.Connection.Param.password ""
-                    ]
-                )
-            ]
+            ( mconcat
+                [ Settings.hostAndPort "127.0.0.1" 1,
+                  Settings.user "postgres",
+                  Settings.password ""
+                ]
+            )
         case result of
           Left (Errors.NetworkingConnectionError _) -> pure ()
           Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
@@ -255,15 +219,12 @@ byDistro distro = do
           ( \(host, port) -> do
               result <-
                 Hasql.Connection.acquire
-                  [ Hasql.Connection.Setting.connection
-                      ( Hasql.Connection.Setting.Connection.params
-                          [ Hasql.Connection.Setting.Connection.Param.host host,
-                            Hasql.Connection.Setting.Connection.Param.port (fromIntegral port),
-                            Hasql.Connection.Setting.Connection.Param.user "postgres",
-                            Hasql.Connection.Setting.Connection.Param.password "wrongpassword"
-                          ]
-                      )
-                  ]
+                  ( mconcat
+                      [ Settings.hostAndPort host (fromIntegral port),
+                        Settings.user "postgres",
+                        Settings.password "wrongpassword"
+                      ]
+                  )
               case result of
                 Left (Errors.AuthenticationConnectionError _) -> pure ()
                 Left err -> expectationFailure ("Expected AuthenticationConnectionError, got: " <> show err)

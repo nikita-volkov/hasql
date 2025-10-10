@@ -64,6 +64,7 @@ import Data.Scientific as Exports (Scientific)
 import Data.Semigroup as Exports hiding (First (..), Last (..))
 import Data.String as Exports
 import Data.Text as Exports (Text)
+import Data.Text.Encoding as Exports (encodeUtf8)
 import Data.Time as Exports
 import Data.Traversable as Exports
 import Data.Tuple as Exports

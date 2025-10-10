@@ -3,9 +3,7 @@ module Main where
 import Control.Exception
 import Data.Vector qualified as F
 import Hasql.Connection qualified as Connection
-import Hasql.Connection.Setting qualified
-import Hasql.Connection.Setting.Connection qualified
-import Hasql.Connection.Setting.Connection.Param qualified
+import Hasql.Connection.Settings qualified as Settings
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
@@ -100,20 +98,17 @@ withConnectionByDistro distro action = withConnectionSettings distro \settings -
     Left err -> fail ("Connection failed: " <> show err)
     Right conn -> finally (action conn) (Connection.release conn)
 
-withConnectionSettings :: TestcontainersPostgresql.Distro -> ([Hasql.Connection.Setting.Setting] -> IO ()) -> IO ()
+withConnectionSettings :: TestcontainersPostgresql.Distro -> (Settings.Settings -> IO ()) -> IO ()
 withConnectionSettings distro action = do
   TestcontainersPostgresql.run config \(host, port) -> do
-    action
-      [ Hasql.Connection.Setting.connection
-          ( Hasql.Connection.Setting.Connection.params
-              [ Hasql.Connection.Setting.Connection.Param.host host,
-                Hasql.Connection.Setting.Connection.Param.port (fromIntegral port),
-                Hasql.Connection.Setting.Connection.Param.user "postgres",
-                Hasql.Connection.Setting.Connection.Param.password "",
-                Hasql.Connection.Setting.Connection.Param.dbname "postgres"
-              ]
-          )
-      ]
+    let settings =
+          mconcat
+            [ Settings.hostAndPort host (fromIntegral port),
+              Settings.user "postgres",
+              Settings.password "",
+              Settings.dbname "postgres"
+            ]
+    action settings
   where
     config =
       TestcontainersPostgresql.Config
