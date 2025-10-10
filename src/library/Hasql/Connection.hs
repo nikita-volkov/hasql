@@ -15,7 +15,7 @@ import Core.Structures.StatementCache qualified as StatementCache
 import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
-import Hasql.Connection.Setting qualified as Setting
+import Hasql.Connection.Settings qualified as Settings
 import Hipq.Session qualified
 import Platform.Prelude
 import Pq qualified
@@ -28,11 +28,14 @@ newtype Connection
 -- |
 -- Establish a connection according to the provided settings.
 acquire ::
-  [Setting.Setting] ->
+  Settings.Settings ->
   IO (Either ConnectionError Connection)
 acquire settings =
   {-# SCC "acquire" #-}
   runExceptT do
+    let config = Config.construct settings
+
+    -- Connect:
     pqConnection <- lift (Pq.connectdb (Config.connectionString config))
 
     -- Check status:
@@ -56,15 +59,13 @@ acquire settings =
 
     let connectionState =
           ConnectionState.ConnectionState
-            { ConnectionState.preparedStatements = Config.usePreparedStatements config,
+            { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
               ConnectionState.statementCache = StatementCache.empty,
               ConnectionState.connection = pqConnection
             }
     connectionRef <- lift (newMVar connectionState)
     pure (Connection connectionRef)
   where
-    config = Config.fromUpdates settings
-
     interpretConnectionError :: Maybe ByteString -> ConnectionError
     interpretConnectionError errorMessage =
       case errorMessage of

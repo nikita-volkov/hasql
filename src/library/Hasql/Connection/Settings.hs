@@ -16,6 +16,7 @@ module Hasql.Connection.Settings
 where
 
 import Data.Text qualified as Text
+import Hasql.Connection.Config qualified as Config
 import Platform.Prelude
 import PostgresqlConnectionString qualified as ConnectionString
 
@@ -29,6 +30,15 @@ data Settings
       -- | Disable the use of prepared statements.
       Bool
   deriving stock (Eq)
+
+-- | This instance allows us to interface with the 'Config.Config' type which is internal to the library and do so without affecting the public API or constructing messy hierarchies of modules to circumvent that.
+instance Config.Constructs Settings where
+  construct (Settings connectionString noPreparedStatements) =
+    Config.Config
+      { connectionString =
+          encodeUtf8 (ConnectionString.toUrl connectionString),
+        noPreparedStatements
+      }
 
 -- | Combines settings, with the rightmost taking precedence in case of conflicts.
 --
@@ -77,7 +87,15 @@ fromConnectionString connectionString =
 
 -- * Constructors
 
--- | Disable the use of prepared statements.
+-- | Whether prepared statements are disabled.
+-- 
+-- 'False' by default.
+--
+-- When 'True', even the statements marked as preparable will be executed without preparation at the cost of reduced performance.
+--
+-- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
+-- Consult their docs or just provide this setting to stay on the safe side.
+-- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
 noPreparedStatements :: Bool -> Settings
 noPreparedStatements = Settings mempty
 

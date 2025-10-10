@@ -104,9 +104,6 @@ library
   hs-source-dirs: src/library
   exposed-modules:
     Hasql.Connection
-    Hasql.Connection.Setting
-    Hasql.Connection.Setting.Connection
-    Hasql.Connection.Setting.Connection.Param
     Hasql.Connection.Settings
     Hasql.Decoders
     Hasql.Encoders
@@ -117,14 +114,11 @@ library
 
   other-modules:
     Hasql.Connection.Config
-    Hasql.Connection.Config.ConnectionString
-    Hasql.Connection.Config.ConnectionString.Params
     Hasql.Connection.ServerVersion
 
   build-depends:
     aeson >=2 && <3,
     bytestring >=0.10 && <0.13,
-    containers >=0.6 && <0.9,
     hasql:core,
     hasql:hipq,
     hasql:platform,

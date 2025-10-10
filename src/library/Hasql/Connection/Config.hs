@@ -2,28 +2,14 @@ module Hasql.Connection.Config where
 
 import Platform.Prelude
 
-data Config = Config
-  { connectionString :: ByteString,
-    usePreparedStatements :: Bool
+data Config
+  = Config
+  { -- | Pre-rendered connection string.
+    connectionString :: ByteString,
+    noPreparedStatements :: Bool
   }
+  deriving stock (Eq)
 
-class Updates a where
-  update :: a -> Config -> Config
-
-nil :: Config
-nil =
-  Config
-    { connectionString = "",
-      usePreparedStatements = True
-    }
-
-fromUpdates :: (Updates a) => [a] -> Config
-fromUpdates = foldl' (flip update) nil
-
-setConnectionString :: ByteString -> Config -> Config
-setConnectionString connectionString config =
-  config {connectionString}
-
-setUsePreparedStatements :: Bool -> Config -> Config
-setUsePreparedStatements usePreparedStatements config =
-  config {usePreparedStatements}
+-- | For values that can be compiled to 'Config'.
+class Constructs a where
+  construct :: a -> Config
