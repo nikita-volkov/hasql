@@ -5,6 +5,7 @@ module Hasql.Connection.Settings
     -- * Constructors
     connectionString,
     noPreparedStatements,
+    host,
     hostAndPort,
     user,
     password,
@@ -14,9 +15,9 @@ module Hasql.Connection.Settings
   )
 where
 
-import ConnectionString qualified
 import Data.Text qualified as Text
 import Platform.Prelude
+import PostgresqlConnectionString qualified as ConnectionString
 
 -- | Connection settings.
 -- This is a monoid, so you can combine multiple settings using 'mappend' ('<>').
@@ -83,7 +84,14 @@ noPreparedStatements = Settings mempty
 -- | Host domain name or IP-address.
 --
 -- To specify multiple alternate hosts, combine the produced settings via 'Monoid'.
-hostAndPort :: Text -> Maybe Word16 -> Settings
+host :: Text -> Settings
+host host =
+  fromConnectionString (ConnectionString.host host)
+
+-- | Host domain name or IP-address.
+--
+-- To specify multiple alternate hosts, combine the produced settings via 'Monoid'.
+hostAndPort :: Text -> Word16 -> Settings
 hostAndPort host port =
   fromConnectionString (ConnectionString.hostAndPort host port)
 
@@ -113,4 +121,4 @@ other key = fromConnectionString . ConnectionString.param key
 --
 -- If the connection string is invalid, it will be treated as empty.
 connectionString :: Text -> Settings
-connectionString = fromConnectionString . either (const mempty) id . ConnectionString.parseText
+connectionString = fromConnectionString . either (const mempty) id . ConnectionString.parse
