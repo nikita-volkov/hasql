@@ -3,8 +3,6 @@ module Hasql.Connection.Settings
     Settings,
 
     -- * Constructors
-    connectionString,
-    noPreparedStatements,
     host,
     hostAndPort,
     user,
@@ -12,6 +10,8 @@ module Hasql.Connection.Settings
     dbname,
     applicationName,
     other,
+    noPreparedStatements,
+    connectionString,
   )
 where
 
@@ -21,8 +21,27 @@ import Platform.Prelude
 import PostgresqlConnectionString qualified as ConnectionString
 
 -- | Connection settings.
+--
 -- This is a monoid, so you can combine multiple settings using 'mappend' ('<>').
 -- The rightmost setting takes precedence in case of conflicts.
+--
+-- With OverloadedStrings, you can declare settings using connection strings directly.
+--
+-- For example, using a key-value format:
+--
+-- > "host=localhost port=5432 user=myuser dbname=mydb" :: Settings
+--
+-- Or using a URI format:
+--
+-- > "postgresql://myuser@localhost/mydb?port=5432" :: Settings
+--
+-- You can achieve the same effect by constructing from a 'Text' value:
+--
+-- > connectionString "host=localhost port=5432 user=myuser dbname=mydb"
+--
+-- Or use the provided constructors for better type safety and clarity:
+--
+-- > host "localhost" <> user "myuser" <> dbname "mydb"
 newtype Settings
   = Settings ConnectionString.ConnectionString
   deriving newtype (Eq, IsString, Show, Semigroup, Monoid)
@@ -76,6 +95,8 @@ host host =
   Settings (ConnectionString.host host)
 
 -- | Host domain name or IP-address and port.
+--
+-- Specifying a port without a host is not allowed due to how PostgreSQL handles connection strings.
 --
 -- This function creates a single host-port pair. To specify multiple alternate hosts, combine the results of multiple 'hostAndPort' calls using the 'Monoid' instance.
 hostAndPort :: Text -> Word16 -> Settings
