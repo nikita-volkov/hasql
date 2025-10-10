@@ -75,9 +75,9 @@ host :: Text -> Settings
 host host =
   Settings (ConnectionString.host host)
 
--- | Host domain name or IP-address.
+-- | Host domain name or IP-address and port.
 --
--- To specify multiple alternate hosts, combine the produced settings via 'Monoid'.
+-- This function creates a single host-port pair. To specify multiple alternate hosts, combine the results of multiple 'hostAndPort' calls using the 'Monoid' instance.
 hostAndPort :: Text -> Word16 -> Settings
 hostAndPort host port =
   Settings (ConnectionString.hostAndPort host port)
