@@ -12,6 +12,10 @@ Major revision happened.
 
   Previously when an async exception was raised during the execution of a session, the connection would get reestablished to recover from any possible half-finished states. That led to a loss of the connection-local state on the server side. Now the connection recovers without resetting.
 
+- **Redesigned connection configuration API**.
+
+  The connection settings API has been completely redesigned to be more composable and user-friendly. Settings are now represented as a monoid, allowing easy combination of multiple configuration options. The API now supports both URI and key-value connection string formats, with individual setters for common parameters like host, port, user, password, etc.
+
 ## Breaking changes
 
 - Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
@@ -33,6 +37,12 @@ Major revision happened.
 - `usePreparedStatements` setting dropped. Use `disablePreparedStatements` instead.
 
 - `Hasql.Session.sql` renamed to `Hasql.Session.script` to better reflect its purpose.
+
+- Connection configuration API overhaul to improve UX.
+  - `Hasql.Connection.acquire` now takes a single `Settings` value instead of a list of `Setting` values.
+  - The `Hasql.Connection.Setting` module has been replaced with `Hasql.Connection.Settings`.
+  - Settings are now constructed using flat monoid composition instead of hierarchical lists requiring multiple imports.
+  - Removed `Hasql.Connection.Setting.Connection` and related submodules.
 
 # 1.9
 
