@@ -27,7 +27,7 @@ newtype Settings
   = Settings ConnectionString.ConnectionString
   deriving newtype (Eq, IsString, Show, Semigroup, Monoid)
 
--- | This instance allows us to interface with the 'Config.Config' type which is internal to the library and do so without affecting the public API or constructing messy hierarchies of modules to circumvent that.
+-- | This instance allows interfacing with the internal Config.Config type without affecting the public API or requiring complex module hierarchies.
 instance Config.Constructs Settings where
   construct (Settings connectionString) =
     case ConnectionString.interceptParam "no_prepared_statements" connectionString of
