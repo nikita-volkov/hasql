@@ -82,8 +82,9 @@ data StatementError
       Int
       -- | Underlying cell error.
       CellError
-  | -- | Either the server misbehaves or there is a bug in Hasql.
-    DriverStatementError
+  | -- | The database returned an unexpected result.
+    -- Indicates an improper statement or a schema mismatch.
+    UnexpectedResultStatementError
       -- | Details.
       Text
   deriving stock (Show, Eq)
@@ -180,7 +181,7 @@ fromStatementResultError = \case
           position
       )
   Hipq.ResultDecoder.UnexpectedResult msg ->
-    DriverStatementError msg
+    UnexpectedResultStatementError msg
   Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
     RowCountStatementError 1 1 actual
   Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->

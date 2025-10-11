@@ -135,7 +135,7 @@ instance IsError StatementError where
           ": ",
           TextBuilder.text (toErrorMessage cellErr)
         ]
-    DriverStatementError message ->
+    UnexpectedResultStatementError message ->
       mconcat
         [ "Driver error: ",
           message

@@ -29,19 +29,23 @@ import PostgresqlConnectionString qualified as ConnectionString
 --
 -- For example, using a key-value format:
 --
--- > "host=localhost port=5432 user=myuser dbname=mydb" :: Settings
+-- >>> "host=localhost port=5432 user=myuser dbname=mydb" :: Settings
+-- "postgresql://myuser@localhost:5432/mydb"
 --
 -- Or using a URI format:
 --
--- > "postgresql://myuser@localhost/mydb?port=5432" :: Settings
+-- >>> "postgresql://myuser@localhost:5432/mydb" :: Settings
+-- "postgresql://myuser@localhost:5432/mydb"
 --
 -- You can achieve the same effect by constructing from a 'Text' value:
 --
--- > connectionString "host=localhost port=5432 user=myuser dbname=mydb"
+-- >>> connectionString "host=localhost port=5432 user=myuser dbname=mydb"
+-- "postgresql://myuser@localhost:5432/mydb"
 --
 -- Or use the provided constructors for better type safety and clarity:
 --
--- > host "localhost" <> user "myuser" <> dbname "mydb"
+-- >>> hostAndPort "localhost" 5432 <> user "myuser" <> dbname "mydb"
+-- "postgresql://myuser@localhost:5432/mydb"
 newtype Settings
   = Settings ConnectionString.ConnectionString
   deriving newtype (Eq, IsString, Show, Semigroup, Monoid)
