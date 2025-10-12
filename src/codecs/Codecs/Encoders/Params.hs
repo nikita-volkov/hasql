@@ -153,7 +153,3 @@ nullableValue (Value.Value _ textFormat Nothing _ serialize print) =
       serializer = pure . fmap (Binary.encodingBytes . serialize),
       printer = pure . maybe "null" (TextBuilder.toText . print)
     }
-
-class Wraps f where
-  wrap :: Params a -> f a
-  unwrap :: f a -> Params a
