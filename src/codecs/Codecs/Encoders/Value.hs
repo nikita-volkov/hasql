@@ -308,7 +308,7 @@ unknownEnum mapping = std "unknown" False TypeInfo.unknown (Binary.text_strict .
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
 -- thus leaving it up to Postgres to infer the actual type of the value.
 --
--- The value transimitted is any value encoded in the Postgres' Text data format.
+-- The value transmitted is any value encoded in the Postgres' Text data format.
 -- For reference, see the
 -- <https://www.postgresql.org/docs/10/static/protocol-overview.html#PROTOCOL-FORMAT-CODES Formats and Format Codes>
 -- section of the Postgres' documentation.
