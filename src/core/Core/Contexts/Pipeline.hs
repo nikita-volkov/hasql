@@ -196,11 +196,12 @@ statement sql encoder decoder preparable params =
                     & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
 
         runUnprepared cache =
-          let roundtrip =
-                Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder
-           in (roundtrip, cache)
+          (roundtrip, cache)
           where
-            encodedParams =
-              params
-                & Params.compileUnpreparedStatementData encoder
-                & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+            roundtrip =
+              Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder
+              where
+                encodedParams =
+                  params
+                    & Params.compileUnpreparedStatementData encoder
+                    & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
