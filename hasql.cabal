@@ -118,7 +118,6 @@ library
 
   build-depends:
     aeson >=2 && <3,
-    bytestring >=0.10 && <0.13,
     hasql:codecs,
     hasql:core,
     hasql:hipq,
@@ -137,16 +136,18 @@ library codecs
   hs-source-dirs: src/codecs
   exposed-modules:
     Codecs.ArrayDecoder
-    Codecs.ArrayEncoder
     Codecs.CompositeDecoder
-    Codecs.ParamsEncoder
-    Codecs.PostgresTypeInfo
+    Codecs.Encoders.Array
+    Codecs.Encoders.Params
+    Codecs.Encoders.Value
+    Codecs.TypeInfo
     Codecs.ValueDecoder
-    Codecs.ValueEncoder
 
   build-depends:
+    aeson >=2 && <3,
+    bytestring >=0.10 && <0.13,
     hasql:platform,
-    hasql:pq,
+    iproute >=1.7 && <1.8,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
 

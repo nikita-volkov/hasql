@@ -1,18 +1,17 @@
 module Codecs.ValueDecoder where
 
-import Codecs.PostgresTypeInfo qualified as PTI
+import Codecs.TypeInfo qualified as TypeInfo
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
-import Pq qualified
 
 data ValueDecoder a
   = ValueDecoder
       -- | Type name.
       Text
       -- | Statically known OID for the type.
-      (Maybe PTI.OID)
+      (Maybe Word32)
       -- | Statically known OID for the array-type with this type as the element.
-      (Maybe PTI.OID)
+      (Maybe Word32)
       -- | Decoding function (always integer timestamps for PostgreSQL 10+).
       (A.Value a)
   deriving (Functor)
@@ -41,29 +40,26 @@ decoderFn fn =
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> ValueDecoder a -> ValueDecoder b
-refine fn (ValueDecoder typeName typeOID arrayOID decoder) =
-  ValueDecoder typeName typeOID arrayOID (A.refine fn decoder)
+refine fn (ValueDecoder typeName typeOid arrayOid decoder) =
+  ValueDecoder typeName typeOid arrayOid (A.refine fn decoder)
 
 -- |
--- Create a decoder from PTI metadata and a decoding function.
-{-# INLINE unsafePTI #-}
-unsafePTI :: Text -> PTI.PTI -> A.Value a -> ValueDecoder a
-unsafePTI typeName pti intDecoder =
-  ValueDecoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti) intDecoder
+-- Create a decoder from TypeInfo metadata and a decoding function.
+{-# INLINE unsafeTypeInfo #-}
+unsafeTypeInfo :: Text -> TypeInfo.TypeInfo -> A.Value a -> ValueDecoder a
+unsafeTypeInfo typeName pti intDecoder =
+  ValueDecoder typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
 -- * Relations
 
 toTypeName :: ValueDecoder a -> Text
 toTypeName (ValueDecoder typeName _ _ _) = typeName
 
-toBaseOid :: ValueDecoder a -> Maybe Pq.Oid
-toBaseOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
+toBaseOid :: ValueDecoder a -> Maybe Word32
+toBaseOid (ValueDecoder _ typeOid _ _) =
+  typeOid
 
-toBaseOidAsWord32 :: ValueDecoder a -> Maybe Word32
-toBaseOidAsWord32 (ValueDecoder _ typeOID _ _) =
-  PTI.oidWord32 <$> typeOID
-
-toArrayOid :: ValueDecoder a -> Maybe PTI.OID
+toArrayOid :: ValueDecoder a -> Maybe Word32
 toArrayOid (ValueDecoder _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
