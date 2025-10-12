@@ -181,14 +181,12 @@ statement sql encoder decoder preparable params =
           (roundtrip, newCache)
           where
             (isNew, remoteKey, newCache) =
-              case StatementCache.lookup localKey cache of
+              case StatementCache.lookup sql pqOidList cache of
                 Just remoteKey -> (False, remoteKey, cache)
                 Nothing ->
-                  let (remoteKey, newCache) = StatementCache.insert localKey cache
+                  let (remoteKey, newCache) = StatementCache.insert sql pqOidList cache
                    in (True, remoteKey, newCache)
-              where
-                localKey =
-                  StatementCache.LocalKey sql pqOidList
+
             roundtrip =
               when isNew (Hipq.Roundtrip.prepare context remoteKey sql pqOidList)
                 *> Hipq.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder

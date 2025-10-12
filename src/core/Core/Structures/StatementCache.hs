@@ -5,9 +5,6 @@ module Core.Structures.StatementCache
     lookup,
     insert,
     reset,
-
-    -- * Key type
-    LocalKey (..),
   )
 where
 
@@ -26,18 +23,21 @@ empty = StatementCache HashMap.empty 0
 
 -- | Pure lookup operation
 {-# INLINEABLE lookup #-}
-lookup :: LocalKey -> StatementCache -> Maybe ByteString
-lookup localKey (StatementCache hashMap _) = HashMap.lookup localKey hashMap
+lookup :: ByteString -> [Pq.Oid] -> StatementCache -> Maybe ByteString
+lookup sql oids (StatementCache hashMap _) = HashMap.lookup localKey hashMap
+  where
+    localKey = LocalKey sql oids
 
 -- | Pure insert operation that returns new state and the generated remote key
 {-# INLINEABLE insert #-}
-insert :: LocalKey -> StatementCache -> (ByteString, StatementCache)
-insert localKey (StatementCache hashMap counter) = (remoteKey, newState)
+insert :: ByteString -> [Pq.Oid] -> StatementCache -> (ByteString, StatementCache)
+insert sql oids (StatementCache hashMap counter) = (remoteKey, newState)
   where
     remoteKey = fromString $ show $ newCounter
     newHashMap = HashMap.insert localKey remoteKey hashMap
     newCounter = succ counter
     newState = StatementCache newHashMap newCounter
+    localKey = LocalKey sql oids
 
 -- | Pure reset operation
 {-# INLINEABLE reset #-}
