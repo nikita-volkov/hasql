@@ -1,5 +1,5 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
-module Sharing.SpecHook where
+module SpecHook where
 
 import Test.Hspec
 import TestcontainersPostgresql qualified
