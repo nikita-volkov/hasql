@@ -257,6 +257,27 @@ test-suite profiling
     rerebase >=1 && <2,
     testcontainers-postgresql >=0.0.2 && <0.1,
 
+test-suite hipq-tests
+  import: test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: src/hipq-tests
+  main-is: Main.hs
+  other-modules:
+    Sharing.ByUnit.Hipq.SessionSpec
+    Sharing.SpecHook
+
+  build-tool-depends:
+    hspec-discover:hspec-discover ^>=2.11.12
+
+  build-depends:
+    hasql:hipq,
+    hasql:pq,
+    hasql:platform,
+    hspec ^>=2.11.12,
+    rerebase >=1 && <2,
+    testcontainers-postgresql >=0.0.1 && <0.1,
+    text-builder >=1 && <1.1,
+
 test-suite library-tests
   import: test
   type: exitcode-stdio-1.0
