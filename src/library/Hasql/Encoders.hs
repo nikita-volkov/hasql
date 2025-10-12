@@ -181,7 +181,7 @@ element = \case
 -- such as @Data.Foldable.'foldl''@,
 -- which determines the input value.
 --
--- * Binary component encoder, which can be either another 'dimension' or 'element'.
+-- * A component encoder, which can be either another 'dimension' or 'element'.
 {-# INLINEABLE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array.Array b -> Array.Array c
 dimension foldl imp = Array.dimension foldl imp
