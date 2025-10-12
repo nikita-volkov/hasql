@@ -11,7 +11,6 @@ module Core.Structures.StatementCache
   )
 where
 
-import ByteString.StrictBuilder qualified as B
 import Data.HashMap.Strict qualified as HashMap
 import Platform.Prelude hiding (empty, insert, lookup, reset)
 import Pq qualified
@@ -35,7 +34,7 @@ lookup localKey (StatementCache hashMap _) = HashMap.lookup localKey hashMap
 insert :: LocalKey -> StatementCache -> (ByteString, StatementCache)
 insert localKey (StatementCache hashMap counter) = (remoteKey, newState)
   where
-    remoteKey = B.builderBytes . B.asciiIntegral $ newCounter
+    remoteKey = fromString $ show $ newCounter
     newHashMap = HashMap.insert localKey remoteKey hashMap
     newCounter = succ counter
     newState = StatementCache newHashMap newCounter

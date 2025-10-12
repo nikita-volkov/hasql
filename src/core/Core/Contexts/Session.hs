@@ -1,6 +1,6 @@
 module Core.Contexts.Session where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.Encoders.Params qualified as Params
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Errors qualified as Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
@@ -66,7 +66,7 @@ script sql =
 statement ::
   forall params result.
   ByteString ->
-  ParamsEncoder.ParamsEncoder params ->
+  Params.Params params ->
   Hipq.ResultDecoder.ResultDecoder result ->
   Bool ->
   params ->

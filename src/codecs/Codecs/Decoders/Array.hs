@@ -1,4 +1,4 @@
-module Core.Contexts.ArrayDecoder
+module Codecs.Decoders.Array
   ( ArrayDecoder,
     toDecoder,
     toTypeName,
@@ -9,9 +9,8 @@ module Core.Contexts.ArrayDecoder
   )
 where
 
-import Core.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
-import PostgreSQL.Binary.Decoding qualified as A
+import PostgreSQL.Binary.Decoding qualified as Binary
 import TextBuilder qualified
 
 data ArrayDecoder a
@@ -19,17 +18,17 @@ data ArrayDecoder a
       -- | Type name for the array element
       Text
       -- | Statically known OID for the array type.
-      (Maybe PTI.OID)
+      (Maybe Word32)
       -- | Number of dimensions.
       Int
       -- | Decoding function
-      (A.Array a)
+      (Binary.Array a)
   deriving (Functor)
 
 {-# INLINE toDecoder #-}
-toDecoder :: ArrayDecoder a -> A.Value a
+toDecoder :: ArrayDecoder a -> Binary.Value a
 toDecoder (ArrayDecoder _ _ _ decoder) =
-  A.array decoder
+  Binary.array decoder
 
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
@@ -42,20 +41,20 @@ toTypeName (ArrayDecoder elementTypeName _ ndims _) =
 
 -- | Get the array OID if statically known
 {-# INLINE toOid #-}
-toOid :: ArrayDecoder a -> Maybe PTI.OID
+toOid :: ArrayDecoder a -> Maybe Word32
 toOid (ArrayDecoder _ oid _ _) = oid
 
 {-# INLINE dimension #-}
 dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> ArrayDecoder a -> ArrayDecoder b
-dimension replicateM (ArrayDecoder typeName typeOID ndims decoder) =
-  ArrayDecoder typeName typeOID (succ ndims) $ A.dimensionArray replicateM decoder
+dimension replicateM (ArrayDecoder typeName typeOid ndims decoder) =
+  ArrayDecoder typeName typeOid (succ ndims) $ Binary.dimensionArray replicateM decoder
 
 {-# INLINE nullableElement #-}
-nullableElement :: Text -> Maybe PTI.OID -> A.Value a -> ArrayDecoder (Maybe a)
+nullableElement :: Text -> Maybe Word32 -> Binary.Value a -> ArrayDecoder (Maybe a)
 nullableElement elementTypeName oid decoder =
-  ArrayDecoder elementTypeName oid 1 $ A.nullableValueArray decoder
+  ArrayDecoder elementTypeName oid 1 $ Binary.nullableValueArray decoder
 
 {-# INLINE nonNullableElement #-}
-nonNullableElement :: Text -> Maybe PTI.OID -> A.Value a -> ArrayDecoder a
+nonNullableElement :: Text -> Maybe Word32 -> Binary.Value a -> ArrayDecoder a
 nonNullableElement elementTypeName oid decoder =
-  ArrayDecoder elementTypeName oid 1 $ A.valueArray decoder
+  ArrayDecoder elementTypeName oid 1 $ Binary.valueArray decoder

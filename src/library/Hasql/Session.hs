@@ -7,7 +7,6 @@ module Hasql.Session
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder
@@ -15,10 +14,10 @@ import Hipq.ResultDecoder qualified as ResultDecoder
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session.Session result
-statement params (Statement.Statement sql paramsEncoder decoder preparable) =
+statement params (Statement.Statement sql encoder decoder preparable) =
   Session.statement
     sql
-    (ParamsEncoder.unwrap paramsEncoder)
+    encoder
     (ResultDecoder.unwrap decoder)
     preparable
     params

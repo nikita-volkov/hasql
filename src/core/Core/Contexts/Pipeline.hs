@@ -5,7 +5,7 @@ module Core.Contexts.Pipeline
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.Encoders.Params qualified as Params
 import Core.Errors qualified as Errors
 import Core.Structures.StatementCache qualified as StatementCache
 import Hipq.ResultDecoder qualified
@@ -152,7 +152,7 @@ instance Applicative Pipeline where
 
 -- |
 -- Execute a statement in pipelining mode.
-statement :: ByteString -> ParamsEncoder.ParamsEncoder params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
+statement :: ByteString -> Params.Params params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
 statement sql encoder decoder preparable params =
   Pipeline 1 run
   where
@@ -162,7 +162,10 @@ statement sql encoder decoder preparable params =
         else runUnprepared
       where
         (oidList, valueAndFormatList) =
-          ParamsEncoder.compilePreparedStatementData encoder params
+          Params.compilePreparedStatementData encoder params
+
+        pqOidList =
+          fmap (Pq.Oid . fromIntegral) oidList
 
         prepare =
           usePreparedStatements && preparable
@@ -171,7 +174,7 @@ statement sql encoder decoder preparable params =
           Context
             offset
             sql
-            (ParamsEncoder.renderReadable encoder params)
+            (Params.renderReadable encoder params)
             prepare
 
         runPrepared cache =
@@ -185,12 +188,21 @@ statement sql encoder decoder preparable params =
                    in (True, remoteKey, newCache)
               where
                 localKey =
-                  StatementCache.LocalKey sql oidList
+                  StatementCache.LocalKey sql pqOidList
             roundtrip =
-              when isNew (Hipq.Roundtrip.prepare context remoteKey sql oidList)
-                *> Hipq.Roundtrip.queryPrepared context remoteKey valueAndFormatList Pq.Binary decoder
+              when isNew (Hipq.Roundtrip.prepare context remoteKey sql pqOidList)
+                *> Hipq.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder
+              where
+                encodedParams =
+                  valueAndFormatList
+                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
 
         runUnprepared cache =
           let roundtrip =
-                Hipq.Roundtrip.queryParams context sql (ParamsEncoder.compileUnpreparedStatementData encoder params) Pq.Binary decoder
+                Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder
            in (roundtrip, cache)
+          where
+            encodedParams =
+              params
+                & Params.compileUnpreparedStatementData encoder
+                & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))

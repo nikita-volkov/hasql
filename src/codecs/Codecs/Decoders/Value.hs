@@ -1,20 +1,19 @@
-module Core.Contexts.ValueDecoder where
+module Codecs.Decoders.Value where
 
-import Core.PostgresTypeInfo qualified as PTI
+import Codecs.TypeInfo qualified as TypeInfo
 import Platform.Prelude
-import PostgreSQL.Binary.Decoding qualified as A
-import Pq qualified
+import PostgreSQL.Binary.Decoding qualified as Binary
 
 data ValueDecoder a
   = ValueDecoder
       -- | Type name.
       Text
       -- | Statically known OID for the type.
-      (Maybe PTI.OID)
+      (Maybe Word32)
       -- | Statically known OID for the array-type with this type as the element.
-      (Maybe PTI.OID)
+      (Maybe Word32)
       -- | Decoding function (always integer timestamps for PostgreSQL 10+).
-      (A.Value a)
+      (Binary.Value a)
   deriving (Functor)
 
 instance Filterable ValueDecoder where
@@ -23,7 +22,7 @@ instance Filterable ValueDecoder where
     refine (maybe (Left "Invalid value") Right . fn)
 
 {-# INLINE decoder #-}
-decoder :: A.Value a -> ValueDecoder a
+decoder :: Binary.Value a -> ValueDecoder a
 decoder aDecoder =
   {-# SCC "decoder" #-}
   ValueDecoder "unknown" Nothing Nothing aDecoder
@@ -35,41 +34,38 @@ decoderFn fn =
     "unknown"
     Nothing
     Nothing
-    (A.fn $ fn True) -- Always use integer timestamps
+    (Binary.fn $ fn True) -- Always use integer timestamps
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> ValueDecoder a -> ValueDecoder b
-refine fn (ValueDecoder typeName typeOID arrayOID decoder) =
-  ValueDecoder typeName typeOID arrayOID (A.refine fn decoder)
+refine fn (ValueDecoder typeName typeOid arrayOid decoder) =
+  ValueDecoder typeName typeOid arrayOid (Binary.refine fn decoder)
 
 -- |
--- Create a decoder from PTI metadata and a decoding function.
-{-# INLINE unsafePTI #-}
-unsafePTI :: Text -> PTI.PTI -> A.Value a -> ValueDecoder a
-unsafePTI typeName pti intDecoder =
-  ValueDecoder typeName (Just (PTI.ptiOID pti)) (PTI.ptiArrayOID pti) intDecoder
+-- Create a decoder from TypeInfo metadata and a decoding function.
+{-# INLINE unsafeTypeInfo #-}
+unsafeTypeInfo :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> ValueDecoder a
+unsafeTypeInfo typeName pti intDecoder =
+  ValueDecoder typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
 -- * Relations
 
 toTypeName :: ValueDecoder a -> Text
 toTypeName (ValueDecoder typeName _ _ _) = typeName
 
-toBaseOid :: ValueDecoder a -> Maybe Pq.Oid
-toBaseOid (ValueDecoder _ typeOID _ _) = PTI.oidPQ <$> typeOID
+toBaseOid :: ValueDecoder a -> Maybe Word32
+toBaseOid (ValueDecoder _ typeOid _ _) =
+  typeOid
 
-toBaseOidAsWord32 :: ValueDecoder a -> Maybe Word32
-toBaseOidAsWord32 (ValueDecoder _ typeOID _ _) =
-  PTI.oidWord32 <$> typeOID
-
-toArrayOid :: ValueDecoder a -> Maybe PTI.OID
+toArrayOid :: ValueDecoder a -> Maybe Word32
 toArrayOid (ValueDecoder _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
-toHandler :: ValueDecoder a -> A.Value a
+toHandler :: ValueDecoder a -> Binary.Value a
 toHandler (ValueDecoder _ _ _ decoder) = decoder
 
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: ValueDecoder a -> (ByteString -> Either Text a)
-toByteStringParser (ValueDecoder _ _ _ decoder) = A.valueParser decoder
+toByteStringParser (ValueDecoder _ _ _ decoder) = Binary.valueParser decoder

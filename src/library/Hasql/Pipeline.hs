@@ -4,7 +4,6 @@ module Hasql.Pipeline
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder
@@ -16,8 +15,8 @@ statement
   params
   ( Statement.Statement
       sql
-      (ParamsEncoder.unwrap -> paramsEncoder)
+      encoder
       (ResultDecoder.unwrap -> decoder)
       preparable
     ) =
-    Pipeline.statement sql paramsEncoder decoder preparable params
+    Pipeline.statement sql encoder decoder preparable params

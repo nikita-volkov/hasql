@@ -118,7 +118,7 @@ library
 
   build-depends:
     aeson >=2 && <3,
-    bytestring >=0.10 && <0.13,
+    hasql:codecs,
     hasql:core,
     hasql:hipq,
     hasql:platform,
@@ -131,30 +131,41 @@ library
     text-builder >=1 && <1.1,
     vector >=0.10 && <0.14,
 
+library codecs
+  import: base
+  hs-source-dirs: src/codecs
+  exposed-modules:
+    Codecs.Decoders.Array
+    Codecs.Decoders.Composite
+    Codecs.Decoders.Value
+    Codecs.Encoders.Array
+    Codecs.Encoders.Params
+    Codecs.Encoders.Value
+    Codecs.TypeInfo
+
+  build-depends:
+    aeson >=2 && <3,
+    bytestring >=0.10 && <0.13,
+    hasql:platform,
+    iproute >=1.7 && <1.8,
+    postgresql-binary >=0.14.2 && <0.15,
+    text-builder >=1 && <1.1,
+
 library core
   import: base
   hs-source-dirs: src/core
   exposed-modules:
-    Core.Contexts.ArrayDecoder
-    Core.Contexts.ArrayEncoder
-    Core.Contexts.CompositeDecoder
-    Core.Contexts.ParamsEncoder
     Core.Contexts.Pipeline
     Core.Contexts.Session
-    Core.Contexts.ValueDecoder
-    Core.Contexts.ValueEncoder
     Core.Errors
-    Core.PostgresTypeInfo
     Core.Structures.ConnectionState
     Core.Structures.StatementCache
 
-  other-modules:
   build-depends:
-    bytestring-strict-builder >=0.4.5.1 && <0.5,
+    hasql:codecs,
     hasql:hipq,
     hasql:platform,
     hasql:pq,
-    postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
 
