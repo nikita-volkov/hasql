@@ -160,7 +160,6 @@ foldableArray = array . dimension foldl' . element
 
 -- |
 -- Lifts a 'Value.Value' encoder into an 'Array.Array' encoder.
--- Lifts a 'Value.Value' encoder into an 'Array.Array' encoder.
 element :: NullableOrNot Value.Value a -> Array.Array a
 element = \case
   NonNullable (Value.Value _ _ (Just elementOid) (Just arrayOid) encoder renderer) ->
