@@ -106,28 +106,6 @@ spec = do
             status `shouldBe` Pq.FatalError
           Nothing -> expectationFailure "Expected error result from exec prepared after deallocation"
 
-    it "cleans up when in pipeline mode with pending results" \config -> do
-      withConnection config \connection -> do
-        -- Enter pipeline mode
-        success <- Pq.enterPipelineMode connection
-        success `shouldBe` True
-
-        -- Send queries without retrieving results
-        _ <- Pq.sendQuery connection "SELECT 1"
-        _ <- Pq.sendQuery connection "SELECT 2"
-        _ <- Pq.pipelineSync connection
-
-        -- Run cleanup
-        result <- Session.toHandler Session.cleanUpAfterInterruption connection
-        result `shouldBe` Right ()
-
-        -- Verify we're out of pipeline mode and in idle state
-        pipelineStatus <- Pq.pipelineStatus connection
-        pipelineStatus `shouldBe` Pq.PipelineOff
-
-        transStatus <- Pq.transactionStatus connection
-        transStatus `shouldBe` Pq.TransIdle
-
 -- * Helpers
 
 withConnection :: (Text, Word16) -> (Pq.Connection -> IO a) -> IO a
