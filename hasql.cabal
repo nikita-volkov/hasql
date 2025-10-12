@@ -257,10 +257,10 @@ test-suite profiling
     rerebase >=1 && <2,
     testcontainers-postgresql >=0.0.2 && <0.1,
 
-test-suite integration-tests
+test-suite library-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs: src/integration-tests
+  hs-source-dirs: src/library-tests
   main-is: Main.hs
   other-modules:
     Helpers.Dsls.Execution
