@@ -161,7 +161,6 @@ library core
     Core.Structures.StatementCache
 
   build-depends:
-    bytestring-strict-builder >=0.4.5.1 && <0.5,
     hasql:codecs,
     hasql:hipq,
     hasql:platform,
