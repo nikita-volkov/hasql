@@ -83,10 +83,10 @@ module Hasql.Decoders
   )
 where
 
-import Codecs.ArrayDecoder qualified as Array
-import Codecs.CompositeDecoder qualified as Composite
+import Codecs.Decoders.Array qualified as Array
+import Codecs.Decoders.Composite qualified as Composite
+import Codecs.Decoders.Value qualified as Value
 import Codecs.TypeInfo qualified as TypeInfo
-import Codecs.ValueDecoder qualified as Value
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector

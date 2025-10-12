@@ -1,4 +1,4 @@
-module Codecs.ArrayDecoder
+module Codecs.Decoders.Array
   ( ArrayDecoder,
     toDecoder,
     toTypeName,

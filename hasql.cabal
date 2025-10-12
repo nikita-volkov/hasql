@@ -135,13 +135,13 @@ library codecs
   import: base
   hs-source-dirs: src/codecs
   exposed-modules:
-    Codecs.ArrayDecoder
-    Codecs.CompositeDecoder
+    Codecs.Decoders.Array
+    Codecs.Decoders.Composite
+    Codecs.Decoders.Value
     Codecs.Encoders.Array
     Codecs.Encoders.Params
     Codecs.Encoders.Value
     Codecs.TypeInfo
-    Codecs.ValueDecoder
 
   build-depends:
     aeson >=2 && <3,

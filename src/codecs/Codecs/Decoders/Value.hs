@@ -1,8 +1,8 @@
-module Codecs.ValueDecoder where
+module Codecs.Decoders.Value where
 
 import Codecs.TypeInfo qualified as TypeInfo
 import Platform.Prelude
-import PostgreSQL.Binary.Decoding qualified as A
+import PostgreSQL.Binary.Decoding qualified as Binary
 
 data ValueDecoder a
   = ValueDecoder
@@ -13,7 +13,7 @@ data ValueDecoder a
       -- | Statically known OID for the array-type with this type as the element.
       (Maybe Word32)
       -- | Decoding function (always integer timestamps for PostgreSQL 10+).
-      (A.Value a)
+      (Binary.Value a)
   deriving (Functor)
 
 instance Filterable ValueDecoder where
@@ -22,7 +22,7 @@ instance Filterable ValueDecoder where
     refine (maybe (Left "Invalid value") Right . fn)
 
 {-# INLINE decoder #-}
-decoder :: A.Value a -> ValueDecoder a
+decoder :: Binary.Value a -> ValueDecoder a
 decoder aDecoder =
   {-# SCC "decoder" #-}
   ValueDecoder "unknown" Nothing Nothing aDecoder
@@ -34,19 +34,19 @@ decoderFn fn =
     "unknown"
     Nothing
     Nothing
-    (A.fn $ fn True) -- Always use integer timestamps
+    (Binary.fn $ fn True) -- Always use integer timestamps
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> ValueDecoder a -> ValueDecoder b
 refine fn (ValueDecoder typeName typeOid arrayOid decoder) =
-  ValueDecoder typeName typeOid arrayOid (A.refine fn decoder)
+  ValueDecoder typeName typeOid arrayOid (Binary.refine fn decoder)
 
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE unsafeTypeInfo #-}
-unsafeTypeInfo :: Text -> TypeInfo.TypeInfo -> A.Value a -> ValueDecoder a
+unsafeTypeInfo :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> ValueDecoder a
 unsafeTypeInfo typeName pti intDecoder =
   ValueDecoder typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
@@ -63,9 +63,9 @@ toArrayOid :: ValueDecoder a -> Maybe Word32
 toArrayOid (ValueDecoder _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
-toHandler :: ValueDecoder a -> A.Value a
+toHandler :: ValueDecoder a -> Binary.Value a
 toHandler (ValueDecoder _ _ _ decoder) = decoder
 
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: ValueDecoder a -> (ByteString -> Either Text a)
-toByteStringParser (ValueDecoder _ _ _ decoder) = A.valueParser decoder
+toByteStringParser (ValueDecoder _ _ _ decoder) = Binary.valueParser decoder
