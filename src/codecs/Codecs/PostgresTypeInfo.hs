@@ -1,4 +1,4 @@
-module Core.PostgresTypeInfo where
+module Codecs.PostgresTypeInfo where
 
 import Platform.Prelude hiding (bool)
 import Pq qualified

@@ -73,10 +73,10 @@ module Hasql.Encoders
   )
 where
 
-import Core.Contexts.ArrayEncoder qualified as Array
-import Core.Contexts.ParamsEncoder qualified as Params
-import Core.Contexts.ValueEncoder qualified as Value
-import Core.PostgresTypeInfo qualified as PTI
+import Codecs.ArrayEncoder qualified as Array
+import Codecs.ParamsEncoder qualified as Params
+import Codecs.PostgresTypeInfo qualified as PTI
+import Codecs.ValueEncoder qualified as Value
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IP qualified as Iproute

@@ -1,6 +1,6 @@
-module Core.Contexts.ValueDecoder where
+module Codecs.ValueDecoder where
 
-import Core.PostgresTypeInfo qualified as PTI
+import Codecs.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 import Pq qualified

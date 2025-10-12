@@ -1,4 +1,4 @@
-module Core.Contexts.CompositeDecoder where
+module Codecs.CompositeDecoder where
 
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A

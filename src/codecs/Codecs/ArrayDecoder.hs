@@ -1,4 +1,4 @@
-module Core.Contexts.ArrayDecoder
+module Codecs.ArrayDecoder
   ( ArrayDecoder,
     toDecoder,
     toTypeName,
@@ -9,7 +9,7 @@ module Core.Contexts.ArrayDecoder
   )
 where
 
-import Core.PostgresTypeInfo qualified as PTI
+import Codecs.PostgresTypeInfo qualified as PTI
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as A
 import TextBuilder qualified

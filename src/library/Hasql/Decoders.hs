@@ -83,10 +83,10 @@ module Hasql.Decoders
   )
 where
 
-import Core.Contexts.ArrayDecoder qualified as Array
-import Core.Contexts.CompositeDecoder qualified as Composite
-import Core.Contexts.ValueDecoder qualified as Value
-import Core.PostgresTypeInfo qualified as PTI
+import Codecs.ArrayDecoder qualified as Array
+import Codecs.CompositeDecoder qualified as Composite
+import Codecs.PostgresTypeInfo qualified as PTI
+import Codecs.ValueDecoder qualified as Value
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector

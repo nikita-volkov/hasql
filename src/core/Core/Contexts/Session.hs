@@ -1,6 +1,6 @@
 module Core.Contexts.Session where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Errors qualified as Errors
 import Core.Structures.ConnectionState qualified as ConnectionState

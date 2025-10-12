@@ -1,7 +1,7 @@
-module Core.Contexts.ParamsEncoder where
+module Codecs.ParamsEncoder where
 
-import Core.Contexts.ValueEncoder qualified as C
-import Core.PostgresTypeInfo qualified as D
+import Codecs.PostgresTypeInfo qualified as D
+import Codecs.ValueEncoder qualified as C
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as B
 import Pq qualified as A

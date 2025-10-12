@@ -7,7 +7,7 @@ module Hasql.Session
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder

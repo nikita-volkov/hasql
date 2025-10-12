@@ -5,7 +5,7 @@ module Core.Contexts.Pipeline
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.ParamsEncoder qualified as ParamsEncoder
 import Core.Errors qualified as Errors
 import Core.Structures.StatementCache qualified as StatementCache
 import Hipq.ResultDecoder qualified

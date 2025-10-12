@@ -4,7 +4,7 @@ module Hasql.Pipeline
   )
 where
 
-import Core.Contexts.ParamsEncoder qualified as ParamsEncoder
+import Codecs.ParamsEncoder qualified as ParamsEncoder
 import Core.Contexts.Pipeline qualified as Pipeline
 import Hasql.Statement qualified as Statement
 import Hipq.ResultDecoder qualified as ResultDecoder
