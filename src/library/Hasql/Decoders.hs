@@ -182,13 +182,13 @@ newtype Row a = Row (RowDecoder.RowDecoder a)
 {-# INLINEABLE column #-}
 column :: NullableOrNot Value a -> Row a
 column = \case
-  Nullable (Value valueDecoder) ->
+  Nullable valueDecoder ->
     Row
       ( RowDecoder.nullableColumn
           (Value.toBaseOid valueDecoder)
           (Value.toByteStringParser valueDecoder)
       )
-  NonNullable (Value valueDecoder) ->
+  NonNullable valueDecoder ->
     Row
       ( RowDecoder.nonNullableColumn
           (Value.toBaseOid valueDecoder)
