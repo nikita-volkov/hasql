@@ -127,7 +127,7 @@ array (Array.Array valueOid arrayOid arrayEncoder renderer) =
 -- Lift a composite encoder into a value encoder.
 composite :: Composite a -> Value.Value a
 composite (Composite encode print) =
-  Value.unsafeTypeInfo TypeInfo.unknown encodeValue printValue
+  Value.unknownPrimitive encodeValue printValue
   where
     encodeValue val =
       Binary.composite $ encode val
