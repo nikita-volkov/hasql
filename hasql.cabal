@@ -117,24 +117,21 @@ library
     Hasql.Connection.ServerVersion
 
   build-depends:
-    aeson >=2 && <3,
     hasql:codecs,
     hasql:core,
     hasql:hipq,
     hasql:platform,
     hasql:pq,
     hasql:text-extras,
-    iproute >=1.7 && <1.8,
-    postgresql-binary >=0.14.2 && <0.15,
     postgresql-connection-string ^>=0.1,
     text >=1 && <3,
     text-builder >=1 && <1.1,
-    vector >=0.10 && <0.14,
 
 library codecs
   import: base
   hs-source-dirs: src/codecs
   exposed-modules:
+    Codecs.Decoders
     Codecs.Decoders.Array
     Codecs.Decoders.Composite
     Codecs.Decoders.Value
@@ -151,6 +148,7 @@ library codecs
     iproute >=1.7 && <1.8,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
+    vector >=0.10 && <0.14,
 
 library core
   import: base
