@@ -5,50 +5,50 @@ module Codecs.Decoders
     nullable,
 
     -- * Value
-    Value (..),
-    bool,
-    int2,
-    int4,
-    int8,
-    float4,
-    float8,
-    numeric,
-    char,
-    text,
-    bytea,
-    date,
-    timestamp,
-    timestamptz,
-    time,
-    timetz,
-    interval,
-    uuid,
-    inet,
-    macaddr,
-    json,
-    jsonBytes,
-    jsonb,
-    jsonbBytes,
-    int4range,
-    int8range,
-    numrange,
-    tsrange,
-    tstzrange,
-    daterange,
-    int4multirange,
-    int8multirange,
-    nummultirange,
-    tsmultirange,
-    tstzmultirange,
-    datemultirange,
+    Value.Value (..),
+    Value.bool,
+    Value.int2,
+    Value.int4,
+    Value.int8,
+    Value.float4,
+    Value.float8,
+    Value.numeric,
+    Value.char,
+    Value.text,
+    Value.bytea,
+    Value.date,
+    Value.timestamp,
+    Value.timestamptz,
+    Value.time,
+    Value.timetz,
+    Value.interval,
+    Value.uuid,
+    Value.inet,
+    Value.macaddr,
+    Value.json,
+    Value.jsonBytes,
+    Value.jsonb,
+    Value.jsonbBytes,
+    Value.int4range,
+    Value.int8range,
+    Value.numrange,
+    Value.tsrange,
+    Value.tstzrange,
+    Value.daterange,
+    Value.int4multirange,
+    Value.int8multirange,
+    Value.nummultirange,
+    Value.tsmultirange,
+    Value.tstzmultirange,
+    Value.datemultirange,
     array,
     listArray,
     vectorArray,
     composite,
-    hstore,
+    Value.hstore,
     enum,
-    custom,
-    refine,
+    Value.custom,
+    Value.refine,
 
     -- * Array
     Array (..),
@@ -64,13 +64,9 @@ where
 import Codecs.Decoders.Array qualified as Array
 import Codecs.Decoders.Composite qualified as Composite
 import Codecs.Decoders.Value qualified as Value
-import Codecs.TypeInfo qualified as TypeInfo
-import Data.Aeson qualified as Aeson
-import Data.IP qualified as Iproute
 import Data.Vector.Generic qualified as GenericVector
 import Platform.Prelude hiding (bool, maybe)
 import PostgreSQL.Binary.Decoding qualified as A
-import PostgreSQL.Binary.Range qualified as R
 
 -- * Nullability
 
@@ -93,280 +89,16 @@ nullable = Nullable
 -- * Value
 
 -- |
--- Decoder of a value.
-newtype Value a = Value (Value.ValueDecoder a)
-  deriving newtype (Functor, Filterable)
-
-type role Value representational
-
--- |
--- Decoder of the @BOOL@ values.
-{-# INLINEABLE bool #-}
-bool :: Value Bool
-bool = Value (Value.unsafeTypeInfo "bool" TypeInfo.bool A.bool)
-
--- |
--- Decoder of the @INT2@ values.
-{-# INLINEABLE int2 #-}
-int2 :: Value Int16
-int2 = Value (Value.unsafeTypeInfo "int2" TypeInfo.int2 A.int)
-
--- |
--- Decoder of the @INT4@ values.
-{-# INLINEABLE int4 #-}
-int4 :: Value Int32
-int4 = Value (Value.unsafeTypeInfo "int4" TypeInfo.int4 A.int)
-
--- |
--- Decoder of the @INT8@ values.
-{-# INLINEABLE int8 #-}
-int8 :: Value Int64
-int8 =
-  {-# SCC "int8" #-}
-  Value (Value.unsafeTypeInfo "int8" TypeInfo.int8 ({-# SCC "int8.int" #-} A.int))
-
--- |
--- Decoder of the @FLOAT4@ values.
-{-# INLINEABLE float4 #-}
-float4 :: Value Float
-float4 = Value (Value.unsafeTypeInfo "float4" TypeInfo.float4 A.float4)
-
--- |
--- Decoder of the @FLOAT8@ values.
-{-# INLINEABLE float8 #-}
-float8 :: Value Double
-float8 = Value (Value.unsafeTypeInfo "float8" TypeInfo.float8 A.float8)
-
--- |
--- Decoder of the @NUMERIC@ values.
-{-# INLINEABLE numeric #-}
-numeric :: Value Scientific
-numeric = Value (Value.unsafeTypeInfo "numeric" TypeInfo.numeric A.numeric)
-
--- |
--- Decoder of the @CHAR@ values.
--- Note that it supports Unicode values.
-{-# INLINEABLE char #-}
-char :: Value Char
-char = Value (Value.unsafeTypeInfo "char" TypeInfo.char A.char)
-
--- |
--- Decoder of the @TEXT@ values.
-{-# INLINEABLE text #-}
-text :: Value Text
-text = Value (Value.unsafeTypeInfo "text" TypeInfo.text A.text_strict)
-
--- |
--- Decoder of the @BYTEA@ values.
-{-# INLINEABLE bytea #-}
-bytea :: Value ByteString
-bytea = Value (Value.unsafeTypeInfo "bytea" TypeInfo.bytea A.bytea_strict)
-
--- |
--- Decoder of the @DATE@ values.
-{-# INLINEABLE date #-}
-date :: Value Day
-date = Value (Value.unsafeTypeInfo "date" TypeInfo.date A.date)
-
--- |
--- Decoder of the @TIMESTAMP@ values.
-{-# INLINEABLE timestamp #-}
-timestamp :: Value LocalTime
-timestamp = Value (Value.unsafeTypeInfo "timestamp" TypeInfo.timestamp A.timestamp_int)
-
--- |
--- Decoder of the @TIMESTAMPTZ@ values.
---
--- /NOTICE/
---
--- Postgres does not store the timezone information of @TIMESTAMPTZ@.
--- Instead it stores a UTC value and performs silent conversions
--- to the currently set timezone, when dealt with in the text format.
--- However this library bypasses the silent conversions
--- and communicates with Postgres using the UTC values directly.
-{-# INLINEABLE timestamptz #-}
-timestamptz :: Value UTCTime
-timestamptz = Value (Value.unsafeTypeInfo "timestamptz" TypeInfo.timestamptz A.timestamptz_int)
-
--- |
--- Decoder of the @TIME@ values.
-{-# INLINEABLE time #-}
-time :: Value TimeOfDay
-time = Value (Value.unsafeTypeInfo "time" TypeInfo.time A.time_int)
-
--- |
--- Decoder of the @TIMETZ@ values.
---
--- Unlike in case of @TIMESTAMPTZ@,
--- Postgres does store the timezone information for @TIMETZ@.
--- However the Haskell's \"time\" library does not contain any composite type,
--- that fits the task, so we use a pair of 'TimeOfDay' and 'TimeZone'
--- to represent a value on the Haskell's side.
-{-# INLINEABLE timetz #-}
-timetz :: Value (TimeOfDay, TimeZone)
-timetz = Value (Value.unsafeTypeInfo "timetz" TypeInfo.timetz A.timetz_int)
-
--- |
--- Decoder of the @INTERVAL@ values.
-{-# INLINEABLE interval #-}
-interval :: Value DiffTime
-interval = Value (Value.unsafeTypeInfo "interval" TypeInfo.interval A.interval_int)
-
--- |
--- Decoder of the @UUID@ values.
-{-# INLINEABLE uuid #-}
-uuid :: Value UUID
-uuid = Value (Value.unsafeTypeInfo "uuid" TypeInfo.uuid A.uuid)
-
--- |
--- Decoder of the @INET@ values.
-{-# INLINEABLE inet #-}
-inet :: Value Iproute.IPRange
-inet = Value (Value.unsafeTypeInfo "inet" TypeInfo.inet A.inet)
-
--- |
--- Decoder of the @MACADDR@ values.
---
--- Represented as a 6-tuple of Word8 values in big endian order. If
--- you use `ip` library consider using it with `fromOctets`.
---
--- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
-{-# INLINEABLE macaddr #-}
-macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = Value (Value.unsafeTypeInfo "macaddr" TypeInfo.macaddr A.macaddr)
-
--- |
--- Decoder of the @JSON@ values into a JSON AST.
-{-# INLINEABLE json #-}
-json :: Value Aeson.Value
-json = Value (Value.unsafeTypeInfo "json" TypeInfo.json A.json_ast)
-
--- |
--- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
-{-# INLINEABLE jsonBytes #-}
-jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = Value (Value.decoder (A.json_bytes fn))
-
--- |
--- Decoder of the @JSONB@ values into a JSON AST.
-{-# INLINEABLE jsonb #-}
-jsonb :: Value Aeson.Value
-jsonb = Value (Value.unsafeTypeInfo "jsonb" TypeInfo.jsonb A.jsonb_ast)
-
--- |
--- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
-{-# INLINEABLE jsonbBytes #-}
-jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = Value (Value.decoder (A.jsonb_bytes fn))
-
--- |
--- Decoder of the @INT4RANGE@ values.
-{-# INLINEABLE int4range #-}
-int4range :: Value (R.Range Int32)
-int4range = Value (Value.unsafeTypeInfo "int4range" TypeInfo.int4range A.int4range)
-
--- |
--- Decoder of the @INT8RANGE@ values.
-{-# INLINEABLE int8range #-}
-int8range :: Value (R.Range Int64)
-int8range = Value (Value.unsafeTypeInfo "int8range" TypeInfo.int8range A.int8range)
-
--- |
--- Decoder of the @NUMRANGE@ values.
-{-# INLINEABLE numrange #-}
-numrange :: Value (R.Range Scientific)
-numrange = Value (Value.unsafeTypeInfo "numrange" TypeInfo.numrange A.numrange)
-
--- |
--- Decoder of the @TSRANGE@ values.
-{-# INLINEABLE tsrange #-}
-tsrange :: Value (R.Range LocalTime)
-tsrange = Value (Value.unsafeTypeInfo "tsrange" TypeInfo.tsrange A.tsrange_int)
-
--- |
--- Decoder of the @TSTZRANGE@ values.
-{-# INLINEABLE tstzrange #-}
-tstzrange :: Value (R.Range UTCTime)
-tstzrange = Value (Value.unsafeTypeInfo "tstzrange" TypeInfo.tstzrange A.tstzrange_int)
-
--- |
--- Decoder of the @DATERANGE@ values.
-{-# INLINEABLE daterange #-}
-daterange :: Value (R.Range Day)
-daterange = Value (Value.unsafeTypeInfo "daterange" TypeInfo.daterange A.daterange)
-
--- |
--- Decoder of the @INT4MULTIRANGE@ values.
-{-# INLINEABLE int4multirange #-}
-int4multirange :: Value (R.Multirange Int32)
-int4multirange = Value (Value.unsafeTypeInfo "int4multirange" TypeInfo.int4multirange A.int4multirange)
-
--- |
--- Decoder of the @INT8MULTIRANGE@ values.
-{-# INLINEABLE int8multirange #-}
-int8multirange :: Value (R.Multirange Int64)
-int8multirange = Value (Value.unsafeTypeInfo "int8multirange" TypeInfo.int8multirange A.int8multirange)
-
--- |
--- Decoder of the @NUMMULTIRANGE@ values.
-{-# INLINEABLE nummultirange #-}
-nummultirange :: Value (R.Multirange Scientific)
-nummultirange = Value (Value.unsafeTypeInfo "nummultirange" TypeInfo.nummultirange A.nummultirange)
-
--- |
--- Decoder of the @TSMULTIRANGE@ values.
-{-# INLINEABLE tsmultirange #-}
-tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = Value (Value.unsafeTypeInfo "tsmultirange" TypeInfo.tsmultirange A.tsmultirange_int)
-
--- |
--- Decoder of the @TSTZMULTIRANGE@ values.
-{-# INLINEABLE tstzmultirange #-}
-tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = Value (Value.unsafeTypeInfo "tstzmultirange" TypeInfo.tstzmultirange A.tstzmultirange_int)
-
--- |
--- Decoder of the @DATEMULTIRANGE@ values.
-{-# INLINEABLE datemultirange #-}
-datemultirange :: Value (R.Multirange Day)
-datemultirange = Value (Value.unsafeTypeInfo "datemultirange" TypeInfo.datemultirange A.datemultirange)
-
--- |
--- Lift a custom value decoder function to a 'Value' decoder.
-{-# INLINEABLE custom #-}
-custom :: (ByteString -> Either Text a) -> Value a
-custom fn = Value (Value.decoder (A.fn fn))
-
--- |
--- Refine a value decoder, lifting the possible error to the session level.
-{-# INLINEABLE refine #-}
-refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value v) = Value (Value.refine fn v)
-
--- |
--- A generic decoder of @HSTORE@ values.
---
--- Here's how you can use it to construct a specific value:
---
--- @
--- x :: Value [(Text, Maybe Text)]
--- x = hstore 'replicateM'
--- @
-{-# INLINEABLE hstore #-}
-hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
-hstore replicateM = Value (Value.decoder (A.hstore replicateM A.text_strict A.text_strict))
-
--- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
-enum :: (Text -> Maybe a) -> Value a
-enum mapping = Value (Value.decoder (A.enum mapping))
+enum :: (Text -> Maybe a) -> Value.Value a
+enum mapping = Value.decoder (A.enum mapping)
 
 -- |
--- Lift an 'Array' decoder to a 'Value' decoder.
+-- Lift an 'Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
-array :: Array a -> Value a
-array (Array decoder) = Value (Value.ValueDecoder (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toDecoder decoder))
+array :: Array a -> Value.Value a
+array (Array decoder) = Value.Value (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -380,7 +112,7 @@ array (Array decoder) = Value (Value.ValueDecoder (Array.toTypeName decoder) (Ar
 -- Please notice that in case of multidimensional arrays nesting 'listArray' decoder
 -- won't work. You have to explicitly construct the array decoder using 'array'.
 {-# INLINE listArray #-}
-listArray :: NullableOrNot Value element -> Value [element]
+listArray :: NullableOrNot Value.Value element -> Value.Value [element]
 listArray = array . dimension replicateM . element
 
 -- |
@@ -395,14 +127,14 @@ listArray = array . dimension replicateM . element
 -- Please notice that in case of multidimensional arrays nesting 'vectorArray' decoder
 -- won't work. You have to explicitly construct the array decoder using 'array'.
 {-# INLINE vectorArray #-}
-vectorArray :: (GenericVector.Vector vector element) => NullableOrNot Value element -> Value (vector element)
+vectorArray :: (GenericVector.Vector vector element) => NullableOrNot Value.Value element -> Value.Value (vector element)
 vectorArray = array . dimension GenericVector.replicateM . element
 
 -- |
--- Lift a 'Composite' decoder to a 'Value' decoder.
+-- Lift a 'Composite' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE composite #-}
-composite :: Composite a -> Value a
-composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing (Composite.run imp))
+composite :: Composite a -> Value.Value a
+composite (Composite imp) = Value.Value "unknown" Nothing Nothing (Composite.run imp)
 
 -- * Array decoders
 
@@ -412,7 +144,7 @@ composite (Composite imp) = Value (Value.ValueDecoder "unknown" Nothing Nothing 
 -- Here's how you can use it to produce a specific array value decoder:
 --
 -- @
--- x :: 'Value' [[Text]]
+-- x :: 'Value.Value' [[Text]]
 -- x = 'array' ('dimension' 'replicateM' ('dimension' 'replicateM' ('element' ('nonNullable' 'text'))))
 -- @
 newtype Array a = Array (Array.ArrayDecoder a)
@@ -434,18 +166,18 @@ dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
 dimension replicateM (Array imp) = Array (Array.dimension replicateM imp)
 
 -- |
--- Lift a 'Value' decoder into an 'Array' decoder for parsing of leaf values.
+-- Lift a 'Value.Value' decoder into an 'Array' decoder for parsing of leaf values.
 {-# INLINEABLE element #-}
-element :: NullableOrNot Value a -> Array a
+element :: NullableOrNot Value.Value a -> Array a
 element = \case
-  NonNullable (Value imp) ->
+  NonNullable imp ->
     Array
       ( Array.nonNullableElement
           (Value.toTypeName imp)
           (Value.toArrayOid imp)
           (Value.toHandler imp)
       )
-  Nullable (Value imp) ->
+  Nullable imp ->
     Array
       ( Array.nullableElement
           (Value.toTypeName imp)
@@ -461,8 +193,8 @@ newtype Composite a = Composite (Composite.CompositeDecoder a)
   deriving newtype (Functor, Applicative, Monad, MonadFail)
 
 -- |
--- Lift a 'Value' decoder into a 'Composite' decoder for parsing of component values.
-field :: NullableOrNot Value a -> Composite a
+-- Lift a 'Value.Value' decoder into a 'Composite' decoder for parsing of component values.
+field :: NullableOrNot Value.Value a -> Composite a
 field = \case
-  NonNullable (Value imp) -> Composite (Composite.nonNullValue (Value.toHandler imp))
-  Nullable (Value imp) -> Composite (Composite.value (Value.toHandler imp))
+  NonNullable imp -> Composite (Composite.nonNullValue (Value.toHandler imp))
+  Nullable imp -> Composite (Composite.value (Value.toHandler imp))
