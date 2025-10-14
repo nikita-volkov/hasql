@@ -43,9 +43,9 @@ decoderFn fn =
 
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
-{-# INLINE unsafeTypeInfo #-}
-unsafeTypeInfo :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
-unsafeTypeInfo typeName pti intDecoder =
+{-# INLINE primitive #-}
+primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
+primitive typeName pti intDecoder =
   Value typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
 -- * Static types
@@ -54,19 +54,19 @@ unsafeTypeInfo typeName pti intDecoder =
 -- Decoder of the @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
-bool = unsafeTypeInfo "bool" TypeInfo.bool Binary.bool
+bool = primitive "bool" TypeInfo.bool Binary.bool
 
 -- |
 -- Decoder of the @INT2@ values.
 {-# INLINEABLE int2 #-}
 int2 :: Value Int16
-int2 = unsafeTypeInfo "int2" TypeInfo.int2 Binary.int
+int2 = primitive "int2" TypeInfo.int2 Binary.int
 
 -- |
 -- Decoder of the @INT4@ values.
 {-# INLINEABLE int4 #-}
 int4 :: Value Int32
-int4 = unsafeTypeInfo "int4" TypeInfo.int4 Binary.int
+int4 = primitive "int4" TypeInfo.int4 Binary.int
 
 -- |
 -- Decoder of the @INT8@ values.
@@ -74,56 +74,56 @@ int4 = unsafeTypeInfo "int4" TypeInfo.int4 Binary.int
 int8 :: Value Int64
 int8 =
   {-# SCC "int8" #-}
-  unsafeTypeInfo "int8" TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
+  primitive "int8" TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
 
 -- |
 -- Decoder of the @FLOAT4@ values.
 {-# INLINEABLE float4 #-}
 float4 :: Value Float
-float4 = unsafeTypeInfo "float4" TypeInfo.float4 Binary.float4
+float4 = primitive "float4" TypeInfo.float4 Binary.float4
 
 -- |
 -- Decoder of the @FLOAT8@ values.
 {-# INLINEABLE float8 #-}
 float8 :: Value Double
-float8 = unsafeTypeInfo "float8" TypeInfo.float8 Binary.float8
+float8 = primitive "float8" TypeInfo.float8 Binary.float8
 
 -- |
 -- Decoder of the @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
 numeric :: Value Scientific
-numeric = unsafeTypeInfo "numeric" TypeInfo.numeric Binary.numeric
+numeric = primitive "numeric" TypeInfo.numeric Binary.numeric
 
 -- |
 -- Decoder of the @CHAR@ values.
 -- Note that it supports Unicode values.
 {-# INLINEABLE char #-}
 char :: Value Char
-char = unsafeTypeInfo "char" TypeInfo.char Binary.char
+char = primitive "char" TypeInfo.char Binary.char
 
 -- |
 -- Decoder of the @TEXT@ values.
 {-# INLINEABLE text #-}
 text :: Value Text
-text = unsafeTypeInfo "text" TypeInfo.text Binary.text_strict
+text = primitive "text" TypeInfo.text Binary.text_strict
 
 -- |
 -- Decoder of the @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString
-bytea = unsafeTypeInfo "bytea" TypeInfo.bytea Binary.bytea_strict
+bytea = primitive "bytea" TypeInfo.bytea Binary.bytea_strict
 
 -- |
 -- Decoder of the @DATE@ values.
 {-# INLINEABLE date #-}
 date :: Value Day
-date = unsafeTypeInfo "date" TypeInfo.date Binary.date
+date = primitive "date" TypeInfo.date Binary.date
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = unsafeTypeInfo "timestamp" TypeInfo.timestamp Binary.timestamp_int
+timestamp = primitive "timestamp" TypeInfo.timestamp Binary.timestamp_int
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
@@ -137,13 +137,13 @@ timestamp = unsafeTypeInfo "timestamp" TypeInfo.timestamp Binary.timestamp_int
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = unsafeTypeInfo "timestamptz" TypeInfo.timestamptz Binary.timestamptz_int
+timestamptz = primitive "timestamptz" TypeInfo.timestamptz Binary.timestamptz_int
 
 -- |
 -- Decoder of the @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = unsafeTypeInfo "time" TypeInfo.time Binary.time_int
+time = primitive "time" TypeInfo.time Binary.time_int
 
 -- |
 -- Decoder of the @TIMETZ@ values.
@@ -155,25 +155,25 @@ time = unsafeTypeInfo "time" TypeInfo.time Binary.time_int
 -- to represent a value on the Haskell's side.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = unsafeTypeInfo "timetz" TypeInfo.timetz Binary.timetz_int
+timetz = primitive "timetz" TypeInfo.timetz Binary.timetz_int
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 {-# INLINEABLE interval #-}
 interval :: Value DiffTime
-interval = unsafeTypeInfo "interval" TypeInfo.interval Binary.interval_int
+interval = primitive "interval" TypeInfo.interval Binary.interval_int
 
 -- |
 -- Decoder of the @UUID@ values.
 {-# INLINEABLE uuid #-}
 uuid :: Value UUID
-uuid = unsafeTypeInfo "uuid" TypeInfo.uuid Binary.uuid
+uuid = primitive "uuid" TypeInfo.uuid Binary.uuid
 
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
 inet :: Value Iproute.IPRange
-inet = unsafeTypeInfo "inet" TypeInfo.inet Binary.inet
+inet = primitive "inet" TypeInfo.inet Binary.inet
 
 -- |
 -- Decoder of the @MACADDR@ values.
@@ -184,13 +184,13 @@ inet = unsafeTypeInfo "inet" TypeInfo.inet Binary.inet
 -- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
 {-# INLINEABLE macaddr #-}
 macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = unsafeTypeInfo "macaddr" TypeInfo.macaddr Binary.macaddr
+macaddr = primitive "macaddr" TypeInfo.macaddr Binary.macaddr
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
-json = unsafeTypeInfo "json" TypeInfo.json Binary.json_ast
+json = primitive "json" TypeInfo.json Binary.json_ast
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
@@ -202,7 +202,7 @@ jsonBytes fn = decoder (Binary.json_bytes fn)
 -- Decoder of the @JSONB@ values into a JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value Aeson.Value
-jsonb = unsafeTypeInfo "jsonb" TypeInfo.jsonb Binary.jsonb_ast
+jsonb = primitive "jsonb" TypeInfo.jsonb Binary.jsonb_ast
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
@@ -214,73 +214,73 @@ jsonbBytes fn = decoder (Binary.jsonb_bytes fn)
 -- Decoder of the @INT4RANGE@ values.
 {-# INLINEABLE int4range #-}
 int4range :: Value (R.Range Int32)
-int4range = unsafeTypeInfo "int4range" TypeInfo.int4range Binary.int4range
+int4range = primitive "int4range" TypeInfo.int4range Binary.int4range
 
 -- |
 -- Decoder of the @INT8RANGE@ values.
 {-# INLINEABLE int8range #-}
 int8range :: Value (R.Range Int64)
-int8range = unsafeTypeInfo "int8range" TypeInfo.int8range Binary.int8range
+int8range = primitive "int8range" TypeInfo.int8range Binary.int8range
 
 -- |
 -- Decoder of the @NUMRANGE@ values.
 {-# INLINEABLE numrange #-}
 numrange :: Value (R.Range Scientific)
-numrange = unsafeTypeInfo "numrange" TypeInfo.numrange Binary.numrange
+numrange = primitive "numrange" TypeInfo.numrange Binary.numrange
 
 -- |
 -- Decoder of the @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = unsafeTypeInfo "tsrange" TypeInfo.tsrange Binary.tsrange_int
+tsrange = primitive "tsrange" TypeInfo.tsrange Binary.tsrange_int
 
 -- |
 -- Decoder of the @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = unsafeTypeInfo "tstzrange" TypeInfo.tstzrange Binary.tstzrange_int
+tstzrange = primitive "tstzrange" TypeInfo.tstzrange Binary.tstzrange_int
 
 -- |
 -- Decoder of the @DATERANGE@ values.
 {-# INLINEABLE daterange #-}
 daterange :: Value (R.Range Day)
-daterange = unsafeTypeInfo "daterange" TypeInfo.daterange Binary.daterange
+daterange = primitive "daterange" TypeInfo.daterange Binary.daterange
 
 -- |
 -- Decoder of the @INT4MULTIRANGE@ values.
 {-# INLINEABLE int4multirange #-}
 int4multirange :: Value (R.Multirange Int32)
-int4multirange = unsafeTypeInfo "int4multirange" TypeInfo.int4multirange Binary.int4multirange
+int4multirange = primitive "int4multirange" TypeInfo.int4multirange Binary.int4multirange
 
 -- |
 -- Decoder of the @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
-int8multirange = unsafeTypeInfo "int8multirange" TypeInfo.int8multirange Binary.int8multirange
+int8multirange = primitive "int8multirange" TypeInfo.int8multirange Binary.int8multirange
 
 -- |
 -- Decoder of the @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
-nummultirange = unsafeTypeInfo "nummultirange" TypeInfo.nummultirange Binary.nummultirange
+nummultirange = primitive "nummultirange" TypeInfo.nummultirange Binary.nummultirange
 
 -- |
 -- Decoder of the @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = unsafeTypeInfo "tsmultirange" TypeInfo.tsmultirange Binary.tsmultirange_int
+tsmultirange = primitive "tsmultirange" TypeInfo.tsmultirange Binary.tsmultirange_int
 
 -- |
 -- Decoder of the @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = unsafeTypeInfo "tstzmultirange" TypeInfo.tstzmultirange Binary.tstzmultirange_int
+tstzmultirange = primitive "tstzmultirange" TypeInfo.tstzmultirange Binary.tstzmultirange_int
 
 -- |
 -- Decoder of the @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
-datemultirange = unsafeTypeInfo "datemultirange" TypeInfo.datemultirange Binary.datemultirange
+datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datemultirange
 
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
