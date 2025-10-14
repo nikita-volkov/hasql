@@ -67,8 +67,8 @@ data Value a
       (Maybe Word32)
       -- | Statically known OID for the array-type with this type as the element.
       (Maybe Word32)
-      -- | Decoding function (always integer timestamps for PostgreSQL 10+).
-      (Binary.Value a)
+      -- | Decoding function on a registry of OIDs by type name.
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a)
   deriving (Functor)
 
 instance Filterable Value where
@@ -76,18 +76,12 @@ instance Filterable Value where
   mapMaybe fn =
     refine (maybe (Left "Invalid value") Right . fn)
 
-{-# INLINE decoder #-}
-decoder :: Binary.Value a -> Value a
-decoder aDecoder =
-  {-# SCC "decoder" #-}
-  Value Nothing "unknown" Nothing Nothing aDecoder
-
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE primitive #-}
 primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
-primitive typeName pti intDecoder =
-  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
+primitive typeName pti decoder =
+  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) (const decoder)
 
 -- * Static types
 
@@ -237,7 +231,7 @@ json = primitive "json" TypeInfo.json Binary.json_ast
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = decoder (Binary.json_bytes fn)
+jsonBytes fn = primitive "json" TypeInfo.json (Binary.json_bytes fn)
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
@@ -249,7 +243,7 @@ jsonb = primitive "jsonb" TypeInfo.jsonb Binary.jsonb_ast
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = decoder (Binary.jsonb_bytes fn)
+jsonbBytes fn = primitive "jsonb" TypeInfo.jsonb (Binary.jsonb_bytes fn)
 
 -- |
 -- Decoder of the @INT4RANGE@ values.
@@ -326,15 +320,16 @@ datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datem
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
 {-# INLINEABLE custom #-}
-custom :: (ByteString -> Either Text a) -> Value a
-custom fn = decoder (Binary.fn fn)
+custom :: Maybe Text -> Text -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a) -> Value a
+custom schema typeName fn =
+  Value schema typeName Nothing Nothing (Binary.fn . fn)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
 refine fn (Value schema typeName typeOid arrayOid decoder) =
-  Value schema typeName typeOid arrayOid (Binary.refine fn decoder)
+  Value schema typeName typeOid arrayOid (Binary.refine fn . decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -347,13 +342,15 @@ refine fn (Value schema typeName typeOid arrayOid decoder) =
 -- @
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
-hstore replicateM = decoder (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
+hstore replicateM =
+  Value Nothing "hstore" Nothing Nothing (const (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
 
 -- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
-enum :: (Text -> Maybe a) -> Value a
-enum mapping = decoder (Binary.enum mapping)
+enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
+enum schema typeName mapping =
+  Value schema typeName Nothing Nothing (const (Binary.enum mapping))
 
 -- * Relations
 
@@ -371,9 +368,9 @@ toArrayOid :: Value a -> Maybe Word32
 toArrayOid (Value _ _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
-toHandler :: Value a -> Binary.Value a
+toHandler :: Value a -> HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a
 toHandler (Value _ _ _ _ decoder) = decoder
 
 {-# INLINE toByteStringParser #-}
-toByteStringParser :: Value a -> (ByteString -> Either Text a)
-toByteStringParser (Value _ _ _ _ decoder) = Binary.valueParser decoder
+toByteStringParser :: Value a -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a)
+toByteStringParser (Value _ _ _ _ decoder) oidCache = Binary.valueParser (decoder oidCache)

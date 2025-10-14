@@ -25,25 +25,27 @@ import TextBuilder qualified
 -- @
 data Array a
   = Array
-      -- | Type name for the array element
+      -- | Schema name.
+      (Maybe Text)
+      -- | Type name for the array element.
       Text
       -- | Statically known OID for the array type.
       (Maybe Word32)
       -- | Number of dimensions.
       Int
       -- | Decoding function
-      (Binary.Array a)
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Array a)
   deriving (Functor)
 
 {-# INLINE toDecoder #-}
-toDecoder :: Array a -> Binary.Value a
-toDecoder (Array _ _ _ decoder) =
-  Binary.array decoder
+toDecoder :: Array a -> HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a
+toDecoder (Array _ _ _ _ decoder) =
+  Binary.array . decoder
 
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
 toTypeName :: Array a -> Text
-toTypeName (Array elementTypeName _ ndims _) =
+toTypeName (Array _ elementTypeName _ ndims _) =
   let chunks =
         TextBuilder.text elementTypeName
           : replicate ndims (TextBuilder.text "[]")
@@ -52,17 +54,17 @@ toTypeName (Array elementTypeName _ ndims _) =
 -- | Get the array OID if statically known
 {-# INLINE toOid #-}
 toOid :: Array a -> Maybe Word32
-toOid (Array _ oid _ _) = oid
+toOid (Array _ _ oid _ _) = oid
 
 {-# INLINE nullableElement #-}
-nullableElement :: Text -> Maybe Word32 -> Binary.Value a -> Array (Maybe a)
-nullableElement elementTypeName oid decoder =
-  Array elementTypeName oid 1 $ Binary.nullableValueArray decoder
+nullableElement :: Maybe Text -> Text -> Maybe Word32 -> (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a) -> Array (Maybe a)
+nullableElement schema elementTypeName oid decoder =
+  Array schema elementTypeName oid 1 $ Binary.nullableValueArray . decoder
 
 {-# INLINE nonNullableElement #-}
-nonNullableElement :: Text -> Maybe Word32 -> Binary.Value a -> Array a
-nonNullableElement elementTypeName oid decoder =
-  Array elementTypeName oid 1 $ Binary.valueArray decoder
+nonNullableElement :: Maybe Text -> Text -> Maybe Word32 -> (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a) -> Array a
+nonNullableElement schema elementTypeName oid decoder =
+  Array schema elementTypeName oid 1 $ Binary.valueArray . decoder
 
 -- * Public API
 
@@ -79,8 +81,8 @@ nonNullableElement elementTypeName oid decoder =
 -- * Binary decoder of its components, which can be either another 'dimension' or 'element'.
 {-# INLINEABLE dimension #-}
 dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
-dimension replicateM (Array typeName typeOid ndims decoder) =
-  Array typeName typeOid (succ ndims) $ Binary.dimensionArray replicateM decoder
+dimension replicateM (Array schema typeName typeOid ndims decoder) =
+  Array schema typeName typeOid (succ ndims) $ Binary.dimensionArray replicateM . decoder
 
 -- |
 -- Lift a 'Value.Value' decoder into an 'Array' decoder for parsing of leaf values.
@@ -89,11 +91,13 @@ element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
   NullableOrNot.NonNullable imp ->
     nonNullableElement
+      (Value.toSchema imp)
       (Value.toTypeName imp)
       (Value.toArrayOid imp)
       (Value.toHandler imp)
   NullableOrNot.Nullable imp ->
     nullableElement
+      (Value.toSchema imp)
       (Value.toTypeName imp)
       (Value.toArrayOid imp)
       (Value.toHandler imp)

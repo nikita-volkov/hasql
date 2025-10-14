@@ -8,27 +8,21 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- |
 -- Composable decoder of composite values (rows, records).
 newtype Composite a
-  = Composite (Binary.Composite a)
-  deriving newtype (Functor, Applicative, Monad, MonadFail)
+  = Composite (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Composite a)
+  deriving
+    (Functor, Applicative, Monad, MonadFail)
+    via (ReaderT (HashMap (Maybe Text, Text) (Word32, Word32)) Binary.Composite)
 
 {-# INLINE run #-}
-run :: Composite a -> Binary.Value a
-run (Composite imp) =
-  Binary.composite imp
-
-{-# INLINE value #-}
-value :: Binary.Value a -> Composite (Maybe a)
-value decoder' =
-  Composite $ Binary.nullableValueComposite decoder'
-
-{-# INLINE nonNullValue #-}
-nonNullValue :: Binary.Value a -> Composite a
-nonNullValue decoder' =
-  Composite $ Binary.valueComposite decoder'
+run :: Composite a -> HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a
+run (Composite imp) oidCache =
+  Binary.composite (imp oidCache)
 
 -- |
 -- Lift a 'Value.Value' decoder into a 'Composite' decoder for parsing of component values.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable imp -> nonNullValue (Value.toHandler imp)
-  NullableOrNot.Nullable imp -> value (Value.toHandler imp)
+  NullableOrNot.NonNullable imp ->
+    Composite \oidCache -> Binary.valueComposite (Value.toHandler imp oidCache)
+  NullableOrNot.Nullable imp ->
+    Composite \oidCache -> Binary.nullableValueComposite (Value.toHandler imp oidCache)

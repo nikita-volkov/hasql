@@ -93,12 +93,17 @@ import Platform.Prelude hiding (bool, maybe)
 
 -- |
 -- Decoder of a query result.
-newtype Result a = Result (ResultDecoder.ResultDecoder a)
-  deriving newtype (Functor, Filterable)
+newtype Result a = Result (HashMap (Maybe Text, Text) (Word32, Word32) -> ResultDecoder.ResultDecoder a)
+  deriving (Functor) via (ReaderT (HashMap (Maybe Text, Text) (Word32, Word32)) ResultDecoder.ResultDecoder)
+
+instance Filterable Result where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn (Result result) =
+    Result (mapMaybe fn . result)
 
 instance ResultDecoder.Wraps Result where
-  wrap = Result
-  unwrap (Result r) = r
+  wrap decoder = Result (const decoder)
+  unwrap (Result r) = r mempty
 
 -- |
 -- Decode no value from the result.
@@ -106,24 +111,24 @@ instance ResultDecoder.Wraps Result where
 -- Useful for statements like @INSERT@ or @CREATE@.
 {-# INLINEABLE noResult #-}
 noResult :: Result ()
-noResult = Result ResultDecoder.ok
+noResult = Result (const ResultDecoder.ok)
 
 -- |
 -- Get the amount of rows affected by such statements as
 -- @UPDATE@ or @DELETE@.
 {-# INLINEABLE rowsAffected #-}
 rowsAffected :: Result Int64
-rowsAffected = Result ResultDecoder.rowsAffected
+rowsAffected = Result (const ResultDecoder.rowsAffected)
 
 -- |
 -- Exactly one row.
 -- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
-singleRow (Row row) = Result (ResultDecoder.single row)
+singleRow (Row row) = Result \oidCache -> ResultDecoder.single (row oidCache)
 
 refineResult :: (a -> Either Text b) -> Result a -> Result b
-refineResult refiner (Result resultDecoder) = Result (ResultDecoder.refine refiner resultDecoder)
+refineResult refiner (Result resultDecoder) = Result (ResultDecoder.refine refiner . resultDecoder)
 
 -- ** Multi-row traversers
 
@@ -131,13 +136,13 @@ refineResult refiner (Result resultDecoder) = Result (ResultDecoder.refine refin
 -- Foldl multiple rows.
 {-# INLINEABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
-foldlRows step init (Row row) = Result (ResultDecoder.foldl step init row)
+foldlRows step init (Row row) = Result \oidCache -> ResultDecoder.foldl step init (row oidCache)
 
 -- |
 -- Foldr multiple rows.
 {-# INLINEABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
-foldrRows step init (Row row) = Result (ResultDecoder.foldr step init row)
+foldrRows step init (Row row) = Result \oidCache -> ResultDecoder.foldr step init (row oidCache)
 
 -- ** Specialized multi-row results
 
@@ -145,7 +150,7 @@ foldrRows step init (Row row) = Result (ResultDecoder.foldr step init row)
 -- Maybe one row or none.
 {-# INLINEABLE rowMaybe #-}
 rowMaybe :: Row a -> Result (Maybe a)
-rowMaybe (Row row) = Result (ResultDecoder.maybe row)
+rowMaybe (Row row) = Result \oidCache -> ResultDecoder.maybe (row oidCache)
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -154,7 +159,7 @@ rowMaybe (Row row) = Result (ResultDecoder.maybe row)
 -- since it performs notably better.
 {-# INLINEABLE rowVector #-}
 rowVector :: Row a -> Result (Vector a)
-rowVector (Row row) = Result (ResultDecoder.vector row)
+rowVector (Row row) = Result \oidCache -> ResultDecoder.vector (row oidCache)
 
 -- |
 -- Zero or more rows packed into the list.
@@ -167,15 +172,14 @@ rowList = foldrRows strictCons []
 -- |
 -- Decoder of an individual row,
 -- which gets composed of column value decoders.
---
 -- E.g.:
 --
 -- @
 -- x :: 'Row' (Maybe Int64, Text, TimeOfDay)
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
-newtype Row a = Row (RowDecoder.RowDecoder a)
-  deriving newtype (Functor, Applicative)
+newtype Row a = Row (HashMap (Maybe Text, Text) (Word32, Word32) -> RowDecoder.RowDecoder a)
+  deriving (Functor, Applicative) via (ReaderT (HashMap (Maybe Text, Text) (Word32, Word32)) RowDecoder.RowDecoder)
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.
@@ -183,14 +187,12 @@ newtype Row a = Row (RowDecoder.RowDecoder a)
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->
-    Row
-      ( RowDecoder.nullableColumn
-          (Value.toBaseOid valueDecoder)
-          (Value.toByteStringParser valueDecoder)
-      )
+    Row \oidCache ->
+      RowDecoder.nullableColumn
+        (Value.toBaseOid valueDecoder)
+        (Value.toByteStringParser valueDecoder oidCache)
   NonNullable valueDecoder ->
-    Row
-      ( RowDecoder.nonNullableColumn
-          (Value.toBaseOid valueDecoder)
-          (Value.toByteStringParser valueDecoder)
-      )
+    Row \oidCache ->
+      RowDecoder.nonNullableColumn
+        (Value.toBaseOid valueDecoder)
+        (Value.toByteStringParser valueDecoder oidCache)

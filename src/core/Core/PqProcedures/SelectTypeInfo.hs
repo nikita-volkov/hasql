@@ -111,9 +111,9 @@ rowDecoder =
     nullableColumn valueDecoder =
       Hipq.RowDecoder.nullableColumn
         (Decoders.Value.toBaseOid valueDecoder)
-        (Decoders.Value.toByteStringParser valueDecoder)
+        (Decoders.Value.toByteStringParser valueDecoder mempty)
 
     nonNullableColumn valueDecoder =
       Hipq.RowDecoder.nonNullableColumn
         (Decoders.Value.toBaseOid valueDecoder)
-        (Decoders.Value.toByteStringParser valueDecoder)
+        (Decoders.Value.toByteStringParser valueDecoder mempty)
