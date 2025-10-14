@@ -45,6 +45,8 @@ instance Contravariant Array where
   contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
     Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes (\oidCache -> elEncoder oidCache . fn) (elRenderer . fn)
 
+-- |
+-- Lifts a 'Value.Value' encoder into an 'Array' encoder.
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
   NullableOrNot.NonNullable (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) ->
@@ -74,6 +76,17 @@ element = \case
           maybeSerialize
           maybePrint
 
+-- |
+-- Encoder of an array dimension,
+-- which thus provides support for multidimensional arrays.
+--
+-- Accepts:
+--
+-- * An implementation of the left-fold operation,
+-- such as @Data.Foldable.'foldl''@,
+-- which determines the input value.
+--
+-- * A component encoder, which can be either another 'dimension' or 'element'.
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
 dimension fold (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
