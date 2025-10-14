@@ -308,6 +308,12 @@ refine fn (Value typeName typeOid arrayOid decoder) =
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM = decoder (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
 
+-- |
+-- Given a partial mapping from text to value,
+-- produces a decoder of that value.
+enum :: (Text -> Maybe a) -> Value a
+enum mapping = decoder (Binary.enum mapping)
+
 -- * Relations
 
 toTypeName :: Value a -> Text

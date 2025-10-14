@@ -134,6 +134,7 @@ library codecs
     Codecs.Decoders
     Codecs.Decoders.Array
     Codecs.Decoders.Composite
+    Codecs.Decoders.NullableOrNot
     Codecs.Decoders.Value
     Codecs.Encoders
     Codecs.Encoders.Array
