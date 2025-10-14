@@ -11,6 +11,8 @@ import PostgreSQL.Binary.Range qualified as R
 -- Value decoder.
 data Value a
   = Value
+      -- | Schema name.
+      (Maybe Text)
       -- | Type name.
       Text
       -- | Statically known OID for the type.
@@ -30,12 +32,13 @@ instance Filterable Value where
 decoder :: Binary.Value a -> Value a
 decoder aDecoder =
   {-# SCC "decoder" #-}
-  Value "unknown" Nothing Nothing aDecoder
+  Value Nothing "unknown" Nothing Nothing aDecoder
 
 {-# INLINE decoderFn #-}
 decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
 decoderFn fn =
   Value
+    Nothing
     "unknown"
     Nothing
     Nothing
@@ -46,7 +49,7 @@ decoderFn fn =
 {-# INLINE primitive #-}
 primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti intDecoder =
-  Value typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
+  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
 -- * Static types
 
@@ -292,8 +295,8 @@ custom fn = decoder (Binary.fn fn)
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value typeName typeOid arrayOid decoder) =
-  Value typeName typeOid arrayOid (Binary.refine fn decoder)
+refine fn (Value schema typeName typeOid arrayOid decoder) =
+  Value schema typeName typeOid arrayOid (Binary.refine fn decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -316,20 +319,23 @@ enum mapping = decoder (Binary.enum mapping)
 
 -- * Relations
 
+toSchema :: Value a -> Maybe Text
+toSchema (Value schema _ _ _ _) = schema
+
 toTypeName :: Value a -> Text
-toTypeName (Value typeName _ _ _) = typeName
+toTypeName (Value _ typeName _ _ _) = typeName
 
 toBaseOid :: Value a -> Maybe Word32
-toBaseOid (Value _ typeOid _ _) =
-  typeOid
+toBaseOid (Value _ _ typeOid arrayOid _) =
+  typeOid <|> arrayOid
 
 toArrayOid :: Value a -> Maybe Word32
-toArrayOid (Value _ _ oid _) = oid
+toArrayOid (Value _ _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
 toHandler :: Value a -> Binary.Value a
-toHandler (Value _ _ _ decoder) = decoder
+toHandler (Value _ _ _ _ decoder) = decoder
 
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: Value a -> (ByteString -> Either Text a)
-toByteStringParser (Value _ _ _ decoder) = Binary.valueParser decoder
+toByteStringParser (Value _ _ _ _ decoder) = Binary.valueParser decoder
