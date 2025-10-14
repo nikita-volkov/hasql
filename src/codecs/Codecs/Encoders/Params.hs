@@ -155,7 +155,7 @@ instance Semigroup (Params a) where
       { size = leftSize + rightSize,
         unknownTypes = leftUnknownTypes <> rightUnknownTypes,
         columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-        serializer = \input -> leftSerializer input <> rightSerializer input,
+        serializer = \oidCache input -> leftSerializer oidCache input <> rightSerializer oidCache input,
         printer = \input -> leftPrinter input <> rightPrinter input
       }
 
