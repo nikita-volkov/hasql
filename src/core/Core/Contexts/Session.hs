@@ -64,7 +64,6 @@ script sql =
 -- |
 -- Execute a statement by providing parameters to it.
 statement ::
-  forall params result.
   ByteString ->
   Params.Params params ->
   Hipq.ResultDecoder.ResultDecoder result ->
