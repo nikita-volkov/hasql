@@ -103,7 +103,20 @@ spec = do
                 Statement.Statement
                   "select (1, true)"
                   mempty
-                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.composite ((,) <$> (Decoders.field (Decoders.nonNullable Decoders.int8)) <*> (Decoders.field (Decoders.nonNullable Decoders.bool)))))))
+                  ( Decoders.singleRow
+                      ( Decoders.column
+                          ( Decoders.nonNullable
+                              ( Decoders.composite
+                                  Nothing
+                                  ""
+                                  ( (,)
+                                      <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                      <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                  )
+                              )
+                          )
+                      )
+                  )
                   True
           result <- Connection.use connection (Session.statement () statement)
           result `shouldBe` Right (1 :: Int64, True)
@@ -118,27 +131,31 @@ spec = do
                       ( Decoders.column
                           ( Decoders.nonNullable
                               ( Decoders.composite
+                                  Nothing
+                                  ""
                                   ( (,)
-                                      <$> ( Decoders.field
-                                              ( Decoders.nonNullable
-                                                  ( Decoders.composite
-                                                      ( (,)
-                                                          <$> (Decoders.field (Decoders.nonNullable Decoders.int8))
-                                                          <*> (Decoders.field (Decoders.nonNullable Decoders.bool))
-                                                      )
-                                                  )
-                                              )
-                                          )
-                                      <*> ( Decoders.field
-                                              ( Decoders.nonNullable
-                                                  ( Decoders.composite
-                                                      ( (,)
-                                                          <$> (Decoders.field (Decoders.nonNullable Decoders.text))
-                                                          <*> (Decoders.field (Decoders.nonNullable Decoders.int8))
-                                                      )
-                                                  )
-                                              )
-                                          )
+                                      <$> Decoders.field
+                                        ( Decoders.nonNullable
+                                            ( Decoders.composite
+                                                Nothing
+                                                ""
+                                                ( (,)
+                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                                )
+                                            )
+                                        )
+                                      <*> Decoders.field
+                                        ( Decoders.nonNullable
+                                            ( Decoders.composite
+                                                Nothing
+                                                ""
+                                                ( (,)
+                                                    <$> Decoders.field (Decoders.nonNullable Decoders.text)
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                )
+                                            )
+                                        )
                                   )
                               )
                           )
@@ -165,7 +182,7 @@ spec = do
               $ Statement.Statement
                 (encodeUtf8 (mconcat ["select ($1 :: ", name, ")"]))
                 (Encoders.param (Encoders.nonNullable (Encoders.enum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum (Just . id)))))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing name (Just . id)))))
                 True
           result `shouldBe` Right "ok"
 
@@ -186,7 +203,7 @@ spec = do
               $ Statement.Statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable (Encoders.unknownEnum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum (Just . id)))))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing name (Just . id)))))
                 True
           result `shouldBe` Right "ok"
 

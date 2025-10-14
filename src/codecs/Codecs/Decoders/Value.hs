@@ -76,12 +76,6 @@ instance Filterable Value where
   mapMaybe fn =
     refine (maybe (Left "Invalid value") Right . fn)
 
-{-# INLINE decoder #-}
-decoder :: Binary.Value a -> Value a
-decoder aDecoder =
-  {-# SCC "decoder" #-}
-  Value Nothing "unknown" Nothing Nothing aDecoder
-
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE primitive #-}
@@ -237,7 +231,7 @@ json = primitive "json" TypeInfo.json Binary.json_ast
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = decoder (Binary.json_bytes fn)
+jsonBytes fn = primitive "json" TypeInfo.json (Binary.json_bytes fn)
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
@@ -249,7 +243,7 @@ jsonb = primitive "jsonb" TypeInfo.jsonb Binary.jsonb_ast
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = decoder (Binary.jsonb_bytes fn)
+jsonbBytes fn = primitive "jsonb" TypeInfo.jsonb (Binary.jsonb_bytes fn)
 
 -- |
 -- Decoder of the @INT4RANGE@ values.
@@ -326,8 +320,9 @@ datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datem
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
 {-# INLINEABLE custom #-}
-custom :: (ByteString -> Either Text a) -> Value a
-custom fn = decoder (Binary.fn fn)
+custom :: Maybe Text -> Text -> (ByteString -> Either Text a) -> Value a
+custom schema typeName fn =
+  Value schema typeName Nothing Nothing (Binary.fn fn)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
@@ -347,13 +342,15 @@ refine fn (Value schema typeName typeOid arrayOid decoder) =
 -- @
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
-hstore replicateM = decoder (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
+hstore replicateM =
+  Value Nothing "hstore" Nothing Nothing (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
 
 -- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
-enum :: (Text -> Maybe a) -> Value a
-enum mapping = decoder (Binary.enum mapping)
+enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
+enum schema typeName mapping =
+  Value schema typeName Nothing Nothing (Binary.enum mapping)
 
 -- * Relations
 

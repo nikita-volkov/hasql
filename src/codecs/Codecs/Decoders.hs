@@ -109,5 +109,5 @@ vectorArray = array . Array.dimension GenericVector.replicateM . Array.element
 -- |
 -- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE composite #-}
-composite :: Composite.Composite a -> Value.Value a
-composite composite = Value.Value Nothing "unknown" Nothing Nothing (Composite.run composite)
+composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+composite schema typeName composite = Value.Value schema typeName Nothing Nothing (Composite.run composite)
