@@ -13,7 +13,7 @@ import Platform.Prelude hiding (empty, insert, lookup, reset)
 import Pq qualified
 
 -- | Pure registry state containing the hash map and counter
-data StatementCache = StatementCache (HashMap.HashMap LocalKey ByteString) Word
+data StatementCache = StatementCache (HashMap LocalKey ByteString) Word
   deriving stock (Show, Eq)
 
 -- | Create an empty registry state
