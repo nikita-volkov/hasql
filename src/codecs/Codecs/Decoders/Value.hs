@@ -1,9 +1,57 @@
-module Codecs.Decoders.Value where
+module Codecs.Decoders.Value
+  ( Value (..),
+    bool,
+    int2,
+    int4,
+    int8,
+    float4,
+    float8,
+    numeric,
+    char,
+    text,
+    bytea,
+    date,
+    timestamp,
+    timestamptz,
+    time,
+    timetz,
+    interval,
+    uuid,
+    inet,
+    macaddr,
+    json,
+    jsonBytes,
+    jsonb,
+    jsonbBytes,
+    int4range,
+    int8range,
+    numrange,
+    tsrange,
+    tstzrange,
+    daterange,
+    int4multirange,
+    int8multirange,
+    nummultirange,
+    tsmultirange,
+    tstzmultirange,
+    datemultirange,
+    custom,
+    refine,
+    hstore,
+    enum,
+    toSchema,
+    toTypeName,
+    toBaseOid,
+    toArrayOid,
+    toHandler,
+    toByteStringParser,
+  )
+where
 
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
-import Platform.Prelude
+import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Decoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as R
 
@@ -33,16 +81,6 @@ decoder :: Binary.Value a -> Value a
 decoder aDecoder =
   {-# SCC "decoder" #-}
   Value Nothing "unknown" Nothing Nothing aDecoder
-
-{-# INLINE decoderFn #-}
-decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
-decoderFn fn =
-  Value
-    Nothing
-    "unknown"
-    Nothing
-    Nothing
-    (Binary.fn $ fn True) -- Always use integer timestamps
 
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
