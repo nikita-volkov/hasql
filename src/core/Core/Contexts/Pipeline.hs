@@ -7,7 +7,11 @@ where
 
 import Codecs.Encoders.Params qualified as Params
 import Core.Errors qualified as Errors
+import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
+import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
@@ -17,27 +21,41 @@ run ::
   Pipeline a ->
   Bool ->
   Pq.Connection ->
+  OidCache.OidCache ->
   StatementCache.StatementCache ->
-  ( IO (Either Errors.SessionError a),
-    StatementCache.StatementCache
-  )
-run (Pipeline totalStatements run) usePreparedStatements connection cache =
-  let (roundtrip, newCache) = run 0 usePreparedStatements cache
-      adaptedRoundtrip = first adaptContext roundtrip
-        where
-          adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
-          adaptContext (Context index sql params prepared) =
-            Just (totalStatements, index, sql, params, prepared)
-      io = do
-        result <- Hipq.Roundtrip.toPipelineIO Nothing adaptedRoundtrip connection
-        case result of
-          Left (Hipq.Roundtrip.ClientError _context details) -> do
-            pure (Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)))
-          Left (Hipq.Roundtrip.ServerError recvError) ->
-            pure (Left (Errors.fromRecvError recvError))
-          Right a ->
-            pure (Right a)
-   in (io, newCache)
+  IO
+    ( Either Errors.SessionError a,
+      OidCache.OidCache,
+      StatementCache.StatementCache
+    )
+run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection oidCache statementCache = do
+  let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
+  oidCacheUpdates <- PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
+  case oidCacheUpdates of
+    Left err -> pure (Left err, oidCache, statementCache)
+    Right oidCacheUpdates -> do
+      let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
+
+      let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+
+      result <-
+        let adaptedRoundtrip = first adaptContext roundtrip
+              where
+                adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
+                adaptContext (Context index sql params prepared) =
+                  Just (totalStatements, index, sql, params, prepared)
+         in Hipq.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
+              & fmap
+                ( first
+                    ( \case
+                        Hipq.Roundtrip.ClientError _context details ->
+                          Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                        Hipq.Roundtrip.ServerError recvError ->
+                          Errors.fromRecvError recvError
+                    )
+                )
+
+      pure (result, newOidCache, newStatementCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -103,17 +121,27 @@ data Pipeline a
   = Pipeline
       -- | Amount of statements in this pipeline.
       Int
+      -- | Names of types that are used in this pipeline.
+      --
+      -- They will be used to pre-resolve type OIDs before running the pipeline providing them in OidCache.
+      -- It can be assumed in the execution function that these types are always present in the cache.
+      -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
+      -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
+      (HashSet.HashSet (Maybe Text, Text))
       -- | Function that runs the pipeline.
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
       --
-      -- The boolean parameter indicates whether prepared statements should be used when possible.
+      -- The boolean parameter indicates whether preparable statements should be prepared.
+      --
+      -- OidCache is provided in which the names of types used in this pipeline are already resolved.
       --
       -- The function takes the current statement cache and returns a tuple of:
       -- 1. The actual roundtrip action to be executed in the pipeline.
       -- 2. The updated statement cache after executing this part of the pipeline.
       ( Int ->
         Bool ->
+        HashMap.HashMap (Maybe Text, Text) (Word32, Word32) ->
         StatementCache.StatementCache ->
         (Hipq.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
@@ -133,20 +161,21 @@ data Context
 -- * Instances
 
 instance Functor Pipeline where
-  fmap f (Pipeline count run) = Pipeline count \offset usePreparedStatements cache ->
-    let (roundtrip, newCache) = run offset usePreparedStatements cache
-     in (fmap f roundtrip, newCache)
+  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset usePreparedStatements oidCache cache ->
+    let (roundtrip, newStatementCache) = run offset usePreparedStatements oidCache cache
+     in (fmap f roundtrip, newStatementCache)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline 0 (\_ _ cache -> (pure a, cache))
+    Pipeline 0 mempty (\_ _ _ cache -> (pure a, cache))
 
-  Pipeline lCount lRun <*> Pipeline rCount rRun =
-    Pipeline (lCount + rCount) \offset usePreparedStatements cache ->
-      let (lRoundtrip, cache1) = lRun offset usePreparedStatements cache
-          offset1 = offset + lCount
-          (rRoundtrip, cache2) = rRun offset1 usePreparedStatements cache1
-       in (lRoundtrip <*> rRoundtrip, cache2)
+  Pipeline lCount leftUnknownTypes lRun <*> Pipeline rCount rightUnknownTypes rRun =
+    let unknownTypes = leftUnknownTypes <> rightUnknownTypes
+     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements oidCache statementCache ->
+          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements oidCache statementCache
+              offset1 = offset + lCount
+              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements oidCache statementCache1
+           in (lRoundtrip <*> rRoundtrip, statementCache2)
 
 -- * Construction
 
@@ -154,15 +183,15 @@ instance Applicative Pipeline where
 -- Execute a statement in pipelining mode.
 statement :: ByteString -> Params.Params params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
 statement sql encoder decoder preparable params =
-  Pipeline 1 run
+  Pipeline 1 (Params.toUnknownTypes encoder) run
   where
-    run offset usePreparedStatements =
+    run offset usePreparedStatements oidCache =
       if prepare
         then runPrepared
         else runUnprepared
       where
         (oidList, valueAndFormatList) =
-          Params.compilePreparedStatementData encoder params
+          Params.compilePreparedStatementData encoder oidCache params
 
         pqOidList =
           fmap (Pq.Oid . fromIntegral) oidList
@@ -177,15 +206,15 @@ statement sql encoder decoder preparable params =
             (Params.renderReadable encoder params)
             prepare
 
-        runPrepared cache =
-          (roundtrip, newCache)
+        runPrepared statementCache =
+          (roundtrip, newStatementCache)
           where
-            (isNew, remoteKey, newCache) =
-              case StatementCache.lookup sql pqOidList cache of
-                Just remoteKey -> (False, remoteKey, cache)
+            (isNew, remoteKey, newStatementCache) =
+              case StatementCache.lookup sql pqOidList statementCache of
+                Just remoteKey -> (False, remoteKey, statementCache)
                 Nothing ->
-                  let (remoteKey, newCache) = StatementCache.insert sql pqOidList cache
-                   in (True, remoteKey, newCache)
+                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                   in (True, remoteKey, newStatementCache)
 
             roundtrip =
               when isNew (Hipq.Roundtrip.prepare context remoteKey sql pqOidList)
@@ -195,13 +224,13 @@ statement sql encoder decoder preparable params =
                   valueAndFormatList
                     & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
 
-        runUnprepared cache =
-          (roundtrip, cache)
+        runUnprepared statementCache =
+          (roundtrip, statementCache)
           where
             roundtrip =
               Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder
               where
                 encodedParams =
                   params
-                    & Params.compileUnpreparedStatementData encoder
+                    & Params.compileUnpreparedStatementData encoder oidCache
                     & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))

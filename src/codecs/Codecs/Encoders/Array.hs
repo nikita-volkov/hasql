@@ -2,7 +2,8 @@ module Codecs.Encoders.Array where
 
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
-import Codecs.TypeInfo qualified as TypeInfo
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified as TextBuilder
@@ -20,55 +21,64 @@ import TextBuilder qualified as TextBuilder
 -- Please note that the PostgreSQL @IN@ keyword does not accept an array, but rather a syntactical list of
 -- values, thus this encoder is not suited for that. Use a @value = ANY($1)@ condition instead.
 data Array a
-  = Array Word32 Word32 (a -> Binary.Array) (a -> TextBuilder.TextBuilder)
+  = Array
+      -- | Schema name, if any.
+      (Maybe Text)
+      -- | Type name.
+      Text
+      -- | Text format?
+      Bool
+      -- | Dimensionality. If 0 then it is not an array, but a scalar value.
+      Word
+      -- | OID of the element type.
+      (Maybe Word32)
+      -- | OID of the array type.
+      (Maybe Word32)
+      -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
+      (HashSet.HashSet (Maybe Text, Text))
+      -- | Serialization function given the dictionary of resolved OIDs.
+      (HashMap.HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Array)
+      -- | Render function for error messages.
+      (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Array where
-  contramap fn (Array valueOid arrayOid encoder renderer) =
-    Array valueOid arrayOid (encoder . fn) (renderer . fn)
+  contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
+    Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes (\oidCache -> elEncoder oidCache . fn) (elRenderer . fn)
 
-{-# INLINE value #-}
-value :: Word32 -> Word32 -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Array a
-value valueOid arrayOid encoder =
-  Array valueOid arrayOid (Binary.encodingArray . encoder)
-
-{-# INLINE nullableValue #-}
-nullableValue :: Word32 -> Word32 -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Array (Maybe a)
-nullableValue valueOid arrayOid encoder renderer =
-  let maybeEncoder =
-        maybe Binary.nullArray (Binary.encodingArray . encoder)
-      maybeRenderer =
-        maybe (TextBuilder.string "null") renderer
-   in Array valueOid arrayOid maybeEncoder maybeRenderer
-
--- |
--- Lifts a 'Value.Value' encoder into an 'Array' encoder.
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
-  NullableOrNot.NonNullable (Value.Value _ _ (Just elementOid) (Just arrayOid) encoder renderer) ->
-    value elementOid arrayOid encoder renderer
-  NullableOrNot.NonNullable (Value.Value _ _ elementOid arrayOid encoder renderer) ->
-    value (fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown) elementOid) (fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown) arrayOid) encoder renderer
-  NullableOrNot.Nullable (Value.Value _ _ (Just elementOid) (Just arrayOid) encoder renderer) ->
-    nullableValue elementOid arrayOid encoder renderer
-  NullableOrNot.Nullable (Value.Value _ _ elementOid arrayOid encoder renderer) ->
-    nullableValue (fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown) elementOid) (fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown) arrayOid) encoder renderer
+  NullableOrNot.NonNullable (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) ->
+    Array
+      schemaName
+      typeName
+      textFormat
+      dimensionality
+      scalarOid
+      arrayOid
+      unknownTypes
+      (\oidCache -> Binary.encodingArray . serialize oidCache)
+      print
+  NullableOrNot.Nullable (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) ->
+    let maybeSerialize oidCache =
+          maybe Binary.nullArray (Binary.encodingArray . serialize oidCache)
+        maybePrint =
+          maybe (TextBuilder.string "null") print
+     in Array
+          schemaName
+          typeName
+          textFormat
+          dimensionality
+          scalarOid
+          arrayOid
+          unknownTypes
+          maybeSerialize
+          maybePrint
 
--- |
--- Encoder of an array dimension,
--- which thus provides support for multidimensional arrays.
---
--- Accepts:
---
--- * An implementation of the left-fold operation,
--- such as @Data.Foldable.'foldl''@,
--- which determines the input value.
---
--- * A component encoder, which can be either another 'dimension' or 'element'.
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
-dimension fold (Array valueOid arrayOid elEncoder elRenderer) =
-  let encoder =
-        Binary.dimensionArray fold elEncoder
+dimension fold (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
+  let encoder oidCache =
+        Binary.dimensionArray fold (elEncoder oidCache)
       renderer els =
         let folded =
               let step builder el =
@@ -79,4 +89,4 @@ dimension fold (Array valueOid arrayOid elEncoder elRenderer) =
          in if TextBuilder.isEmpty folded
               then TextBuilder.string "[]"
               else folded <> TextBuilder.char ']'
-   in Array valueOid arrayOid encoder renderer
+   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid unknownTypes encoder renderer
