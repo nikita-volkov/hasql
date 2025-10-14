@@ -15,7 +15,7 @@ renderReadable (Params _ _ _ _ printer) params =
 
 compilePreparedStatementData ::
   Params a ->
-  HashMap.HashMap (Maybe Text, Text) (Word32, Word32) ->
+  HashMap (Maybe Text, Text) (Word32, Word32) ->
   a ->
   ([Word32], [Maybe (ByteString, Bool)])
 compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
@@ -46,7 +46,7 @@ compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache 
 
 compileUnpreparedStatementData ::
   Params a ->
-  HashMap.HashMap (Maybe Text, Text) (Word32, Word32) ->
+  HashMap (Maybe Text, Text) (Word32, Word32) ->
   a ->
   [Maybe (Word32, ByteString, Bool)]
 compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
@@ -63,7 +63,7 @@ compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCach
     (toList columnsMetadata)
     (toList (serializer oidCache input))
 
-toUnknownTypes :: Params a -> HashSet.HashSet (Maybe Text, Text)
+toUnknownTypes :: Params a -> HashSet (Maybe Text, Text)
 toUnknownTypes (Params _ unknownTypes _ _ _) =
   unknownTypes
 
@@ -113,10 +113,10 @@ toUnknownTypes (Params _ unknownTypes _ _ _) =
 -- @
 data Params a = Params
   { size :: Int,
-    unknownTypes :: HashSet.HashSet (Maybe Text, Text),
+    unknownTypes :: HashSet (Maybe Text, Text),
     -- | (Name or OID, dimensionality, Text Format) for each parameter.
     columnsMetadata :: DList (Either (Maybe Text, Text) Word32, Word, Bool),
-    serializer :: HashMap.HashMap (Maybe Text, Text) (Word32, Word32) -> a -> DList (Maybe ByteString),
+    serializer :: HashMap (Maybe Text, Text) (Word32, Word32) -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
 

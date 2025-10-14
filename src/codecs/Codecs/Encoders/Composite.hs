@@ -2,7 +2,6 @@ module Codecs.Encoders.Composite where
 
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
-import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -13,9 +12,9 @@ import TextBuilder qualified
 data Composite a
   = Composite
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet.HashSet (Maybe Text, Text))
+      (HashSet (Maybe Text, Text))
       -- | Serialization function given the dictionary of resolved OIDs.
-      (HashMap.HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Composite)
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Composite)
       -- | Render function for error messages.
       (a -> [TextBuilder.TextBuilder])
 

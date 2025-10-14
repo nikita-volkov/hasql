@@ -2,8 +2,6 @@ module Codecs.Encoders.Array where
 
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified as TextBuilder
@@ -35,9 +33,9 @@ data Array a
       -- | OID of the array type.
       (Maybe Word32)
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet.HashSet (Maybe Text, Text))
+      (HashSet (Maybe Text, Text))
       -- | Serialization function given the dictionary of resolved OIDs.
-      (HashMap.HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Array)
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Array)
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 

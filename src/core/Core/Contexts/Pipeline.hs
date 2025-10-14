@@ -10,8 +10,6 @@ import Core.Errors qualified as Errors
 import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
@@ -127,7 +125,7 @@ data Pipeline a
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
       -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
-      (HashSet.HashSet (Maybe Text, Text))
+      (HashSet (Maybe Text, Text))
       -- | Function that runs the pipeline.
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
@@ -141,7 +139,7 @@ data Pipeline a
       -- 2. The updated statement cache after executing this part of the pipeline.
       ( Int ->
         Bool ->
-        HashMap.HashMap (Maybe Text, Text) (Word32, Word32) ->
+        HashMap (Maybe Text, Text) (Word32, Word32) ->
         StatementCache.StatementCache ->
         (Hipq.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )

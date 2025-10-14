@@ -19,12 +19,12 @@ import Pq qualified
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
-    keys :: HashSet.HashSet (Maybe Text, Text)
+    keys :: HashSet (Maybe Text, Text)
   }
 
 -- | Result maps (schema name, type name) pairs to (scalar OID, array OID) pairs.
 type SelectTypeInfoResult =
-  HashMap.HashMap (Maybe Text, Text) (Word32, Word32)
+  HashMap (Maybe Text, Text) (Word32, Word32)
 
 run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =

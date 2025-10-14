@@ -3,7 +3,6 @@ module Codecs.Encoders.Value where
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
-import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Data.IP qualified as Iproute
 import Platform.Prelude
@@ -31,9 +30,9 @@ data Value a
       -- It may also mean that there may be no array type containing this type, which is the case in attempts to double-nest arrays.
       (Maybe Word32)
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet.HashSet (Maybe Text, Text))
+      (HashSet (Maybe Text, Text))
       -- | Serialization function on the resolved OIDs.
-      (HashMap.HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Encoding)
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Encoding)
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
