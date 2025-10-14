@@ -1,5 +1,6 @@
 module Codecs.Encoders.Params where
 
+import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
 import Codecs.TypeInfo qualified as TypeInfo
 import Platform.Prelude
@@ -153,3 +154,16 @@ nullableValue (Value.Value _ textFormat Nothing _ serialize print) =
       serializer = pure . fmap (Binary.encodingBytes . serialize),
       printer = pure . maybe "null" (TextBuilder.toText . print)
     }
+
+-- |
+-- No parameters. Same as `mempty` and `conquered`.
+noParams :: Params ()
+noParams = mempty
+
+-- |
+-- Lift a single parameter encoder, with its nullability specified,
+-- associating it with a single placeholder.
+param :: NullableOrNot.NullableOrNot Value.Value a -> Params a
+param = \case
+  NullableOrNot.NonNullable valueEnc -> value valueEnc
+  NullableOrNot.Nullable valueEnc -> nullableValue valueEnc

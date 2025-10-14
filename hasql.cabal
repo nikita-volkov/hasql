@@ -137,6 +137,8 @@ library codecs
     Codecs.Decoders.Value
     Codecs.Encoders
     Codecs.Encoders.Array
+    Codecs.Encoders.Composite
+    Codecs.Encoders.NullableOrNot
     Codecs.Encoders.Params
     Codecs.Encoders.Value
     Codecs.TypeInfo
