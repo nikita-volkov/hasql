@@ -7,12 +7,15 @@ module Core.Structures.ConnectionState
     setPreparedStatements,
     setStatementCache,
     setConnection,
+    setOidCache,
     mapStatementCache,
+    mapOidCache,
     traverseStatementCache,
     resetPreparedStatementsCache,
   )
 where
 
+import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
 import Pq qualified
@@ -24,6 +27,8 @@ data ConnectionState = ConnectionState
     preparedStatements :: Bool,
     -- | The statement cache for prepared statements.
     statementCache :: StatementCache.StatementCache,
+    -- | The OID cache for type name to OID mapping.
+    oidCache :: OidCache.OidCache,
     -- | The underlying database connection.
     connection :: Pq.Connection
   }
@@ -36,6 +41,7 @@ fromConnection connection =
   ConnectionState
     { preparedStatements = False,
       statementCache = StatementCache.empty,
+      oidCache = OidCache.empty,
       connection = connection
     }
 
@@ -51,12 +57,25 @@ setConnection :: Pq.Connection -> ConnectionState -> ConnectionState
 setConnection connection connectionState =
   connectionState {connection = connection}
 
+setOidCache :: OidCache.OidCache -> ConnectionState -> ConnectionState
+setOidCache oidCache connectionState =
+  connectionState {oidCache}
+
 mapStatementCache ::
   (StatementCache.StatementCache -> StatementCache.StatementCache) ->
   (ConnectionState -> ConnectionState)
 mapStatementCache f ConnectionState {..} =
   ConnectionState
     { statementCache = f statementCache,
+      ..
+    }
+
+mapOidCache ::
+  (OidCache.OidCache -> OidCache.OidCache) ->
+  (ConnectionState -> ConnectionState)
+mapOidCache f ConnectionState {..} =
+  ConnectionState
+    { oidCache = f oidCache,
       ..
     }
 

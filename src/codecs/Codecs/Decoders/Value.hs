@@ -1,9 +1,57 @@
-module Codecs.Decoders.Value where
+module Codecs.Decoders.Value
+  ( Value (..),
+    bool,
+    int2,
+    int4,
+    int8,
+    float4,
+    float8,
+    numeric,
+    char,
+    text,
+    bytea,
+    date,
+    timestamp,
+    timestamptz,
+    time,
+    timetz,
+    interval,
+    uuid,
+    inet,
+    macaddr,
+    json,
+    jsonBytes,
+    jsonb,
+    jsonbBytes,
+    int4range,
+    int8range,
+    numrange,
+    tsrange,
+    tstzrange,
+    daterange,
+    int4multirange,
+    int8multirange,
+    nummultirange,
+    tsmultirange,
+    tstzmultirange,
+    datemultirange,
+    custom,
+    refine,
+    hstore,
+    enum,
+    toSchema,
+    toTypeName,
+    toBaseOid,
+    toArrayOid,
+    toHandler,
+    toByteStringParser,
+  )
+where
 
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
-import Platform.Prelude
+import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Decoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as R
 
@@ -11,6 +59,8 @@ import PostgreSQL.Binary.Range qualified as R
 -- Value decoder.
 data Value a
   = Value
+      -- | Schema name.
+      (Maybe Text)
       -- | Type name.
       Text
       -- | Statically known OID for the type.
@@ -26,27 +76,12 @@ instance Filterable Value where
   mapMaybe fn =
     refine (maybe (Left "Invalid value") Right . fn)
 
-{-# INLINE decoder #-}
-decoder :: Binary.Value a -> Value a
-decoder aDecoder =
-  {-# SCC "decoder" #-}
-  Value "unknown" Nothing Nothing aDecoder
-
-{-# INLINE decoderFn #-}
-decoderFn :: (Bool -> ByteString -> Either Text a) -> Value a
-decoderFn fn =
-  Value
-    "unknown"
-    Nothing
-    Nothing
-    (Binary.fn $ fn True) -- Always use integer timestamps
-
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE primitive #-}
 primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti intDecoder =
-  Value typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
+  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) intDecoder
 
 -- * Static types
 
@@ -196,7 +231,7 @@ json = primitive "json" TypeInfo.json Binary.json_ast
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = decoder (Binary.json_bytes fn)
+jsonBytes fn = primitive "json" TypeInfo.json (Binary.json_bytes fn)
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
@@ -208,7 +243,7 @@ jsonb = primitive "jsonb" TypeInfo.jsonb Binary.jsonb_ast
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = decoder (Binary.jsonb_bytes fn)
+jsonbBytes fn = primitive "jsonb" TypeInfo.jsonb (Binary.jsonb_bytes fn)
 
 -- |
 -- Decoder of the @INT4RANGE@ values.
@@ -285,15 +320,16 @@ datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datem
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
 {-# INLINEABLE custom #-}
-custom :: (ByteString -> Either Text a) -> Value a
-custom fn = decoder (Binary.fn fn)
+custom :: Maybe Text -> Text -> (ByteString -> Either Text a) -> Value a
+custom schema typeName fn =
+  Value schema typeName Nothing Nothing (Binary.fn fn)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value typeName typeOid arrayOid decoder) =
-  Value typeName typeOid arrayOid (Binary.refine fn decoder)
+refine fn (Value schema typeName typeOid arrayOid decoder) =
+  Value schema typeName typeOid arrayOid (Binary.refine fn decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -306,30 +342,35 @@ refine fn (Value typeName typeOid arrayOid decoder) =
 -- @
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
-hstore replicateM = decoder (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
+hstore replicateM =
+  Value Nothing "hstore" Nothing Nothing (Binary.hstore replicateM Binary.text_strict Binary.text_strict)
 
 -- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
-enum :: (Text -> Maybe a) -> Value a
-enum mapping = decoder (Binary.enum mapping)
+enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
+enum schema typeName mapping =
+  Value schema typeName Nothing Nothing (Binary.enum mapping)
 
 -- * Relations
 
+toSchema :: Value a -> Maybe Text
+toSchema (Value schema _ _ _ _) = schema
+
 toTypeName :: Value a -> Text
-toTypeName (Value typeName _ _ _) = typeName
+toTypeName (Value _ typeName _ _ _) = typeName
 
 toBaseOid :: Value a -> Maybe Word32
-toBaseOid (Value _ typeOid _ _) =
-  typeOid
+toBaseOid (Value _ _ typeOid arrayOid _) =
+  typeOid <|> arrayOid
 
 toArrayOid :: Value a -> Maybe Word32
-toArrayOid (Value _ _ oid _) = oid
+toArrayOid (Value _ _ _ oid _) = oid
 
 {-# INLINE toHandler #-}
 toHandler :: Value a -> Binary.Value a
-toHandler (Value _ _ _ decoder) = decoder
+toHandler (Value _ _ _ _ decoder) = decoder
 
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: Value a -> (ByteString -> Either Text a)
-toByteStringParser (Value _ _ _ decoder) = Binary.valueParser decoder
+toByteStringParser (Value _ _ _ _ decoder) = Binary.valueParser decoder

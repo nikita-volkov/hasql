@@ -151,6 +151,7 @@ library codecs
     iproute >=1.7 && <1.8,
     postgresql-binary >=0.14.2 && <0.15,
     text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
 
 library core
@@ -160,7 +161,9 @@ library core
     Core.Contexts.Pipeline
     Core.Contexts.Session
     Core.Errors
+    Core.PqProcedures.SelectTypeInfo
     Core.Structures.ConnectionState
+    Core.Structures.OidCache
     Core.Structures.StatementCache
 
   build-depends:

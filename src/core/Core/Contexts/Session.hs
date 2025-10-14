@@ -79,12 +79,17 @@ pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
       statementCache = ConnectionState.statementCache connectionState
+      oidCache = ConnectionState.oidCache connectionState
       pqConnection = ConnectionState.connection connectionState
-      (io, newCache) = Pipeline.run pipeline usePreparedStatements pqConnection statementCache
-      newState = ConnectionState.setStatementCache newCache connectionState
    in do
-        result <- io
-        pure (result, newState)
+        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline usePreparedStatements pqConnection oidCache statementCache
+        let newConnectionState =
+              connectionState
+                { ConnectionState.oidCache = newOidCache,
+                  ConnectionState.statementCache = newStatementCache
+                }
+
+        pure (result, newConnectionState)
 
 -- |
 -- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.

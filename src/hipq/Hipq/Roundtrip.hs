@@ -38,8 +38,8 @@ instance Bifunctor Roundtrip where
       (fmap f send)
       (bimap f g recv)
 
-toPipelineIO :: context -> Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
-toPipelineIO context sendAndRecv connection = mask \restore -> do
+toPipelineIO :: Roundtrip context a -> context -> Pq.Connection -> IO (Either (Error context) a)
+toPipelineIO sendAndRecv context connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
   case sendResult of
     Send.Error context details -> pure (Left (ClientError context details))

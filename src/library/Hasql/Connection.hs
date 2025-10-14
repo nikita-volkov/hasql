@@ -61,6 +61,7 @@ acquire settings =
           ConnectionState.ConnectionState
             { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
               ConnectionState.statementCache = StatementCache.empty,
+              ConnectionState.oidCache = mempty,
               ConnectionState.connection = pqConnection
             }
     connectionRef <- lift (newMVar connectionState)
