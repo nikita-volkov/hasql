@@ -2,6 +2,7 @@ module Core.Errors where
 
 import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
+import Hipq.Roundtrip qualified
 import Hipq.RowReader qualified
 import Platform.Prelude
 import TextBuilder qualified
@@ -114,6 +115,13 @@ data SessionError
     DriverSessionError
       Text
   deriving stock (Show, Eq)
+
+fromRoundtripError :: Hipq.Roundtrip.Error context -> SessionError
+fromRoundtripError = \case
+  Hipq.Roundtrip.ClientError _context details ->
+    ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+  Hipq.Roundtrip.ServerError recvError ->
+    fromRecvError (Nothing <$ recvError)
 
 fromRecvError :: Hipq.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
 fromRecvError = \case
