@@ -18,3 +18,7 @@ instance (Applicative f) => Applicative (LookingUp k v f) where
     LookingUp
       (lKeys <> rKeys)
       (\lookup -> lCont lookup <*> rCont lookup)
+
+lookup :: (Applicative f) => k -> LookingUp k v f v
+lookup key =
+  LookingUp [key] (\lookupFn -> pure (lookupFn key))
