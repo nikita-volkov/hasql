@@ -1,6 +1,8 @@
 module Platform.LookingUp where
 
-import Platform.Prelude
+import Control.Applicative
+import Witherable
+import Prelude
 
 data LookingUp k v f a
   = LookingUp
@@ -14,10 +16,15 @@ deriving instance (Functor f) => Functor (LookingUp k v f)
 instance (Applicative f) => Applicative (LookingUp k v f) where
   pure a =
     LookingUp [] (\_ -> pure a)
-  LookingUp lKeys lCont <*> LookingUp rKeys rCont =
+  LookingUp lKeys lUse <*> LookingUp rKeys rUse =
     LookingUp
       (lKeys <> rKeys)
-      (\lookup -> lCont lookup <*> rCont lookup)
+      (\lookup -> lUse lookup <*> rUse lookup)
+
+instance (Filterable f) => Filterable (LookingUp k v f) where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn (LookingUp keys use) =
+    LookingUp keys (mapMaybe fn . use)
 
 lookup :: (Applicative f) => k -> LookingUp k v f v
 lookup key =
