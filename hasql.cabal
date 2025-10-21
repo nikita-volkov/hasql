@@ -160,6 +160,8 @@ library core
   exposed-modules:
     Core.Contexts.Pipeline
     Core.Contexts.Session
+    Core.Decoders.Result
+    Core.Decoders.Row
     Core.Errors
     Core.PqProcedures.SelectTypeInfo
     Core.Structures.ConnectionState

@@ -179,7 +179,13 @@ instance Applicative Pipeline where
 
 -- |
 -- Execute a statement in pipelining mode.
-statement :: ByteString -> Params.Params params -> Hipq.ResultDecoder.ResultDecoder result -> Bool -> params -> Pipeline result
+statement ::
+  ByteString ->
+  Params.Params params ->
+  Hipq.ResultDecoder.ResultDecoder result ->
+  Bool ->
+  params ->
+  Pipeline result
 statement sql encoder decoder preparable params =
   Pipeline 1 (Params.toUnknownTypes encoder) run
   where
