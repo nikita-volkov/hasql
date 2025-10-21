@@ -182,6 +182,7 @@ library platform
   import: base
   hs-source-dirs: src/platform
   exposed-modules:
+    Platform.LookingUp
     Platform.Prelude
 
   other-modules:
