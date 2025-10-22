@@ -2,6 +2,7 @@ module Codecs.Encoders.Composite where
 
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
+import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -51,7 +52,7 @@ field = \case
   NullableOrNot.NonNullable (Value.Value schemaName typeName _ _ Nothing _ unknownTypes encode print) ->
     Composite
       unknownTypes
-      (\oidCache val -> Binary.field (error "TODO: Look up the OID in cache" schemaName typeName) (encode oidCache val))
+      (\oidCache val -> Binary.field (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache)) (encode oidCache val))
       (\val -> [print val])
   NullableOrNot.Nullable (Value.Value _ _ _ _ (Just elementOid) _ unknownTypes encode print) ->
     Composite
@@ -68,8 +69,8 @@ field = \case
     Composite
       (HashSet.insert (schemaName, typeName) unknownTypes)
       ( \oidCache -> \case
-          Nothing -> Binary.nullField (error "TODO: Look up the OID in cache" schemaName typeName)
-          Just val -> Binary.field (error "TODO: Look up the OID in cache" schemaName typeName) (encode oidCache val)
+          Nothing -> Binary.nullField (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache))
+          Just val -> Binary.field (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache)) (encode oidCache val)
       )
       ( \case
           Nothing -> ["NULL"]
