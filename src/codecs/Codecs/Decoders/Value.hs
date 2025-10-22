@@ -39,6 +39,7 @@ module Codecs.Decoders.Value
     refine,
     hstore,
     enum,
+    toDecoder,
     toSchema,
     toTypeName,
     toBaseOid,
@@ -48,6 +49,7 @@ module Codecs.Decoders.Value
   )
 where
 
+import Codecs.RequestingOid qualified as RequestingOid
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
@@ -68,7 +70,7 @@ data Value a
       -- | Statically known OID for the array-type with this type as the element.
       (Maybe Word32)
       -- | Decoding function on a registry of OIDs by type name.
-      (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a)
+      (RequestingOid.RequestingOid Binary.Value a)
   deriving (Functor)
 
 instance Filterable Value where
@@ -81,7 +83,7 @@ instance Filterable Value where
 {-# INLINE primitive #-}
 primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) (const decoder)
+  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) (RequestingOid.lift decoder)
 
 -- * Static types
 
@@ -320,16 +322,24 @@ datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datem
 -- |
 -- Lift a custom value decoder function to a 'Value' decoder.
 {-# INLINEABLE custom #-}
-custom :: Maybe Text -> Text -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a) -> Value a
+custom :: Maybe Text -> Text -> (((Maybe Text, Text) -> (Word32, Word32)) -> ByteString -> Either Text a) -> Value a
 custom schema typeName fn =
-  Value schema typeName Nothing Nothing (Binary.fn . fn)
+  Value
+    schema
+    typeName
+    Nothing
+    Nothing
+    ( LookingUp
+        [(schema, typeName)]
+        (\project -> Binary.fn (fn project))
+    )
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
 refine fn (Value schema typeName typeOid arrayOid decoder) =
-  Value schema typeName typeOid arrayOid (Binary.refine fn . decoder)
+  Value schema typeName typeOid arrayOid (RequestingOid.hoist (Binary.refine fn) decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -343,14 +353,14 @@ refine fn (Value schema typeName typeOid arrayOid decoder) =
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
-  Value Nothing "hstore" Nothing Nothing (const (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
+  Value Nothing "hstore" Nothing Nothing (RequestingOid.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
 
 -- |
 -- Given a partial mapping from text to value,
 -- produces a decoder of that value.
 enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
 enum schema typeName mapping =
-  Value schema typeName Nothing Nothing (const (Binary.enum mapping))
+  Value schema typeName Nothing Nothing (RequestingOid.lift (Binary.enum mapping))
 
 -- * Relations
 
@@ -367,10 +377,13 @@ toBaseOid (Value _ _ typeOid arrayOid _) =
 toArrayOid :: Value a -> Maybe Word32
 toArrayOid (Value _ _ _ oid _) = oid
 
+toDecoder :: Value a -> RequestingOid.RequestingOid Binary.Value a
+toDecoder (Value _ _ _ _ decoder) = decoder
+
 {-# INLINE toHandler #-}
 toHandler :: Value a -> HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a
-toHandler (Value _ _ _ _ decoder) = decoder
+toHandler (Value _ _ _ _ decoder) = RequestingOid.toBase decoder
 
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: Value a -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a)
-toByteStringParser (Value _ _ _ _ decoder) oidCache = Binary.valueParser (decoder oidCache)
+toByteStringParser (Value _ _ _ _ decoder) oidCache = Binary.valueParser (RequestingOid.toBase decoder oidCache)

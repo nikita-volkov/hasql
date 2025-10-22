@@ -29,3 +29,11 @@ instance (Filterable f) => Filterable (LookingUp k v f) where
 lookup :: (Applicative f) => k -> LookingUp k v f v
 lookup key =
   LookingUp [key] (\lookupFn -> pure (lookupFn key))
+
+lift :: f a -> LookingUp k v f a
+lift fa =
+  LookingUp [] (const fa)
+
+hoist :: (f a -> g b) -> LookingUp k v f a -> LookingUp k v g b
+hoist nat (LookingUp keys use) =
+  LookingUp keys (nat . use)

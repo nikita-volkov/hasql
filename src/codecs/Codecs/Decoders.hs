@@ -74,7 +74,7 @@ import Platform.Prelude
 -- Lift an 'Array.Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array.Array a -> Value.Value a
-array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toDecoder decoder)
+array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toValueDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -110,4 +110,10 @@ vectorArray = array . Array.dimension GenericVector.replicateM . Array.element
 -- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE composite #-}
 composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
-composite schema typeName composite = Value.Value schema typeName Nothing Nothing (Composite.run composite)
+composite schema typeName composite =
+  Value.Value
+    schema
+    typeName
+    Nothing
+    Nothing
+    (Composite.toValueDecoder composite)

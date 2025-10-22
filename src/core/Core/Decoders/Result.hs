@@ -1,51 +1,20 @@
 module Core.Decoders.Result where
 
-import Codecs.Encoders.Params qualified as Params
+import Codecs.RequestingOid qualified as RequestingOid
 import Core.Decoders.Row (Row (..))
 import Core.Decoders.Row qualified as Row
-import Core.Errors qualified as Errors
-import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
-import Core.Structures.OidCache qualified as OidCache
-import Core.Structures.StatementCache qualified as StatementCache
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import Hipq.ResultDecoder qualified as ResultDecoder
-import Hipq.Roundtrip qualified
 import Platform.Prelude
-import Pq qualified
 
-data Result a
-  = Result
-      (HashSet (Maybe Text, Text))
-      ( HashMap (Maybe Text, Text) (Word32, Word32) ->
-        ResultDecoder.ResultDecoder a
-      )
+-- |
+-- Decoder of a query result.
+newtype Result a
+  = Result (RequestingOid.RequestingOid ResultDecoder.ResultDecoder a)
+  deriving newtype
+    (Functor, Applicative, Filterable)
 
-deriving instance Functor Result
-
-instance Applicative Result where
-  pure a = Result HashSet.empty (\_oidCache -> pure a)
-  Result lUnknownTypes lDec <*> Result rUnknownTypes rDec =
-    Result
-      (lUnknownTypes <> rUnknownTypes)
-      ( \oidCache ->
-          lDec oidCache <*> rDec oidCache
-      )
-
-instance Filterable Result where
-  {-# INLINE mapMaybe #-}
-  mapMaybe fn (Result unknownTypes decoder) =
-    Result unknownTypes (mapMaybe fn . decoder)
-
-toUnknownTypes :: Result a -> HashSet (Maybe Text, Text)
-toUnknownTypes (Result unknownTypes _) = unknownTypes
-
-toDecoder ::
-  Result a ->
-  HashMap (Maybe Text, Text) (Word32, Word32) ->
-  ResultDecoder.ResultDecoder a
-toDecoder (Result _unknownTypes decoder) oidCache =
-  decoder oidCache
+unwrap :: Result a -> RequestingOid.RequestingOid ResultDecoder.ResultDecoder a
+unwrap (Result decoder) = decoder
 
 -- * Construction
 
@@ -56,7 +25,7 @@ toDecoder (Result _unknownTypes decoder) oidCache =
 {-# INLINEABLE noResult #-}
 noResult :: Result ()
 noResult =
-  Result mempty (const ResultDecoder.ok)
+  Result (RequestingOid.lift ResultDecoder.ok)
 
 -- |
 -- Get the amount of rows affected by such statements as
@@ -64,19 +33,19 @@ noResult =
 {-# INLINEABLE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
-  Result mempty (const ResultDecoder.rowsAffected)
+  Result (RequestingOid.lift ResultDecoder.rowsAffected)
 
 -- |
 -- Exactly one row.
 -- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
-singleRow (Row unknownTypes decoder) =
-  Result unknownTypes (ResultDecoder.single . decoder)
+singleRow decoder =
+  Result (RequestingOid.hoist ResultDecoder.single (Row.toDecoder decoder))
 
 refineResult :: (a -> Either Text b) -> Result a -> Result b
-refineResult refiner (Result unknownTypes resultDecoder) =
-  Result unknownTypes (ResultDecoder.refine refiner . resultDecoder)
+refineResult refiner (Result decoder) =
+  Result (RequestingOid.hoist (ResultDecoder.refine refiner) decoder)
 
 -- ** Multi-row traversers
 
@@ -84,15 +53,17 @@ refineResult refiner (Result unknownTypes resultDecoder) =
 -- Foldl multiple rows.
 {-# INLINEABLE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
-foldlRows step init (Row unknownTypes row) =
-  Result unknownTypes \oidCache -> ResultDecoder.foldl step init (row oidCache)
+foldlRows step init decoder =
+  Result
+    (RequestingOid.hoist (ResultDecoder.foldl step init) (Row.toDecoder decoder))
 
 -- |
 -- Foldr multiple rows.
 {-# INLINEABLE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
-foldrRows step init (Row unknownTypes row) =
-  Result unknownTypes \oidCache -> ResultDecoder.foldr step init (row oidCache)
+foldrRows step init decoder =
+  Result
+    (RequestingOid.hoist (ResultDecoder.foldr step init) (Row.toDecoder decoder))
 
 -- ** Specialized multi-row results
 
@@ -100,8 +71,9 @@ foldrRows step init (Row unknownTypes row) =
 -- Maybe one row or none.
 {-# INLINEABLE rowMaybe #-}
 rowMaybe :: Row a -> Result (Maybe a)
-rowMaybe (Row unknownTypes row) =
-  Result unknownTypes \oidCache -> ResultDecoder.maybe (row oidCache)
+rowMaybe decoder =
+  Result
+    (RequestingOid.hoist ResultDecoder.maybe (Row.toDecoder decoder))
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -110,8 +82,9 @@ rowMaybe (Row unknownTypes row) =
 -- since it performs notably better.
 {-# INLINEABLE rowVector #-}
 rowVector :: Row a -> Result (Vector a)
-rowVector (Row unknownTypes row) =
-  Result unknownTypes \oidCache -> ResultDecoder.vector (row oidCache)
+rowVector decoder =
+  Result
+    (RequestingOid.hoist ResultDecoder.vector (Row.toDecoder decoder))
 
 -- |
 -- Zero or more rows packed into the list.

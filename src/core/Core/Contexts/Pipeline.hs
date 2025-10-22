@@ -6,11 +6,12 @@ module Core.Contexts.Pipeline
 where
 
 import Codecs.Encoders.Params qualified as Params
+import Codecs.RequestingOid qualified as RequestingOid
+import Core.Decoders.Result qualified as Decoders.Result
 import Core.Errors qualified as Errors
 import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
-import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
@@ -182,13 +183,16 @@ instance Applicative Pipeline where
 statement ::
   ByteString ->
   Params.Params params ->
-  Hipq.ResultDecoder.ResultDecoder result ->
+  Decoders.Result.Result result ->
   Bool ->
   params ->
   Pipeline result
-statement sql encoder decoder preparable params =
-  Pipeline 1 (Params.toUnknownTypes encoder) run
+statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
+  Pipeline 1 unknownTypes run
   where
+    unknownTypes =
+      Params.toUnknownTypes encoder
+        <> RequestingOid.toUnknownTypes decoder
     run offset usePreparedStatements oidCache =
       if prepare
         then runPrepared
@@ -222,7 +226,7 @@ statement sql encoder decoder preparable params =
 
             roundtrip =
               when isNew (Hipq.Roundtrip.prepare context remoteKey sql pqOidList)
-                *> Hipq.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder
+                *> Hipq.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
@@ -232,9 +236,12 @@ statement sql encoder decoder preparable params =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder
+              Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   params
                     & Params.compileUnpreparedStatementData encoder oidCache
                     & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+
+        decoder' =
+          RequestingOid.toBase decoder oidCache

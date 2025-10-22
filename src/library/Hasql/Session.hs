@@ -9,7 +9,6 @@ where
 
 import Core.Contexts.Session qualified as Session
 import Hasql.Statement qualified as Statement
-import Hipq.ResultDecoder qualified as ResultDecoder
 
 -- |
 -- Execute a statement by providing parameters to it.
@@ -18,6 +17,6 @@ statement params (Statement.Statement sql encoder decoder preparable) =
   Session.statement
     sql
     encoder
-    (ResultDecoder.unwrap decoder)
+    decoder
     preparable
     params

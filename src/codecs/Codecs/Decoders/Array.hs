@@ -1,6 +1,6 @@
 module Codecs.Decoders.Array
   ( Array,
-    toDecoder,
+    toValueDecoder,
     toTypeName,
     toOid,
     dimension,
@@ -10,6 +10,7 @@ where
 
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
+import Codecs.RequestingOid qualified as RequestingOid
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 import TextBuilder qualified
@@ -34,13 +35,13 @@ data Array a
       -- | Number of dimensions.
       Int
       -- | Decoding function
-      (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Array a)
+      (RequestingOid.RequestingOid Binary.Array a)
   deriving (Functor)
 
-{-# INLINE toDecoder #-}
-toDecoder :: Array a -> HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a
-toDecoder (Array _ _ _ _ decoder) =
-  Binary.array . decoder
+{-# INLINE toValueDecoder #-}
+toValueDecoder :: Array a -> RequestingOid.RequestingOid Binary.Value a
+toValueDecoder (Array _ _ _ _ decoder) =
+  RequestingOid.hoist Binary.array decoder
 
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
@@ -55,16 +56,6 @@ toTypeName (Array _ elementTypeName _ ndims _) =
 {-# INLINE toOid #-}
 toOid :: Array a -> Maybe Word32
 toOid (Array _ _ oid _ _) = oid
-
-{-# INLINE nullableElement #-}
-nullableElement :: Maybe Text -> Text -> Maybe Word32 -> (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a) -> Array (Maybe a)
-nullableElement schema elementTypeName oid decoder =
-  Array schema elementTypeName oid 1 $ Binary.nullableValueArray . decoder
-
-{-# INLINE nonNullableElement #-}
-nonNullableElement :: Maybe Text -> Text -> Maybe Word32 -> (HashMap (Maybe Text, Text) (Word32, Word32) -> Binary.Value a) -> Array a
-nonNullableElement schema elementTypeName oid decoder =
-  Array schema elementTypeName oid 1 $ Binary.valueArray . decoder
 
 -- * Public API
 
@@ -82,7 +73,12 @@ nonNullableElement schema elementTypeName oid decoder =
 {-# INLINEABLE dimension #-}
 dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
 dimension replicateM (Array schema typeName typeOid ndims decoder) =
-  Array schema typeName typeOid (succ ndims) $ Binary.dimensionArray replicateM . decoder
+  Array
+    schema
+    typeName
+    typeOid
+    (succ ndims)
+    (RequestingOid.hoist (Binary.dimensionArray replicateM) decoder)
 
 -- |
 -- Lift a 'Value.Value' decoder into an 'Array' decoder for parsing of leaf values.
@@ -90,14 +86,16 @@ dimension replicateM (Array schema typeName typeOid ndims decoder) =
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
   NullableOrNot.NonNullable imp ->
-    nonNullableElement
+    Array
       (Value.toSchema imp)
       (Value.toTypeName imp)
       (Value.toArrayOid imp)
-      (Value.toHandler imp)
+      1
+      (RequestingOid.hoist Binary.valueArray (Value.toDecoder imp))
   NullableOrNot.Nullable imp ->
-    nullableElement
+    Array
       (Value.toSchema imp)
       (Value.toTypeName imp)
       (Value.toArrayOid imp)
-      (Value.toHandler imp)
+      1
+      (RequestingOid.hoist Binary.nullableValueArray (Value.toDecoder imp))
