@@ -148,8 +148,12 @@ namedComposite schema name (Composite.Composite unknownTypes encode print) =
 -- where no type name is required. Postgres will infer the type from context.
 unnamedComposite :: Composite.Composite a -> Value.Value a
 unnamedComposite (Composite.Composite unknownTypes encode print) =
-  Value.Value Nothing "" False 0 Nothing Nothing unknownTypes encodeValue printValue
+  Value.Value Nothing "" False 0 baseOid arrayOid unknownTypes encodeValue printValue
   where
+    baseOid =
+      Just (TypeInfo.toBaseOid TypeInfo.record)
+    arrayOid =
+      Just (TypeInfo.toArrayOid TypeInfo.record)
     encodeValue oidCache val =
       Binary.composite (encode oidCache val)
     printValue val =
