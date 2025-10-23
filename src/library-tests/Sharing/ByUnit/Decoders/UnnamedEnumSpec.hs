@@ -3,7 +3,6 @@ module Sharing.ByUnit.Decoders.UnnamedEnumSpec (spec) where
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -46,18 +45,20 @@ spec = do
                 Decoders.noResult
                 True
             -- Test decoding multiple values
-            r1 <- Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
-                True
-            r2 <- Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
-                True
+            r1 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                  True
+            r2 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                  True
             return (r1, r2)
           result `shouldBe` Right ("alpha", "gamma")
 

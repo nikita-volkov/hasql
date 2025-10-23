@@ -44,7 +44,7 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName _ _ (Just elementOid) _ unknownTypes encode print) ->
+  NullableOrNot.NonNullable (Value.Value _ _ _ _ (Just elementOid) _ unknownTypes encode print) ->
     Composite
       unknownTypes
       (\oidCache val -> Binary.field elementOid (encode oidCache val))
