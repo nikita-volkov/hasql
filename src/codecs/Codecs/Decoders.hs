@@ -44,9 +44,11 @@ module Codecs.Decoders
     array,
     listArray,
     vectorArray,
-    composite,
+    namedComposite,
+    unnamedComposite,
     Value.hstore,
-    Value.enum,
+    Value.namedEnum,
+    Value.unnamedEnum,
     Value.custom,
     Value.refine,
 
@@ -107,13 +109,32 @@ vectorArray :: (GenericVector.Vector vector element) => NullableOrNot.NullableOr
 vectorArray = array . Array.dimension GenericVector.replicateM . Array.element
 
 -- |
--- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder.
-{-# INLINEABLE composite #-}
-composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
-composite schema typeName composite =
+-- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder for named composite types.
+--
+-- This function is for named composite types where the type name is known.
+-- For anonymous composite types (like those created with ROW constructor),
+-- use 'unnamedComposite' instead.
+{-# INLINEABLE namedComposite #-}
+namedComposite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+namedComposite schema typeName composite =
   Value.Value
     schema
     typeName
+    Nothing
+    Nothing
+    (Composite.toValueDecoder composite)
+
+-- |
+-- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder for unnamed composite types.
+--
+-- This is useful for decoding anonymous composites (like those created with ROW constructor)
+-- where no type name is required. Postgres will handle the type automatically.
+{-# INLINEABLE unnamedComposite #-}
+unnamedComposite :: Composite.Composite a -> Value.Value a
+unnamedComposite composite =
+  Value.Value
+    Nothing
+    ""
     Nothing
     Nothing
     (Composite.toValueDecoder composite)

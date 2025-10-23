@@ -106,9 +106,7 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.composite
-                                  Nothing
-                                  ""
+                              ( Decoders.unnamedComposite
                                   ( (,)
                                       <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -130,15 +128,11 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.composite
-                                  Nothing
-                                  ""
+                              ( Decoders.unnamedComposite
                                   ( (,)
                                       <$> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.composite
-                                                Nothing
-                                                ""
+                                            ( Decoders.unnamedComposite
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -147,9 +141,7 @@ spec = do
                                         )
                                       <*> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.composite
-                                                Nothing
-                                                ""
+                                            ( Decoders.unnamedComposite
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.text)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.int8)
@@ -164,6 +156,72 @@ spec = do
                   True
           result <- Connection.use connection (Session.statement () statement)
           result `shouldBe` Right ((1 :: Int64, True), ("hello", 3 :: Int64))
+
+      it "encodes and decodes named composites" \config -> do
+        typeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create a named composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test encoding and decoding
+            Session.statement (42 :: Int64, True)
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ")"]))
+                ( Encoders.param
+                    ( Encoders.nonNullable
+                        ( Encoders.namedComposite
+                            Nothing
+                            typeName
+                            ( divide
+                                (\(a, b) -> (a, b))
+                                (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                (Encoders.field (Encoders.nonNullable Encoders.bool))
+                            )
+                        )
+                    )
+                )
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.namedComposite
+                                Nothing
+                                typeName
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (42 :: Int64, True)
+
+      it "encodes unnamed composites" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement =
+                Statement.Statement
+                  "select $1 = (42, true)"
+                  ( Encoders.param
+                      ( Encoders.nonNullable
+                          ( Encoders.unnamedComposite
+                              ( divide
+                                  (\(a, b) -> (a, b))
+                                  (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                  (Encoders.field (Encoders.nonNullable Encoders.bool))
+                              )
+                          )
+                      )
+                  )
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
+                  True
+          result <- Connection.use connection (Session.statement (42 :: Int64, True) statement)
+          result `shouldBe` Right True
 
     describe "Enum types" do
       it "handles enum encoding and decoding" \config -> do
@@ -181,8 +239,8 @@ spec = do
             Session.statement "ok"
               $ Statement.Statement
                 (encodeUtf8 (mconcat ["select ($1 :: ", name, ")"]))
-                (Encoders.param (Encoders.nonNullable (Encoders.enum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing name (Just . id)))))
+                (Encoders.param (Encoders.nonNullable (Encoders.namedEnum id)))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing name (Just . id)))))
                 True
           result `shouldBe` Right "ok"
 
@@ -202,10 +260,30 @@ spec = do
             Session.statement "ok"
               $ Statement.Statement
                 "select $1"
-                (Encoders.param (Encoders.nonNullable (Encoders.unknownEnum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing name (Just . id)))))
+                (Encoders.param (Encoders.nonNullable (Encoders.unnamedEnum id)))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing name (Just . id)))))
                 True
           result `shouldBe` Right "ok"
+
+      it "decodes unnamed enums" \config -> do
+        name <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- First create the enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Then test decoding with unnamedEnum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select 'happy' :: ", name]))
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                True
+          result `shouldBe` Right "happy"
 
   describe "Statement Functionality" do
     describe "Prepared statements" do

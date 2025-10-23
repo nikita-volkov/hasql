@@ -55,12 +55,13 @@ module Codecs.Encoders
     Value.datemultirange,
     Value.name,
     Value.oid,
-    Value.enum,
-    Value.unknownEnum,
-    Value.unknown,
     foldableArray,
     array,
-    composite,
+    Value.namedEnum,
+    Value.unnamedEnum,
+    namedComposite,
+    unnamedComposite,
+    Value.unknown,
 
     -- * Array
     Array.Array,
@@ -126,12 +127,30 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
    in Value.Value baseTypeSchema baseTypeName False dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes encoder renderer
 
 -- |
--- Lift a composite encoder into a value encoder.
-composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
-composite schema name (Composite.Composite unknownTypes encode print) =
+-- Lift a composite encoder into a value encoder for named composite types.
+--
+-- This function is for named composite types where the type name is known.
+-- For anonymous composite types (like those created with ROW constructor),
+-- use 'unnamedComposite' instead.
+namedComposite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+namedComposite schema name (Composite.Composite unknownTypes encode print) =
   Value.Value schema name False 0 Nothing Nothing unknownTypes encodeValue printValue
   where
     encodeValue oidCache val =
-      Binary.composite $ encode oidCache val
+      Binary.composite (encode oidCache val)
+    printValue val =
+      "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"
+
+-- |
+-- Lift a composite encoder into a value encoder for unnamed composite types.
+--
+-- This is useful for encoding anonymous composites (like those created with ROW constructor)
+-- where no type name is required. Postgres will infer the type from context.
+unnamedComposite :: Composite.Composite a -> Value.Value a
+unnamedComposite (Composite.Composite unknownTypes encode print) =
+  Value.Value Nothing "" False 0 Nothing Nothing unknownTypes encodeValue printValue
+  where
+    encodeValue oidCache val =
+      Binary.composite (encode oidCache val)
     printValue val =
       "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"
