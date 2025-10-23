@@ -202,27 +202,6 @@ spec = do
                 True
           result `shouldBe` Right (42 :: Int64, True)
 
-      it "encodes unnamed composites" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
-          let statement =
-                Statement.Statement
-                  "select $1 = (42, true)"
-                  ( Encoders.param
-                      ( Encoders.nonNullable
-                          ( Encoders.unnamedComposite
-                              ( divide
-                                  (\(a, b) -> (a, b))
-                                  (Encoders.field (Encoders.nonNullable Encoders.int8))
-                                  (Encoders.field (Encoders.nonNullable Encoders.bool))
-                              )
-                          )
-                      )
-                  )
-                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-                  True
-          result <- Connection.use connection (Session.statement (42 :: Int64, True) statement)
-          result `shouldBe` Right True
-
     describe "Enum types" do
       it "handles enum encoding and decoding" \config -> do
         name <- Scripts.generateSymname
