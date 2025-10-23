@@ -162,7 +162,7 @@ spec = do
             -- Test deeply nested decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (((99), true), 'deep') :: ", type3]))
+                (encodeUtf8 (mconcat ["select row (row (row (99), true), 'deep') :: ", type3]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -255,7 +255,7 @@ spec = do
             -- Test 2D array decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select array[array[(1), (2)], array[(3), (4)]] :: ", typeName, "[][]"]))
+                (encodeUtf8 (mconcat ["select array[array[row (1), row (2)], array[row (3), row (4)]] :: ", typeName, "[][]"]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
