@@ -69,7 +69,7 @@ module Hasql.Decoders
     namedComposite,
     unnamedComposite,
     hstore,
-    namedEnum,
+    enum,
     unnamedEnum,
     custom,
     refine,

@@ -300,23 +300,19 @@ datemultirange = primitive "datemultirange" False TypeInfo.datemultirange Binary
 -- |
 -- Given a function which maps a value into a textual enum label used on the DB side,
 -- produces an encoder of that value for a named enum type.
---
--- This is the standard way to encode enum values with known type OIDs.
--- For cases where Postgres must infer the type from context, use 'unknownEnum'.
-{-# INLINEABLE namedEnum #-}
-namedEnum :: (a -> Text) -> Value a
-namedEnum mapping = primitive "text" False TypeInfo.text (Binary.text_strict . mapping) (TextBuilder.text . mapping)
-
--- |
--- Variation of 'namedEnum' with unknown OID for unnamed enum types.
---
--- This function does not identify the type to Postgres,
--- so Postgres must be able to derive the type from context.
--- When you find yourself in such situation just provide an explicit type in the query
--- using the :: operator.
-{-# INLINEABLE unnamedEnum #-}
-unnamedEnum :: (a -> Text) -> Value a
-unnamedEnum mapping = primitive "unknown" False TypeInfo.unknown (Binary.text_strict . mapping) (TextBuilder.text . mapping)
+{-# INLINEABLE enum #-}
+enum :: Maybe Text -> Text -> (a -> Text) -> Value a
+enum schemaName typeName mapping =
+  Value
+    schemaName
+    typeName
+    False
+    0
+    Nothing
+    Nothing
+    (HashSet.singleton (schemaName, typeName))
+    (const (Binary.text_strict . mapping))
+    (TextBuilder.text . mapping)
 
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,
