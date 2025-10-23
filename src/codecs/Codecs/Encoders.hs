@@ -144,8 +144,9 @@ namedComposite schema name (Composite.Composite unknownTypes encode print) =
 -- |
 -- Lift a composite encoder into a value encoder for unnamed composite types.
 --
--- This is useful for encoding anonymous composites (like those created with ROW constructor)
--- where no type name is required. Postgres will infer the type from context.
+-- __Note:__ PostgreSQL does not support anonymous composite types as input parameters.
+-- This encoder is provided for completeness but has limited practical use cases.
+-- For encoding composite values as parameters, use 'namedComposite' instead.
 unnamedComposite :: Composite.Composite a -> Value.Value a
 unnamedComposite (Composite.Composite unknownTypes encode print) =
   Value.Value Nothing "" False 0 baseOid arrayOid unknownTypes encodeValue printValue

@@ -67,6 +67,7 @@ import Codecs.Decoders.Array qualified as Array
 import Codecs.Decoders.Composite qualified as Composite
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
+import Codecs.TypeInfo qualified as TypeInfo
 import Data.Vector.Generic qualified as GenericVector
 import Platform.Prelude
 
@@ -135,6 +136,8 @@ unnamedComposite composite =
   Value.Value
     Nothing
     ""
-    Nothing
-    Nothing
+    (Just (TypeInfo.toBaseOid typeInfo))
+    (Just (TypeInfo.toArrayOid typeInfo))
     (Composite.toValueDecoder composite)
+  where
+    typeInfo = TypeInfo.record
