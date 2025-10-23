@@ -327,6 +327,7 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.Float8Spec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec
