@@ -80,7 +80,7 @@ spec = do
                 (encodeUtf8 (mconcat ["select ($1 :: ", compositeName, ") = (42, 'green') :: ", compositeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
-                        ( Encoders.namedComposite
+                        ( Encoders.composite
                             Nothing
                             compositeName
                             ( divide
@@ -120,7 +120,7 @@ spec = do
                 (encodeUtf8 (mconcat ["select $1 :: ", compositeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
-                        ( Encoders.namedComposite
+                        ( Encoders.composite
                             Nothing
                             compositeName
                             ( divide

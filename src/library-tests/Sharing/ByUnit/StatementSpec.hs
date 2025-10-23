@@ -174,7 +174,7 @@ spec = do
                 (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ")"]))
                 ( Encoders.param
                     ( Encoders.nonNullable
-                        ( Encoders.namedComposite
+                        ( Encoders.composite
                             Nothing
                             typeName
                             ( divide

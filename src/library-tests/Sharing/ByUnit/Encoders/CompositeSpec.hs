@@ -1,4 +1,4 @@
-module Sharing.ByUnit.Encoders.NamedCompositeSpec (spec) where
+module Sharing.ByUnit.Encoders.CompositeSpec (spec) where
 
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
@@ -30,7 +30,7 @@ spec = do
               (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           typeName
                           ( divide
@@ -62,7 +62,7 @@ spec = do
               (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           typeName
                           ( divide
@@ -116,14 +116,14 @@ spec = do
               (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           outerType
                           ( divide
                               (\(inner, z) -> (inner, z))
                               ( Encoders.field
                                   ( Encoders.nonNullable
-                                      ( Encoders.namedComposite
+                                      ( Encoders.composite
                                           Nothing
                                           innerType
                                           ( divide
@@ -168,14 +168,14 @@ spec = do
               (encodeUtf8 (mconcat ["select $1 :: ", outerType]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           outerType
                           ( divide
                               (\(inner, z) -> (inner, z))
                               ( Encoders.field
                                   ( Encoders.nonNullable
-                                      ( Encoders.namedComposite
+                                      ( Encoders.composite
                                           Nothing
                                           innerType
                                           ( divide
@@ -241,7 +241,7 @@ spec = do
                               foldl'
                               ( Encoders.element
                                   ( Encoders.nonNullable
-                                      ( Encoders.namedComposite
+                                      ( Encoders.composite
                                           Nothing
                                           typeName
                                           ( divide
@@ -282,7 +282,7 @@ spec = do
                               foldl'
                               ( Encoders.element
                                   ( Encoders.nonNullable
-                                      ( Encoders.namedComposite
+                                      ( Encoders.composite
                                           Nothing
                                           typeName
                                           ( divide
@@ -343,7 +343,7 @@ spec = do
               (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           typeName
                           (Encoders.field (Encoders.nonNullable Encoders.int8))
@@ -397,12 +397,12 @@ spec = do
               (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ").inner.value"]))
               ( Encoders.param
                   ( Encoders.nonNullable
-                      ( Encoders.namedComposite
+                      ( Encoders.composite
                           Nothing
                           outerType
                           ( Encoders.field
                               ( Encoders.nonNullable
-                                  ( Encoders.namedComposite
+                                  ( Encoders.composite
                                       Nothing
                                       innerType
                                       (Encoders.field (Encoders.nonNullable Encoders.int8))
