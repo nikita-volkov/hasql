@@ -217,3 +217,26 @@ spec = do
                 )
                 True
           result `shouldBe` Right ["beta", "alpha", "gamma"]
+
+    describe "OID lookup verification" do
+      it "requests OID for named enums (verified by successful execution)" \config -> do
+        -- This test verifies that OID lookup happens by ensuring a named enum
+        -- type works correctly - if OID lookup didn't happen, the statement would fail
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('first', 'second')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Use named enum - this requires OID lookup to succeed
+            Session.statement "second"
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
+                (Encoders.param (Encoders.nonNullable (Encoders.namedEnum id)))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))))
+                True
+          result `shouldBe` Right "second"

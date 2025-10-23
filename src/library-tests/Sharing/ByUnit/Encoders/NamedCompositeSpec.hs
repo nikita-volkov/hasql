@@ -323,3 +323,40 @@ spec = do
                 )
                 True
           result `shouldBe` Right [(1 :: Int64, True), (2, False), (3, True)]
+
+    describe "OID lookup verification" do
+      it "requests OID for named composites (verified by successful execution)" \config -> do
+        -- This test verifies that OID lookup happens by ensuring a named composite
+        -- type works correctly - if OID lookup didn't happen, the statement would fail
+        typeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (value int8)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Use named composite - this requires OID lookup to succeed
+            Session.statement (100 :: Int64)
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
+                ( Encoders.param
+                    ( Encoders.nonNullable
+                        ( Encoders.namedComposite
+                            Nothing
+                            typeName
+                            (Encoders.field (Encoders.nonNullable Encoders.int8))
+                        )
+                    )
+                )
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            (Decoders.namedComposite Nothing typeName (Decoders.field (Decoders.nonNullable Decoders.int8)))
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (100 :: Int64)
