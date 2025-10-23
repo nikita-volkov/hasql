@@ -47,7 +47,7 @@ module Codecs.Decoders
     namedComposite,
     unnamedComposite,
     Value.hstore,
-    Value.namedEnum,
+    Value.enum,
     Value.unnamedEnum,
     Value.custom,
     Value.refine,

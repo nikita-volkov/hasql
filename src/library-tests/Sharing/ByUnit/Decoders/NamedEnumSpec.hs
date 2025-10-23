@@ -30,7 +30,7 @@ spec = do
               $ Statement.Statement
                 (encodeUtf8 (mconcat ["select 'happy' :: ", enumName]))
                 mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
                 True
           result `shouldBe` Right "happy"
 
@@ -46,18 +46,20 @@ spec = do
                 Decoders.noResult
                 True
             -- Test decoding multiple values
-            r1 <- Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))))
-                True
-            r2 <- Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))))
-                True
+            r1 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
+                  True
+            r2 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
+                  True
             return (r1, r2)
           result `shouldBe` Right ("alpha", "gamma")
 
@@ -94,7 +96,7 @@ spec = do
                                 compositeName
                                 ( (,)
                                     <$> Decoders.field (Decoders.nonNullable Decoders.int8)
-                                    <*> Decoders.field (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))
+                                    <*> Decoders.field (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))
                                 )
                             )
                         )
@@ -148,7 +150,7 @@ spec = do
                                               Nothing
                                               innerType
                                               ( (,)
-                                                  <$> Decoders.field (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))
+                                                  <$> Decoders.field (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))
                                                   <*> Decoders.field (Decoders.nonNullable Decoders.int4)
                                               )
                                           )
@@ -185,7 +187,7 @@ spec = do
                             ( Decoders.array
                                 ( Decoders.dimension
                                     replicateM
-                                    (Decoders.element (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id))))
+                                    (Decoders.element (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id))))
                                 )
                             )
                         )
@@ -218,7 +220,7 @@ spec = do
                                     replicateM
                                     ( Decoders.dimension
                                         replicateM
-                                        (Decoders.element (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id))))
+                                        (Decoders.element (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id))))
                                     )
                                 )
                             )
@@ -264,7 +266,7 @@ spec = do
                                                 Nothing
                                                 compositeName
                                                 ( (,)
-                                                    <$> Decoders.field (Decoders.nonNullable (Decoders.namedEnum Nothing enumName (Just . id)))
+                                                    <$> Decoders.field (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.int4)
                                                 )
                                             )
