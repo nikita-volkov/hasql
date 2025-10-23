@@ -359,3 +359,59 @@ spec = do
               )
               True
         result `shouldBe` Right (100 :: Int64)
+
+    it "correctly tracks unknown types for nested composites with built-in field types" \config -> do
+      -- This test reproduces the bug where unknownTypes were incorrectly tracked.
+      -- The bug: when a field had a known elementOid (like int8), it was incorrectly
+      -- added to unknownTypes. When elementOid was Nothing (custom types), it wasn't added.
+      -- This caused nested composites with built-in types to fail OID lookup.
+      --
+      -- Specifically: When using a named composite as a field in another composite,
+      -- the inner composite type needs OID lookup (it's custom), but its int8 field doesn't.
+      -- The bug would cause int8 to be requested for OID lookup (wasteful but harmless)
+      -- and fail to request OID lookup for the inner composite type (causing failure).
+      innerType <- Scripts.generateSymname
+      outerType <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create inner composite with a built-in type field
+          Session.statement ()
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
+              mempty
+              Decoders.noResult
+              True
+          -- Create outer composite containing the inner composite
+          Session.statement ()
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"]))
+              mempty
+              Decoders.noResult
+              True
+          -- With the bug: innerType wouldn't be in the OID cache because
+          -- field (with Nothing elementOid) didn't add it to unknownTypes.
+          -- Instead, int8 (with Just elementOid) was being added (incorrectly).
+          -- This would cause the encoder to use OID 0 for innerType, causing an error.
+          Session.statement (42 :: Int64)
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ").inner.value"]))
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.namedComposite
+                          Nothing
+                          outerType
+                          ( Encoders.field
+                              ( Encoders.nonNullable
+                                  ( Encoders.namedComposite
+                                      Nothing
+                                      innerType
+                                      (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+              True
+        result `shouldBe` Right (42 :: Int64)
