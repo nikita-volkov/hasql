@@ -330,7 +330,6 @@ test-suite library-tests
     Sharing.ByUnit.Decoders.UnnamedEnumSpec
     Sharing.ByUnit.Encoders.NamedCompositeSpec
     Sharing.ByUnit.Encoders.NamedEnumSpec
-    Sharing.ByUnit.Encoders.UnnamedCompositeSpec
     Sharing.ByUnit.Encoders.UnnamedEnumSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec

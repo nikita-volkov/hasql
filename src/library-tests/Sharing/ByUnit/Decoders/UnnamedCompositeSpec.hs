@@ -61,7 +61,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select (42, 'test', 3.14)"
+                  "select (42, 'test', 3.14::float8)"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -123,7 +123,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select (((99), (true, 'test')), 'outer')"
+                  "select ((ROW(99), (true, 'test')), 'outer')"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
