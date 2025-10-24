@@ -3,6 +3,7 @@ module Core.Decoders.Row where
 import Codecs.Decoders
 import Codecs.Decoders.Value qualified as Value
 import Codecs.RequestingOid qualified as RequestingOid
+import Data.Text qualified as Text
 import Hipq.RowDecoder qualified
 import Platform.LookingUp qualified
 import Platform.Prelude
@@ -47,12 +48,15 @@ column = \case
             let schema = Value.toSchema valueDecoder
                 typeName = Value.toTypeName valueDecoder
                 valueDecoder' = Value.toDecoder valueDecoder
+                -- For arrays, we need to look up the element type and use its array OID
+                (lookupKey, useArrayOid) = parseTypeName typeName
              in case valueDecoder' of
                   Platform.LookingUp.LookingUp keys use ->
-                    Row $ Platform.LookingUp.LookingUp ((schema, typeName) : keys) $ \lookupFn ->
-                      let (baseOid, _arrayOid) = lookupFn (schema, typeName)
+                    Row $ Platform.LookingUp.LookingUp ((schema, lookupKey) : keys) $ \lookupFn ->
+                      let (baseOid, arrayOid) = lookupFn (schema, lookupKey)
+                          oid = if useArrayOid then arrayOid else baseOid
                           binaryDecoder = use lookupFn
-                       in Hipq.RowDecoder.nullableColumn (Just baseOid) (Binary.valueParser binaryDecoder)
+                       in Hipq.RowDecoder.nullableColumn (Just oid) (Binary.valueParser binaryDecoder)
   NonNullable valueDecoder ->
     let staticOid = Value.toBaseOid valueDecoder
      in case staticOid of
@@ -68,9 +72,23 @@ column = \case
             let schema = Value.toSchema valueDecoder
                 typeName = Value.toTypeName valueDecoder
                 valueDecoder' = Value.toDecoder valueDecoder
+                -- For arrays, we need to look up the element type and use its array OID
+                (lookupKey, useArrayOid) = parseTypeName typeName
              in case valueDecoder' of
                   Platform.LookingUp.LookingUp keys use ->
-                    Row $ Platform.LookingUp.LookingUp ((schema, typeName) : keys) $ \lookupFn ->
-                      let (baseOid, _arrayOid) = lookupFn (schema, typeName)
+                    Row $ Platform.LookingUp.LookingUp ((schema, lookupKey) : keys) $ \lookupFn ->
+                      let (baseOid, arrayOid) = lookupFn (schema, lookupKey)
+                          oid = if useArrayOid then arrayOid else baseOid
                           binaryDecoder = use lookupFn
-                       in Hipq.RowDecoder.nonNullableColumn (Just baseOid) (Binary.valueParser binaryDecoder)
+                       in Hipq.RowDecoder.nonNullableColumn (Just oid) (Binary.valueParser binaryDecoder)
+
+-- | Parse a type name to determine if it's an array and extract the base type name.
+-- Returns (base type name, whether to use array OID).
+-- For "mytype", returns ("mytype", False)
+-- For "mytype[]", returns ("mytype", True)
+-- For "mytype[][]", returns ("mytype[]", True) - use the array of array
+parseTypeName :: Text -> (Text, Bool)
+parseTypeName typeName =
+  case Text.stripSuffix "[]" typeName of
+    Just baseType -> (baseType, True)
+    Nothing -> (typeName, False)

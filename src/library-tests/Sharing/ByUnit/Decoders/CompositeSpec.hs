@@ -315,9 +315,12 @@ spec = do
                     )
                 )
                 True
-          -- Should fail with a type mismatch or cell error
+          -- Should fail with OID type mismatch (our fix detects this early)
           case result of
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError _ _ _)) ->
+              pure ()
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+              -- Also acceptable if it fails during deserialization
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
@@ -364,9 +367,12 @@ spec = do
                     )
                 )
                 True
-          -- Should fail with a type mismatch or cell error
+          -- Should fail with OID type mismatch (our fix detects this early)
           case result of
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError _ _ _)) ->
+              pure ()
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+              -- Also acceptable if it fails during deserialization
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
