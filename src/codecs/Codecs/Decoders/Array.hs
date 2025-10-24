@@ -2,7 +2,9 @@ module Codecs.Decoders.Array
   ( Array,
     toValueDecoder,
     toTypeName,
-    toOid,
+    toBaseOid,
+    toArrayOid,
+    toDimensionality,
     dimension,
     element,
   )
@@ -30,32 +32,44 @@ data Array a
       (Maybe Text)
       -- | Type name for the array element.
       Text
+      -- | Statically known OID for the base (element) type.
+      (Maybe Word32)
       -- | Statically known OID for the array type.
       (Maybe Word32)
       -- | Number of dimensions.
-      Int
+      Word
       -- | Decoding function
       (RequestingOid.RequestingOid Binary.Array a)
   deriving (Functor)
 
 {-# INLINE toValueDecoder #-}
 toValueDecoder :: Array a -> RequestingOid.RequestingOid Binary.Value a
-toValueDecoder (Array _ _ _ _ decoder) =
+toValueDecoder (Array _ _ _ _ _ decoder) =
   RequestingOid.hoist Binary.array decoder
 
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
 toTypeName :: Array a -> Text
-toTypeName (Array _ elementTypeName _ ndims _) =
+toTypeName (Array _ elementTypeName _ _ ndims _) =
   let chunks =
         TextBuilder.text elementTypeName
-          : replicate ndims (TextBuilder.text "[]")
+          : replicate (fromIntegral ndims) (TextBuilder.text "[]")
    in TextBuilder.toText (mconcat chunks)
 
+-- | Get the base OID if statically known
+{-# INLINE toBaseOid #-}
+toBaseOid :: Array a -> Maybe Word32
+toBaseOid (Array _ _ baseOid _ _ _) = baseOid
+
 -- | Get the array OID if statically known
-{-# INLINE toOid #-}
-toOid :: Array a -> Maybe Word32
-toOid (Array _ _ oid _ _) = oid
+{-# INLINE toArrayOid #-}
+toArrayOid :: Array a -> Maybe Word32
+toArrayOid (Array _ _ _ arrayOid _ _) = arrayOid
+
+-- | Get the dimensionality of the array
+{-# INLINE toDimensionality #-}
+toDimensionality :: Array a -> Word
+toDimensionality (Array _ _ _ _ ndims _) = ndims
 
 -- * Public API
 
@@ -72,11 +86,12 @@ toOid (Array _ _ oid _ _) = oid
 -- * Binary decoder of its components, which can be either another 'dimension' or 'element'.
 {-# INLINEABLE dimension #-}
 dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
-dimension replicateM (Array schema typeName typeOid ndims decoder) =
+dimension replicateM (Array schema typeName baseOid arrayOid ndims decoder) =
   Array
     schema
     typeName
-    typeOid
+    baseOid
+    arrayOid
     (succ ndims)
     (RequestingOid.hoist (Binary.dimensionArray replicateM) decoder)
 
@@ -89,6 +104,7 @@ element = \case
     Array
       (Value.toSchema imp)
       (Value.toTypeName imp)
+      (Value.toBaseOid imp)
       (Value.toArrayOid imp)
       1
       (RequestingOid.hoist Binary.valueArray (Value.toDecoder imp))
@@ -96,6 +112,7 @@ element = \case
     Array
       (Value.toSchema imp)
       (Value.toTypeName imp)
+      (Value.toBaseOid imp)
       (Value.toArrayOid imp)
       1
       (RequestingOid.hoist Binary.nullableValueArray (Value.toDecoder imp))

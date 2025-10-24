@@ -76,7 +76,7 @@ import Platform.Prelude
 -- Lift an 'Array.Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array.Array a -> Value.Value a
-array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toValueDecoder decoder)
+array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toBaseOid decoder) (Array.toArrayOid decoder) (Array.toDimensionality decoder) (Array.toValueDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -122,6 +122,7 @@ composite schema typeName composite =
     typeName
     Nothing
     Nothing
+    0
     (Composite.toValueDecoder composite)
 
 -- |
@@ -137,6 +138,7 @@ record composite =
     "record"
     (Just (TypeInfo.toBaseOid typeInfo))
     (Just (TypeInfo.toArrayOid typeInfo))
+    0
     (Composite.toValueDecoder composite)
   where
     typeInfo = TypeInfo.record
