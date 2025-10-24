@@ -41,41 +41,72 @@ sql =
   \    select *\n\
   \    from unnest($1, $2) as x(schema_name, type_name)\n\
   \  ),\n\
-  \  -- Parse inputs to handle array type syntax\n\
-  \  -- For array types (ending with []), convert to internal name (_typename)\n\
-  \  parsed_inputs as (\n\
-  \    select\n\
-  \      schema_name,\n\
-  \      type_name as original_type_name,\n\
-  \      case\n\
-  \        when type_name like '%[]' then\n\
-  \          '_' || substring(type_name from 1 for length(type_name) - 2)\n\
-  \        else type_name\n\
-  \      end as lookup_type_name\n\
-  \    from inputs\n\
-  \  ),\n\
   \  unnamespaced_results as (\n\
   \    select\n\
   \      null :: text as schema_name,\n\
-  \      parsed_inputs.original_type_name :: text as type_name,\n\
-  \      pg_type.oid :: int4 as type_oid,\n\
-  \      pg_type.typarray :: int4 as array_oid\n\
-  \    from parsed_inputs\n\
-  \    join pg_type on pg_type.oid = to_regtype(parsed_inputs.lookup_type_name)\n\
-  \    where parsed_inputs.schema_name is null\n\
+  \      inputs.type_name :: text as type_name,\n\
+  \      case\n\
+  \        when inputs.type_name like '%[]' then\n\
+  \          coalesce(\n\
+  \            (select typarray from pg_type where oid = to_regtype(substring(inputs.type_name from 1 for length(inputs.type_name) - 2))),\n\
+  \            (select typarray from pg_type where typname = substring(inputs.type_name from 1 for length(inputs.type_name) - 2) order by oid limit 1)\n\
+  \          )\n\
+  \        else\n\
+  \          coalesce(\n\
+  \            (select oid from pg_type where oid = to_regtype(inputs.type_name)),\n\
+  \            (select oid from pg_type where typname = inputs.type_name order by oid limit 1)\n\
+  \          )\n\
+  \      end :: int4 as type_oid,\n\
+  \      case\n\
+  \        when inputs.type_name like '%[]' then\n\
+  \          coalesce(\n\
+  \            (select t2.typarray from pg_type t1 join pg_type t2 on t2.oid = t1.typarray where t1.oid = to_regtype(substring(inputs.type_name from 1 for length(inputs.type_name) - 2))),\n\
+  \            (select t2.typarray from pg_type t1 join pg_type t2 on t2.oid = t1.typarray where t1.typname = substring(inputs.type_name from 1 for length(inputs.type_name) - 2) order by t1.oid limit 1),\n\
+  \            0\n\
+  \          )\n\
+  \        else\n\
+  \          coalesce(\n\
+  \            (select typarray from pg_type where oid = to_regtype(inputs.type_name)),\n\
+  \            (select typarray from pg_type where typname = inputs.type_name order by oid limit 1),\n\
+  \            0\n\
+  \          )\n\
+  \      end :: int4 as array_oid\n\
+  \    from inputs\n\
+  \    where inputs.schema_name is null\n\
   \  ),\n\
   \  namespaced_results as (\n\
   \    select\n\
   \      pg_namespace.nspname :: text as schema_name,\n\
-  \      parsed_inputs.original_type_name :: text as type_name,\n\
-  \      pg_type.oid :: int4 as type_oid,\n\
-  \      pg_type.typarray :: int4 as array_oid\n\
-  \    from parsed_inputs\n\
-  \    join pg_namespace on pg_namespace.nspname = parsed_inputs.schema_name\n\
-  \    join pg_type\n\
-  \      on pg_type.typname = parsed_inputs.lookup_type_name\n\
+  \      inputs.type_name :: text as type_name,\n\
+  \      case\n\
+  \        when inputs.type_name like '%[]' then\n\
+  \          (select typarray from pg_type\n\
+  \           where typname = substring(inputs.type_name from 1 for length(inputs.type_name) - 2)\n\
+  \             and typnamespace = pg_namespace.oid)\n\
+  \        else\n\
+  \          pg_type.oid\n\
+  \      end :: int4 as type_oid,\n\
+  \      case\n\
+  \        when inputs.type_name like '%[]' then\n\
+  \          coalesce(\n\
+  \            (select t2.typarray from pg_type t1\n\
+  \             join pg_type t2 on t2.oid = t1.typarray\n\
+  \             where t1.typname = substring(inputs.type_name from 1 for length(inputs.type_name) - 2)\n\
+  \               and t1.typnamespace = pg_namespace.oid),\n\
+  \            0\n\
+  \          )\n\
+  \        else\n\
+  \          pg_type.typarray\n\
+  \      end :: int4 as array_oid\n\
+  \    from inputs\n\
+  \    join pg_namespace on pg_namespace.nspname = inputs.schema_name\n\
+  \    left join pg_type\n\
+  \      on pg_type.typname = case\n\
+  \          when inputs.type_name like '%[]' then substring(inputs.type_name from 1 for length(inputs.type_name) - 2)\n\
+  \          else inputs.type_name\n\
+  \        end\n\
   \      and pg_type.typnamespace = pg_namespace.oid\n\
-  \    where parsed_inputs.schema_name is not null\n\
+  \    where inputs.schema_name is not null\n\
   \  )\n\
   \select * from unnamespaced_results\n\
   \union\n\
