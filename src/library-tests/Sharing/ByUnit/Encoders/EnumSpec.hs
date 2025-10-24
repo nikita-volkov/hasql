@@ -134,7 +134,7 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 compositeName
                                 ( (,)

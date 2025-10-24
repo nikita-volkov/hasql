@@ -90,7 +90,7 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 compositeName
                                 ( (,)
@@ -139,13 +139,13 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 outerType
                                 ( (,)
                                     <$> Decoders.field
                                       ( Decoders.nonNullable
-                                          ( Decoders.namedComposite
+                                          ( Decoders.composite
                                               Nothing
                                               innerType
                                               ( (,)
@@ -261,7 +261,7 @@ spec = do
                                     replicateM
                                     ( Decoders.element
                                         ( Decoders.nonNullable
-                                            ( Decoders.namedComposite
+                                            ( Decoders.composite
                                                 Nothing
                                                 compositeName
                                                 ( (,)

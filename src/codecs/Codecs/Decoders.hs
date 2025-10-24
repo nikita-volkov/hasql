@@ -44,8 +44,8 @@ module Codecs.Decoders
     array,
     listArray,
     vectorArray,
-    namedComposite,
-    unnamedComposite,
+    composite,
+    record,
     Value.hstore,
     Value.enum,
     Value.custom,
@@ -113,10 +113,10 @@ vectorArray = array . Array.dimension GenericVector.replicateM . Array.element
 --
 -- This function is for named composite types where the type name is known.
 -- For anonymous composite types (like those created with ROW constructor),
--- use 'unnamedComposite' instead.
-{-# INLINEABLE namedComposite #-}
-namedComposite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
-namedComposite schema typeName composite =
+-- use 'record' instead.
+{-# INLINEABLE composite #-}
+composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+composite schema typeName composite =
   Value.Value
     schema
     typeName
@@ -129,12 +129,12 @@ namedComposite schema typeName composite =
 --
 -- This is useful for decoding anonymous composites (like those created with ROW constructor)
 -- where no type name is required. Postgres will handle the type automatically.
-{-# INLINEABLE unnamedComposite #-}
-unnamedComposite :: Composite.Composite a -> Value.Value a
-unnamedComposite composite =
+{-# INLINEABLE record #-}
+record :: Composite.Composite a -> Value.Value a
+record composite =
   Value.Value
     Nothing
-    ""
+    "record"
     (Just (TypeInfo.toBaseOid typeInfo))
     (Just (TypeInfo.toArrayOid typeInfo))
     (Composite.toValueDecoder composite)

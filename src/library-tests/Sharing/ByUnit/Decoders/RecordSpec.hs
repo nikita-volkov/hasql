@@ -1,4 +1,4 @@
-module Sharing.ByUnit.Decoders.UnnamedCompositeSpec (spec) where
+module Sharing.ByUnit.Decoders.RecordSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
@@ -21,7 +21,7 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -43,7 +43,7 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field (Decoders.nonNullable Decoders.text)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.int4)
@@ -65,7 +65,7 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,,)
                                       <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.text)
@@ -89,11 +89,11 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.unnamedComposite
+                                            ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -102,7 +102,7 @@ spec = do
                                         )
                                       <*> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.unnamedComposite
+                                            ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.text)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.int8)
@@ -127,21 +127,21 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.unnamedComposite
+                                            ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field
                                                       ( Decoders.nonNullable
-                                                          ( Decoders.unnamedComposite
+                                                          ( Decoders.record
                                                               (Decoders.field (Decoders.nonNullable Decoders.int8))
                                                           )
                                                       )
                                                     <*> Decoders.field
                                                       ( Decoders.nonNullable
-                                                          ( Decoders.unnamedComposite
+                                                          ( Decoders.record
                                                               ( (,)
                                                                   <$> Decoders.field (Decoders.nonNullable Decoders.bool)
                                                                   <*> Decoders.field (Decoders.nonNullable Decoders.text)
@@ -176,7 +176,7 @@ spec = do
                                       replicateM
                                       ( Decoders.element
                                           ( Decoders.nonNullable
-                                              ( Decoders.unnamedComposite
+                                              ( Decoders.record
                                                   ( (,)
                                                       <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                                       <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -209,7 +209,7 @@ spec = do
                                           replicateM
                                           ( Decoders.element
                                               ( Decoders.nonNullable
-                                                  ( Decoders.unnamedComposite
+                                                  ( Decoders.record
                                                       ( (,)
                                                           <$> Decoders.field (Decoders.nonNullable Decoders.int4)
                                                           <*> Decoders.field (Decoders.nonNullable Decoders.text)
@@ -241,11 +241,11 @@ spec = do
                                       replicateM
                                       ( Decoders.element
                                           ( Decoders.nonNullable
-                                              ( Decoders.unnamedComposite
+                                              ( Decoders.record
                                                   ( (,)
                                                       <$> Decoders.field
                                                         ( Decoders.nonNullable
-                                                            ( Decoders.unnamedComposite
+                                                            ( Decoders.record
                                                                 ( (,)
                                                                     <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)

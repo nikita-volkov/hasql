@@ -1,4 +1,4 @@
-module Sharing.ByUnit.Decoders.NamedCompositeSpec (spec) where
+module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
@@ -32,7 +32,7 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 typeName
                                 ( (,)
@@ -65,7 +65,7 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 typeName
                                 ( (,)
@@ -107,13 +107,13 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 outerType
                                 ( (,)
                                     <$> Decoders.field
                                       ( Decoders.nonNullable
-                                          ( Decoders.namedComposite
+                                          ( Decoders.composite
                                               Nothing
                                               innerType
                                               ( (,)
@@ -166,19 +166,19 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 type3
                                 ( (,)
                                     <$> Decoders.field
                                       ( Decoders.nonNullable
-                                          ( Decoders.namedComposite
+                                          ( Decoders.composite
                                               Nothing
                                               type2
                                               ( (,)
                                                   <$> Decoders.field
                                                     ( Decoders.nonNullable
-                                                        ( Decoders.namedComposite
+                                                        ( Decoders.composite
                                                             Nothing
                                                             type1
                                                             (Decoders.field (Decoders.nonNullable Decoders.int8))
@@ -222,7 +222,7 @@ spec = do
                                     replicateM
                                     ( Decoders.element
                                         ( Decoders.nonNullable
-                                            ( Decoders.namedComposite
+                                            ( Decoders.composite
                                                 Nothing
                                                 typeName
                                                 ( (,)
@@ -266,7 +266,7 @@ spec = do
                                         replicateM
                                         ( Decoders.element
                                             ( Decoders.nonNullable
-                                                ( Decoders.namedComposite
+                                                ( Decoders.composite
                                                     Nothing
                                                     typeName
                                                     (Decoders.field (Decoders.nonNullable Decoders.int4))

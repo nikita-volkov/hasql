@@ -76,7 +76,7 @@ spec = do
               ( Decoders.singleRow
                   ( Decoders.column
                       ( Decoders.nonNullable
-                          ( Decoders.namedComposite
+                          ( Decoders.composite
                               Nothing
                               typeName
                               ( (,)
@@ -194,13 +194,13 @@ spec = do
               ( Decoders.singleRow
                   ( Decoders.column
                       ( Decoders.nonNullable
-                          ( Decoders.namedComposite
+                          ( Decoders.composite
                               Nothing
                               outerType
                               ( (,)
                                   <$> Decoders.field
                                     ( Decoders.nonNullable
-                                        ( Decoders.namedComposite
+                                        ( Decoders.composite
                                             Nothing
                                             innerType
                                             ( (,)
@@ -305,7 +305,7 @@ spec = do
                                   replicateM
                                   ( Decoders.element
                                       ( Decoders.nonNullable
-                                          ( Decoders.namedComposite
+                                          ( Decoders.composite
                                               Nothing
                                               typeName
                                               ( (,)
@@ -353,7 +353,7 @@ spec = do
               ( Decoders.singleRow
                   ( Decoders.column
                       ( Decoders.nonNullable
-                          (Decoders.namedComposite Nothing typeName (Decoders.field (Decoders.nonNullable Decoders.int8)))
+                          (Decoders.composite Nothing typeName (Decoders.field (Decoders.nonNullable Decoders.int8)))
                       )
                   )
               )

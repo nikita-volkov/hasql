@@ -106,7 +106,7 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -128,11 +128,11 @@ spec = do
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.unnamedComposite
+                              ( Decoders.record
                                   ( (,)
                                       <$> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.unnamedComposite
+                                            ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.int8)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)
@@ -141,7 +141,7 @@ spec = do
                                         )
                                       <*> Decoders.field
                                         ( Decoders.nonNullable
-                                            ( Decoders.unnamedComposite
+                                            ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.text)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.int8)
@@ -188,7 +188,7 @@ spec = do
                 ( Decoders.singleRow
                     ( Decoders.column
                         ( Decoders.nonNullable
-                            ( Decoders.namedComposite
+                            ( Decoders.composite
                                 Nothing
                                 typeName
                                 ( (,)

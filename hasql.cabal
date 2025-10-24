@@ -335,10 +335,10 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.CompositeSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
-    Sharing.ByUnit.Decoders.NamedCompositeSpec
-    Sharing.ByUnit.Decoders.UnnamedCompositeSpec
+    Sharing.ByUnit.Decoders.RecordSpec
     Sharing.ByUnit.Encoders.CompositeSpec
     Sharing.ByUnit.Encoders.EnumSpec
     Sharing.ByUnit.PipelineSpec
