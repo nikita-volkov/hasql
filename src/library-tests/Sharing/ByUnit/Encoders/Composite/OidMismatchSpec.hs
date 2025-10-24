@@ -1,4 +1,4 @@
-module Sharing.ByUnit.Encoders.CompositeOidMismatchSpec (spec) where
+module Sharing.ByUnit.Encoders.Composite.OidMismatchSpec (spec) where
 
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
