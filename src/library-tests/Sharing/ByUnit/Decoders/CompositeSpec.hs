@@ -3,6 +3,7 @@ module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -281,3 +282,124 @@ spec = do
                 )
                 True
           result `shouldBe` Right [[1 :: Int32, 2], [3, 4]]
+
+    describe "OID compatibility checking" do
+      it "reports type mismatch when decoder expects a composite but gets a different type" \config -> do
+        typeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Try to decode text as the composite type (should fail with type mismatch)
+            Session.statement ()
+              $ Statement.Statement
+                "select 'some text'::text"
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.composite
+                                Nothing
+                                typeName
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          case result of
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column _ actual)) -> do
+              column `shouldBe` 0
+              -- actual should be text OID (25), not the composite type OID
+              actual `shouldBe` 25
+            Left err ->
+              expectationFailure ("Unexpected type of error: " <> show err)
+            Right _ ->
+              expectationFailure "Expected an error but got success"
+
+      it "reports type mismatch when decoder expects one composite type but gets another" \config -> do
+        type1 <- Scripts.generateSymname
+        type2 <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create first composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", type1, " as (x int8)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Create second composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", type2, " as (y bool)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Try to decode type2 value as type1 (should fail with type mismatch)
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select row (true) :: ", type2]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.composite
+                                Nothing
+                                type1
+                                (Decoders.field (Decoders.nonNullable Decoders.int8))
+                            )
+                        )
+                    )
+                )
+                True
+          case result of
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column _ _)) -> do
+              column `shouldBe` 0
+              -- The expected and actual OIDs should be different (we don't check exact values
+              -- as they're dynamically assigned, but the error should be reported)
+            Left err ->
+              expectationFailure ("Unexpected type of error: " <> show err)
+            Right _ ->
+              expectationFailure "Expected an error but got success"
+
+      it "correctly validates matching composite type OIDs" \config -> do
+        typeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create composite type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Decode with correct type - should succeed
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select row (42, true) :: ", typeName]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.composite
+                                Nothing
+                                typeName
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (42 :: Int64, True)

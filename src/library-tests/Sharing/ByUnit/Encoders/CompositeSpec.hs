@@ -415,3 +415,87 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
               True
         result `shouldBe` Right (42 :: Int64)
+
+  describe "OID compatibility checking" do
+    it "validates that encoder uses correct composite type OID" \config -> do
+      -- This test ensures that when encoding a composite type, the correct OID is used.
+      -- If the OID lookup fails or returns wrong OID, the statement should fail.
+      typeName <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create composite type
+          Session.statement ()
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              mempty
+              Decoders.noResult
+              True
+          -- Encode and verify - the DB will validate the OID is correct
+          Session.statement (42 :: Int64, True)
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName]))
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          typeName
+                          ( divide
+                              (\(a, b) -> (a, b))
+                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                              (Encoders.field (Encoders.nonNullable Encoders.bool))
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
+              True
+        result `shouldBe` Right True
+
+    it "validates OID lookup for nested composite types during encoding" \config -> do
+      -- This test ensures OID lookup works correctly for nested composites
+      innerType <- Scripts.generateSymname
+      outerType <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create inner composite type
+          Session.statement ()
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
+              mempty
+              Decoders.noResult
+              True
+          -- Create outer composite type
+          Session.statement ()
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"]))
+              mempty
+              Decoders.noResult
+              True
+          -- Encode nested composite - both type OIDs must be looked up correctly
+          Session.statement (99 :: Int64, True)
+            $ Statement.Statement
+              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType]))
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          outerType
+                          ( divide
+                              (\(val, flag) -> (val, flag))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      ( Encoders.composite
+                                          Nothing
+                                          innerType
+                                          (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                      )
+                                  )
+                              )
+                              (Encoders.field (Encoders.nonNullable Encoders.bool))
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
+              True
+        result `shouldBe` Right True
