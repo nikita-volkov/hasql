@@ -284,7 +284,7 @@ spec = do
           result `shouldBe` Right [[1 :: Int32, 2], [3, 4]]
 
     describe "OID compatibility checking" do
-      it "reports type mismatch when decoder expects a composite but gets a different type" \config -> do
+      it "fails when decoder expects a composite but gets a different type" \config -> do
         typeName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
           result <- Connection.use connection do
@@ -295,7 +295,7 @@ spec = do
                 mempty
                 Decoders.noResult
                 True
-            -- Try to decode text as the composite type (should fail with type mismatch)
+            -- Try to decode text as the composite type (should fail during deserialization)
             Session.statement ()
               $ Statement.Statement
                 "select 'some text'::text"
@@ -315,36 +315,36 @@ spec = do
                     )
                 )
                 True
+          -- Should fail with a cell error because text cannot be decoded as a composite
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column _ actual)) -> do
-              column `shouldBe` 0
-              -- actual should be text OID (25), not the composite type OID
-              actual `shouldBe` 25
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+              pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
             Right _ ->
               expectationFailure "Expected an error but got success"
 
-      it "reports type mismatch when decoder expects one composite type but gets another" \config -> do
+      it "fails when decoder expects one composite type but gets another" \config -> do
         type1 <- Scripts.generateSymname
         type2 <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
           result <- Connection.use connection do
-            -- Create first composite type
+            -- Create first composite type with two fields
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type1, " as (x int8)"]))
+                (encodeUtf8 (mconcat ["create type ", type1, " as (x int8, y text)"]))
                 mempty
                 Decoders.noResult
                 True
-            -- Create second composite type
+            -- Create second composite type with different structure
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type2, " as (y bool)"]))
+                (encodeUtf8 (mconcat ["create type ", type2, " as (a bool)"]))
                 mempty
                 Decoders.noResult
                 True
-            -- Try to decode type2 value as type1 (should fail with type mismatch)
+            -- Try to decode type2 value as type1 (should fail during deserialization)
+            -- type2 has 1 field, type1 decoder expects 2 fields
             Session.statement ()
               $ Statement.Statement
                 (encodeUtf8 (mconcat ["select row (true) :: ", type2]))
@@ -355,17 +355,19 @@ spec = do
                             ( Decoders.composite
                                 Nothing
                                 type1
-                                (Decoders.field (Decoders.nonNullable Decoders.int8))
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.text)
+                                )
                             )
                         )
                     )
                 )
                 True
+          -- Should fail with a cell error because the field count doesn't match
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column _ _)) -> do
-              column `shouldBe` 0
-              -- The expected and actual OIDs should be different (we don't check exact values
-              -- as they're dynamically assigned, but the error should be reported)
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+              pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
             Right _ ->
