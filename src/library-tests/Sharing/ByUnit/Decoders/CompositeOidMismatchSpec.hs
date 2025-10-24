@@ -28,7 +28,7 @@ spec = do
             -- Try to decode with int4 decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (42) :: ", typeName]))
+                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -67,7 +67,7 @@ spec = do
             -- Try to decode with int8 decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (42) :: ", typeName]))
+                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -106,7 +106,7 @@ spec = do
             -- Try to decode with text decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (42) :: ", typeName]))
+                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -146,7 +146,7 @@ spec = do
             -- Try to decode with correct first field but wrong second field
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (1, 2) :: ", typeName]))
+                (encodeUtf8 (mconcat ["select row(1, 2) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
