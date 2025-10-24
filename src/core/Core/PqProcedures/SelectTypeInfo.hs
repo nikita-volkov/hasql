@@ -107,10 +107,13 @@ sql =
   \        end\n\
   \      and pg_type.typnamespace = pg_namespace.oid\n\
   \    where inputs.schema_name is not null\n\
+  \  ),\n\
+  \  all_results as (\n\
+  \    select * from unnamespaced_results\n\
+  \    union\n\
+  \    select * from namespaced_results\n\
   \  )\n\
-  \select * from unnamespaced_results\n\
-  \union\n\
-  \select * from namespaced_results"
+  \select * from all_results where type_oid is not null"
 
 roundtrip :: SelectTypeInfo -> Hipq.Roundtrip.Roundtrip () SelectTypeInfoResult
 roundtrip params =
