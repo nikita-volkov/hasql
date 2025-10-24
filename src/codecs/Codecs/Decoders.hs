@@ -76,7 +76,7 @@ import Platform.Prelude
 -- Lift an 'Array.Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array.Array a -> Value.Value a
-array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toDimensionality decoder) (Array.toOid decoder) Nothing (Array.toValueDecoder decoder)
+array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toDimensionality decoder) (Array.toBaseOid decoder) (Array.toArrayOid decoder) (Array.toValueDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
