@@ -57,10 +57,8 @@ module Codecs.Encoders
     Value.oid,
     foldableArray,
     array,
-    Value.namedEnum,
-    Value.unnamedEnum,
-    namedComposite,
-    unnamedComposite,
+    Value.enum,
+    composite,
     Value.unknown,
 
     -- * Array
@@ -132,24 +130,9 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
 -- This function is for named composite types where the type name is known.
 -- For anonymous composite types (like those created with ROW constructor),
 -- use 'unnamedComposite' instead.
-namedComposite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
-namedComposite schema name (Composite.Composite unknownTypes encode print) =
+composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+composite schema name (Composite.Composite unknownTypes encode print) =
   Value.Value schema name False 0 Nothing Nothing unknownTypes encodeValue printValue
-  where
-    encodeValue oidCache val =
-      Binary.composite (encode oidCache val)
-    printValue val =
-      "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"
-
--- |
--- Lift a composite encoder into a value encoder for unnamed composite types.
---
--- __Note:__ PostgreSQL does not support anonymous composite types as input parameters.
--- This encoder is provided for completeness but has limited practical use cases.
--- For encoding composite values as parameters, use 'namedComposite' instead.
-unnamedComposite :: Composite.Composite a -> Value.Value a
-unnamedComposite (Composite.Composite unknownTypes encode print) =
-  Value.Value Nothing "" False 0 Nothing Nothing unknownTypes encodeValue printValue
   where
     encodeValue oidCache val =
       Binary.composite (encode oidCache val)

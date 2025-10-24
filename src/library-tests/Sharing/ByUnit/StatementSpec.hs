@@ -174,7 +174,7 @@ spec = do
                 (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ")"]))
                 ( Encoders.param
                     ( Encoders.nonNullable
-                        ( Encoders.namedComposite
+                        ( Encoders.composite
                             Nothing
                             typeName
                             ( divide
@@ -201,68 +201,6 @@ spec = do
                 )
                 True
           result `shouldBe` Right (42 :: Int64, True)
-
-    describe "Enum types" do
-      it "handles enum encoding and decoding" \config -> do
-        name <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          result <- Connection.use connection do
-            -- First create the enum type
-            Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
-                mempty
-                Decoders.noResult
-                True
-            -- Then test encoding and decoding
-            Session.statement "ok"
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select ($1 :: ", name, ")"]))
-                (Encoders.param (Encoders.nonNullable (Encoders.namedEnum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing name (Just . id)))))
-                True
-          result `shouldBe` Right "ok"
-
-    describe "Unknown enum" do
-      it "handles unknown enum encoding" \config -> do
-        name <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          result <- Connection.use connection do
-            -- First create the enum type
-            Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
-                mempty
-                Decoders.noResult
-                True
-            -- Then test encoding
-            Session.statement "ok"
-              $ Statement.Statement
-                "select $1"
-                (Encoders.param (Encoders.nonNullable (Encoders.unnamedEnum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.namedEnum Nothing name (Just . id)))))
-                True
-          result `shouldBe` Right "ok"
-
-      it "decodes unnamed enums" \config -> do
-        name <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          result <- Connection.use connection do
-            -- First create the enum type
-            Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
-                mempty
-                Decoders.noResult
-                True
-            -- Then test decoding with unnamedEnum
-            Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'happy' :: ", name]))
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
-                True
-          result `shouldBe` Right "happy"
 
   describe "Statement Functionality" do
     describe "Prepared statements" do

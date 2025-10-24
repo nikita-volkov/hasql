@@ -38,7 +38,7 @@ module Codecs.Decoders.Value
     custom,
     refine,
     hstore,
-    namedEnum,
+    enum,
     unnamedEnum,
     toDecoder,
     toSchema,
@@ -362,8 +362,8 @@ hstore replicateM =
 -- This function is for named enum types where the type name is known.
 -- For anonymous enum decoding where the type is inferred from context,
 -- use 'unnamedEnum' instead.
-namedEnum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
-namedEnum schema typeName mapping =
+enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
+enum schema typeName mapping =
   Value schema typeName Nothing Nothing (RequestingOid.lift (Binary.enum mapping))
 
 -- |

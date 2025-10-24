@@ -1,0 +1,311 @@
+module Sharing.ByUnit.Decoders.UnnamedEnumSpec (spec) where
+
+import Data.Text.Encoding (encodeUtf8)
+import Hasql.Connection qualified as Connection
+import Hasql.Decoders qualified as Decoders
+import Hasql.Session qualified as Session
+import Hasql.Statement qualified as Statement
+import Helpers.Scripts qualified as Scripts
+import Test.Hspec
+import Prelude
+
+spec :: SpecWith (Text, Word16)
+spec = do
+  describe "Unnamed Enum Decoders" do
+    describe "Simple enums" do
+      it "decodes a simple unnamed enum from static SQL" \config -> do
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('sad', 'ok', 'happy')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding with unnamedEnum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select 'happy' :: ", enumName]))
+                mempty
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                True
+          result `shouldBe` Right "happy"
+
+      it "decodes different unnamed enum values" \config -> do
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding multiple values
+            r1 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                  True
+            r2 <-
+              Session.statement ()
+                $ Statement.Statement
+                  (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
+                  mempty
+                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))))
+                  True
+            return (r1, r2)
+          result `shouldBe` Right ("alpha", "gamma")
+
+    describe "Enums in composites" do
+      it "decodes unnamed enums nested in composites from static SQL" \config -> do
+        enumName <- Scripts.generateSymname
+        compositeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('red', 'green', 'blue')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Create composite type with enum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", compositeName, " as (id int8, color ", enumName, ")"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding with unnamedEnum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select (42, 'green') :: ", compositeName]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.namedComposite
+                                Nothing
+                                compositeName
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (42 :: Int64, "green")
+
+      it "decodes unnamed enums in unnamed composites" \config -> do
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('small', 'medium', 'large')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding unnamed enum in unnamed composite
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select (5, 'large' :: ", enumName, ")"]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.unnamedComposite
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                    <*> Decoders.field (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (5 :: Int32, "large")
+
+      it "decodes nested structures with unnamed enums" \config -> do
+        enumName <- Scripts.generateSymname
+        innerType <- Scripts.generateSymname
+        outerType <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('low', 'high')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Create inner composite with enum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", innerType, " as (priority ", enumName, ", value int4)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Create outer composite
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", name text)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select (('high', 10), 'test') :: ", outerType]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.namedComposite
+                                Nothing
+                                outerType
+                                ( (,)
+                                    <$> Decoders.field
+                                      ( Decoders.nonNullable
+                                          ( Decoders.namedComposite
+                                              Nothing
+                                              innerType
+                                              ( (,)
+                                                  <$> Decoders.field (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))
+                                                  <*> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                              )
+                                          )
+                                      )
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.text)
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right (("high", 10 :: Int32), "test")
+
+    describe "Arrays of enums" do
+      it "decodes arrays of unnamed enums from static SQL" \config -> do
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test array decoding with unnamedEnum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select array['first', 'third', 'second'] :: ", enumName, "[]"]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.array
+                                ( Decoders.dimension
+                                    replicateM
+                                    (Decoders.element (Decoders.nonNullable (Decoders.unnamedEnum (Just . id))))
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right ["first", "third", "second"]
+
+      it "decodes 2D arrays of unnamed enums" \config -> do
+        enumName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('a', 'b', 'c')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test 2D array decoding with unnamedEnum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select array[array['a', 'b'], array['c', 'a']] :: ", enumName, "[][]"]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.array
+                                ( Decoders.dimension
+                                    replicateM
+                                    ( Decoders.dimension
+                                        replicateM
+                                        (Decoders.element (Decoders.nonNullable (Decoders.unnamedEnum (Just . id))))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right [["a", "b"], ["c", "a"]]
+
+      it "decodes arrays of composites containing unnamed enums" \config -> do
+        enumName <- Scripts.generateSymname
+        compositeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            -- Create enum type
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('yes', 'no')"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Create composite type with enum
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", compositeName, " as (answer ", enumName, ", id int4)"]))
+                mempty
+                Decoders.noResult
+                True
+            -- Test decoding array of composites with unnamed enums
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select array[('yes', 1), ('no', 2)] :: ", compositeName, "[]"]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.array
+                                ( Decoders.dimension
+                                    replicateM
+                                    ( Decoders.element
+                                        ( Decoders.nonNullable
+                                            ( Decoders.namedComposite
+                                                Nothing
+                                                compositeName
+                                                ( (,)
+                                                    <$> Decoders.field (Decoders.nonNullable (Decoders.unnamedEnum (Just . id)))
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right [("yes", 1 :: Int32), ("no", 2)]

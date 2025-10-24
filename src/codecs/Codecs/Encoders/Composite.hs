@@ -44,14 +44,14 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName _ _ (Just elementOid) _ unknownTypes encode print) ->
+  NullableOrNot.NonNullable (Value.Value _ _ _ _ (Just elementOid) _ unknownTypes encode print) ->
     Composite
-      (HashSet.insert (schemaName, typeName) unknownTypes)
+      unknownTypes
       (\oidCache val -> Binary.field elementOid (encode oidCache val))
       (\val -> [print val])
   NullableOrNot.NonNullable (Value.Value schemaName typeName _ _ Nothing _ unknownTypes encode print) ->
     Composite
-      unknownTypes
+      (HashSet.insert (schemaName, typeName) unknownTypes)
       (\oidCache val -> Binary.field (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache)) (encode oidCache val))
       (\val -> [print val])
   NullableOrNot.Nullable (Value.Value _ _ _ _ (Just elementOid) _ unknownTypes encode print) ->

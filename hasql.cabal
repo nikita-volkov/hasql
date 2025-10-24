@@ -324,6 +324,12 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.NamedCompositeSpec
+    Sharing.ByUnit.Decoders.NamedEnumSpec
+    Sharing.ByUnit.Decoders.UnnamedCompositeSpec
+    Sharing.ByUnit.Decoders.UnnamedEnumSpec
+    Sharing.ByUnit.Encoders.CompositeSpec
+    Sharing.ByUnit.Encoders.EnumSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec
