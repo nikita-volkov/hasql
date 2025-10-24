@@ -253,6 +253,17 @@ library text-extras
     hasql:platform,
     text >=1 && <3,
 
+library testcontainers-postgresql
+  import: base
+  hs-source-dirs: src/testcontainers-postgresql
+  exposed-modules:
+    TestcontainersPostgresql
+
+  build-depends:
+    hasql:platform,
+    testcontainers ^>=0.5.1,
+    text >=1 && <3,
+
 benchmark benchmarks
   import: executable
   type: exitcode-stdio-1.0
@@ -275,8 +286,8 @@ test-suite profiling
 
   build-depends:
     hasql,
+    hasql:testcontainers-postgresql,
     rerebase >=1 && <2,
-    testcontainers-postgresql >=0.0.2 && <0.1,
 
 test-suite hipq-tests
   import: test
@@ -294,9 +305,9 @@ test-suite hipq-tests
     hasql:hipq,
     hasql:platform,
     hasql:pq,
+    hasql:testcontainers-postgresql,
     hspec ^>=2.11.12,
     rerebase >=1 && <2,
-    testcontainers-postgresql >=0.0.1 && <0.1,
     text-builder >=1 && <1.1,
 
 test-suite library-tests
@@ -324,6 +335,7 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.Float8Spec
     Sharing.ByUnit.Decoders.NamedCompositeSpec
     Sharing.ByUnit.Decoders.NamedEnumSpec
     Sharing.ByUnit.Decoders.UnnamedCompositeSpec
@@ -344,10 +356,10 @@ test-suite library-tests
   build-depends:
     QuickCheck,
     hasql,
+    hasql:testcontainers-postgresql,
     hspec ^>=2.11.12,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,
     random ^>=1.3.1,
     rerebase >=1 && <2,
-    testcontainers-postgresql >=0.0.1 && <0.1,
     text-builder >=1 && <1.1,

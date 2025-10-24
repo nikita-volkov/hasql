@@ -9,21 +9,18 @@ type HookedSpec = SpecWith (Text, Word16)
 
 hook :: HookedSpec -> Spec
 hook hookedSpec = parallel do
-  byDistro "postgres:10" TestcontainersPostgresql.Distro10
-  byDistro "postgres:17" TestcontainersPostgresql.Distro17
+  byDistro "postgres:10"
+  byDistro "postgres:17"
   where
-    byDistro name distro =
-      describe name do
+    byDistro tagName =
+      describe (toList tagName) do
         aroundAll
-          ( \handler ->
-              TestcontainersPostgresql.run
-                TestcontainersPostgresql.Config
-                  { forwardLogs = False,
-                    distro,
-                    auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres"
-                  }
-                ( \(host, portInt) ->
-                    handler (host, fromIntegral portInt)
-                )
+          ( TestcontainersPostgresql.hook
+              tagName
+              "postgres"
+              "postgres"
+              forwardLogs
           )
           (parallel hookedSpec)
+
+    forwardLogs = False

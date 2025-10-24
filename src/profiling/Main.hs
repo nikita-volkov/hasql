@@ -89,30 +89,23 @@ statementWithManyRowsInList =
 -- * Testcontainers
 
 withConnection :: (Connection.Connection -> IO ()) -> IO ()
-withConnection = withConnectionByDistro TestcontainersPostgresql.Distro17
+withConnection = withConnectionByTagName "postgres:17"
 
-withConnectionByDistro :: TestcontainersPostgresql.Distro -> (Connection.Connection -> IO ()) -> IO ()
-withConnectionByDistro distro action = withConnectionSettings distro \settings -> do
+withConnectionByTagName :: Text -> (Connection.Connection -> IO ()) -> IO ()
+withConnectionByTagName tagName action = withConnectionSettings tagName \settings -> do
   connection <- Connection.acquire settings
   case connection of
     Left err -> fail ("Connection failed: " <> show err)
     Right conn -> finally (action conn) (Connection.release conn)
 
-withConnectionSettings :: TestcontainersPostgresql.Distro -> (Settings.Settings -> IO ()) -> IO ()
-withConnectionSettings distro action = do
-  TestcontainersPostgresql.run config \(host, port) -> do
+withConnectionSettings :: Text -> (Settings.Settings -> IO ()) -> IO ()
+withConnectionSettings tagName action = do
+  TestcontainersPostgresql.hook tagName "postgres" "" False \(host, port) -> do
     let settings =
           mconcat
-            [ Settings.hostAndPort host (fromIntegral port),
+            [ Settings.hostAndPort host port,
               Settings.user "postgres",
               Settings.password "",
               Settings.dbname "postgres"
             ]
     action settings
-  where
-    config =
-      TestcontainersPostgresql.Config
-        { forwardLogs = False,
-          distro,
-          auth = TestcontainersPostgresql.TrustAuth
-        }
