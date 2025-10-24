@@ -1,6 +1,5 @@
 module Sharing.ByFeature.NonExistentTypeLookupSpec (spec) where
 
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -24,7 +23,7 @@ spec = do
                 (Encoders.param (Encoders.nonNullable (Encoders.enum Nothing "this_enum_does_not_exist_in_db" id)))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
                 True
-          
+
           -- The statement should fail when trying to use a non-existent type
           -- This test documents the current behavior
           case result of
@@ -33,7 +32,7 @@ spec = do
               err `shouldSatisfy` \case
                 Errors.StatementSessionError {} -> True
                 _ -> False
-            Right _ -> 
+            Right _ ->
               expectationFailure "Expected error when using non-existent enum type, but statement succeeded"
 
       it "detects attempts to decode non-existent enum types" \config -> do
@@ -45,7 +44,7 @@ spec = do
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_enum_type" (Just . id)))))
                 True
-          
+
           -- The statement should fail when trying to decode with a non-existent type
           case result of
             Left err -> do
@@ -78,7 +77,7 @@ spec = do
                 )
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
                 True
-          
+
           -- The statement should fail when trying to use a non-existent type
           case result of
             Left err -> do
@@ -110,7 +109,7 @@ spec = do
                     )
                 )
                 True
-          
+
           -- The statement should fail when trying to decode with a non-existent type
           case result of
             Left err -> do
@@ -139,7 +138,7 @@ spec = do
                 )
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
                 True
-          
+
           -- The statement should fail when trying to use a non-existent type
           case result of
             Left err -> do
@@ -169,7 +168,7 @@ spec = do
                     )
                 )
                 True
-          
+
           -- The statement should fail when trying to decode with a non-existent type
           case result of
             Left err -> do
@@ -189,7 +188,7 @@ spec = do
                 (Encoders.param (Encoders.nonNullable (Encoders.enum (Just "nonexistent_schema") "nonexistent_type" id)))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
                 True
-          
+
           -- The statement should fail when trying to use a non-existent schema.type
           case result of
             Left err -> do
@@ -208,7 +207,7 @@ spec = do
                 (Encoders.param (Encoders.nonNullable (Encoders.enum (Just "public") "this_type_does_not_exist" id)))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
                 True
-          
+
           -- The statement should fail when trying to use a non-existent type in existing schema
           case result of
             Left err -> do
