@@ -1,6 +1,8 @@
 module Codecs.Decoders.Array
   ( Array,
     toValueDecoder,
+    toTypeSig,
+    toSchema,
     toTypeName,
     toBaseOid,
     toArrayOid,
@@ -47,14 +49,33 @@ toValueDecoder :: Array a -> RequestingOid.RequestingOid Binary.Value a
 toValueDecoder (Array _ _ _ _ _ decoder) =
   RequestingOid.hoist Binary.array decoder
 
+-- | Get the type signature for the array based on element type name
+{-# INLINE toTypeSig #-}
+toTypeSig :: Array a -> Text
+toTypeSig (Array schemaName elementTypeName _ _ ndims _) =
+  TextBuilder.toText
+    ( mconcat
+        ( mconcat
+            [ foldMap
+                (\s -> [TextBuilder.text s, TextBuilder.char '.'])
+                schemaName,
+              [ TextBuilder.text elementTypeName
+              ],
+              replicate
+                (fromIntegral ndims)
+                (TextBuilder.text "[]")
+            ]
+        )
+    )
+
+toSchema :: Array a -> Maybe Text
+toSchema (Array schema _ _ _ _ _) = schema
+
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
 toTypeName :: Array a -> Text
-toTypeName (Array _ elementTypeName _ _ ndims _) =
-  let chunks =
-        TextBuilder.text elementTypeName
-          : replicate (fromIntegral ndims) (TextBuilder.text "[]")
-   in TextBuilder.toText (mconcat chunks)
+toTypeName (Array _ elementTypeName _ _ _ _) =
+  elementTypeName
 
 -- | Get the base OID if statically known
 {-# INLINE toBaseOid #-}
