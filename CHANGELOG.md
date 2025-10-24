@@ -16,6 +16,10 @@ Major revision happened.
 
   The connection settings API has been completely redesigned to be more composable and user-friendly. Settings are now represented as a monoid, allowing easy combination of multiple configuration options. The API now supports both URI and key-value connection string formats, with individual setters for common parameters like host, port, user, password, etc.
 
+- **OID caching**.
+
+  PostgreSQL type OIDs (Object Identifiers) are now cached in the connection state to avoid repeated queries to the database type catalog. When executing pipelines, the driver analyzes which types are needed, queries the database once for any types not already cached, and reuses the cached OIDs for subsequent queries. This significantly improves performance when working with custom types, composite types, and arrays, especially in pipeline mode where multiple statements are executed together.
+
 ## Breaking changes
 
 - Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
