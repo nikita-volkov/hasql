@@ -3,6 +3,8 @@ module Codecs.Decoders.Array
     toValueDecoder,
     toTypeName,
     toOid,
+    toSchema,
+    toElementTypeName,
     dimension,
     element,
   )
@@ -56,6 +58,16 @@ toTypeName (Array _ elementTypeName _ ndims _) =
 {-# INLINE toOid #-}
 toOid :: Array a -> Maybe Word32
 toOid (Array _ _ oid _ _) = oid
+
+-- | Get the schema name for the element type
+{-# INLINE toSchema #-}
+toSchema :: Array a -> Maybe Text
+toSchema (Array schema _ _ _ _) = schema
+
+-- | Get the element type name
+{-# INLINE toElementTypeName #-}
+toElementTypeName :: Array a -> Text
+toElementTypeName (Array _ typeName _ _ _) = typeName
 
 -- * Public API
 

@@ -284,7 +284,7 @@ spec = do
           result `shouldBe` Right [[1 :: Int32, 2], [3, 4]]
 
     describe "OID compatibility checking" do
-      it "fails when decoder expects a composite but gets a different type" \config -> do
+      it "reports type mismatch when decoder expects a composite but gets a different type" \config -> do
         typeName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
           result <- Connection.use connection do
@@ -295,7 +295,7 @@ spec = do
                 mempty
                 Decoders.noResult
                 True
-            -- Try to decode text as the composite type (should fail during deserialization)
+            -- Try to decode text as the composite type (should fail during OID validation)
             Session.statement ()
               $ Statement.Statement
                 "select 'some text'::text"
@@ -315,16 +315,16 @@ spec = do
                     )
                 )
                 True
-          -- Should fail with a cell error because text cannot be decoded as a composite
+          -- Should fail with a type mismatch error because text OID doesn't match composite OID
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
             Right _ ->
               expectationFailure "Expected an error but got success"
 
-      it "fails when decoder expects one composite type but gets another" \config -> do
+      it "reports type mismatch when decoder expects one composite type but gets another" \config -> do
         type1 <- Scripts.generateSymname
         type2 <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
@@ -343,8 +343,8 @@ spec = do
                 mempty
                 Decoders.noResult
                 True
-            -- Try to decode type2 value as type1 (should fail during deserialization)
-            -- type2 has 1 field, type1 decoder expects 2 fields
+            -- Try to decode type2 value as type1 (should fail during OID validation)
+            -- type2 has 1 field, type1 decoder expects 2 fields but OID check happens first
             Session.statement ()
               $ Statement.Statement
                 (encodeUtf8 (mconcat ["select row (true) :: ", type2]))
@@ -364,9 +364,9 @@ spec = do
                     )
                 )
                 True
-          -- Should fail with a cell error because the field count doesn't match
+          -- Should fail with a type mismatch error because type2 OID doesn't match type1 OID
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)

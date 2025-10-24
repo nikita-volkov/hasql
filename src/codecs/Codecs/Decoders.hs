@@ -76,7 +76,25 @@ import Platform.Prelude
 -- Lift an 'Array.Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array.Array a -> Value.Value a
-array decoder = Value.Value Nothing (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toValueDecoder decoder)
+array decoder =
+  case Array.toOid decoder of
+    -- Statically known array OID
+    Just arrayOid ->
+      Value.Value
+        (Array.toSchema decoder)
+        (Array.toElementTypeName decoder)
+        (Just arrayOid)
+        Nothing
+        (Array.toValueDecoder decoder)
+    -- Dynamically looked-up array OID - use marker value 1 in arrayOid field
+    -- to indicate that the baseOid should come from the array OID of the element type
+    Nothing ->
+      Value.Value
+        (Array.toSchema decoder)
+        (Array.toElementTypeName decoder)
+        Nothing
+        (Just 1)  -- Marker: use array OID from element type lookup
+        (Array.toValueDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
