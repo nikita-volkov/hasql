@@ -32,14 +32,24 @@ toDecoder (Row f) = f
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->
-    Row
-      ( RequestingOid.hoist
-          (Hipq.RowDecoder.nullableColumn (Value.toBaseOid valueDecoder) . Binary.valueParser)
+    Row case Value.toBaseOid valueDecoder of
+      Just oid ->
+        RequestingOid.hoist
+          (Hipq.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
-      )
+      Nothing -> do
+        RequestingOid.hoistLookingUp
+          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (\(oid, _) -> Hipq.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
+          (Value.toDecoder valueDecoder)
   NonNullable valueDecoder ->
-    Row
-      ( RequestingOid.hoist
-          (Hipq.RowDecoder.nonNullableColumn (Value.toBaseOid valueDecoder) . Binary.valueParser)
+    Row case Value.toBaseOid valueDecoder of
+      Just oid ->
+        RequestingOid.hoist
+          (Hipq.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
-      )
+      Nothing -> do
+        RequestingOid.hoistLookingUp
+          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (\(oid, _) -> Hipq.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
+          (Value.toDecoder valueDecoder)

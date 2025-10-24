@@ -35,5 +35,13 @@ lift fa =
   LookingUp [] (const fa)
 
 hoist :: (f a -> g b) -> LookingUp k v f a -> LookingUp k v g b
-hoist nat (LookingUp keys use) =
-  LookingUp keys (nat . use)
+hoist tx (LookingUp keys use) =
+  LookingUp keys (tx . use)
+
+lookingUp :: k -> (v -> f a) -> LookingUp k v f a
+lookingUp key cont =
+  LookingUp [key] (\lookupFn -> cont (lookupFn key))
+
+hoistLookingUp :: k -> (v -> f a -> g b) -> LookingUp k v f a -> LookingUp k v g b
+hoistLookingUp k tx (LookingUp keys use) =
+  LookingUp (k : keys) (\lookupFn -> tx (lookupFn k) (use lookupFn))
