@@ -26,10 +26,6 @@ instance (Filterable f) => Filterable (LookingUp k v f) where
   mapMaybe fn (LookingUp keys use) =
     LookingUp keys (mapMaybe fn . use)
 
-lookup :: (Applicative f) => k -> LookingUp k v f v
-lookup key =
-  LookingUp [key] (\lookupFn -> pure (lookupFn key))
-
 lift :: f a -> LookingUp k v f a
 lift fa =
   LookingUp [] (const fa)
