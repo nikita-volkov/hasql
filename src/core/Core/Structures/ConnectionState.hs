@@ -2,15 +2,7 @@
 -- This module defines the internal state of a database connection.
 module Core.Structures.ConnectionState
   ( ConnectionState (..),
-    toStatementCache,
-    fromConnection,
-    setPreparedStatements,
-    setStatementCache,
     setConnection,
-    setOidCache,
-    mapStatementCache,
-    mapOidCache,
-    traverseStatementCache,
     resetPreparedStatementsCache,
   )
 where
@@ -33,33 +25,9 @@ data ConnectionState = ConnectionState
     connection :: Pq.Connection
   }
 
-toStatementCache :: ConnectionState -> StatementCache.StatementCache
-toStatementCache ConnectionState {..} = statementCache
-
-fromConnection :: Pq.Connection -> ConnectionState
-fromConnection connection =
-  ConnectionState
-    { preparedStatements = False,
-      statementCache = StatementCache.empty,
-      oidCache = OidCache.empty,
-      connection = connection
-    }
-
-setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
-setPreparedStatements preparedStatements connectionState =
-  connectionState {preparedStatements = preparedStatements}
-
-setStatementCache :: StatementCache.StatementCache -> ConnectionState -> ConnectionState
-setStatementCache statementCache connectionState =
-  connectionState {statementCache = statementCache}
-
 setConnection :: Pq.Connection -> ConnectionState -> ConnectionState
 setConnection connection connectionState =
   connectionState {connection = connection}
-
-setOidCache :: OidCache.OidCache -> ConnectionState -> ConnectionState
-setOidCache oidCache connectionState =
-  connectionState {oidCache}
 
 mapStatementCache ::
   (StatementCache.StatementCache -> StatementCache.StatementCache) ->
@@ -69,29 +37,6 @@ mapStatementCache f ConnectionState {..} =
     { statementCache = f statementCache,
       ..
     }
-
-mapOidCache ::
-  (OidCache.OidCache -> OidCache.OidCache) ->
-  (ConnectionState -> ConnectionState)
-mapOidCache f ConnectionState {..} =
-  ConnectionState
-    { oidCache = f oidCache,
-      ..
-    }
-
-traverseStatementCache ::
-  (Functor f) =>
-  (StatementCache.StatementCache -> f StatementCache.StatementCache) ->
-  (ConnectionState -> f ConnectionState)
-traverseStatementCache f ConnectionState {..} =
-  fmap
-    ( \newStatementCache ->
-        ConnectionState
-          { statementCache = newStatementCache,
-            ..
-          }
-    )
-    (f statementCache)
 
 resetPreparedStatementsCache :: ConnectionState -> ConnectionState
 resetPreparedStatementsCache =

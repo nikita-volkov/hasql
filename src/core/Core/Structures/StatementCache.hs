@@ -4,7 +4,6 @@ module Core.Structures.StatementCache
     empty,
     lookup,
     insert,
-    reset,
   )
 where
 
@@ -38,11 +37,6 @@ insert sql oids (StatementCache hashMap counter) = (remoteKey, newState)
     newCounter = succ counter
     newState = StatementCache newHashMap newCounter
     localKey = LocalKey sql oids
-
--- | Pure reset operation
-{-# INLINEABLE reset #-}
-reset :: StatementCache -> StatementCache
-reset _ = StatementCache HashMap.empty 0
 
 -- |
 -- Local statement key.

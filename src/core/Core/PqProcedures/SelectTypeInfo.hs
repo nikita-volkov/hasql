@@ -1,6 +1,5 @@
 module Core.PqProcedures.SelectTypeInfo
   ( SelectTypeInfo (..),
-    SelectTypeInfoResult,
     run,
   )
 where
