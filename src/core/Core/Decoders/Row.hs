@@ -4,6 +4,7 @@ import Codecs.Decoders
 import Codecs.Decoders.Value qualified as Value
 import Codecs.RequestingOid qualified as RequestingOid
 import Hipq.RowDecoder qualified
+import Platform.LookingUp qualified
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 
@@ -32,14 +33,44 @@ toDecoder (Row f) = f
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->
-    Row
-      ( RequestingOid.hoist
-          (Hipq.RowDecoder.nullableColumn (Value.toBaseOid valueDecoder) . Binary.valueParser)
-          (Value.toDecoder valueDecoder)
-      )
+    let staticOid = Value.toBaseOid valueDecoder
+     in case staticOid of
+          Just _ ->
+            -- Static OID known, use it directly
+            Row
+              ( RequestingOid.hoist
+                  (Hipq.RowDecoder.nullableColumn staticOid . Binary.valueParser)
+                  (Value.toDecoder valueDecoder)
+              )
+          Nothing ->
+            -- Dynamic OID, need to look it up
+            let schema = Value.toSchema valueDecoder
+                typeName = Value.toTypeName valueDecoder
+                valueDecoder' = Value.toDecoder valueDecoder
+             in case valueDecoder' of
+                  Platform.LookingUp.LookingUp keys use ->
+                    Row $ Platform.LookingUp.LookingUp ((schema, typeName) : keys) $ \lookupFn ->
+                      let (baseOid, _arrayOid) = lookupFn (schema, typeName)
+                          binaryDecoder = use lookupFn
+                       in Hipq.RowDecoder.nullableColumn (Just baseOid) (Binary.valueParser binaryDecoder)
   NonNullable valueDecoder ->
-    Row
-      ( RequestingOid.hoist
-          (Hipq.RowDecoder.nonNullableColumn (Value.toBaseOid valueDecoder) . Binary.valueParser)
-          (Value.toDecoder valueDecoder)
-      )
+    let staticOid = Value.toBaseOid valueDecoder
+     in case staticOid of
+          Just _ ->
+            -- Static OID known, use it directly
+            Row
+              ( RequestingOid.hoist
+                  (Hipq.RowDecoder.nonNullableColumn staticOid . Binary.valueParser)
+                  (Value.toDecoder valueDecoder)
+              )
+          Nothing ->
+            -- Dynamic OID, need to look it up
+            let schema = Value.toSchema valueDecoder
+                typeName = Value.toTypeName valueDecoder
+                valueDecoder' = Value.toDecoder valueDecoder
+             in case valueDecoder' of
+                  Platform.LookingUp.LookingUp keys use ->
+                    Row $ Platform.LookingUp.LookingUp ((schema, typeName) : keys) $ \lookupFn ->
+                      let (baseOid, _arrayOid) = lookupFn (schema, typeName)
+                          binaryDecoder = use lookupFn
+                       in Hipq.RowDecoder.nonNullableColumn (Just baseOid) (Binary.valueParser binaryDecoder)
