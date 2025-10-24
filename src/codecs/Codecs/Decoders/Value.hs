@@ -39,7 +39,6 @@ module Codecs.Decoders.Value
     refine,
     hstore,
     enum,
-    unnamedEnum,
     toDecoder,
     toSchema,
     toTypeName,
@@ -358,22 +357,16 @@ hstore replicateM =
 
 -- |
 -- Given a partial mapping from text to value, produces a decoder of that value for a named enum type.
---
--- This function is for named enum types where the type name is known.
--- For anonymous enum decoding where the type is inferred from context,
--- use 'unnamedEnum' instead.
-enum :: Maybe Text -> Text -> (Text -> Maybe a) -> Value a
+enum ::
+  -- | Schema name.
+  Maybe Text ->
+  -- | Type name.
+  Text ->
+  -- | Mapping from text to value.
+  (Text -> Maybe a) ->
+  Value a
 enum schema typeName mapping =
   Value schema typeName Nothing Nothing (RequestingOid.lift (Binary.enum mapping))
-
--- |
--- Given a partial mapping from text to value, produces a decoder of that value for unnamed enum types.
---
--- This is useful for decoding enums where the type name is not known or needed,
--- and Postgres can infer the type from context.
-unnamedEnum :: (Text -> Maybe a) -> Value a
-unnamedEnum mapping =
-  Value Nothing "" Nothing Nothing (RequestingOid.lift (Binary.enum mapping))
 
 -- * Relations
 
