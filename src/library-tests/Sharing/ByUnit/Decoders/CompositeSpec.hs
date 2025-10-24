@@ -3,6 +3,7 @@ module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -281,3 +282,35 @@ spec = do
                 )
                 True
           result `shouldBe` Right [[1 :: Int32, 2], [3, 4]]
+
+  it "detects attempts to decode non-existent composite types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement ()
+          $ Statement.Statement
+            "select row(42, 'test')"
+            mempty
+            ( Decoders.singleRow
+                ( Decoders.column
+                    ( Decoders.nonNullable
+                        ( Decoders.composite
+                            Nothing
+                            "nonexistent_composite_type"
+                            ( (,)
+                                <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                <*> Decoders.field (Decoders.nonNullable Decoders.text)
+                            )
+                        )
+                    )
+                )
+            )
+            True
+
+      -- The statement should fail when trying to decode with a non-existent type
+      case result of
+        Left err -> do
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when decoding with non-existent composite type, but statement succeeded"

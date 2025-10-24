@@ -332,7 +332,6 @@ test-suite library-tests
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
     Sharing.ByFeature.ConcurrencySpec
     Sharing.ByFeature.DecoderCompatibilityCheckSpec
-    Sharing.ByFeature.NonExistentTypeLookupSpec
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec

@@ -3,6 +3,7 @@ module Sharing.ByUnit.Decoders.EnumSpec (spec) where
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -277,3 +278,53 @@ spec = do
               )
               True
         result `shouldBe` Right [("high", 1 :: Int32), ("low", 2)]
+
+  it "detects attempts to decode non-existent enum types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement ()
+          $ Statement.Statement
+            "select 'value'::text"
+            mempty
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_enum_type" (Just . id)))))
+            True
+
+      -- The statement should fail when trying to decode with a non-existent type
+      case result of
+        Left err -> do
+          -- We expect some kind of error (type mismatch or similar)
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when decoding with non-existent enum type, but statement succeeded"
+
+  it "detects attempts to decode arrays of non-existent enum types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement ()
+          $ Statement.Statement
+            "select array['a', 'b']::text[]"
+            mempty
+            ( Decoders.singleRow
+                ( Decoders.column
+                    ( Decoders.nonNullable
+                        ( Decoders.array
+                            ( Decoders.dimension
+                                replicateM
+                                (Decoders.element (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_array_enum" (Just . id))))
+                            )
+                        )
+                    )
+                )
+            )
+            True
+
+      -- The statement should fail when trying to decode with a non-existent type
+      case result of
+        Left err -> do
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when decoding array of non-existent enum type, but statement succeeded"

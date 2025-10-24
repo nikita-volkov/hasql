@@ -4,6 +4,7 @@ import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -259,3 +260,91 @@ spec = do
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing name (Just . id)))))
             True
       result `shouldBe` Right "ok"
+
+  it "detects attempts to encode non-existent enum types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement "test_value"
+          $ Statement.Statement
+            "select $1"
+            (Encoders.param (Encoders.nonNullable (Encoders.enum Nothing "this_enum_does_not_exist_in_db" id)))
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+            True
+
+      -- The statement should fail when trying to use a non-existent type
+      -- This test documents the current behavior
+      case result of
+        Left err -> do
+          -- We expect some kind of error
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when using non-existent enum type, but statement succeeded"
+
+  describe "Namespaced" do
+    it "detects attempts to use non-existent type in non-existent schema" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          Session.statement "test"
+            $ Statement.Statement
+              "select $1::nonexistent_schema.nonexistent_type"
+              (Encoders.param (Encoders.nonNullable (Encoders.enum (Just "nonexistent_schema") "nonexistent_type" id)))
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+              True
+
+        -- The statement should fail when trying to use a non-existent schema.type
+        case result of
+          Left err -> do
+            err `shouldSatisfy` \case
+              Errors.StatementSessionError {} -> True
+              _ -> False
+          Right _ ->
+            expectationFailure "Expected error when using non-existent schema.type, but statement succeeded"
+
+    it "detects attempts to use non-existent type in existing schema" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          Session.statement "test"
+            $ Statement.Statement
+              "select $1::public.this_type_does_not_exist"
+              (Encoders.param (Encoders.nonNullable (Encoders.enum (Just "public") "this_type_does_not_exist" id)))
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+              True
+
+        -- The statement should fail when trying to use a non-existent type in existing schema
+        case result of
+          Left err -> do
+            err `shouldSatisfy` \case
+              Errors.StatementSessionError {} -> True
+              _ -> False
+          Right _ ->
+            expectationFailure "Expected error when using non-existent type in existing schema, but statement succeeded"
+
+  it "detects attempts to encode arrays of non-existent enum types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement ["val1", "val2"]
+          $ Statement.Statement
+            "select $1::nonexistent_array_enum[]"
+            ( Encoders.param
+                ( Encoders.nonNullable
+                    ( Encoders.array
+                        ( Encoders.dimension
+                            foldl'
+                            (Encoders.element (Encoders.nonNullable (Encoders.enum Nothing "nonexistent_array_enum" id)))
+                        )
+                    )
+                )
+            )
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+            True
+
+      -- The statement should fail when trying to use a non-existent type
+      case result of
+        Left err -> do
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when using array of non-existent enum type, but statement succeeded"
