@@ -32,7 +32,7 @@ toDecoder (Row f) = f
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->
-    Row case Value.toBaseOid valueDecoder of
+    Row case Value.toOid valueDecoder of
       Just oid ->
         RequestingOid.hoist
           (Hipq.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
@@ -40,10 +40,12 @@ column = \case
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
-          (\(oid, _) -> Hipq.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
+          ( \lookupResult ->
+              Hipq.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser
+          )
           (Value.toDecoder valueDecoder)
   NonNullable valueDecoder ->
-    Row case Value.toBaseOid valueDecoder of
+    Row case Value.toOid valueDecoder of
       Just oid ->
         RequestingOid.hoist
           (Hipq.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
@@ -51,5 +53,10 @@ column = \case
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
-          (\(oid, _) -> Hipq.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
+          (\lookupResult -> Hipq.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
+  where
+    chooseLookedUpOid valueDecoder (elementOid, arrayOid) =
+      if Value.toDimensionality valueDecoder > 0
+        then arrayOid
+        else elementOid

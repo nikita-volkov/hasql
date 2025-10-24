@@ -39,6 +39,7 @@ module Codecs.Decoders.Value
     refine,
     hstore,
     enum,
+    toDimensionality,
     toDecoder,
     toSchema,
     toTypeName,
@@ -373,6 +374,9 @@ enum schema typeName mapping =
   Value schema typeName Nothing Nothing 0 (RequestingOid.lift (Binary.enum mapping))
 
 -- * Relations
+
+toDimensionality :: Value a -> Word
+toDimensionality (Value _ _ _ _ dimensionality _) = dimensionality
 
 toSchema :: Value a -> Maybe Text
 toSchema (Value schema _ _ _ _ _) = schema
