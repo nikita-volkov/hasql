@@ -336,10 +336,12 @@ test-suite library-tests
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
     Sharing.ByUnit.Decoders.CompositeSpec
+    Sharing.ByUnit.Decoders.CompositeOidMismatchSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
     Sharing.ByUnit.Decoders.RecordSpec
     Sharing.ByUnit.Encoders.CompositeSpec
+    Sharing.ByUnit.Encoders.CompositeOidMismatchSpec
     Sharing.ByUnit.Encoders.EnumSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
