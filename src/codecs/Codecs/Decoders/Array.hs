@@ -37,7 +37,7 @@ data Array a
       -- | Statically known OID for the array type.
       (Maybe Word32)
       -- | Number of dimensions.
-      Int
+      Word
       -- | Decoding function
       (RequestingOid.RequestingOid Binary.Array a)
   deriving (Functor)
@@ -53,7 +53,7 @@ toTypeName :: Array a -> Text
 toTypeName (Array _ elementTypeName _ _ ndims _) =
   let chunks =
         TextBuilder.text elementTypeName
-          : replicate ndims (TextBuilder.text "[]")
+          : replicate (fromIntegral ndims) (TextBuilder.text "[]")
    in TextBuilder.toText (mconcat chunks)
 
 -- | Get the base OID if statically known
@@ -68,7 +68,7 @@ toArrayOid (Array _ _ _ arrayOid _ _) = arrayOid
 
 -- | Get the dimensionality of the array
 {-# INLINE toDimensionality #-}
-toDimensionality :: Array a -> Int
+toDimensionality :: Array a -> Word
 toDimensionality (Array _ _ _ _ ndims _) = ndims
 
 -- * Public API

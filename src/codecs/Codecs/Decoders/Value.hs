@@ -42,6 +42,7 @@ module Codecs.Decoders.Value
     toDecoder,
     toSchema,
     toTypeName,
+    toOid,
     toBaseOid,
     toArrayOid,
     toHandler,
@@ -65,12 +66,12 @@ data Value a
       (Maybe Text)
       -- | Type name.
       Text
-      -- | Dimensionality. If 0 then it is a scalar value, otherwise it is an array with that many dimensions.
-      Int
       -- | Statically known OID for the type.
       (Maybe Word32)
       -- | Statically known OID for the array-type with this type as the element.
       (Maybe Word32)
+      -- | Dimensionality. If 0 then it is a scalar value, otherwise it is an array with that many dimensions.
+      Word
       -- | Decoding function on a registry of OIDs by type name.
       (RequestingOid.RequestingOid Binary.Value a)
   deriving (Functor)
@@ -85,7 +86,7 @@ instance Filterable Value where
 {-# INLINE primitive #-}
 primitive :: Text -> TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName 0 (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) (RequestingOid.lift decoder)
+  Value Nothing typeName (Just (TypeInfo.toBaseOid pti)) (Just (TypeInfo.toArrayOid pti)) 0 (RequestingOid.lift decoder)
 
 -- * Static types
 
@@ -329,9 +330,9 @@ custom schema typeName fn =
   Value
     schema
     typeName
+    Nothing
+    Nothing
     0
-    Nothing
-    Nothing
     ( LookingUp
         [(schema, typeName)]
         (\project -> Binary.fn (fn project))
@@ -341,8 +342,8 @@ custom schema typeName fn =
 -- Refine a value decoder, lifting the possible error to the session level.
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
-refine fn (Value schema typeName dimensionality typeOid arrayOid decoder) =
-  Value schema typeName dimensionality typeOid arrayOid (RequestingOid.hoist (Binary.refine fn) decoder)
+refine fn (Value schema typeName typeOid arrayOid dimensionality decoder) =
+  Value schema typeName typeOid arrayOid dimensionality (RequestingOid.hoist (Binary.refine fn) decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -356,7 +357,7 @@ refine fn (Value schema typeName dimensionality typeOid arrayOid decoder) =
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
-  Value Nothing "hstore" 0 Nothing Nothing (RequestingOid.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
+  Value Nothing "hstore" Nothing Nothing 0 (RequestingOid.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
 
 -- |
 -- Given a partial mapping from text to value, produces a decoder of that value for a named enum type.
@@ -369,7 +370,7 @@ enum ::
   (Text -> Maybe a) ->
   Value a
 enum schema typeName mapping =
-  Value schema typeName 0 Nothing Nothing (RequestingOid.lift (Binary.enum mapping))
+  Value schema typeName Nothing Nothing 0 (RequestingOid.lift (Binary.enum mapping))
 
 -- * Relations
 
@@ -379,14 +380,17 @@ toSchema (Value schema _ _ _ _ _) = schema
 toTypeName :: Value a -> Text
 toTypeName (Value _ typeName _ _ _ _) = typeName
 
-toBaseOid :: Value a -> Maybe Word32
-toBaseOid (Value _ _ dimensionality typeOid arrayOid _) =
+toOid :: Value a -> Maybe Word32
+toOid (Value _ _ baseOid arrayOid dimensionality _) =
   if dimensionality > 0
-    then arrayOid <|> typeOid
-    else typeOid <|> arrayOid
+    then arrayOid
+    else baseOid
+
+toBaseOid :: Value a -> Maybe Word32
+toBaseOid (Value _ _ baseOid _ _ _) = baseOid
 
 toArrayOid :: Value a -> Maybe Word32
-toArrayOid (Value _ _ _ _ oid _) = oid
+toArrayOid (Value _ _ _ oid _ _) = oid
 
 toDecoder :: Value a -> RequestingOid.RequestingOid Binary.Value a
 toDecoder (Value _ _ _ _ _ decoder) = decoder
