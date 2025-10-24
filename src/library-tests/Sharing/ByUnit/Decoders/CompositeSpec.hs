@@ -405,3 +405,35 @@ spec = do
                 )
                 True
           result `shouldBe` Right (42 :: Int64, True)
+
+  it "detects attempts to decode non-existent composite types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement ()
+          $ Statement.Statement
+            "select row(42, 'test')"
+            mempty
+            ( Decoders.singleRow
+                ( Decoders.column
+                    ( Decoders.nonNullable
+                        ( Decoders.composite
+                            Nothing
+                            "nonexistent_composite_type"
+                            ( (,)
+                                <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                <*> Decoders.field (Decoders.nonNullable Decoders.text)
+                            )
+                        )
+                    )
+                )
+            )
+            True
+
+      -- The statement should fail when trying to decode with a non-existent type
+      case result of
+        Left err -> do
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when decoding with non-existent composite type, but statement succeeded"

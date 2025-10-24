@@ -4,6 +4,7 @@ import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
@@ -499,3 +500,34 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
               True
         result `shouldBe` Right True
+
+  it "detects attempts to encode non-existent composite types" \config -> do
+    Scripts.onPreparableConnection config \connection -> do
+      result <- Connection.use connection do
+        Session.statement (42 :: Int64, "test")
+          $ Statement.Statement
+            "select $1::nonexistent_composite_type"
+            ( Encoders.param
+                ( Encoders.nonNullable
+                    ( Encoders.composite
+                        Nothing
+                        "nonexistent_composite_type"
+                        ( divide
+                            (\(a, b) -> (a, b))
+                            (Encoders.field (Encoders.nonNullable Encoders.int8))
+                            (Encoders.field (Encoders.nonNullable Encoders.text))
+                        )
+                    )
+                )
+            )
+            (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+            True
+
+      -- The statement should fail when trying to use a non-existent type
+      case result of
+        Left err -> do
+          err `shouldSatisfy` \case
+            Errors.StatementSessionError {} -> True
+            _ -> False
+        Right _ ->
+          expectationFailure "Expected error when using non-existent composite type, but statement succeeded"
