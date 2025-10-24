@@ -3,6 +3,7 @@ module Codecs.Decoders.Array
     toValueDecoder,
     toTypeName,
     toOid,
+    toDimensionality,
     dimension,
     element,
   )
@@ -56,6 +57,11 @@ toTypeName (Array _ elementTypeName _ ndims _) =
 {-# INLINE toOid #-}
 toOid :: Array a -> Maybe Word32
 toOid (Array _ _ oid _ _) = oid
+
+-- | Get the dimensionality of the array
+{-# INLINE toDimensionality #-}
+toDimensionality :: Array a -> Int
+toDimensionality (Array _ _ _ ndims _) = ndims
 
 -- * Public API
 
