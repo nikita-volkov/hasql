@@ -9,6 +9,7 @@ import Data.HashSet qualified as HashSet
 import Platform.LookingUp qualified as LookingUp
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
+import TextBuilder qualified
 
 -- |
 -- Composable decoder of composite values (rows, records).
@@ -35,10 +36,10 @@ instance Applicative Composite where
   pure a = Composite [] (RequestingOid.lift (FieldsDecoder (\_fields -> Right a)))
   Composite lOids lDec <*> Composite rOids rDec =
     let combinedOids = lOids <> rOids
-        -- Manually combine RequestingOids by merging their unknown types and combining decoders
-        RequestingOid.LookingUp lKeys lFn = lDec
-        RequestingOid.LookingUp rKeys rFn = rDec
-        combinedDec = RequestingOid.LookingUp
+        -- Manually combine LookingUps to implement custom field splitting logic
+        LookingUp lKeys lFn = lDec
+        LookingUp rKeys rFn = rDec
+        combinedDec = LookingUp
           (lKeys <> rKeys)
           (\lookup ->
             let FieldsDecoder lDecoder = lFn lookup
@@ -85,7 +86,18 @@ parseFields bytes (expectedOid : rest) fieldIndex = do
   -- Check OID if we have an expected value
   case expectedOid of
     Just expected | fromIntegral actualOid /= expected ->
-      Left $ "Composite field " <> fromString (show fieldIndex) <> " OID mismatch. Expected " <> fromString (show expected) <> ", got " <> fromString (show actualOid)
+      Left $ (TextBuilder.toText . mconcat)
+        [ "Composite field "
+        , TextBuilder.decimal fieldIndex
+        , " type mismatch. Expected OID "
+        , TextBuilder.decimal expected
+        , " but got OID "
+        , TextBuilder.decimal actualOid
+        , ". "
+        , describeOid expected
+        , " vs "
+        , describeOid (fromIntegral actualOid)
+        ]
     _ -> pure ()
   
   -- Handle NULL field (length = -1)
@@ -100,6 +112,18 @@ parseFields bytes (expectedOid : rest) fieldIndex = do
           remaining = BS.drop (8 + fromIntegral fieldLen) bytes
       rest' <- parseFields remaining rest (fieldIndex + 1)
       Right (fieldData : rest')
+
+-- Describe an OID for error messages
+describeOid :: Word32 -> TextBuilder.TextBuilder
+describeOid oid = case oid of
+  20 -> "int8"
+  21 -> "int2"
+  23 -> "int4"
+  25 -> "text"
+  700 -> "float4"
+  701 -> "float8"
+  1700 -> "numeric"
+  _ -> "OID " <> TextBuilder.decimal oid
 
 -- Read a big-endian int32 from ByteString
 readInt32BE :: ByteString -> Int32
