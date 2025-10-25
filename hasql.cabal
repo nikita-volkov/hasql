@@ -339,10 +339,14 @@ test-suite library-tests
     Sharing.ByUnit.Decoders.CompositeSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
+    Sharing.ByUnit.Decoders.IntervalSpec
     Sharing.ByUnit.Decoders.RecordSpec
+    Sharing.ByUnit.Encoders.ArraySpec
     Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Encoders.CompositeSpec
     Sharing.ByUnit.Encoders.EnumSpec
+    Sharing.ByUnit.Encoders.IntervalSpec
+    Sharing.ByUnit.Encoders.UnknownSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec
