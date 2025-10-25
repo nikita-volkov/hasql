@@ -3,14 +3,11 @@ module Core.Structures.OidCache
 
     -- * Accessors
     toHashMap,
-    lookupScalar,
-    lookupArray,
 
     -- * Constructors
     fromHashMap,
     empty,
     selectUnknownNames,
-    insertScalar,
   )
 where
 
@@ -44,22 +41,10 @@ selectUnknownNames :: HashSet (Maybe Text, Text) -> OidCache -> HashSet (Maybe T
 selectUnknownNames keys (OidCache byName) =
   HashSet.filter (\key -> not (HashMap.member key byName)) keys
 
-insertScalar :: Maybe Text -> Text -> Word32 -> Word32 -> OidCache -> OidCache
-insertScalar schema name scalar array (OidCache byName) =
-  OidCache (HashMap.insert (schema, name) (scalar, array) byName)
-
 fromHashMap :: HashMap (Maybe Text, Text) (Word32, Word32) -> OidCache
 fromHashMap byName = OidCache byName
 
 -- * Accessors
-
-lookupScalar :: Maybe Text -> Text -> OidCache -> Maybe Word32
-lookupScalar schema name (OidCache byName) =
-  HashMap.lookup (schema, name) byName <&> \(scalar, _) -> scalar
-
-lookupArray :: Maybe Text -> Text -> OidCache -> Maybe Word32
-lookupArray schema name (OidCache byName) =
-  HashMap.lookup (schema, name) byName <&> \(_, array) -> array
 
 toHashMap :: OidCache -> HashMap (Maybe Text, Text) (Word32, Word32)
 toHashMap (OidCache byName) = byName
