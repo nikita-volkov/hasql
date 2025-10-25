@@ -51,7 +51,7 @@ primitive typeName isText typeInfo encode render =
     0
     (Just (TypeInfo.toBaseOid typeInfo))
     (Just (TypeInfo.toArrayOid typeInfo))
-    (HashSet.singleton (Nothing, typeName))
+    HashSet.empty
     (const encode)
     render
 
