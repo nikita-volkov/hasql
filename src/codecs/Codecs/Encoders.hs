@@ -130,7 +130,13 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
 -- This function is for named composite types where the type name is known.
 -- For anonymous composite types (like those created with ROW constructor),
 -- use 'record' instead.
-composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+composite ::
+  -- | Schema name where the composite type is defined.
+  Maybe Text ->
+  -- | Composite type name.
+  Text ->
+  Composite.Composite a ->
+  Value.Value a
 composite schema name (Composite.Composite unknownTypes encode print) =
   Value.Value schema name False 0 Nothing Nothing unknownTypes encodeValue printValue
   where

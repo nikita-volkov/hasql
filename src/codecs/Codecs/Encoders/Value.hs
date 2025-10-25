@@ -301,7 +301,14 @@ datemultirange = primitive "datemultirange" False TypeInfo.datemultirange Binary
 -- Given a function which maps a value into a textual enum label used on the DB side,
 -- produces an encoder of that value for a named enum type.
 {-# INLINEABLE enum #-}
-enum :: Maybe Text -> Text -> (a -> Text) -> Value a
+enum ::
+  -- | Schema name where the enum type is defined.
+  Maybe Text ->
+  -- | Enum type name.
+  Text ->
+  -- | Mapping function from value to enum label.
+  (a -> Text) ->
+  Value a
 enum schemaName typeName mapping =
   Value
     schemaName
