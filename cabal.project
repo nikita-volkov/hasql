@@ -1,3 +1,5 @@
 packages: .
 allow-newer:
   , *:base
+package *
+  ghc-options: -fwrite-ide-info -hiedir=.hie

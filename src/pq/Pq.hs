@@ -11,11 +11,9 @@ module Pq
     enterPipelineMode,
     exitPipelineMode,
     pipelineSync,
-    sendFlushRequest,
 
     -- * Helpers
     oidToWord32,
-    rowToInt,
     colToInt,
   )
 where
@@ -59,12 +57,6 @@ pipelineSync ::
 pipelineSync =
   parameterlessProcedure "pipelineSync" Ffi.pipelineSync Mappings.decodeBool
 
-sendFlushRequest ::
-  Connection ->
-  IO Bool
-sendFlushRequest =
-  parameterlessProcedure "sendFlushRequest" Ffi.sendFlushRequest Mappings.decodeBool
-
 parameterlessProcedure ::
   (Show a) =>
   String ->
@@ -91,9 +83,6 @@ decodeProcedureResult label decoder ffiResult =
 
 oidToWord32 :: Oid -> Word32
 oidToWord32 (Oid x) = fromIntegral x
-
-rowToInt :: Row -> Int
-rowToInt (Row x) = fromIntegral x
 
 colToInt :: Column -> Int
 colToInt (Col x) = fromIntegral x
