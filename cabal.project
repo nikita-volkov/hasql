@@ -1,5 +1,5 @@
 packages: .
 allow-newer:
   , *:base
-package hasql
+package *
   ghc-options: -fwrite-ide-info -hiedir=.hie
