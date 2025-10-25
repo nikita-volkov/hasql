@@ -22,6 +22,9 @@ Major revision happened.
 
 ## Breaking changes
 
+- Custom type mappings (enums and composite types) now require specifying names for the types being mapped.
+  - This will automatically identify the types with the DB and do deep compatibility checks.
+
 - Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
   - E.g., `int4` column decoded with `int8` decoder will now report `UnexpectedColumnTypeStatementError` instead of silently accepting the value.
 
