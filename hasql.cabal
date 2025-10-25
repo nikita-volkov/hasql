@@ -340,15 +340,22 @@ test-suite library-tests
     Sharing.ByUnit.Decoders.DomainSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
+    Sharing.ByUnit.Decoders.HstoreSpec
+    Sharing.ByUnit.Decoders.InetSpec
     Sharing.ByUnit.Decoders.IntervalSpec
+    Sharing.ByUnit.Decoders.JsonSpec
     Sharing.ByUnit.Decoders.RecordSpec
+    Sharing.ByUnit.Decoders.UuidSpec
     Sharing.ByUnit.Encoders.ArraySpec
     Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Encoders.CompositeSpec
     Sharing.ByUnit.Encoders.DomainSpec
     Sharing.ByUnit.Encoders.EnumSpec
+    Sharing.ByUnit.Encoders.InetSpec
     Sharing.ByUnit.Encoders.IntervalSpec
+    Sharing.ByUnit.Encoders.JsonSpec
     Sharing.ByUnit.Encoders.UnknownSpec
+    Sharing.ByUnit.Encoders.UuidSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec
@@ -362,9 +369,11 @@ test-suite library-tests
 
   build-depends:
     QuickCheck,
+    aeson,
     hasql,
     hasql:testcontainers-postgresql,
     hspec ^>=2.11.12,
+    iproute,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,
     random ^>=1.3.1,
