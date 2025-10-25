@@ -12,6 +12,8 @@ import Core.Errors qualified as Errors
 import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
@@ -33,28 +35,34 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
   case oidCacheUpdates of
     Left err -> pure (Left err, oidCache, statementCache)
     Right oidCacheUpdates -> do
-      let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
+      -- Validate that all requested types were found
+      let foundTypes = HashMap.keysSet oidCacheUpdates
+          notFoundTypes = HashSet.difference missingTypes foundTypes
+      if not (HashSet.null notFoundTypes)
+        then pure (Left (Errors.MissingTypesSessionError notFoundTypes), oidCache, statementCache)
+        else do
+          let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
 
-      let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+          let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
 
-      result <-
-        let adaptedRoundtrip = first adaptContext roundtrip
-              where
-                adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
-                adaptContext (Context index sql params prepared) =
-                  Just (totalStatements, index, sql, params, prepared)
-         in Hipq.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
-              & fmap
-                ( first
-                    ( \case
-                        Hipq.Roundtrip.ClientError _context details ->
-                          Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                        Hipq.Roundtrip.ServerError recvError ->
-                          Errors.fromRecvError recvError
+          result <-
+            let adaptedRoundtrip = first adaptContext roundtrip
+                  where
+                    adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
+                    adaptContext (Context index sql params prepared) =
+                      Just (totalStatements, index, sql, params, prepared)
+             in Hipq.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
+                  & fmap
+                    ( first
+                        ( \case
+                            Hipq.Roundtrip.ClientError _context details ->
+                              Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                            Hipq.Roundtrip.ServerError recvError ->
+                              Errors.fromRecvError recvError
+                        )
                     )
-                )
 
-      pure (result, newOidCache, newStatementCache)
+          pure (result, newOidCache, newStatementCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

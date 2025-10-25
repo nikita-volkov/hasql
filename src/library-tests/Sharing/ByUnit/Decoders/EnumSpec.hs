@@ -1,5 +1,6 @@
 module Sharing.ByUnit.Decoders.EnumSpec (spec) where
 
+import Data.HashSet qualified as HashSet
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
@@ -289,15 +290,11 @@ spec = do
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_enum_type" (Just . id)))))
             True
 
-      -- The statement should fail when trying to decode with a non-existent type
       case result of
-        Left err -> do
-          -- We expect some kind of error (type mismatch or similar)
-          err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
-            _ -> False
-        Right _ ->
-          expectationFailure "Expected error when decoding with non-existent enum type, but statement succeeded"
+        Left (Errors.MissingTypesSessionError missingTypes) ->
+          missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_enum_type")]
+        _ ->
+          expectationFailure ("Unexpected result: " <> show result)
 
   it "detects attempts to decode arrays of non-existent enum types" \config -> do
     Scripts.onPreparableConnection config \connection -> do
@@ -320,11 +317,8 @@ spec = do
             )
             True
 
-      -- The statement should fail when trying to decode with a non-existent type
       case result of
-        Left err -> do
-          err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
-            _ -> False
-        Right _ ->
-          expectationFailure "Expected error when decoding array of non-existent enum type, but statement succeeded"
+        Left (Errors.MissingTypesSessionError missingTypes) ->
+          missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_array_enum")]
+        _ ->
+          expectationFailure ("Unexpected result: " <> show result)

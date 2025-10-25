@@ -183,9 +183,25 @@ instance IsError SessionError where
         [ "Driver error: ",
           message
         ]
+    MissingTypesSessionError missingTypes ->
+      (TextBuilder.toText . mconcat)
+        [ "The following types were not found in the database:\n",
+          missingTypes
+            & toList
+            & fmap
+              ( \(schema, name) ->
+                  "  - "
+                    <> maybe "" (<> ".") schema
+                    <> name
+              )
+            & mconcat
+            . intersperse "\n"
+            & TextBuilder.text
+        ]
 
   isTransient = \case
     ConnectionSessionError _ -> True
     StatementSessionError {} -> False
     ScriptSessionError {} -> False
     DriverSessionError {} -> False
+    MissingTypesSessionError {} -> False

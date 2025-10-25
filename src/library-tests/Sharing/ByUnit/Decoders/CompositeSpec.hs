@@ -1,5 +1,6 @@
 module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 
+import Data.HashSet qualified as HashSet
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
@@ -429,11 +430,8 @@ spec = do
             )
             True
 
-      -- The statement should fail when trying to decode with a non-existent type
       case result of
-        Left err -> do
-          err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
-            _ -> False
-        Right _ ->
-          expectationFailure "Expected error when decoding with non-existent composite type, but statement succeeded"
+        Left (Errors.MissingTypesSessionError missingTypes) ->
+          missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_composite_type")]
+        _ ->
+          expectationFailure ("Unexpected result: " <> show result)
