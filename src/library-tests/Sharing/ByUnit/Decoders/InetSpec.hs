@@ -1,6 +1,6 @@
 module Sharing.ByUnit.Decoders.InetSpec (spec) where
 
-import Data.IP (AddrRange, IPv4, IPv6)
+import Data.IP (IPv4, IPv6)
 import Data.IP qualified as IP
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
