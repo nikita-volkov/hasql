@@ -6,7 +6,6 @@ module Core.Structures.OidCache
 
     -- * Constructors
     fromHashMap,
-    empty,
     selectUnknownNames,
   )
 where
@@ -30,11 +29,6 @@ instance Semigroup OidCache where
 
 instance Monoid OidCache where
   mempty = OidCache mempty
-
-{-# INLINEABLE empty #-}
-empty :: OidCache
-empty =
-  OidCache HashMap.empty
 
 -- | Having a set of required type names, select those that are not present in the cache.
 selectUnknownNames :: HashSet (Maybe Text, Text) -> OidCache -> HashSet (Maybe Text, Text)
