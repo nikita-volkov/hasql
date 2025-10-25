@@ -4,7 +4,7 @@ module Hasql.Pipeline
   )
 where
 
-import Core.Contexts.Pipeline qualified as Pipeline
+import Engine.Contexts.Pipeline qualified as Pipeline
 import Hasql.Statement qualified as Statement
 
 -- |

@@ -9,11 +9,11 @@ module Hasql.Connection
 where
 
 import Comms.Session qualified
-import Core.Contexts.Session qualified as Session
-import Core.Errors
-import Core.Structures.ConnectionState qualified as ConnectionState
-import Core.Structures.StatementCache qualified as StatementCache
 import Data.Text qualified as Text
+import Engine.Contexts.Session qualified as Session
+import Engine.Errors
+import Engine.Structures.ConnectionState qualified as ConnectionState
+import Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings

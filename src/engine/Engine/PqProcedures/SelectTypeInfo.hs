@@ -1,4 +1,4 @@
-module Core.PqProcedures.SelectTypeInfo
+module Engine.PqProcedures.SelectTypeInfo
   ( SelectTypeInfo (..),
     SelectTypeInfoResult,
     run,
@@ -11,9 +11,9 @@ import Codecs.Encoders.Params qualified as Encoders.Params
 import Comms.ResultDecoder qualified
 import Comms.Roundtrip qualified
 import Comms.RowDecoder qualified
-import Core.Errors qualified as Errors
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Engine.Errors qualified as Errors
 import Platform.Prelude
 import Pq qualified
 

@@ -1,11 +1,11 @@
-module Core.Contexts.Session where
+module Engine.Contexts.Session where
 
 import Codecs.Encoders.Params qualified as Params
 import Comms.Roundtrip qualified
-import Core.Contexts.Pipeline qualified as Pipeline
-import Core.Decoders.Result qualified as Decoders.Result
-import Core.Errors qualified as Errors
-import Core.Structures.ConnectionState qualified as ConnectionState
+import Engine.Contexts.Pipeline qualified as Pipeline
+import Engine.Decoders.Result qualified as Decoders.Result
+import Engine.Errors qualified as Errors
+import Engine.Structures.ConnectionState qualified as ConnectionState
 import Platform.Prelude
 import Pq qualified
 

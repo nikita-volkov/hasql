@@ -1,9 +1,9 @@
-module Core.Decoders.Result where
+module Engine.Decoders.Result where
 
 import Codecs.RequestingOid qualified as RequestingOid
 import Comms.ResultDecoder qualified as ResultDecoder
-import Core.Decoders.Row (Row (..))
-import Core.Decoders.Row qualified as Row
+import Engine.Decoders.Row (Row (..))
+import Engine.Decoders.Row qualified as Row
 import Platform.Prelude
 
 -- |

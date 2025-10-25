@@ -85,5 +85,5 @@ module Hasql.Decoders
 where
 
 import Codecs.Decoders
-import Core.Decoders.Result
-import Core.Decoders.Row
+import Engine.Decoders.Result
+import Engine.Decoders.Row

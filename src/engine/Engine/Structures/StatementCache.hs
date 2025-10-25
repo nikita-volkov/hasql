@@ -1,4 +1,4 @@
-module Core.Structures.StatementCache
+module Engine.Structures.StatementCache
   ( -- * Pure registry operations
     StatementCache,
     empty,

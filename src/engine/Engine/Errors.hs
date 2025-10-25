@@ -1,4 +1,4 @@
-module Core.Errors where
+module Engine.Errors where
 
 import Comms.Recv qualified
 import Comms.ResultDecoder qualified

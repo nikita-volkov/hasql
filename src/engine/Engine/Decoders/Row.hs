@@ -1,4 +1,4 @@
-module Core.Decoders.Row where
+module Engine.Decoders.Row where
 
 import Codecs.Decoders
 import Codecs.Decoders.Value qualified as Value

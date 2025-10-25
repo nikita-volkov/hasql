@@ -23,8 +23,8 @@ module Hasql.Errors
   )
 where
 
-import Core.Errors
 import Data.Text qualified as Text
+import Engine.Errors
 import Platform.Prelude
 import TextBuilder qualified
 import TextExtras qualified

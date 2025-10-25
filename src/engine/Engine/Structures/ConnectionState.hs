@@ -1,6 +1,6 @@
 -- |
 -- This module defines the internal state of a database connection.
-module Core.Structures.ConnectionState
+module Engine.Structures.ConnectionState
   ( ConnectionState (..),
     toStatementCache,
     fromConnection,
@@ -15,8 +15,8 @@ module Core.Structures.ConnectionState
   )
 where
 
-import Core.Structures.OidCache qualified as OidCache
-import Core.Structures.StatementCache qualified as StatementCache
+import Engine.Structures.OidCache qualified as OidCache
+import Engine.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
 import Pq qualified
 

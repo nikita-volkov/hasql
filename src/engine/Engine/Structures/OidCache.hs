@@ -1,4 +1,4 @@
-module Core.Structures.OidCache
+module Engine.Structures.OidCache
   ( OidCache,
 
     -- * Accessors

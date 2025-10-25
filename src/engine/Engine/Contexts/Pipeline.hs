@@ -1,4 +1,4 @@
-module Core.Contexts.Pipeline
+module Engine.Contexts.Pipeline
   ( Pipeline,
     run,
     statement,
@@ -8,13 +8,13 @@ where
 import Codecs.Encoders.Params qualified as Params
 import Codecs.RequestingOid qualified as RequestingOid
 import Comms.Roundtrip qualified
-import Core.Decoders.Result qualified as Decoders.Result
-import Core.Errors qualified as Errors
-import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
-import Core.Structures.OidCache qualified as OidCache
-import Core.Structures.StatementCache qualified as StatementCache
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Engine.Decoders.Result qualified as Decoders.Result
+import Engine.Errors qualified as Errors
+import Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
+import Engine.Structures.OidCache qualified as OidCache
+import Engine.Structures.StatementCache qualified as StatementCache
 import Platform.Prelude
 import Pq qualified
 

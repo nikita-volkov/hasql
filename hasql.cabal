@@ -119,7 +119,7 @@ library
   build-depends:
     hasql:codecs,
     hasql:comms,
-    hasql:core,
+    hasql:engine,
     hasql:platform,
     hasql:pq,
     hasql:text-extras,
@@ -155,19 +155,19 @@ library codecs
     unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
 
-library core
+library engine
   import: base
-  hs-source-dirs: src/core
+  hs-source-dirs: src/engine
   exposed-modules:
-    Core.Contexts.Pipeline
-    Core.Contexts.Session
-    Core.Decoders.Result
-    Core.Decoders.Row
-    Core.Errors
-    Core.PqProcedures.SelectTypeInfo
-    Core.Structures.ConnectionState
-    Core.Structures.OidCache
-    Core.Structures.StatementCache
+    Engine.Contexts.Pipeline
+    Engine.Contexts.Session
+    Engine.Decoders.Result
+    Engine.Decoders.Row
+    Engine.Errors
+    Engine.PqProcedures.SelectTypeInfo
+    Engine.Structures.ConnectionState
+    Engine.Structures.OidCache
+    Engine.Structures.StatementCache
 
   build-depends:
     hasql:codecs,
