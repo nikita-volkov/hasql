@@ -164,4 +164,3 @@ spec = do
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
                 True
           result `shouldBe` Right True
-
