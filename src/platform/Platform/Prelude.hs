@@ -87,6 +87,7 @@ import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Numeric as Exports
+import Platform.LookingUp as Exports (LookingUp (..))
 import Platform.Prelude.Text as Exports
 import System.Environment as Exports
 import System.Exit as Exports

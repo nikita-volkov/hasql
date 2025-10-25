@@ -6,17 +6,9 @@ where
 
 import Core.Contexts.Pipeline qualified as Pipeline
 import Hasql.Statement qualified as Statement
-import Hipq.ResultDecoder qualified as ResultDecoder
 
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Pipeline.Pipeline result
-statement
-  params
-  ( Statement.Statement
-      sql
-      encoder
-      (ResultDecoder.unwrap -> decoder)
-      preparable
-    ) =
-    Pipeline.statement sql encoder decoder preparable params
+statement params (Statement.Statement sql encoder decoder preparable) =
+  Pipeline.statement sql encoder decoder preparable params

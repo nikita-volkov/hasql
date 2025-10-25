@@ -55,12 +55,11 @@ module Codecs.Encoders
     Value.datemultirange,
     Value.name,
     Value.oid,
-    Value.enum,
-    Value.unknownEnum,
-    Value.unknown,
     foldableArray,
     array,
+    Value.enum,
     composite,
+    Value.unknown,
 
     -- * Array
     Array.Array,
@@ -78,7 +77,9 @@ import Codecs.Encoders.Composite qualified as Composite
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Params qualified as Params
 import Codecs.Encoders.Value qualified as Value
-import Platform.Prelude
+import Codecs.TypeInfo qualified as TypeInfo
+import Data.HashMap.Strict qualified as HashMap
+import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
@@ -90,7 +91,7 @@ import TextBuilder qualified
 -- This function is merely a shortcut to the following expression:
 --
 -- @
--- ('array' . 'dimension' 'foldl'' . 'element')
+-- ('array' . 'Array.dimension' 'foldl'' . 'Array.element')
 -- @
 --
 -- You can use it like this:
@@ -109,17 +110,37 @@ foldableArray = array . Array.dimension foldl' . Array.element
 -- |
 -- Lift an array encoder into a value encoder.
 array :: Array.Array a -> Value.Value a
-array (Array.Array valueOid arrayOid arrayEncoder renderer) =
-  let encoder input = Binary.array valueOid (arrayEncoder input)
-   in Value.Value "array" False (Just arrayOid) (Just arrayOid) encoder renderer
+array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes arrayEncoder renderer) =
+  let encoder oidCache input =
+        let resolvedOid =
+              asum
+                [ scalarOidIfKnown,
+                  oidCache
+                    & HashMap.lookup (baseTypeSchema, baseTypeName)
+                    & fmap fst
+                ]
+                -- Should only happen on a bug.
+                & fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown)
+         in Binary.array resolvedOid (arrayEncoder oidCache input)
+   in Value.Value baseTypeSchema baseTypeName False dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes encoder renderer
 
 -- |
--- Lift a composite encoder into a value encoder.
-composite :: Composite.Composite a -> Value.Value a
-composite (Composite.Composite encode print) =
-  Value.unknownPrimitive encodeValue printValue
+-- Lift a composite encoder into a value encoder for named composite types.
+--
+-- This function is for named composite types where the type name is known.
+-- For anonymous composite types (like those created with ROW constructor),
+-- use 'record' instead.
+composite ::
+  -- | Schema name where the composite type is defined.
+  Maybe Text ->
+  -- | Composite type name.
+  Text ->
+  Composite.Composite a ->
+  Value.Value a
+composite schema name (Composite.Composite unknownTypes encode print) =
+  Value.Value schema name False 0 Nothing Nothing unknownTypes encodeValue printValue
   where
-    encodeValue val =
-      Binary.composite $ encode val
+    encodeValue oidCache val =
+      Binary.composite (encode oidCache val)
     printValue val =
       "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"

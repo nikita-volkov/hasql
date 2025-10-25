@@ -103,42 +103,13 @@ spec = do
                 Statement.Statement
                   "select (1, true)"
                   mempty
-                  (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.composite ((,) <$> (Decoders.field (Decoders.nonNullable Decoders.int8)) <*> (Decoders.field (Decoders.nonNullable Decoders.bool)))))))
-                  True
-          result <- Connection.use connection (Session.statement () statement)
-          result `shouldBe` Right (1 :: Int64, True)
-
-      it "decodes complex composites" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
-          let statement =
-                Statement.Statement
-                  "select ((1, true), ('hello', 3))"
-                  mempty
                   ( Decoders.singleRow
                       ( Decoders.column
                           ( Decoders.nonNullable
-                              ( Decoders.composite
+                              ( Decoders.record
                                   ( (,)
-                                      <$> ( Decoders.field
-                                              ( Decoders.nonNullable
-                                                  ( Decoders.composite
-                                                      ( (,)
-                                                          <$> (Decoders.field (Decoders.nonNullable Decoders.int8))
-                                                          <*> (Decoders.field (Decoders.nonNullable Decoders.bool))
-                                                      )
-                                                  )
-                                              )
-                                          )
-                                      <*> ( Decoders.field
-                                              ( Decoders.nonNullable
-                                                  ( Decoders.composite
-                                                      ( (,)
-                                                          <$> (Decoders.field (Decoders.nonNullable Decoders.text))
-                                                          <*> (Decoders.field (Decoders.nonNullable Decoders.int8))
-                                                      )
-                                                  )
-                                              )
-                                          )
+                                      <$> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                      <*> Decoders.field (Decoders.nonNullable Decoders.bool)
                                   )
                               )
                           )
@@ -146,49 +117,90 @@ spec = do
                   )
                   True
           result <- Connection.use connection (Session.statement () statement)
-          result `shouldBe` Right ((1 :: Int64, True), ("hello", 3 :: Int64))
+          result `shouldBe` Right (1, True)
 
-    describe "Enum types" do
-      it "handles enum encoding and decoding" \config -> do
-        name <- Scripts.generateSymname
+      it "decodes complex composites" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement =
+                Statement.Statement
+                  "select ((1, true), (text 'hello', 3))"
+                  mempty
+                  ( Decoders.singleRow
+                      ( Decoders.column
+                          ( Decoders.nonNullable
+                              ( Decoders.record
+                                  ( (,)
+                                      <$> Decoders.field
+                                        ( Decoders.nonNullable
+                                            ( Decoders.record
+                                                ( (,)
+                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                                )
+                                            )
+                                        )
+                                      <*> Decoders.field
+                                        ( Decoders.nonNullable
+                                            ( Decoders.record
+                                                ( (,)
+                                                    <$> Decoders.field (Decoders.nonNullable Decoders.text)
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.int4)
+                                                )
+                                            )
+                                        )
+                                  )
+                              )
+                          )
+                      )
+                  )
+                  True
+          result <- Connection.use connection (Session.statement () statement)
+          result `shouldBe` Right ((1, True), ("hello", 3))
+
+      it "encodes and decodes named composites" \config -> do
+        typeName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
           result <- Connection.use connection do
-            -- First create the enum type
+            -- Create a named composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
                 True
-            -- Then test encoding and decoding
-            Session.statement "ok"
+            -- Test encoding and decoding
+            Session.statement (42 :: Int64, True)
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select ($1 :: ", name, ")"]))
-                (Encoders.param (Encoders.nonNullable (Encoders.enum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum (Just . id)))))
+                (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ")"]))
+                ( Encoders.param
+                    ( Encoders.nonNullable
+                        ( Encoders.composite
+                            Nothing
+                            typeName
+                            ( divide
+                                (\(a, b) -> (a, b))
+                                (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                (Encoders.field (Encoders.nonNullable Encoders.bool))
+                            )
+                        )
+                    )
+                )
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.composite
+                                Nothing
+                                typeName
+                                ( (,)
+                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                    <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                )
+                            )
+                        )
+                    )
+                )
                 True
-          result `shouldBe` Right "ok"
-
-    describe "Unknown enum" do
-      it "handles unknown enum encoding" \config -> do
-        name <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          result <- Connection.use connection do
-            -- First create the enum type
-            Session.statement ()
-              $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
-                mempty
-                Decoders.noResult
-                True
-            -- Then test encoding
-            Session.statement "ok"
-              $ Statement.Statement
-                "select $1"
-                (Encoders.param (Encoders.nonNullable (Encoders.unknownEnum id)))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum (Just . id)))))
-                True
-          result `shouldBe` Right "ok"
+          result `shouldBe` Right (42 :: Int64, True)
 
   describe "Statement Functionality" do
     describe "Prepared statements" do

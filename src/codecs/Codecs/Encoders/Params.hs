@@ -2,35 +2,70 @@ module Codecs.Encoders.Params where
 
 import Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Encoders.Value qualified as Value
-import Codecs.TypeInfo qualified as TypeInfo
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
 renderReadable :: Params a -> a -> [Text]
-renderReadable (Params _ _ _ printer) params =
+renderReadable (Params _ _ _ _ printer) params =
   printer params
     & toList
 
-compilePreparedStatementData :: Params a -> a -> ([Word32], [Maybe (ByteString, Bool)])
-compilePreparedStatementData (Params _ columnsMetadata serializer _) input =
+compilePreparedStatementData ::
+  Params a ->
+  HashMap (Maybe Text, Text) (Word32, Word32) ->
+  a ->
+  ([Word32], [Maybe (ByteString, Bool)])
+compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
   (oidList, valueAndFormatList)
   where
     (oidList, formatList) =
-      columnsMetadata & toList & unzip
+      columnsMetadata
+        & toList
+        & fmap
+          ( \case
+              (Left name, dimensionality, format) ->
+                case HashMap.lookup name oidCache of
+                  Just (baseOid, arrayOid) ->
+                    ( if dimensionality == 0 then baseOid else arrayOid,
+                      format
+                    )
+                  Nothing ->
+                    (0, format)
+              (Right oid, _, format) ->
+                (oid, format)
+          )
+        & unzip
+
     valueAndFormatList =
-      serializer input
+      serializer oidCache input
         & toList
         & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
-compileUnpreparedStatementData :: Params a -> a -> [Maybe (Word32, ByteString, Bool)]
-compileUnpreparedStatementData (Params _ columnsMetadata serializer _) input =
+compileUnpreparedStatementData ::
+  Params a ->
+  HashMap (Maybe Text, Text) (Word32, Word32) ->
+  a ->
+  [Maybe (Word32, ByteString, Bool)]
+compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
   zipWith
-    ( \(oid, format) encoding ->
-        (,,) <$> pure oid <*> encoding <*> pure format
+    ( \(nameOrOid, dimensionality, format) encoding ->
+        let oid = case nameOrOid of
+              Left name -> case HashMap.lookup name oidCache of
+                Just (baseOid, arrayOid) ->
+                  if dimensionality == 0 then baseOid else arrayOid
+                Nothing -> 0
+              Right oid -> oid
+         in (,,) <$> Just oid <*> encoding <*> Just format
     )
     (toList columnsMetadata)
-    (toList (serializer input))
+    (toList (serializer oidCache input))
+
+toUnknownTypes :: Params a -> HashSet (Maybe Text, Text)
+toUnknownTypes (Params _ unknownTypes _ _ _) =
+  unknownTypes
 
 -- |
 -- Encoder of some representation of a parameters product.
@@ -78,45 +113,49 @@ compileUnpreparedStatementData (Params _ columnsMetadata serializer _) input =
 -- @
 data Params a = Params
   { size :: Int,
-    -- | (OID, Format) for each parameter.
-    columnsMetadata :: DList (Word32, Bool),
-    serializer :: a -> DList (Maybe ByteString),
+    unknownTypes :: HashSet (Maybe Text, Text),
+    -- | (Name or OID, dimensionality, Text Format) for each parameter.
+    columnsMetadata :: DList (Either (Maybe Text, Text) Word32, Word, Bool),
+    serializer :: HashMap (Maybe Text, Text) (Word32, Word32) -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
 
 instance Contravariant Params where
-  contramap fn (Params size columnsMetadata oldSerializer oldPrinter) = Params {..}
+  contramap fn (Params size unknownTypes columnsMetadata oldSerializer oldPrinter) = Params {..}
     where
-      serializer = oldSerializer . fn
+      serializer oidCache = oldSerializer oidCache . fn
       printer = oldPrinter . fn
 
 instance Divisible Params where
   divide
     divisor
-    (Params leftSize leftColumnsMetadata leftSerializer leftPrinter)
-    (Params rightSize rightColumnsMetadata rightSerializer rightPrinter) =
+    (Params leftSize leftUnknownTypes leftColumnsMetadata leftSerializer leftPrinter)
+    (Params rightSize rightUnknownTypes rightColumnsMetadata rightSerializer rightPrinter) =
       Params
         { size = leftSize + rightSize,
+          unknownTypes = leftUnknownTypes <> rightUnknownTypes,
           columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-          serializer = \input -> case divisor input of
-            (leftInput, rightInput) -> leftSerializer leftInput <> rightSerializer rightInput,
+          serializer = \oidCache input -> case divisor input of
+            (leftInput, rightInput) -> leftSerializer oidCache leftInput <> rightSerializer oidCache rightInput,
           printer = \input -> case divisor input of
             (leftInput, rightInput) -> leftPrinter leftInput <> rightPrinter rightInput
         }
   conquer =
     Params
       { size = 0,
+        unknownTypes = mempty,
         columnsMetadata = mempty,
         serializer = mempty,
         printer = mempty
       }
 
 instance Semigroup (Params a) where
-  Params leftSize leftColumnsMetadata leftSerializer leftPrinter <> Params rightSize rightColumnsMetadata rightSerializer rightPrinter =
+  Params leftSize leftUnknownTypes leftColumnsMetadata leftSerializer leftPrinter <> Params rightSize rightUnknownTypes rightColumnsMetadata rightSerializer rightPrinter =
     Params
       { size = leftSize + rightSize,
+        unknownTypes = leftUnknownTypes <> rightUnknownTypes,
         columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-        serializer = \input -> leftSerializer input <> rightSerializer input,
+        serializer = \oidCache input -> leftSerializer oidCache input <> rightSerializer oidCache input,
         printer = \input -> leftPrinter input <> rightPrinter input
       }
 
@@ -124,36 +163,52 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: Value.Value a -> Params a
-value (Value.Value _ textFormat (Just valueOid) _ serialize print) =
-  Params
-    { size = 1,
-      columnsMetadata = pure (valueOid, textFormat),
-      serializer = pure . Just . Binary.encodingBytes . serialize,
+value (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) =
+  let staticOid = if dimensionality == 0 then scalarOid else arrayOid
+      serializer oidCache = pure . Just . Binary.encodingBytes . serialize oidCache
       printer = pure . TextBuilder.toText . print
-    }
-value (Value.Value _ textFormat Nothing _ serialize print) =
-  Params
-    { size = 1,
-      columnsMetadata = pure (TypeInfo.toBaseOid TypeInfo.unknown, textFormat),
-      serializer = pure . Just . Binary.encodingBytes . serialize,
-      printer = pure . TextBuilder.toText . print
-    }
+      size = 1
+   in case staticOid of
+        Just oid ->
+          Params
+            { size,
+              unknownTypes,
+              columnsMetadata = pure (Right oid, dimensionality, textFormat),
+              serializer,
+              printer
+            }
+        Nothing ->
+          Params
+            { size,
+              unknownTypes = HashSet.insert (schemaName, typeName) unknownTypes,
+              columnsMetadata = pure (Left (schemaName, typeName), dimensionality, textFormat),
+              serializer,
+              printer
+            }
 
 nullableValue :: Value.Value a -> Params (Maybe a)
-nullableValue (Value.Value _ textFormat (Just valueOid) _ serialize print) =
-  Params
-    { size = 1,
-      columnsMetadata = pure (valueOid, textFormat),
-      serializer = pure . fmap (Binary.encodingBytes . serialize),
+nullableValue (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) =
+  let staticOid = if dimensionality == 0 then scalarOid else arrayOid
+      serializer oidCache = pure . fmap (Binary.encodingBytes . serialize oidCache)
       printer = pure . maybe "null" (TextBuilder.toText . print)
-    }
-nullableValue (Value.Value _ textFormat Nothing _ serialize print) =
-  Params
-    { size = 1,
-      columnsMetadata = pure (TypeInfo.toBaseOid TypeInfo.unknown, textFormat),
-      serializer = pure . fmap (Binary.encodingBytes . serialize),
-      printer = pure . maybe "null" (TextBuilder.toText . print)
-    }
+      size = 1
+   in case staticOid of
+        Just oid ->
+          Params
+            { size,
+              unknownTypes,
+              columnsMetadata = pure (Right oid, dimensionality, textFormat),
+              serializer,
+              printer
+            }
+        Nothing ->
+          Params
+            { size,
+              unknownTypes = HashSet.insert (schemaName, typeName) unknownTypes,
+              columnsMetadata = pure (Left (schemaName, typeName), dimensionality, textFormat),
+              serializer,
+              printer
+            }
 
 -- |
 -- No parameters. Same as `mempty` and `conquered`.

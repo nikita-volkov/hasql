@@ -142,6 +142,7 @@ library codecs
     Codecs.Encoders.NullableOrNot
     Codecs.Encoders.Params
     Codecs.Encoders.Value
+    Codecs.RequestingOid
     Codecs.TypeInfo
 
   build-depends:
@@ -149,8 +150,9 @@ library codecs
     bytestring >=0.10 && <0.13,
     hasql:platform,
     iproute >=1.7 && <1.8,
-    postgresql-binary >=0.14.2 && <0.15,
+    postgresql-binary ^>=0.15,
     text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
 
 library core
@@ -159,8 +161,12 @@ library core
   exposed-modules:
     Core.Contexts.Pipeline
     Core.Contexts.Session
+    Core.Decoders.Result
+    Core.Decoders.Row
     Core.Errors
+    Core.PqProcedures.SelectTypeInfo
     Core.Structures.ConnectionState
+    Core.Structures.OidCache
     Core.Structures.StatementCache
 
   build-depends:
@@ -168,6 +174,7 @@ library core
     hasql:hipq,
     hasql:platform,
     hasql:pq,
+    postgresql-binary ^>=0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
 
@@ -177,6 +184,7 @@ library platform
   import: base
   hs-source-dirs: src/platform
   exposed-modules:
+    Platform.LookingUp
     Platform.Prelude
 
   other-modules:
@@ -327,7 +335,14 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.Composite.OidMismatchSpec
+    Sharing.ByUnit.Decoders.CompositeSpec
+    Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
+    Sharing.ByUnit.Decoders.RecordSpec
+    Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
+    Sharing.ByUnit.Encoders.CompositeSpec
+    Sharing.ByUnit.Encoders.EnumSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec

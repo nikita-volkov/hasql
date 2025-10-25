@@ -2,33 +2,44 @@ module Codecs.Decoders.Composite where
 
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
+import Codecs.RequestingOid qualified as RequestingOid
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 
 -- |
 -- Composable decoder of composite values (rows, records).
 newtype Composite a
-  = Composite (Binary.Composite a)
-  deriving newtype (Functor, Applicative, Monad, MonadFail)
+  = Composite (RequestingOid.RequestingOid Binary.Composite a)
+  deriving newtype
+    (Functor, Applicative)
 
-{-# INLINE run #-}
-run :: Composite a -> Binary.Value a
-run (Composite imp) =
-  Binary.composite imp
-
-{-# INLINE value #-}
-value :: Binary.Value a -> Composite (Maybe a)
-value decoder' =
-  Composite $ Binary.nullableValueComposite decoder'
-
-{-# INLINE nonNullValue #-}
-nonNullValue :: Binary.Value a -> Composite a
-nonNullValue decoder' =
-  Composite $ Binary.valueComposite decoder'
+toValueDecoder :: Composite a -> RequestingOid.RequestingOid Binary.Value a
+toValueDecoder (Composite imp) =
+  RequestingOid.hoist Binary.composite imp
 
 -- |
 -- Lift a 'Value.Value' decoder into a 'Composite' decoder for parsing of component values.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable imp -> nonNullValue (Value.toHandler imp)
-  NullableOrNot.Nullable imp -> value (Value.toHandler imp)
+  NullableOrNot.NonNullable imp ->
+    case Value.toBaseOid imp of
+      Just oid ->
+        Composite (RequestingOid.hoist (Binary.typedValueComposite oid) (Value.toDecoder imp))
+      Nothing ->
+        Composite
+          ( RequestingOid.hoistLookingUp
+              (Value.toSchema imp, Value.toTypeName imp)
+              (\(baseOid, _arrayOid) -> Binary.typedValueComposite baseOid)
+              (Value.toDecoder imp)
+          )
+  NullableOrNot.Nullable imp ->
+    case Value.toBaseOid imp of
+      Just oid ->
+        Composite (RequestingOid.hoist (Binary.typedNullableValueComposite oid) (Value.toDecoder imp))
+      Nothing ->
+        Composite
+          ( RequestingOid.hoistLookingUp
+              (Value.toSchema imp, Value.toTypeName imp)
+              (\(baseOid, _arrayOid) -> Binary.typedNullableValueComposite baseOid)
+              (Value.toDecoder imp)
+          )

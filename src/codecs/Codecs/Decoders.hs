@@ -45,6 +45,7 @@ module Codecs.Decoders
     listArray,
     vectorArray,
     composite,
+    record,
     Value.hstore,
     Value.enum,
     Value.custom,
@@ -65,6 +66,7 @@ import Codecs.Decoders.Array qualified as Array
 import Codecs.Decoders.Composite qualified as Composite
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
+import Codecs.TypeInfo qualified as TypeInfo
 import Data.Vector.Generic qualified as GenericVector
 import Platform.Prelude
 
@@ -74,7 +76,7 @@ import Platform.Prelude
 -- Lift an 'Array.Array' decoder to a 'Value.Value' decoder.
 {-# INLINEABLE array #-}
 array :: Array.Array a -> Value.Value a
-array decoder = Value.Value (Array.toTypeName decoder) (Array.toOid decoder) Nothing (Array.toDecoder decoder)
+array decoder = Value.Value (Array.toSchema decoder) (Array.toTypeName decoder) (Array.toBaseOid decoder) (Array.toArrayOid decoder) (Array.toDimensionality decoder) (Array.toValueDecoder decoder)
 
 -- |
 -- Lift a value decoder of element into a unidimensional array decoder producing a list.
@@ -107,7 +109,36 @@ vectorArray :: (GenericVector.Vector vector element) => NullableOrNot.NullableOr
 vectorArray = array . Array.dimension GenericVector.replicateM . Array.element
 
 -- |
--- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder.
+-- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder for named composite types.
+--
+-- This function is for named composite types where the type name is known.
+-- For anonymous composite types (like those created with ROW constructor),
+-- use 'record' instead.
 {-# INLINEABLE composite #-}
-composite :: Composite.Composite a -> Value.Value a
-composite composite = Value.Value "unknown" Nothing Nothing (Composite.run composite)
+composite :: Maybe Text -> Text -> Composite.Composite a -> Value.Value a
+composite schema typeName composite =
+  Value.Value
+    schema
+    typeName
+    Nothing
+    Nothing
+    0
+    (Composite.toValueDecoder composite)
+
+-- |
+-- Lift a 'Composite.Composite' decoder to a 'Value.Value' decoder for unnamed composite types.
+--
+-- This is useful for decoding anonymous composites (like those created with ROW constructor)
+-- where no type name is required. Postgres will handle the type automatically.
+{-# INLINEABLE record #-}
+record :: Composite.Composite a -> Value.Value a
+record composite =
+  Value.Value
+    Nothing
+    "record"
+    (Just (TypeInfo.toBaseOid typeInfo))
+    (Just (TypeInfo.toArrayOid typeInfo))
+    0
+    (Composite.toValueDecoder composite)
+  where
+    typeInfo = TypeInfo.record

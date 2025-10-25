@@ -3,6 +3,7 @@ module Codecs.Encoders.Value where
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
+import Data.HashSet qualified as HashSet
 import Data.IP qualified as Iproute
 import Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -13,10 +14,14 @@ import TextBuilder qualified as TextBuilder
 -- Value encoder.
 data Value a
   = Value
+      -- | Schema name, if any.
+      (Maybe Text)
       -- | Type name.
       Text
       -- | Text format?
       Bool
+      -- | Dimensionality. If 0 then it is not an array, but a scalar value.
+      Word
       -- | Statically known OID for the type.
       -- When unspecified, the OID may be determined at runtime by looking up by name.
       (Maybe Word32)
@@ -24,25 +29,31 @@ data Value a
       -- When unspecified, the OID may be determined at runtime by looking up by name.
       -- It may also mean that there may be no array type containing this type, which is the case in attempts to double-nest arrays.
       (Maybe Word32)
-      -- | Serialization function (always integer timestamps for PostgreSQL 10+).
-      (a -> Binary.Encoding)
+      -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
+      (HashSet (Maybe Text, Text))
+      -- | Serialization function on the resolved OIDs.
+      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Encoding)
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
-  contramap f (Value typeName textFormat valueOid arrayOid encode render) =
-    Value typeName textFormat valueOid arrayOid (encode . f) (render . f)
-
-{-# INLINE unknownPrimitive #-}
-unknownPrimitive :: (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
-unknownPrimitive =
-  primitive "unknown" False TypeInfo.unknown
+  contramap f (Value schemaName typeName textFormat isArray valueOid arrayOid unknownTypes encode render) =
+    Value schemaName typeName textFormat isArray valueOid arrayOid unknownTypes (\hashMap -> encode hashMap . f) (render . f)
 
 {-# INLINE primitive #-}
 primitive :: Text -> Bool -> TypeInfo.TypeInfo -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
-primitive typeName isText typeInfo =
-  Value typeName isText (Just (TypeInfo.toBaseOid typeInfo)) (Just (TypeInfo.toArrayOid typeInfo))
+primitive typeName isText typeInfo encode render =
+  Value
+    Nothing
+    typeName
+    isText
+    0
+    (Just (TypeInfo.toBaseOid typeInfo))
+    (Just (TypeInfo.toArrayOid typeInfo))
+    HashSet.empty
+    (const encode)
+    render
 
 -- |
 -- Encoder of @BOOL@ values.
@@ -287,22 +298,28 @@ datemultirange :: Value (Range.Multirange Day)
 datemultirange = primitive "datemultirange" False TypeInfo.datemultirange Binary.datemultirange (TextBuilder.string . show)
 
 -- |
--- Given a function,
--- which maps a value into a textual enum label used on the DB side,
--- produces an encoder of that value.
+-- Given a function which maps a value into a textual enum label used on the DB side,
+-- produces an encoder of that value for a named enum type.
 {-# INLINEABLE enum #-}
-enum :: (a -> Text) -> Value a
-enum mapping = primitive "text" False TypeInfo.text (Binary.text_strict . mapping) (TextBuilder.text . mapping)
-
--- |
--- Variation of 'enum' with unknown OID.
--- This function does not identify the type to Postgres,
--- so Postgres must be able to derive the type from context.
--- When you find yourself in such situation just provide an explicit type in the query
--- using the :: operator.
-{-# INLINEABLE unknownEnum #-}
-unknownEnum :: (a -> Text) -> Value a
-unknownEnum mapping = primitive "unknown" False TypeInfo.unknown (Binary.text_strict . mapping) (TextBuilder.text . mapping)
+enum ::
+  -- | Schema name where the enum type is defined.
+  Maybe Text ->
+  -- | Enum type name.
+  Text ->
+  -- | Mapping function from value to enum label.
+  (a -> Text) ->
+  Value a
+enum schemaName typeName mapping =
+  Value
+    schemaName
+    typeName
+    False
+    0
+    Nothing
+    Nothing
+    (HashSet.singleton (schemaName, typeName))
+    (const (Binary.text_strict . mapping))
+    (TextBuilder.text . mapping)
 
 -- |
 -- Identifies the value with the PostgreSQL's \"unknown\" type,

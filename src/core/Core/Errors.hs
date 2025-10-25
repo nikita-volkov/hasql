@@ -2,6 +2,7 @@ module Core.Errors where
 
 import Hipq.Recv qualified
 import Hipq.ResultDecoder qualified
+import Hipq.Roundtrip qualified
 import Hipq.RowReader qualified
 import Platform.Prelude
 import TextBuilder qualified
@@ -113,7 +114,18 @@ data SessionError
   | -- | Either the server misbehaves or there is a bug in Hasql.
     DriverSessionError
       Text
+  | -- | One or more types referenced in the statement could not be found in the database.
+    MissingTypesSessionError
+      -- | Set of (schema name, type name) pairs that could not be found.
+      (HashSet (Maybe Text, Text))
   deriving stock (Show, Eq)
+
+fromRoundtripError :: Hipq.Roundtrip.Error context -> SessionError
+fromRoundtripError = \case
+  Hipq.Roundtrip.ClientError _context details ->
+    ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+  Hipq.Roundtrip.ServerError recvError ->
+    fromRecvError (Nothing <$ recvError)
 
 fromRecvError :: Hipq.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
 fromRecvError = \case

@@ -1,8 +1,12 @@
 module Codecs.Decoders.Array
   ( Array,
-    toDecoder,
+    toValueDecoder,
+    toTypeSig,
+    toSchema,
     toTypeName,
-    toOid,
+    toBaseOid,
+    toArrayOid,
+    toDimensionality,
     dimension,
     element,
   )
@@ -10,6 +14,7 @@ where
 
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
+import Codecs.RequestingOid qualified as RequestingOid
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 import TextBuilder qualified
@@ -25,44 +30,67 @@ import TextBuilder qualified
 -- @
 data Array a
   = Array
-      -- | Type name for the array element
+      -- | Schema name.
+      (Maybe Text)
+      -- | Type name for the array element.
       Text
+      -- | Statically known OID for the base (element) type.
+      (Maybe Word32)
       -- | Statically known OID for the array type.
       (Maybe Word32)
       -- | Number of dimensions.
-      Int
+      Word
       -- | Decoding function
-      (Binary.Array a)
+      (RequestingOid.RequestingOid Binary.Array a)
   deriving (Functor)
 
-{-# INLINE toDecoder #-}
-toDecoder :: Array a -> Binary.Value a
-toDecoder (Array _ _ _ decoder) =
-  Binary.array decoder
+{-# INLINE toValueDecoder #-}
+toValueDecoder :: Array a -> RequestingOid.RequestingOid Binary.Value a
+toValueDecoder (Array _ _ _ _ _ decoder) =
+  RequestingOid.hoist Binary.array decoder
+
+-- | Get the type signature for the array based on element type name
+{-# INLINE toTypeSig #-}
+toTypeSig :: Array a -> Text
+toTypeSig (Array schemaName elementTypeName _ _ ndims _) =
+  TextBuilder.toText
+    ( mconcat
+        ( mconcat
+            [ foldMap
+                (\s -> [TextBuilder.text s, TextBuilder.char '.'])
+                schemaName,
+              [ TextBuilder.text elementTypeName
+              ],
+              replicate
+                (fromIntegral ndims)
+                (TextBuilder.text "[]")
+            ]
+        )
+    )
+
+toSchema :: Array a -> Maybe Text
+toSchema (Array schema _ _ _ _ _) = schema
 
 -- | Get the type name for the array based on element type name
 {-# INLINE toTypeName #-}
 toTypeName :: Array a -> Text
-toTypeName (Array elementTypeName _ ndims _) =
-  let chunks =
-        TextBuilder.text elementTypeName
-          : replicate ndims (TextBuilder.text "[]")
-   in TextBuilder.toText (mconcat chunks)
+toTypeName (Array _ elementTypeName _ _ _ _) =
+  elementTypeName
+
+-- | Get the base OID if statically known
+{-# INLINE toBaseOid #-}
+toBaseOid :: Array a -> Maybe Word32
+toBaseOid (Array _ _ baseOid _ _ _) = baseOid
 
 -- | Get the array OID if statically known
-{-# INLINE toOid #-}
-toOid :: Array a -> Maybe Word32
-toOid (Array _ oid _ _) = oid
+{-# INLINE toArrayOid #-}
+toArrayOid :: Array a -> Maybe Word32
+toArrayOid (Array _ _ _ arrayOid _ _) = arrayOid
 
-{-# INLINE nullableElement #-}
-nullableElement :: Text -> Maybe Word32 -> Binary.Value a -> Array (Maybe a)
-nullableElement elementTypeName oid decoder =
-  Array elementTypeName oid 1 $ Binary.nullableValueArray decoder
-
-{-# INLINE nonNullableElement #-}
-nonNullableElement :: Text -> Maybe Word32 -> Binary.Value a -> Array a
-nonNullableElement elementTypeName oid decoder =
-  Array elementTypeName oid 1 $ Binary.valueArray decoder
+-- | Get the dimensionality of the array
+{-# INLINE toDimensionality #-}
+toDimensionality :: Array a -> Word
+toDimensionality (Array _ _ _ _ ndims _) = ndims
 
 -- * Public API
 
@@ -79,8 +107,14 @@ nonNullableElement elementTypeName oid decoder =
 -- * Binary decoder of its components, which can be either another 'dimension' or 'element'.
 {-# INLINEABLE dimension #-}
 dimension :: (forall m. (Monad m) => Int -> m a -> m b) -> Array a -> Array b
-dimension replicateM (Array typeName typeOid ndims decoder) =
-  Array typeName typeOid (succ ndims) $ Binary.dimensionArray replicateM decoder
+dimension replicateM (Array schema typeName baseOid arrayOid ndims decoder) =
+  Array
+    schema
+    typeName
+    baseOid
+    arrayOid
+    (succ ndims)
+    (RequestingOid.hoist (Binary.dimensionArray replicateM) decoder)
 
 -- |
 -- Lift a 'Value.Value' decoder into an 'Array' decoder for parsing of leaf values.
@@ -88,12 +122,18 @@ dimension replicateM (Array typeName typeOid ndims decoder) =
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
   NullableOrNot.NonNullable imp ->
-    nonNullableElement
+    Array
+      (Value.toSchema imp)
       (Value.toTypeName imp)
+      (Value.toBaseOid imp)
       (Value.toArrayOid imp)
-      (Value.toHandler imp)
+      1
+      (RequestingOid.hoist Binary.valueArray (Value.toDecoder imp))
   NullableOrNot.Nullable imp ->
-    nullableElement
+    Array
+      (Value.toSchema imp)
       (Value.toTypeName imp)
+      (Value.toBaseOid imp)
       (Value.toArrayOid imp)
-      (Value.toHandler imp)
+      1
+      (RequestingOid.hoist Binary.nullableValueArray (Value.toDecoder imp))

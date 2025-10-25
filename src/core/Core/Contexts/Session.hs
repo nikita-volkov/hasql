@@ -2,9 +2,9 @@ module Core.Contexts.Session where
 
 import Codecs.Encoders.Params qualified as Params
 import Core.Contexts.Pipeline qualified as Pipeline
+import Core.Decoders.Result qualified as Decoders.Result
 import Core.Errors qualified as Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
-import Hipq.ResultDecoder qualified
 import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
@@ -66,7 +66,7 @@ script sql =
 statement ::
   ByteString ->
   Params.Params params ->
-  Hipq.ResultDecoder.ResultDecoder result ->
+  Decoders.Result.Result result ->
   Bool ->
   params ->
   Session result
@@ -79,12 +79,17 @@ pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
       statementCache = ConnectionState.statementCache connectionState
+      oidCache = ConnectionState.oidCache connectionState
       pqConnection = ConnectionState.connection connectionState
-      (io, newCache) = Pipeline.run pipeline usePreparedStatements pqConnection statementCache
-      newState = ConnectionState.setStatementCache newCache connectionState
    in do
-        result <- io
-        pure (result, newState)
+        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline usePreparedStatements pqConnection oidCache statementCache
+        let newConnectionState =
+              connectionState
+                { ConnectionState.oidCache = newOidCache,
+                  ConnectionState.statementCache = newStatementCache
+                }
+
+        pure (result, newConnectionState)
 
 -- |
 -- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.
