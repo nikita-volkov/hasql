@@ -150,7 +150,7 @@ library codecs
     bytestring >=0.10 && <0.13,
     hasql:platform,
     iproute >=1.7 && <1.8,
-    postgresql-binary >=0.14.2 && <0.15,
+    postgresql-binary ^>=0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
@@ -174,7 +174,7 @@ library core
     hasql:hipq,
     hasql:platform,
     hasql:pq,
-    postgresql-binary >=0.14.2 && <0.15,
+    postgresql-binary ^>=0.15,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
 
