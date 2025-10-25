@@ -438,24 +438,24 @@ spec = do
               True
         result `shouldBe` Right (42 :: Int64)
 
-  it "detects attempts to decode non-existent domain types" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
-      result <- Connection.use connection do
-        Session.statement ()
-          $ Statement.Statement
-            "select 42::int8"
-            mempty
-            ( Decoders.singleRow
-                ( Decoders.column
-                    ( Decoders.nonNullable
-                        (Decoders.domain Nothing "nonexistent_domain_type" Decoders.int8)
-                    )
-                )
-            )
-            True
+    it "detects attempts to decode non-existent domain types" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          Session.statement ()
+            $ Statement.Statement
+              "select 42::int8"
+              mempty
+              ( Decoders.singleRow
+                  ( Decoders.column
+                      ( Decoders.nonNullable
+                          (Decoders.domain Nothing "nonexistent_domain_type" Decoders.int8)
+                      )
+                  )
+              )
+              True
 
-      case result of
-        Left (Errors.MissingTypesSessionError missingTypes) ->
-          missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_domain_type")]
-        _ ->
-          expectationFailure ("Unexpected result: " <> show result)
+        case result of
+          Left (Errors.MissingTypesSessionError missingTypes) ->
+            missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_domain_type")]
+          _ ->
+            expectationFailure ("Unexpected result: " <> show result)
