@@ -7,11 +7,10 @@ import Codecs.RequestingOid qualified as RequestingOid
 import Data.ByteString qualified as ByteString
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
-import TextBuilder qualified
 
 -- |
 -- Composable decoder of composite values (rows, records).
--- 
+--
 -- This is a parser for individual fields within a composite type.
 -- Unlike the postgresql-binary version, this implementation checks OIDs
 -- to ensure type safety.
@@ -79,10 +78,10 @@ parseNonNullFieldWithOidCheck expectedOid valueDecoder = do
       <> show expectedOid
       <> " but got "
       <> show actualOid
-  
+
   -- Read size (4 bytes, big-endian)
   size <- read4BytesAsInt32
-  
+
   -- Parse data based on size
   case size of
     (-1) -> fail "Unexpected NULL"
@@ -100,10 +99,10 @@ parseNullableFieldWithOidCheck expectedOid valueDecoder = do
       <> show expectedOid
       <> " but got "
       <> show actualOid
-  
+
   -- Read size (4 bytes, big-endian)
   size <- read4BytesAsInt32
-  
+
   -- Parse data based on size
   case size of
     (-1) -> pure Nothing
