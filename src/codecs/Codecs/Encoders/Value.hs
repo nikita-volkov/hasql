@@ -335,3 +335,41 @@ enum schemaName typeName mapping =
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
 unknown = primitive "unknown" True TypeInfo.unknown Binary.bytea_strict (TextBuilder.string . show)
+
+-- |
+-- Encode a value as a PostgreSQL domain type.
+--
+-- Domain types are user-defined types that are based on an underlying base type
+-- with optional constraints. This encoder allows you to encode values using their
+-- base type encoder while identifying them as the domain type to PostgreSQL.
+--
+-- Example:
+--
+-- @
+-- -- Given a domain: CREATE DOMAIN positive_int AS int4 CHECK (VALUE > 0);
+-- positiveIntEncoder :: Value Int32
+-- positiveIntEncoder = domain Nothing "positive_int" int4
+-- @
+--
+-- The encoder handles OID resolution automatically, looking up the domain's OID
+-- by name at runtime if not statically known.
+{-# INLINEABLE domain #-}
+domain ::
+  -- | Schema name where the domain type is defined.
+  Maybe Text ->
+  -- | Domain type name.
+  Text ->
+  -- | Base type encoder.
+  Value a ->
+  Value a
+domain schema typeName (Value _baseSchema _baseTypeName isText dimensionality _baseOid _arrayOid _unknownTypes encode render) =
+  Value
+    schema
+    typeName
+    isText
+    dimensionality
+    Nothing
+    Nothing
+    (HashSet.singleton (schema, typeName))
+    encode
+    render

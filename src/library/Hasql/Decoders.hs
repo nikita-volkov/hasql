@@ -68,6 +68,7 @@ module Hasql.Decoders
     vectorArray,
     composite,
     record,
+    domain,
     hstore,
     enum,
     custom,

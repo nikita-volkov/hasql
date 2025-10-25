@@ -46,6 +46,7 @@ module Codecs.Decoders
     vectorArray,
     composite,
     record,
+    domain,
     Value.hstore,
     Value.enum,
     Value.custom,
@@ -142,3 +143,32 @@ record composite =
     (Composite.toValueDecoder composite)
   where
     typeInfo = TypeInfo.record
+
+-- |
+-- Lift a value decoder into a domain type decoder.
+--
+-- Domain types are user-defined types that are based on an underlying base type
+-- with optional constraints. This decoder allows you to decode values using their
+-- base type decoder while expecting them as the domain type from PostgreSQL.
+--
+-- Example:
+--
+-- @
+-- -- Given a domain: CREATE DOMAIN positive_int AS int4 CHECK (VALUE > 0);
+-- positiveIntDecoder :: Value Int32
+-- positiveIntDecoder = domain Nothing \"positive_int\" int4
+-- @
+--
+-- The decoder handles OID resolution automatically, looking up the domain's OID
+-- by name at runtime if not statically known. It validates that the actual column
+-- type matches the expected domain type.
+{-# INLINEABLE domain #-}
+domain :: Maybe Text -> Text -> Value.Value a -> Value.Value a
+domain schema typeName baseDecoder =
+  Value.Value
+    schema
+    typeName
+    Nothing
+    Nothing
+    0
+    (Value.toDecoder baseDecoder)

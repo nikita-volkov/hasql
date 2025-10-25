@@ -59,6 +59,7 @@ module Codecs.Encoders
     array,
     Value.enum,
     composite,
+    domain,
     Value.unknown,
 
     -- * Array
@@ -79,6 +80,7 @@ import Codecs.Encoders.Params qualified as Params
 import Codecs.Encoders.Value qualified as Value
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
@@ -144,3 +146,40 @@ composite schema name (Composite.Composite unknownTypes encode print) =
       Binary.composite (encode oidCache val)
     printValue val =
       "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"
+
+-- |
+-- Lift a value encoder into a domain type encoder.
+--
+-- Domain types are user-defined types that are based on an underlying base type
+-- with optional constraints. This encoder allows you to encode values using their
+-- base type encoder while identifying them as the domain type to PostgreSQL.
+--
+-- Example:
+--
+-- @
+-- -- Given a domain: CREATE DOMAIN positive_int AS int4 CHECK (VALUE > 0);
+-- positiveIntEncoder :: Value Int32
+-- positiveIntEncoder = domain Nothing \"positive_int\" int4
+-- @
+--
+-- The encoder handles OID resolution automatically, looking up the domain's OID
+-- by name at runtime if not statically known.
+domain ::
+  -- | Schema name where the domain type is defined.
+  Maybe Text ->
+  -- | Domain type name.
+  Text ->
+  -- | Base type encoder.
+  Value.Value a ->
+  Value.Value a
+domain schema typeName (Value.Value _baseSchema _baseTypeName isText dimensionality _baseOid _arrayOid _unknownTypes encode render) =
+  Value.Value
+    schema
+    typeName
+    isText
+    dimensionality
+    Nothing
+    Nothing
+    (HashSet.singleton (schema, typeName))
+    encode
+    render
