@@ -147,6 +147,7 @@ library codecs
 
   build-depends:
     aeson >=2 && <3,
+    binary-parser >=0.5.7 && <0.6,
     bytestring >=0.10 && <0.13,
     hasql:platform,
     iproute >=1.7 && <1.8,

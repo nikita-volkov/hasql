@@ -1,5 +1,6 @@
 module Codecs.Decoders.Composite where
 
+import BinaryParser qualified
 import Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Codecs.Decoders.Value qualified as Value
 import Codecs.RequestingOid qualified as RequestingOid
@@ -20,10 +21,8 @@ newtype Composite a
 
 instance Applicative Composite where
   pure x = Composite (\_ -> pure x)
-  Composite ff <*> Composite fx = Composite \fieldIndex -> do
-    f <- ff fieldIndex
-    x <- fx (fieldIndex + 1)
-    pure (f x)
+  Composite ff <*> Composite fx = Composite \fieldIndex ->
+    ff fieldIndex <*> fx (fieldIndex + 1)
 
 -- |
 -- Convert a Composite decoder to a Value decoder.
@@ -32,17 +31,11 @@ toValueDecoder :: Composite a -> RequestingOid.RequestingOid Binary.Value a
 toValueDecoder (Composite decoder) =
   RequestingOid.hoist addCompositeHeader (decoder 0)
   where
-    addCompositeHeader valueDecoder =
-      Binary.fn \bytes ->
-        case Binary.valueParser parser bytes of
-          Left err -> Left err
-          Right val -> Right val
-      where
-        parser = do
-          -- Read number of fields (we don't validate this, just skip it)
-          _numFields <- Binary.int :: Binary.Value Int32
-          -- Now parse the actual value
-          valueDecoder
+    addCompositeHeader valueDecoder = do
+      -- Read number of fields (we don't validate this, just skip it)
+      _numFields <- Binary.int :: Binary.Value Int32
+      -- Now parse the actual value
+      valueDecoder
 
 -- |
 -- Lift a 'Value.Value' decoder into a 'Composite' decoder for parsing of component values.
@@ -77,65 +70,86 @@ field = \case
 -- |
 -- Parse a non-nullable composite field with OID checking.
 parseNonNullFieldWithOidCheck :: Word32 -> Binary.Value a -> Binary.Value a
-parseNonNullFieldWithOidCheck expectedOid valueDecoder =
-  Binary.fn \bytes ->
-    case Binary.valueParser parser bytes of
-      Left err -> Left err
-      Right val -> Right val
-  where
-    parser = do
-      -- Read and check OID
-      actualOid <- Binary.int :: Binary.Value Word32
-      when (actualOid /= expectedOid) do
-        fail
-          $ "OID mismatch: expected "
-          <> show expectedOid
-          <> " but got "
-          <> show actualOid
-      
-      -- Read size
-      size <- Binary.int :: Binary.Value Int32
-      
-      -- Parse data based on size
-      case size of
-        (-1) -> fail "Unexpected NULL"
-        n -> isolate (fromIntegral n) valueDecoder
-    
-    -- Helper to parse a limited number of bytes
-    isolate n decoder =
-      Binary.fn \allBytes ->
-        let (bytes, _rest) = ByteString.splitAt n allBytes
-         in Binary.valueParser decoder bytes
+parseNonNullFieldWithOidCheck expectedOid valueDecoder = do
+  -- Read and check OID (4 bytes, big-endian)
+  actualOid <- read4BytesAsWord32
+  when (actualOid /= expectedOid) do
+    fail
+      $ "OID mismatch: expected "
+      <> show expectedOid
+      <> " but got "
+      <> show actualOid
+  
+  -- Read size (4 bytes, big-endian)
+  size <- read4BytesAsInt32
+  
+  -- Parse data based on size
+  case size of
+    (-1) -> fail "Unexpected NULL"
+    n -> isolate (fromIntegral n) valueDecoder
 
 -- |
 -- Parse a nullable composite field with OID checking.
 parseNullableFieldWithOidCheck :: Word32 -> Binary.Value a -> Binary.Value (Maybe a)
-parseNullableFieldWithOidCheck expectedOid valueDecoder =
-  Binary.fn \bytes ->
-    case Binary.valueParser parser bytes of
-      Left err -> Left err
-      Right val -> Right val
-  where
-    parser = do
-      -- Read and check OID
-      actualOid <- Binary.int :: Binary.Value Word32
-      when (actualOid /= expectedOid) do
-        fail
-          $ "OID mismatch: expected "
-          <> show expectedOid
-          <> " but got "
-          <> show actualOid
-      
-      -- Read size
-      size <- Binary.int :: Binary.Value Int32
-      
-      -- Parse data based on size
-      case size of
-        (-1) -> pure Nothing
-        n -> Just <$> isolate (fromIntegral n) valueDecoder
-    
-    -- Helper to parse a limited number of bytes
-    isolate n decoder =
-      Binary.fn \allBytes ->
-        let (bytes, _rest) = ByteString.splitAt n allBytes
-         in Binary.valueParser decoder bytes
+parseNullableFieldWithOidCheck expectedOid valueDecoder = do
+  -- Read and check OID (4 bytes, big-endian)
+  actualOid <- read4BytesAsWord32
+  when (actualOid /= expectedOid) do
+    fail
+      $ "OID mismatch: expected "
+      <> show expectedOid
+      <> " but got "
+      <> show actualOid
+  
+  -- Read size (4 bytes, big-endian)
+  size <- read4BytesAsInt32
+  
+  -- Parse data based on size
+  case size of
+    (-1) -> pure Nothing
+    n -> Just <$> isolate (fromIntegral n) valueDecoder
+
+-- |
+-- Isolate parsing to exactly n bytes
+isolate :: Int -> Binary.Value a -> Binary.Value a
+isolate n decoder = coerce do
+  bytes <- readNBytes n
+  case Binary.valueParser decoder bytes of
+    Left err -> BinaryParser.failure err
+    Right val -> pure val
+
+-- | Read exactly n bytes
+readNBytes :: Int -> BinaryParser.BinaryParser ByteString
+readNBytes n = coerce do
+  if n == 0
+    then pure ByteString.empty
+    else do
+      bytes <- replicateM n BinaryParser.byte
+      pure (ByteString.pack bytes)
+
+-- Helper to read exactly 4 bytes as a Word32 (big-endian)
+read4BytesAsWord32 :: Binary.Value Word32
+read4BytesAsWord32 = coerce do
+  b0 <- BinaryParser.byte
+  b1 <- BinaryParser.byte
+  b2 <- BinaryParser.byte
+  b3 <- BinaryParser.byte
+  let w0 = fromIntegral b0 :: Word32
+      w1 = fromIntegral b1 :: Word32
+      w2 = fromIntegral b2 :: Word32
+      w3 = fromIntegral b3 :: Word32
+  pure $ (w0 `shiftL` 24) .|. (w1 `shiftL` 16) .|. (w2 `shiftL` 8) .|. w3
+
+-- Helper to read exactly 4 bytes as an Int32 (big-endian)
+read4BytesAsInt32 :: Binary.Value Int32
+read4BytesAsInt32 = coerce do
+  b0 <- BinaryParser.byte
+  b1 <- BinaryParser.byte
+  b2 <- BinaryParser.byte
+  b3 <- BinaryParser.byte
+  let w0 = fromIntegral b0 :: Word32
+      w1 = fromIntegral b1 :: Word32
+      w2 = fromIntegral b2 :: Word32
+      w3 = fromIntegral b3 :: Word32
+      word32Result = (w0 `shiftL` 24) .|. (w1 `shiftL` 16) .|. (w2 `shiftL` 8) .|. w3
+  pure (fromIntegral word32Result :: Int32)
