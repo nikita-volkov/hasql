@@ -16,7 +16,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select (1, true)"
+                  "select (1::int8, true)"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -38,7 +38,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select ('hello', 123)"
+                  "select ('hello'::text, 123::int4)"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -60,7 +60,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select (42, 'test', 3.14 :: float8)"
+                  "select (42::int8, 'test'::text, 3.14 :: float8)"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -84,7 +84,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select ((1, true), ('hello', 3))"
+                  "select ((1::int8, true), ('hello'::text, 3::int8))"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -122,7 +122,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select ((row (99), (true, 'test')), 'outer')"
+                  "select ((row (99::int8), (true, 'test'::text)), 'outer'::text)"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -166,7 +166,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select array[(1, true), (2, false), (3, true)]"
+                  "select array[(1::int8, true), (2::int8, false), (3::int8, true)]"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -197,7 +197,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select array[array[(1, 'a'), (2, 'b')], array[(3, 'c'), (4, 'd')]]"
+                  "select array[array[(1::int4, 'a'::text), (2::int4, 'b'::text)], array[(3::int4, 'c'::text), (4::int4, 'd'::text)]]"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
