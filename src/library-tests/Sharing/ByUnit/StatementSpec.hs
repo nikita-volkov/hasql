@@ -108,7 +108,7 @@ spec = do
                           ( Decoders.nonNullable
                               ( Decoders.record
                                   ( (,)
-                                      <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                      <$> Decoders.field (Decoders.nonNullable Decoders.int4)
                                       <*> Decoders.field (Decoders.nonNullable Decoders.bool)
                                   )
                               )
@@ -117,13 +117,13 @@ spec = do
                   )
                   True
           result <- Connection.use connection (Session.statement () statement)
-          result `shouldBe` Right (1 :: Int64, True)
+          result `shouldBe` Right (1, True)
 
       it "decodes complex composites" \config -> do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select ((1, true), ('hello', 3))"
+                  "select ((1, true), (text 'hello', 3))"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -134,7 +134,7 @@ spec = do
                                         ( Decoders.nonNullable
                                             ( Decoders.record
                                                 ( (,)
-                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int4)
                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)
                                                 )
                                             )
@@ -144,7 +144,7 @@ spec = do
                                             ( Decoders.record
                                                 ( (,)
                                                     <$> Decoders.field (Decoders.nonNullable Decoders.text)
-                                                    <*> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                    <*> Decoders.field (Decoders.nonNullable Decoders.int4)
                                                 )
                                             )
                                         )
@@ -155,7 +155,7 @@ spec = do
                   )
                   True
           result <- Connection.use connection (Session.statement () statement)
-          result `shouldBe` Right ((1 :: Int64, True), ("hello", 3 :: Int64))
+          result `shouldBe` Right ((1, True), ("hello", 3))
 
       it "encodes and decodes named composites" \config -> do
         typeName <- Scripts.generateSymname

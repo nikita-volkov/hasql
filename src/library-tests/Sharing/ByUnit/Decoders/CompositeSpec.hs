@@ -412,7 +412,7 @@ spec = do
       result <- Connection.use connection do
         Session.statement ()
           $ Statement.Statement
-            "select row(42, 'test')"
+            "select row(42, text 'test')"
             mempty
             ( Decoders.singleRow
                 ( Decoders.column
@@ -421,7 +421,7 @@ spec = do
                             Nothing
                             "nonexistent_composite_type"
                             ( (,)
-                                <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                <$> Decoders.field (Decoders.nonNullable Decoders.int4)
                                 <*> Decoders.field (Decoders.nonNullable Decoders.text)
                             )
                         )
