@@ -1,5 +1,6 @@
 module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 
+import Data.Text qualified as Text
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
@@ -433,7 +434,7 @@ spec = do
       case result of
         Left err -> do
           err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
+            Errors.DriverSessionError msg -> "not found" `Text.isInfixOf` msg
             _ -> False
         Right _ ->
           expectationFailure "Expected error when decoding with non-existent composite type, but statement succeeded"

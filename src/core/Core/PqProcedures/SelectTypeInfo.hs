@@ -16,6 +16,7 @@ import Hipq.Roundtrip qualified
 import Hipq.RowDecoder qualified
 import Platform.Prelude
 import Pq qualified
+import TextBuilder qualified
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
@@ -30,9 +31,34 @@ run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectT
 run connection (SelectTypeInfo keys) =
   if HashSet.null keys
     then pure (Right HashMap.empty)
-    else
-      first Errors.fromRoundtripError
-        <$> Hipq.Roundtrip.toSerialIO (roundtrip (SelectTypeInfo keys)) connection
+    else do
+      result <- Hipq.Roundtrip.toSerialIO (roundtrip (SelectTypeInfo keys)) connection
+      case result of
+        Left err -> pure (Left (Errors.fromRoundtripError err))
+        Right foundTypes -> do
+          let missingTypes = HashSet.difference keys (HashMap.keysSet foundTypes)
+          if HashSet.null missingTypes
+            then pure (Right foundTypes)
+            else
+              pure
+                ( Left
+                    ( Errors.DriverSessionError
+                        ( (TextBuilder.toText . mconcat)
+                            [ "Type lookup failed. The following types were not found in the database: ",
+                              TextBuilder.intercalate
+                                ", "
+                                ( fmap
+                                    ( \(schema, name) ->
+                                        case schema of
+                                          Nothing -> TextBuilder.text name
+                                          Just s -> TextBuilder.text s <> "." <> TextBuilder.text name
+                                    )
+                                    (HashSet.toList missingTypes)
+                                )
+                            ]
+                        )
+                    )
+                )
 
 sql :: ByteString
 sql =

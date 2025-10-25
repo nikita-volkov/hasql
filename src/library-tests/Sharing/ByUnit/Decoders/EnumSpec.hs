@@ -1,5 +1,6 @@
 module Sharing.ByUnit.Decoders.EnumSpec (spec) where
 
+import Data.Text qualified as Text
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
@@ -292,9 +293,9 @@ spec = do
       -- The statement should fail when trying to decode with a non-existent type
       case result of
         Left err -> do
-          -- We expect some kind of error (type mismatch or similar)
+          -- We expect an error indicating the type was not found
           err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
+            Errors.DriverSessionError msg -> "not found" `Text.isInfixOf` msg
             _ -> False
         Right _ ->
           expectationFailure "Expected error when decoding with non-existent enum type, but statement succeeded"
@@ -324,7 +325,7 @@ spec = do
       case result of
         Left err -> do
           err `shouldSatisfy` \case
-            Errors.StatementSessionError {} -> True
+            Errors.DriverSessionError msg -> "not found" `Text.isInfixOf` msg
             _ -> False
         Right _ ->
           expectationFailure "Expected error when decoding array of non-existent enum type, but statement succeeded"
