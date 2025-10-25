@@ -8,6 +8,10 @@ Major revision happened.
 
   Encoders and decoders now support resolving PostgreSQL type OIDs by their names at runtime. This enables working with custom types (enums, composite types, domains) without hardcoding OID values. The system includes an OID cache to optimize repeated lookups and automatically queries `pg_type` and related system catalogs when needed. This change affects array, composite, and value encoders/decoders throughout the codec system.
 
+- **Domain type support**.
+
+  Added explicit support for PostgreSQL domain types through the `domain` encoder and decoder functions. Domain types are user-defined types based on underlying base types with optional constraints. The codec system handles OID resolution for domain types automatically and validates type compatibility at runtime. Domain codecs work correctly with arrays of domains, composites containing domain fields, and nested structures. Plain codecs will fail with `UnexpectedColumnTypeStatementError` when used with domain type columns, ensuring type safety.
+
 - **Decoder compatibility checks**.
 
   Previously decoders were silently accepting values of different types, if binary decoding did not fail. Now decoders check if the actual type of the column matches the expected type of the decoder and report `UnexpectedColumnTypeStatementError` error if they do not match. They also match the amount of columns in the result with the amount of columns expected by the decoder and report an error if they do not match.
