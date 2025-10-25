@@ -29,9 +29,6 @@ module Hipq.ResultDecoder
 
     -- * Errors
     Error (..),
-
-    -- * Mappings
-    Wraps (..),
   )
 where
 
@@ -366,9 +363,3 @@ data Error
       -- | Underlying error.
       RowDecoder.Error
   deriving (Show, Eq)
-
--- * Classes
-
-class Wraps f where
-  wrap :: ResultDecoder a -> f a
-  unwrap :: f a -> ResultDecoder a
