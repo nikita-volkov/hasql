@@ -1,4 +1,4 @@
-module Hipq.Recv
+module Comms.Recv
   ( Recv,
     singleResult,
     toHandler,
@@ -6,7 +6,7 @@ module Hipq.Recv
   )
 where
 
-import Hipq.ResultDecoder qualified as ResultDecoder
+import Comms.ResultDecoder qualified as ResultDecoder
 import Platform.Prelude
 import Pq qualified
 

@@ -7,6 +7,7 @@ where
 
 import Codecs.Encoders.Params qualified as Params
 import Codecs.RequestingOid qualified as RequestingOid
+import Comms.Roundtrip qualified
 import Core.Decoders.Result qualified as Decoders.Result
 import Core.Errors qualified as Errors
 import Core.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
@@ -14,7 +15,6 @@ import Core.Structures.OidCache qualified as OidCache
 import Core.Structures.StatementCache qualified as StatementCache
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -51,13 +51,13 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
                     adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
                     adaptContext (Context index sql params prepared) =
                       Just (totalStatements, index, sql, params, prepared)
-             in Hipq.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
+             in Comms.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
                   & fmap
                     ( first
                         ( \case
-                            Hipq.Roundtrip.ClientError _context details ->
+                            Comms.Roundtrip.ClientError _context details ->
                               Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                            Hipq.Roundtrip.ServerError recvError ->
+                            Comms.Roundtrip.ServerError recvError ->
                               Errors.fromRecvError recvError
                         )
                     )
@@ -150,7 +150,7 @@ data Pipeline a
         Bool ->
         HashMap (Maybe Text, Text) (Word32, Word32) ->
         StatementCache.StatementCache ->
-        (Hipq.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
+        (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
 
 data Context
@@ -233,8 +233,8 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                    in (True, remoteKey, newStatementCache)
 
             roundtrip =
-              when isNew (Hipq.Roundtrip.prepare context remoteKey sql pqOidList)
-                *> Hipq.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
+              when isNew (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
+                *> Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
@@ -244,7 +244,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Hipq.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder'
+              Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   params

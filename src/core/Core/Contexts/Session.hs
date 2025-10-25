@@ -1,11 +1,11 @@
 module Core.Contexts.Session where
 
 import Codecs.Encoders.Params qualified as Params
+import Comms.Roundtrip qualified
 import Core.Contexts.Pipeline qualified as Pipeline
 import Core.Decoders.Result qualified as Decoders.Result
 import Core.Errors qualified as Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
-import Hipq.Roundtrip qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -42,15 +42,15 @@ script :: ByteString -> Session ()
 script sql =
   Session \connectionState -> do
     let connection = ConnectionState.connection connectionState
-    result <- Hipq.Roundtrip.toSerialIO (Hipq.Roundtrip.query (Just sql) sql) connection
+    result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.query (Just sql) sql) connection
     case result of
       Left err -> case err of
-        Hipq.Roundtrip.ClientError _ details -> do
+        Comms.Roundtrip.ClientError _ details -> do
           pure
             ( Left (Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)),
               connectionState
             )
-        Hipq.Roundtrip.ServerError recvError ->
+        Comms.Roundtrip.ServerError recvError ->
           pure
             ( Left (Errors.fromRecvErrorInScript sql recvError),
               connectionState

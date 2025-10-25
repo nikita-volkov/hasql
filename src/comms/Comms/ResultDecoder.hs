@@ -1,4 +1,4 @@
-module Hipq.ResultDecoder
+module Comms.ResultDecoder
   ( ResultDecoder,
 
     -- * Relations
@@ -32,11 +32,11 @@ module Hipq.ResultDecoder
   )
 where
 
+import Comms.RowDecoder qualified as RowDecoder
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
-import Hipq.RowDecoder qualified as RowDecoder
 import Platform.Prelude hiding (foldl, foldr, maybe)
 import Platform.Prelude qualified as Prelude
 import Pq qualified

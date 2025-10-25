@@ -1,4 +1,4 @@
-module Hipq.RowDecoder
+module Comms.RowDecoder
   ( RowDecoder,
     nullableColumn,
     nonNullableColumn,
@@ -17,7 +17,7 @@ module Hipq.RowDecoder
   )
 where
 
-import Hipq.RowReader qualified as RowReader
+import Comms.RowReader qualified as RowReader
 import Platform.Prelude
 import Pq qualified
 

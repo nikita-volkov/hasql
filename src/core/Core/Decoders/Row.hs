@@ -3,7 +3,7 @@ module Core.Decoders.Row where
 import Codecs.Decoders
 import Codecs.Decoders.Value qualified as Value
 import Codecs.RequestingOid qualified as RequestingOid
-import Hipq.RowDecoder qualified
+import Comms.RowDecoder qualified
 import Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 
@@ -17,13 +17,13 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a
-  = Row (RequestingOid.RequestingOid Hipq.RowDecoder.RowDecoder a)
+  = Row (RequestingOid.RequestingOid Comms.RowDecoder.RowDecoder a)
   deriving newtype
     (Functor, Applicative)
 
 toDecoder ::
   Row a ->
-  RequestingOid.RequestingOid Hipq.RowDecoder.RowDecoder a
+  RequestingOid.RequestingOid Comms.RowDecoder.RowDecoder a
 toDecoder (Row f) = f
 
 -- |
@@ -35,25 +35,25 @@ column = \case
     Row case Value.toOid valueDecoder of
       Just oid ->
         RequestingOid.hoist
-          (Hipq.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
+          (Comms.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
           ( \lookupResult ->
-              Hipq.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser
+              Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser
           )
           (Value.toDecoder valueDecoder)
   NonNullable valueDecoder ->
     Row case Value.toOid valueDecoder of
       Just oid ->
         RequestingOid.hoist
-          (Hipq.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
+          (Comms.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
-          (\lookupResult -> Hipq.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser)
+          (\lookupResult -> Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
   where
     chooseLookedUpOid valueDecoder (elementOid, arrayOid) =

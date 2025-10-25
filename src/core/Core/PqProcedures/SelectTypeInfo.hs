@@ -8,12 +8,12 @@ where
 import Codecs.Decoders.Value qualified as Decoders.Value
 import Codecs.Encoders qualified as Encoders
 import Codecs.Encoders.Params qualified as Encoders.Params
+import Comms.ResultDecoder qualified
+import Comms.Roundtrip qualified
+import Comms.RowDecoder qualified
 import Core.Errors qualified as Errors
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hipq.ResultDecoder qualified
-import Hipq.Roundtrip qualified
-import Hipq.RowDecoder qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -32,7 +32,7 @@ run connection (SelectTypeInfo keys) =
     then pure (Right HashMap.empty)
     else
       first Errors.fromRoundtripError
-        <$> Hipq.Roundtrip.toSerialIO (roundtrip (SelectTypeInfo keys)) connection
+        <$> Comms.Roundtrip.toSerialIO (roundtrip (SelectTypeInfo keys)) connection
 
 sql :: ByteString
 sql =
@@ -68,9 +68,9 @@ sql =
   \union\n\
   \select * from namespaced_results"
 
-roundtrip :: SelectTypeInfo -> Hipq.Roundtrip.Roundtrip () SelectTypeInfoResult
+roundtrip :: SelectTypeInfo -> Comms.Roundtrip.Roundtrip () SelectTypeInfoResult
 roundtrip params =
-  Hipq.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
+  Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
 
 encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
 encodeParams =
@@ -93,14 +93,14 @@ paramsEncoder =
         snd >$< Encoders.param (Encoders.nonNullable (Encoders.foldableArray (Encoders.nonNullable Encoders.text)))
       ]
 
-decoder :: Hipq.ResultDecoder.ResultDecoder SelectTypeInfoResult
+decoder :: Comms.ResultDecoder.ResultDecoder SelectTypeInfoResult
 decoder =
-  Hipq.ResultDecoder.foldl step HashMap.empty rowDecoder
+  Comms.ResultDecoder.foldl step HashMap.empty rowDecoder
   where
     step acc (schemaName, typeName, typeOid, arrayOid) =
       HashMap.insert (schemaName, typeName) (typeOid, arrayOid) acc
 
-rowDecoder :: Hipq.RowDecoder.RowDecoder (Maybe Text, Text, Word32, Word32)
+rowDecoder :: Comms.RowDecoder.RowDecoder (Maybe Text, Text, Word32, Word32)
 rowDecoder =
   (,,,)
     <$> nullableColumn Decoders.Value.text
@@ -109,11 +109,11 @@ rowDecoder =
     <*> nonNullableColumn (fromIntegral <$> Decoders.Value.int4)
   where
     nullableColumn valueDecoder =
-      Hipq.RowDecoder.nullableColumn
+      Comms.RowDecoder.nullableColumn
         (Decoders.Value.toBaseOid valueDecoder)
         (Decoders.Value.toByteStringParser valueDecoder mempty)
 
     nonNullableColumn valueDecoder =
-      Hipq.RowDecoder.nonNullableColumn
+      Comms.RowDecoder.nonNullableColumn
         (Decoders.Value.toBaseOid valueDecoder)
         (Decoders.Value.toByteStringParser valueDecoder mempty)

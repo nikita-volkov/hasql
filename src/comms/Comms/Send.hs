@@ -1,4 +1,4 @@
-module Hipq.Send where
+module Comms.Send where
 
 import Platform.Prelude
 import Pq qualified

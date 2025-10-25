@@ -1,6 +1,6 @@
-module Hipq.Session.CleanUpAfterInterruptionSpec (spec) where
+module Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
-import Hipq.Session qualified as Session
+import Comms.Session qualified as Session
 import Platform.Prelude
 import Pq qualified
 import Test.Hspec

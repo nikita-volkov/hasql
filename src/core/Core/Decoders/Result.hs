@@ -1,9 +1,9 @@
 module Core.Decoders.Result where
 
 import Codecs.RequestingOid qualified as RequestingOid
+import Comms.ResultDecoder qualified as ResultDecoder
 import Core.Decoders.Row (Row (..))
 import Core.Decoders.Row qualified as Row
-import Hipq.ResultDecoder qualified as ResultDecoder
 import Platform.Prelude
 
 -- |

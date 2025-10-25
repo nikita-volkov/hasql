@@ -1,5 +1,5 @@
 -- | Lower level context focused on just the actual decoding of values. No metadata involved.
-module Hipq.RowReader
+module Comms.RowReader
   ( RowReader,
     nullableColumn,
     nonNullableColumn,

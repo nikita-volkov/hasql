@@ -8,6 +8,7 @@ module Hasql.Connection
   )
 where
 
+import Comms.Session qualified
 import Core.Contexts.Session qualified as Session
 import Core.Errors
 import Core.Structures.ConnectionState qualified as ConnectionState
@@ -16,7 +17,6 @@ import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
-import Hipq.Session qualified
 import Platform.Prelude
 import Pq qualified
 
@@ -118,7 +118,7 @@ use (Connection var) session =
       Left exception -> do
         -- If an exception happened, we need to bring the connection back to idle
         -- without resetting (to preserve session state).
-        result <- Hipq.Session.toHandler Hipq.Session.cleanUpAfterInterruption connection
+        result <- Comms.Session.toHandler Comms.Session.cleanUpAfterInterruption connection
         case result of
           Left err -> do
             -- If cleanup failed, we have to close the connection.

@@ -118,8 +118,8 @@ library
 
   build-depends:
     hasql:codecs,
+    hasql:comms,
     hasql:core,
-    hasql:hipq,
     hasql:platform,
     hasql:pq,
     hasql:text-extras,
@@ -171,7 +171,7 @@ library core
 
   build-depends:
     hasql:codecs,
-    hasql:hipq,
+    hasql:comms,
     hasql:platform,
     hasql:pq,
     postgresql-binary ^>=0.15,
@@ -209,17 +209,17 @@ library platform
     witherable >=0.5 && <0.6,
 
 -- Composable abstraction layer over patterns of using libpq with no extra responsibilities.
-library hipq
+library comms
   import: base
-  hs-source-dirs: src/hipq
+  hs-source-dirs: src/comms
   exposed-modules:
-    Hipq.Recv
-    Hipq.ResultDecoder
-    Hipq.Roundtrip
-    Hipq.RowDecoder
-    Hipq.RowReader
-    Hipq.Send
-    Hipq.Session
+    Comms.Recv
+    Comms.ResultDecoder
+    Comms.Roundtrip
+    Comms.RowDecoder
+    Comms.RowReader
+    Comms.Send
+    Comms.Session
 
   build-depends:
     attoparsec >=0.10 && <0.15,
@@ -289,20 +289,20 @@ test-suite profiling
     hasql:testcontainers-postgresql,
     rerebase >=1 && <2,
 
-test-suite hipq-tests
+test-suite comms-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs: src/hipq-tests
+  hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
-    Hipq.Session.CleanUpAfterInterruptionSpec
+    Comms.Session.CleanUpAfterInterruptionSpec
     SpecHook
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
-    hasql:hipq,
+    hasql:comms,
     hasql:platform,
     hasql:pq,
     hasql:testcontainers-postgresql,

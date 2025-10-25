@@ -1,4 +1,4 @@
-module Hipq.Roundtrip
+module Comms.Roundtrip
   ( Roundtrip,
     toPipelineIO,
     toSerialIO,
@@ -14,9 +14,9 @@ module Hipq.Roundtrip
   )
 where
 
-import Hipq.Recv qualified as Recv
-import Hipq.ResultDecoder qualified as ResultDecoder
-import Hipq.Send qualified as Send
+import Comms.Recv qualified as Recv
+import Comms.ResultDecoder qualified as ResultDecoder
+import Comms.Send qualified as Send
 import Platform.Prelude
 import Pq qualified
 

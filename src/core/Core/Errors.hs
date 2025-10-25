@@ -1,9 +1,9 @@
 module Core.Errors where
 
-import Hipq.Recv qualified
-import Hipq.ResultDecoder qualified
-import Hipq.Roundtrip qualified
-import Hipq.RowReader qualified
+import Comms.Recv qualified
+import Comms.ResultDecoder qualified
+import Comms.Roundtrip qualified
+import Comms.RowReader qualified
 import Platform.Prelude
 import TextBuilder qualified
 
@@ -120,16 +120,16 @@ data SessionError
       (HashSet (Maybe Text, Text))
   deriving stock (Show, Eq)
 
-fromRoundtripError :: Hipq.Roundtrip.Error context -> SessionError
+fromRoundtripError :: Comms.Roundtrip.Error context -> SessionError
 fromRoundtripError = \case
-  Hipq.Roundtrip.ClientError _context details ->
+  Comms.Roundtrip.ClientError _context details ->
     ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-  Hipq.Roundtrip.ServerError recvError ->
+  Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 
-fromRecvError :: Hipq.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
+fromRecvError :: Comms.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
 fromRecvError = \case
-  Hipq.Recv.ResultError location _resultOffset resultError ->
+  Comms.Recv.ResultError location _resultOffset resultError ->
     case location of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
@@ -146,7 +146,7 @@ fromRecvError = \case
           parameters
           prepared
           (fromStatementResultError resultError)
-  Hipq.Recv.NoResultsError location details ->
+  Comms.Recv.NoResultsError location details ->
     case location of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
@@ -163,7 +163,7 @@ fromRecvError = \case
           parameters
           prepared
           (RowCountStatementError 1 1 0)
-  Hipq.Recv.TooManyResultsError location actual ->
+  Comms.Recv.TooManyResultsError location actual ->
     case location of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
@@ -181,9 +181,9 @@ fromRecvError = \case
           prepared
           (RowCountStatementError 1 1 actual)
 
-fromStatementResultError :: Hipq.ResultDecoder.Error -> StatementError
+fromStatementResultError :: Comms.ResultDecoder.Error -> StatementError
 fromStatementResultError = \case
-  Hipq.ResultDecoder.ServerError code message detail hint position ->
+  Comms.ResultDecoder.ServerError code message detail hint position ->
     ExecutionStatementError
       ( ExecutionError
           (decodeUtf8Lenient code)
@@ -192,33 +192,33 @@ fromStatementResultError = \case
           (fmap decodeUtf8Lenient hint)
           position
       )
-  Hipq.ResultDecoder.UnexpectedResult msg ->
+  Comms.ResultDecoder.UnexpectedResult msg ->
     UnexpectedResultStatementError msg
-  Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
+  Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
     RowCountStatementError 1 1 actual
-  Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
+  Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
-  Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
+  Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
     UnexpectedColumnTypeStatementError
       colIdx
       expectedOid
       actualOid
-  Hipq.ResultDecoder.RowError rowIndex rowError ->
+  Comms.ResultDecoder.RowError rowIndex rowError ->
     case rowError of
-      Hipq.RowReader.CellError column _oid cellErr ->
+      Comms.RowReader.CellError column _oid cellErr ->
         CellStatementError
           rowIndex
           column
           ( case cellErr of
-              Hipq.RowReader.DecodingCellError msg -> DeserializationCellError msg
-              Hipq.RowReader.UnexpectedNullCellError -> UnexpectedNullCellError
+              Comms.RowReader.DecodingCellError msg -> DeserializationCellError msg
+              Comms.RowReader.UnexpectedNullCellError -> UnexpectedNullCellError
           )
 
-fromRecvErrorInScript :: ByteString -> Hipq.Recv.Error (Maybe ByteString) -> SessionError
+fromRecvErrorInScript :: ByteString -> Comms.Recv.Error (Maybe ByteString) -> SessionError
 fromRecvErrorInScript scriptSql = \case
-  Hipq.Recv.ResultError _ _ resultError ->
+  Comms.Recv.ResultError _ _ resultError ->
     case resultError of
-      Hipq.ResultDecoder.ServerError code message detail hint position ->
+      Comms.ResultDecoder.ServerError code message detail hint position ->
         ScriptSessionError
           scriptSql
           ( ExecutionError
@@ -228,24 +228,24 @@ fromRecvErrorInScript scriptSql = \case
               (fmap decodeUtf8Lenient hint)
               position
           )
-      Hipq.ResultDecoder.UnexpectedResult msg ->
+      Comms.ResultDecoder.UnexpectedResult msg ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected result in script: ",
             TextBuilder.text msg
           ]
-      Hipq.ResultDecoder.UnexpectedAmountOfRows actual ->
+      Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of rows in script: ",
             TextBuilder.decimal actual
           ]
-      Hipq.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
+      Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of columns in script: expected ",
             TextBuilder.decimal expected,
             ", got ",
             TextBuilder.decimal actual
           ]
-      Hipq.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
+      Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Decoder type mismatch in script: expected OID ",
             TextBuilder.string (show expectedOid),
@@ -254,14 +254,14 @@ fromRecvErrorInScript scriptSql = \case
             ", got ",
             TextBuilder.string (show actualOid)
           ]
-      Hipq.ResultDecoder.RowError rowIndex rowError ->
+      Comms.ResultDecoder.RowError rowIndex rowError ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Row error in script at row ",
             TextBuilder.decimal rowIndex,
             ": ",
             TextBuilder.string (show rowError)
           ]
-  Hipq.Recv.NoResultsError _ details ->
+  Comms.Recv.NoResultsError _ details ->
     (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Got no results in script.",
         " This indicates a bug in Hasql or the server misbehaving.",
@@ -269,7 +269,7 @@ fromRecvErrorInScript scriptSql = \case
           & filter (/= "")
           & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
       ]
-  Hipq.Recv.TooManyResultsError _ actual ->
+  Comms.Recv.TooManyResultsError _ actual ->
     (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",

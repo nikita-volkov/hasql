@@ -1,4 +1,4 @@
-module Hipq.Session
+module Comms.Session
   ( Session,
 
     -- * Constructors
@@ -9,7 +9,7 @@ module Hipq.Session
   )
 where
 
-import Hipq.Roundtrip qualified as Roundtrip
+import Comms.Roundtrip qualified as Roundtrip
 import Platform.Prelude
 import Pq qualified
 
