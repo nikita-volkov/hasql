@@ -47,7 +47,8 @@ spec = do
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError _ _ (Errors.DeserializationCellError msg))) -> do
               -- PostgreSQL binary decoder should detect the OID mismatch
-              toList msg `shouldContain` "int"
+              -- OID 20 is int8, OID 23 is int4
+              toList msg `shouldContain` "Unexpected OID"
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
             Right _ ->
@@ -86,7 +87,8 @@ spec = do
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError _ _ (Errors.DeserializationCellError msg))) -> do
               -- PostgreSQL binary decoder should detect the OID mismatch
-              toList msg `shouldContain` "int"
+              -- OID 20 is int8, OID 23 is int4
+              toList msg `shouldContain` "Unexpected OID"
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
             Right _ ->
