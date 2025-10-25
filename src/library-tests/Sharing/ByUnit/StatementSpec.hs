@@ -275,3 +275,33 @@ spec = do
                   True
           result <- Connection.use connection (Session.statement () statement)
           result `shouldBe` Right [(1 :: Int64, 2 :: Int64), (3, 4), (5, 6)]
+
+    describe "IN simulation" do
+      it "works with arrays" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement =
+                Statement.Statement
+                  "select true where 1 = any ($1)"
+                  (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+                  (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
+                  True
+          result <- Connection.use connection do
+            result1 <- Session.statement ([1, 2] :: [Int64]) statement
+            result2 <- Session.statement ([2, 3] :: [Int64]) statement
+            return (result1, result2)
+          result `shouldBe` Right (True, False)
+
+    describe "NOT IN simulation" do
+      it "works with arrays" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement =
+                Statement.Statement
+                  "select true where 3 <> all ($1)"
+                  (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
+                  (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
+                  True
+          result <- Connection.use connection do
+            result1 <- Session.statement ([1, 2] :: [Int64]) statement
+            result2 <- Session.statement ([2, 3] :: [Int64]) statement
+            return (result1, result2)
+          result `shouldBe` Right (True, False)
