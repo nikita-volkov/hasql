@@ -337,11 +337,13 @@ test-suite library-tests
     Sharing.ByUnit.Connection.UseSpec
     Sharing.ByUnit.Decoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Decoders.CompositeSpec
+    Sharing.ByUnit.Decoders.DomainSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
     Sharing.ByUnit.Decoders.RecordSpec
     Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Encoders.CompositeSpec
+    Sharing.ByUnit.Encoders.DomainSpec
     Sharing.ByUnit.Encoders.EnumSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
