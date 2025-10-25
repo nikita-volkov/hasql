@@ -231,7 +231,7 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           let statement =
                 Statement.Statement
-                  "select array[((1, true), 'x'), ((2, false), 'y')]"
+                  "select array[((1, true), text 'x'), ((2, false), text 'y')]"
                   mempty
                   ( Decoders.singleRow
                       ( Decoders.column
@@ -247,7 +247,7 @@ spec = do
                                                         ( Decoders.nonNullable
                                                             ( Decoders.record
                                                                 ( (,)
-                                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                                    <$> Decoders.field (Decoders.nonNullable Decoders.int4)
                                                                     <*> Decoders.field (Decoders.nonNullable Decoders.bool)
                                                                 )
                                                             )
@@ -264,4 +264,4 @@ spec = do
                   )
                   True
           result <- Connection.use connection (Session.statement () statement)
-          result `shouldBe` Right [((1 :: Int64, True), "x"), ((2, False), "y")]
+          result `shouldBe` Right [((1, True), "x"), ((2, False), "y")]
