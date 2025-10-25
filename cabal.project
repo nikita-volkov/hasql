@@ -5,4 +5,4 @@ allow-newer:
 source-repository-package
   type: git
   location: https://github.com/nikita-volkov/postgresql-binary
-  tag: ae40ab7b3284f88cf56a4970a2ba52875daadb6c
+  tag: 42a197ef058402dd15ecb44eebad4840f94bed3d
