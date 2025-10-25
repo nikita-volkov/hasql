@@ -318,7 +318,7 @@ spec = do
                 True
           -- Should fail with a cell error because text cannot be decoded as a composite
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
@@ -367,7 +367,7 @@ spec = do
                 True
           -- Should fail with a cell error because the field count doesn't match
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.CellStatementError 0 0 _)) ->
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
