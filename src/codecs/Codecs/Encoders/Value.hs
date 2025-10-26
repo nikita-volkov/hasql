@@ -324,21 +324,6 @@ enum schemaName typeName mapping =
     (TextBuilder.text . mapping)
 
 -- |
--- Identifies the value with the PostgreSQL's \"unknown\" type,
--- thus leaving it up to Postgres to infer the actual type of the value.
---
--- The value transmitted is any value encoded in the Postgres' Text data format.
--- For reference, see the
--- <https://www.postgresql.org/docs/10/static/protocol-overview.html#PROTOCOL-FORMAT-CODES Formats and Format Codes>
--- section of the Postgres' documentation.
---
--- __Warning:__ Do not use this as part of composite encoders like 'array' since
--- it is the only encoder that doesn't use the binary format.
-{-# INLINEABLE unknown #-}
-unknown :: Value ByteString
-unknown = primitive "unknown" True TypeInfo.unknown Binary.bytea_strict (TextBuilder.string . show)
-
--- |
 -- Low level API for defining custom value encoders.
 {-# INLINEABLE custom #-}
 custom ::

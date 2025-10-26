@@ -59,7 +59,6 @@ module Codecs.Encoders
     array,
     Value.enum,
     composite,
-    Value.unknown,
     Value.custom,
 
     -- * Array
