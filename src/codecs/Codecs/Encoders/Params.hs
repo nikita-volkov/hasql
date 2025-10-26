@@ -106,7 +106,7 @@ toUnknownTypes (Params _ unknownTypes _ _ _) =
 --   ('fromIntegral' . age '>$<' 'param' ('nonNullable' 'int8'))
 --
 -- genderValue :: 'Value.Value' Gender
--- genderValue = 'enum' genderText 'text' where
+-- genderValue = 'enum' Nothing (Just "gender") genderText where
 --   genderText gender = case gender of
 --     Male -> "male"
 --     Female -> "female"
