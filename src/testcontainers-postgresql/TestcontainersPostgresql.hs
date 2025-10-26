@@ -1,9 +1,12 @@
 module TestcontainersPostgresql where
 
+import Data.Function ((&))
+import Data.Text (Text)
 import Data.Text.Lazy qualified as Text.Lazy
-import Hasql.Platform.Prelude
+import Data.Word (Word16)
 import TestContainers qualified
 import TestContainers.Hspec qualified
+import Prelude
 
 hook ::
   Text ->
