@@ -1,11 +1,11 @@
-module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
+module Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
 import Hasql.Comms.Session qualified as Session
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 import Test.Hspec
 import TextBuilder qualified
-import Prelude hiding (read)
+import Prelude (read)
 
 spec :: SpecWith (Text, Word16)
 spec = do

@@ -1,3 +1,5 @@
+{-# LANGUAGE PackageImports #-}
+
 module Hasql.Platform.Prelude.Text where
 
 import Data.ByteString qualified
