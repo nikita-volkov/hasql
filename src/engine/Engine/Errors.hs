@@ -57,7 +57,7 @@ data CellError
 data StatementError
   = -- | The server rejected the statement with an error.
     ExecutionStatementError ExecutionError
-  | RowCountStatementError
+  | UnexpectedRowCountError
       -- | Expected minimum.
       Int
       -- | Expected maximum.
@@ -162,7 +162,7 @@ fromRecvError = \case
           sql
           parameters
           prepared
-          (RowCountStatementError 1 1 0)
+          (UnexpectedRowCountError 1 1 0)
   Comms.Recv.TooManyResultsError location actual ->
     case location of
       Nothing ->
@@ -179,7 +179,7 @@ fromRecvError = \case
           sql
           parameters
           prepared
-          (RowCountStatementError 1 1 actual)
+          (UnexpectedRowCountError 1 1 actual)
 
 fromStatementResultError :: Comms.ResultDecoder.Error -> StatementError
 fromStatementResultError = \case
@@ -195,7 +195,7 @@ fromStatementResultError = \case
   Comms.ResultDecoder.UnexpectedResult msg ->
     UnexpectedResultStatementError msg
   Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
-    RowCountStatementError 1 1 actual
+    UnexpectedRowCountError 1 1 actual
   Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
   Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->

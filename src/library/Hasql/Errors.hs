@@ -101,7 +101,7 @@ instance IsError StatementError where
         [ "Server error: ",
           toErrorMessage executionError
         ]
-    RowCountStatementError min max actual ->
+    UnexpectedRowCountError min max actual ->
       (TextBuilder.toText . mconcat)
         [ "Unexpected number of rows: expected ",
           if min == max
