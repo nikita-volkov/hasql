@@ -47,7 +47,7 @@ instance Contravariant Array where
 -- Lifts a 'Value.Value' encoder into an 'Array' encoder.
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) ->
+  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
     Array
       schemaName
       typeName
@@ -58,7 +58,7 @@ element = \case
       unknownTypes
       (\oidCache -> Binary.encodingArray . serialize oidCache)
       print
-  NullableOrNot.Nullable (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) ->
+  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
     let maybeSerialize oidCache =
           maybe Binary.nullArray (Binary.encodingArray . serialize oidCache)
         maybePrint =

@@ -163,7 +163,7 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: Value.Value a -> Params a
-value (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) =
+value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
       serializer oidCache = pure . Just . Binary.encodingBytes . serialize oidCache
       printer = pure . TextBuilder.toText . print
@@ -187,7 +187,7 @@ value (Value.Value schemaName typeName textFormat dimensionality scalarOid array
             }
 
 nullableValue :: Value.Value a -> Params (Maybe a)
-nullableValue (Value.Value schemaName typeName textFormat dimensionality scalarOid arrayOid unknownTypes serialize print) =
+nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
       serializer oidCache = pure . fmap (Binary.encodingBytes . serialize oidCache)
       printer = pure . maybe "null" (TextBuilder.toText . print)

@@ -20,10 +20,6 @@ data Value a
       (Maybe Text)
       -- | Type name.
       Text
-      -- | Text format?
-      Bool
-      -- | Dimensionality. If 0 then it is not an array, but a scalar value.
-      Word
       -- | Statically known OID for the type.
       -- When unspecified, the OID may be determined at runtime by looking up by name.
       (Maybe Word32)
@@ -31,6 +27,10 @@ data Value a
       -- When unspecified, the OID may be determined at runtime by looking up by name.
       -- It may also mean that there may be no array type containing this type, which is the case in attempts to double-nest arrays.
       (Maybe Word32)
+      -- | Dimensionality. If 0 then it is not an array, but a scalar value.
+      Word
+      -- | Text format?
+      Bool
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
       (HashSet (Maybe Text, Text))
       -- | Serialization function on the resolved OIDs.
@@ -40,8 +40,8 @@ data Value a
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
-  contramap f (Value schemaName typeName textFormat isArray valueOid arrayOid unknownTypes encode render) =
-    Value schemaName typeName textFormat isArray valueOid arrayOid unknownTypes (\hashMap -> encode hashMap . f) (render . f)
+  contramap f (Value schemaName typeName valueOid arrayOid dimensionality textFormat unknownTypes encode render) =
+    Value schemaName typeName valueOid arrayOid dimensionality textFormat unknownTypes (\hashMap -> encode hashMap . f) (render . f)
 
 {-# INLINE primitive #-}
 primitive :: Text -> Bool -> TypeInfo.TypeInfo -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
@@ -49,10 +49,10 @@ primitive typeName isText typeInfo encode render =
   Value
     Nothing
     typeName
-    isText
-    0
     (Just (TypeInfo.toBaseOid typeInfo))
     (Just (TypeInfo.toArrayOid typeInfo))
+    0
+    isText
     HashSet.empty
     (const encode)
     render
@@ -315,10 +315,10 @@ enum schemaName typeName mapping =
   Value
     schemaName
     typeName
-    False
+    Nothing
+    Nothing
     0
-    Nothing
-    Nothing
+    False
     (HashSet.singleton (schemaName, typeName))
     (const (Binary.text_strict . mapping))
     (TextBuilder.text . mapping)
@@ -371,10 +371,10 @@ custom schemaName typeName staticOids requiredTypes encode render =
   Value
     schemaName
     typeName
-    False
-    0
     (fst <$> staticOids)
     (snd <$> staticOids)
+    0
+    False
     (HashSet.fromList requiredTypes)
     ( \hashMap ->
         ByteString.StrictBuilder.bytes . encode (fromMaybe (0, 0) . flip HashMap.lookup hashMap)

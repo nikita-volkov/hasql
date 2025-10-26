@@ -123,7 +123,7 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
                 -- Should only happen on a bug.
                 & fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown)
          in Binary.array resolvedOid (arrayEncoder oidCache input)
-   in Value.Value baseTypeSchema baseTypeName False dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes encoder renderer
+   in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False unknownTypes encoder renderer
 
 -- |
 -- Lift a composite encoder into a value encoder for named composite types.
@@ -139,7 +139,7 @@ composite ::
   Composite.Composite a ->
   Value.Value a
 composite schema name (Composite.Composite unknownTypes encode print) =
-  Value.Value schema name False 0 Nothing Nothing unknownTypes encodeValue printValue
+  Value.Value schema name Nothing Nothing 0 False unknownTypes encodeValue printValue
   where
     encodeValue oidCache val =
       Binary.composite (encode oidCache val)
