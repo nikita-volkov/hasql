@@ -1,6 +1,6 @@
 module Hasql.Connection.Config where
 
-import Platform.Prelude
+import Hasql.Platform.Prelude
 
 data Config
   = Config

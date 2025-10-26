@@ -1,8 +1,8 @@
-module Comms.Session.CleanUpAfterInterruptionSpec (spec) where
+module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
-import Comms.Session qualified as Session
-import Platform.Prelude
-import Pq qualified
+import Hasql.Comms.Session qualified as Session
+import Hasql.Platform.Prelude
+import Hasql.Pq qualified as Pq
 import Test.Hspec
 import TextBuilder qualified
 import Prelude hiding (read)

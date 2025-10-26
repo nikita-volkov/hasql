@@ -24,10 +24,10 @@ module Hasql.Errors
 where
 
 import Data.Text qualified as Text
-import Engine.Errors
-import Platform.Prelude
+import Hasql.Engine.Errors
+import Hasql.Platform.Prelude
 import TextBuilder qualified
-import TextExtras qualified
+import Hasql.TextExtras qualified as TextExtras
 
 -- * Classes
 

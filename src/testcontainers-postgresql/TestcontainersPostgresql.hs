@@ -1,7 +1,7 @@
 module TestcontainersPostgresql where
 
 import Data.Text.Lazy qualified as Text.Lazy
-import Platform.Prelude
+import Hasql.Platform.Prelude
 import TestContainers qualified
 import TestContainers.Hspec qualified
 
