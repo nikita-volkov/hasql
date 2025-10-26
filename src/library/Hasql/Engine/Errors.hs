@@ -57,7 +57,7 @@ data CellError
 data StatementError
   = -- | The server rejected the statement with an error.
     ExecutionStatementError ExecutionError
-  | UnexpectedRowCountError
+  | UnexpectedRowCountStatementError
       -- | Expected minimum.
       Int
       -- | Expected maximum.
@@ -162,7 +162,7 @@ fromRecvError = \case
           sql
           parameters
           prepared
-          (UnexpectedRowCountError 1 1 0)
+          (UnexpectedRowCountStatementError 1 1 0)
   Hasql.Comms.Recv.TooManyResultsError location actual ->
     case location of
       Nothing ->
@@ -179,7 +179,7 @@ fromRecvError = \case
           sql
           parameters
           prepared
-          (UnexpectedRowCountError 1 1 actual)
+          (UnexpectedRowCountStatementError 1 1 actual)
 
 fromStatementResultError :: Hasql.Comms.ResultDecoder.Error -> StatementError
 fromStatementResultError = \case
@@ -195,7 +195,7 @@ fromStatementResultError = \case
   Hasql.Comms.ResultDecoder.UnexpectedResult msg ->
     UnexpectedResultStatementError msg
   Hasql.Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
-    UnexpectedRowCountError 1 1 actual
+    UnexpectedRowCountStatementError 1 1 actual
   Hasql.Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
     UnexpectedAmountOfColumnsStatementError expected actual
   Hasql.Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
