@@ -76,10 +76,10 @@ encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
 encodeParams =
   fmap
     ( fmap
-        ( \(oid, bytes, format) ->
+        ( \(oid, bytes, _isText) ->
             ( Pq.Oid (fromIntegral oid),
               bytes,
-              bool Pq.Binary Pq.Text format
+              Pq.Binary
             )
         )
     )

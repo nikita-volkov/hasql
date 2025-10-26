@@ -26,16 +26,16 @@ compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache 
         & toList
         & fmap
           ( \case
-              (Left name, dimensionality, format) ->
+              (Left name, dimensionality) ->
                 case HashMap.lookup name oidCache of
                   Just (baseOid, arrayOid) ->
                     ( if dimensionality == 0 then baseOid else arrayOid,
-                      format
+                      False
                     )
                   Nothing ->
-                    (0, format)
-              (Right oid, _, format) ->
-                (oid, format)
+                    (0, False)
+              (Right oid, _) ->
+                (oid, False)
           )
         & unzip
 
@@ -51,14 +51,14 @@ compileUnpreparedStatementData ::
   [Maybe (Word32, ByteString, Bool)]
 compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
   zipWith
-    ( \(nameOrOid, dimensionality, format) encoding ->
+    ( \(nameOrOid, dimensionality) encoding ->
         let oid = case nameOrOid of
               Left name -> case HashMap.lookup name oidCache of
                 Just (baseOid, arrayOid) ->
                   if dimensionality == 0 then baseOid else arrayOid
                 Nothing -> 0
               Right oid -> oid
-         in (,,) <$> Just oid <*> encoding <*> Just format
+         in (,,) <$> Just oid <*> encoding <*> Just False
     )
     (toList columnsMetadata)
     (toList (serializer oidCache input))
@@ -114,8 +114,8 @@ toUnknownTypes (Params _ unknownTypes _ _ _) =
 data Params a = Params
   { size :: Int,
     unknownTypes :: HashSet (Maybe Text, Text),
-    -- | (Name or OID, dimensionality, Text Format) for each parameter.
-    columnsMetadata :: DList (Either (Maybe Text, Text) Word32, Word, Bool),
+    -- | (Name or OID, dimensionality) for each parameter.
+    columnsMetadata :: DList (Either (Maybe Text, Text) Word32, Word),
     serializer :: HashMap (Maybe Text, Text) (Word32, Word32) -> a -> DList (Maybe ByteString),
     printer :: a -> DList Text
   }
@@ -163,7 +163,7 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: Value.Value a -> Params a
-value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
+value (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
       serializer oidCache = pure . Just . Binary.encodingBytes . serialize oidCache
       printer = pure . TextBuilder.toText . print
@@ -173,7 +173,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               unknownTypes,
-              columnsMetadata = pure (Right oid, dimensionality, textFormat),
+              columnsMetadata = pure (Right oid, dimensionality),
               serializer,
               printer
             }
@@ -181,13 +181,13 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               unknownTypes = HashSet.insert (schemaName, typeName) unknownTypes,
-              columnsMetadata = pure (Left (schemaName, typeName), dimensionality, textFormat),
+              columnsMetadata = pure (Left (schemaName, typeName), dimensionality),
               serializer,
               printer
             }
 
 nullableValue :: Value.Value a -> Params (Maybe a)
-nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
+nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
       serializer oidCache = pure . fmap (Binary.encodingBytes . serialize oidCache)
       printer = pure . maybe "null" (TextBuilder.toText . print)
@@ -197,7 +197,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               unknownTypes,
-              columnsMetadata = pure (Right oid, dimensionality, textFormat),
+              columnsMetadata = pure (Right oid, dimensionality),
               serializer,
               printer
             }
@@ -205,7 +205,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               unknownTypes = HashSet.insert (schemaName, typeName) unknownTypes,
-              columnsMetadata = pure (Left (schemaName, typeName), dimensionality, textFormat),
+              columnsMetadata = pure (Left (schemaName, typeName), dimensionality),
               serializer,
               printer
             }
