@@ -6,18 +6,17 @@ synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
   Root of the \"hasql\" ecosystem.
   This library provides connection management, execution of queries and mapping of parameters and results.
-  Extended functionality such as pooling, transactions and compile-time checking is provided by extension libraries.
+  Extended functionality such as pooling, transactions and compile-time checking of SQL is provided by extension libraries.
   For more details and tutorials see <https://github.com/nikita-volkov/hasql the readme>.
 
   The API comes free from all kinds of exceptions.
   All error-reporting is explicit and is presented using the 'Either' type.
 
-  \"hasql\" requires you to have the "\libpq\" C-library installed to compile.
-  Starting from version 1.7 of \"hasql\" it requires \"libpq\" of at least version 14.
+  \"hasql\" requires you to have the "\libpq\" C-library of at least version 14 installed to compile.
   \"libpq\" comes distributed with PostgreSQL,
   so typically all you need is just to install the latest PostgreSQL distro.
 
-  Despite the mentioned requirements for \"libpq\" \"hasql\" is compatible
+  Despite the mentioned requirements for \"libpq\" \"hasql\" is thoroughly tested to be compatible
   with a wide range of PostgreSQL servers starting from version 10.
 
 homepage: https://github.com/nikita-volkov/hasql
