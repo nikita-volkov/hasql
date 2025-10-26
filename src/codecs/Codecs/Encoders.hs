@@ -60,6 +60,7 @@ module Codecs.Encoders
     Value.enum,
     composite,
     Value.unknown,
+    Value.custom,
 
     -- * Array
     Array.Array,

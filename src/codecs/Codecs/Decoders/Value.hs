@@ -324,18 +324,41 @@ datemultirange :: Value (R.Multirange Day)
 datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datemultirange
 
 -- |
--- Lift a custom value decoder function to a 'Value' decoder.
+-- Low level API for defining custom value decoders.
 {-# INLINEABLE custom #-}
-custom :: Maybe Text -> Text -> (((Maybe Text, Text) -> (Word32, Word32)) -> ByteString -> Either Text a) -> Value a
-custom schema typeName fn =
+custom ::
+  -- | Schema name.
+  Maybe Text ->
+  -- | Type name.
+  Text ->
+  -- | Possible static OIDs for the type. The first is for scalar values the second is for arrays.
+  --
+  -- When unspecified, the OIDs will be automatically determined at runtime by looking up by name.
+  Maybe (Word32, Word32) ->
+  -- | Other named types whose OIDs are needed for deserializing.
+  --
+  -- E.g., when decoding composite types you can check the OIDs of its fields against the ones specified by Postgres.
+  --
+  -- When any of the requested types is missing in the database an error will be raised upon the statement execution.
+  [(Maybe Text, Text)] ->
+  -- | Deserialization function in the context of resolved OIDs of the types requested in the previous parameter.
+  --
+  -- It's safe to assume that all of the requested types will be present.
+  -- In case you run the provided lookup function with unmentioned type names it will produce OID of 0 for them, standing for unknown type in Postgres.
+  ( ((Maybe Text, Text) -> (Word32, Word32)) ->
+    ByteString ->
+    Either Text a
+  ) ->
+  Value a
+custom schema typeName staticOids requestedTypes fn =
   Value
     schema
     typeName
-    Nothing
-    Nothing
+    (fst <$> staticOids)
+    (snd <$> staticOids)
     0
     ( LookingUp
-        [(schema, typeName)]
+        ([(schema, typeName)] <> requestedTypes)
         (\project -> Binary.fn (fn project))
     )
 

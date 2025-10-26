@@ -1,8 +1,10 @@
 module Codecs.Encoders.Value where
 
+import ByteString.StrictBuilder qualified
 import Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
+import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Data.IP qualified as Iproute
 import Platform.Prelude
@@ -335,3 +337,46 @@ enum schemaName typeName mapping =
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
 unknown = primitive "unknown" True TypeInfo.unknown Binary.bytea_strict (TextBuilder.string . show)
+
+-- |
+-- Low level API for defining custom value encoders.
+{-# INLINEABLE custom #-}
+custom ::
+  -- | Schema name where the type is defined.
+  Maybe Text ->
+  -- | Type name.
+  Text ->
+  -- | Possible static OIDs for the type. The first is for scalar values the second is for arrays.
+  --
+  -- When unspecified, the OIDs will be automatically determined at runtime by looking up by name.
+  Maybe (Word32, Word32) ->
+  -- | Other named types whose OIDs are needed for serializing.
+  --
+  -- E.g., when encoding composite types Postgres requires specifying OIDs of all of its fields.
+  --
+  -- When any of the requested types is missing in the database an error will be raised upon the statement execution.
+  [(Maybe Text, Text)] ->
+  -- | Serialization function in the context of resolved OIDs of the types requested in the previous parameter.
+  --
+  -- It's safe to assume that all of the requested types will be present.
+  -- In case you run the provided lookup function with unmentioned type names it will produce OID of 0 for them, standing for unknown type in Postgres.
+  ( ((Maybe Text, Text) -> (Word32, Word32)) ->
+    a ->
+    ByteString
+  ) ->
+  -- | Render function for error messages.
+  (a -> TextBuilder.TextBuilder) ->
+  Value a
+custom schemaName typeName staticOids requiredTypes encode render =
+  Value
+    schemaName
+    typeName
+    False
+    0
+    (fst <$> staticOids)
+    (snd <$> staticOids)
+    (HashSet.fromList requiredTypes)
+    ( \hashMap ->
+        ByteString.StrictBuilder.bytes . encode (fromMaybe (0, 0) . flip HashMap.lookup hashMap)
+    )
+    render

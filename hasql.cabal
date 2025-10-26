@@ -148,6 +148,7 @@ library codecs
   build-depends:
     aeson >=2 && <3,
     bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
     hasql:platform,
     iproute >=1.7 && <1.8,
     postgresql-binary ^>=0.15,
