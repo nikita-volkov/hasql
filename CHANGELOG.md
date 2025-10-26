@@ -20,6 +20,16 @@ Major revision happened.
 
   The connection settings API has been completely redesigned to be more composable and user-friendly. Settings are now represented as a monoid, allowing easy combination of multiple configuration options. The API now supports both URI and key-value connection string formats, with individual setters for common parameters like host, port, user, password, etc.
 
+- **Custom codec API**.
+
+  Added `Hasql.Encoders.custom` and `Hasql.Decoders.custom` functions providing a low-level API for defining custom value encoders and decoders. These functions offer fine-grained control over OID resolution, allowing you to:
+  - Specify static OIDs when known at compile time
+  - Automatically resolve OIDs at runtime by type name
+  - Declare dependencies on other types needed for serialization/deserialization (e.g., field types in composite types)
+  - Implement custom binary encoding/decoding logic with access to resolved OIDs
+
+  This is particularly useful for advanced use cases like custom composite types with field validation or specialized binary formats.
+
 ## Breaking changes
 
 - Custom type mappings (enums and composite types) now require specifying names for the types being mapped.
@@ -50,6 +60,15 @@ Major revision happened.
   - The `Hasql.Connection.Setting` module has been replaced with `Hasql.Connection.Settings`.
   - Settings are now constructed using flat monoid composition instead of hierarchical lists requiring multiple imports.
   - Removed `Hasql.Connection.Setting.Connection` and related submodules.
+
+- Custom value decoder signature changed.
+
+  The `Hasql.Decoders.custom` function signature has been extended to support more explicit control over type resolution. It now requires:
+  - Optional static OIDs parameter (previously implicit)
+  - List of additional type dependencies needed for decoding
+  - The decoder function now receives an OID lookup function as its first parameter
+
+  This change enables more robust custom type handling but requires updating existing custom decoder implementations.
 
 # 1.9
 
