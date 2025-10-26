@@ -17,11 +17,11 @@ compilePreparedStatementData ::
   Params a ->
   HashMap (Maybe Text, Text) (Word32, Word32) ->
   a ->
-  ([Word32], [Maybe (ByteString, Bool)])
+  ([Word32], [Maybe ByteString])
 compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
-  (oidList, valueAndFormatList)
+  (oidList, valueList)
   where
-    (oidList, formatList) =
+    oidList =
       columnsMetadata
         & toList
         & fmap
@@ -29,26 +29,22 @@ compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache 
               (Left name, dimensionality) ->
                 case HashMap.lookup name oidCache of
                   Just (baseOid, arrayOid) ->
-                    ( if dimensionality == 0 then baseOid else arrayOid,
-                      False
-                    )
+                    if dimensionality == 0 then baseOid else arrayOid
                   Nothing ->
-                    (0, False)
+                    0
               (Right oid, _) ->
-                (oid, False)
+                oid
           )
-        & unzip
 
-    valueAndFormatList =
+    valueList =
       serializer oidCache input
         & toList
-        & zipWith (\format encoding -> (,format) <$> encoding) formatList
 
 compileUnpreparedStatementData ::
   Params a ->
   HashMap (Maybe Text, Text) (Word32, Word32) ->
   a ->
-  [Maybe (Word32, ByteString, Bool)]
+  [Maybe (Word32, ByteString)]
 compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
   zipWith
     ( \(nameOrOid, dimensionality) encoding ->
@@ -58,7 +54,7 @@ compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCach
                   if dimensionality == 0 then baseOid else arrayOid
                 Nothing -> 0
               Right oid -> oid
-         in (,,) <$> Just oid <*> encoding <*> Just False
+         in (,) <$> Just oid <*> encoding
     )
     (toList columnsMetadata)
     (toList (serializer oidCache input))

@@ -238,7 +238,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
               where
                 encodedParams =
                   valueList
-                    & fmap (fmap (\(bytes, _isText) -> (bytes, Pq.Binary)))
+                    & fmap (fmap (,Pq.Binary))
 
         runUnprepared statementCache =
           (roundtrip, statementCache)
@@ -249,7 +249,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                 encodedParams =
                   params
                     & Params.compileUnpreparedStatementData encoder oidCache
-                    & fmap (fmap (\(oid, bytes, _isText) -> (Pq.Oid (fromIntegral oid), bytes, Pq.Binary)))
+                    & fmap (fmap (\(oid, bytes) -> (Pq.Oid (fromIntegral oid), bytes, Pq.Binary)))
 
         decoder' =
           RequestingOid.toBase decoder oidCache
