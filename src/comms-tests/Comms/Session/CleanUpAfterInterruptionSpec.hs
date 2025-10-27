@@ -5,7 +5,6 @@ import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 import Test.Hspec
 import TextBuilder qualified
-import Prelude (read)
 
 spec :: SpecWith (Text, Word16)
 spec = do
