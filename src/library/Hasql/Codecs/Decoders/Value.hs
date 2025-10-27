@@ -358,10 +358,7 @@ custom schema typeName staticOids requestedTypes fn =
     (fst <$> staticOids)
     (snd <$> staticOids)
     0
-    ( RequestingOid.requestAndHandle
-        ([(schema, typeName)] <> requestedTypes)
-        (\project -> Binary.fn (fn project))
-    )
+    (RequestingOid.requestAndHandle requestedTypes (Binary.fn . fn))
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
