@@ -17,11 +17,10 @@ spec = do
     it "handles simple values correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.int8))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                True
         result <- Connection.use connection (Session.statement (42 :: Int64) statement)
         result `shouldBe` Right 42
 
@@ -29,7 +28,7 @@ spec = do
     it "captures query errors correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select true where 1 = any ($1) and $2"
                 ( mconcat
                     [ fst >$< (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))),
@@ -37,8 +36,7 @@ spec = do
                     ]
                 )
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
-                True
         result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
-          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
+          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result

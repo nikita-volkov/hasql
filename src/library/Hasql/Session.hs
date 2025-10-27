@@ -8,7 +8,7 @@ module Hasql.Session
 where
 
 import Hasql.Engine.Contexts.Session qualified as Session
-import Hasql.Statement qualified as Statement
+import Hasql.Engine.Statement qualified as Statement
 
 -- |
 -- Execute a statement by providing parameters to it.

@@ -15,10 +15,9 @@ spec = do
     it "decodes intervals correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select interval '10 seconds'"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.interval)))
-                True
         result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right (10 :: DiffTime)

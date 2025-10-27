@@ -360,3 +360,38 @@ custom schemaName typeName staticOids requiredTypes encode render =
         ByteString.StrictBuilder.bytes . encode (fromMaybe (0, 0) . flip HashMap.lookup hashMap)
     )
     render
+
+-- |
+-- Encoder of @HSTORE@ values from a foldable container of key-value pairs.
+--
+-- The value part can be @Nothing@ to represent a NULL value in the hstore.
+{-# INLINEABLE hstore #-}
+hstore :: (Foldable foldable) => Value (foldable (Text, Maybe Text))
+hstore =
+  Value
+    Nothing
+    "hstore"
+    Nothing
+    Nothing
+    0
+    False
+    HashSet.empty
+    (const Binary.hStore_foldable)
+    renderHstore
+  where
+    renderHstore items =
+      mconcat
+        [ TextBuilder.text "hstore(",
+          TextBuilder.intercalate ", " (foldMap (\pair -> [renderPair pair]) items),
+          TextBuilder.text ")"
+        ]
+    renderPair (key, maybeValue) =
+      mconcat
+        [ TextBuilder.text "(",
+          TextBuilder.string (show key),
+          TextBuilder.text ", ",
+          case maybeValue of
+            Nothing -> TextBuilder.text "NULL"
+            Just value -> TextBuilder.string (show value),
+          TextBuilder.text ")"
+        ]

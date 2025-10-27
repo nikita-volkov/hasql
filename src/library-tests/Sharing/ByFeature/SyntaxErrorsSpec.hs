@@ -20,7 +20,10 @@ spec = do
           it "gets reported properly" \config -> do
             Scripts.onPreparableConnection config \connection -> do
               result <- Connection.use connection do
-                let statement = Statement.Statement "-" mempty Decoders.noResult preparable
+                let statement =
+                      if preparable
+                        then Statement.preparable "-" mempty Decoders.noResult
+                        else Statement.unpreparable "-" mempty Decoders.noResult
                 if inPipeline
                   then Session.pipeline (Pipeline.statement () statement)
                   else Session.statement () statement
@@ -29,8 +32,8 @@ spec = do
                 result
                 ( Left
                     ( (Errors.StatementSessionError 1 0 "-" [] preparable)
-                        ( Errors.ExecutionStatementError
-                            ( Errors.ExecutionError
+                        ( Errors.ServerStatementError
+                            ( Errors.ServerError
                                 "42601"
                                 "syntax error at or near \"-\""
                                 Nothing

@@ -141,6 +141,7 @@ library
     Hasql.Engine.Decoders.Row
     Hasql.Engine.Errors
     Hasql.Engine.PqProcedures.SelectTypeInfo
+    Hasql.Engine.Statement
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
@@ -279,6 +280,7 @@ test-suite library-tests
     Sharing.ByUnit.Connection.UseSpec
     Sharing.ByUnit.Decoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Decoders.CompositeSpec
+    Sharing.ByUnit.Decoders.CustomSpec
     Sharing.ByUnit.Decoders.DomainSpec
     Sharing.ByUnit.Decoders.EnumSpec
     Sharing.ByUnit.Decoders.Float8Spec
@@ -291,8 +293,10 @@ test-suite library-tests
     Sharing.ByUnit.Encoders.ArraySpec
     Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Encoders.CompositeSpec
+    Sharing.ByUnit.Encoders.CustomSpec
     Sharing.ByUnit.Encoders.DomainSpec
     Sharing.ByUnit.Encoders.EnumSpec
+    Sharing.ByUnit.Encoders.HstoreSpec
     Sharing.ByUnit.Encoders.InetSpec
     Sharing.ByUnit.Encoders.IntervalSpec
     Sharing.ByUnit.Encoders.JsonSpec

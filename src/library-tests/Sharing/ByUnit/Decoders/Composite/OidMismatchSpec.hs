@@ -20,14 +20,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode with int4 decoder
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -42,7 +41,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a decoding failure due to type mismatch
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg)))) -> do
@@ -59,14 +57,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int4 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode with int8 decoder
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -81,7 +78,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a decoding failure due to type mismatch
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg)))) -> do
@@ -98,14 +94,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode with text decoder
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -120,7 +115,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a decoding failure due to type mismatch
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg)))) -> do
@@ -138,14 +132,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8, int4 fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (a int8, b int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode with correct first field but wrong second field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(1, 2) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -163,7 +156,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a decoding failure
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg)))) -> do
