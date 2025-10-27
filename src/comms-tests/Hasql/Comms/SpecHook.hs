@@ -15,10 +15,11 @@ hook hookedSpec = parallel do
     byDistro tagName =
       describe (toList tagName) do
         aroundAll
-          ( TestcontainersPostgresql.hook
-              tagName
-              "postgres"
-              "postgres"
-              False
+          ( TestcontainersPostgresql.run
+              TestcontainersPostgresql.Config
+                { tagName,
+                  auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+                  forwardLogs = False
+                }
           )
           (parallel hookedSpec)

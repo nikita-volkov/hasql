@@ -28,93 +28,123 @@ spec = do
 
   describe "postgres:9" do
     it "Fails with compatibility error" do
-      TestcontainersPostgresql.hook "postgres:9" "postgres" "postgres" False \(host, port) -> do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host port,
-                  Settings.user "postgres",
-                  Settings.password "postgres",
-                  Settings.dbname "postgres"
-                ]
-        result <- Connection.acquire settings
-        case result of
-          Right conn -> do
-            Connection.release conn
-            expectationFailure "Expected connection to fail with compatibility error, but it succeeded"
-          Left err ->
-            err `shouldBe` Errors.CompatibilityConnectionError "Server version is lower than 10: 9.6.24"
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { tagName = "postgres:9",
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+            forwardLogs = False
+          }
+        \(host, port) -> do
+          let settings =
+                mconcat
+                  [ Settings.hostAndPort host port,
+                    Settings.user "postgres",
+                    Settings.password "postgres",
+                    Settings.dbname "postgres"
+                  ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with compatibility error, but it succeeded"
+            Left err ->
+              err `shouldBe` Errors.CompatibilityConnectionError "Server version is lower than 10: 9.6.24"
 
   describe "postgres:10" do
     it "Succeeds" do
-      TestcontainersPostgresql.hook "postgres:10" "postgres" "postgres" False \(host, port) -> do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host port,
-                  Settings.user "postgres",
-                  Settings.password "postgres",
-                  Settings.dbname "postgres"
-                ]
-        result <- Connection.acquire settings
-        case result of
-          Right conn -> do
-            Connection.release conn
-          Left err -> do
-            expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { tagName = "postgres:10",
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+            forwardLogs = False
+          }
+        \(host, port) -> do
+          let settings =
+                mconcat
+                  [ Settings.hostAndPort host port,
+                    Settings.user "postgres",
+                    Settings.password "postgres",
+                    Settings.dbname "postgres"
+                  ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+            Left err -> do
+              expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
   describe "postgres:17" do
     it "Succeeds" do
-      TestcontainersPostgresql.hook "postgres:17" "postgres" "postgres" False \(host, port) -> do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host port,
-                  Settings.user "postgres",
-                  Settings.password "postgres",
-                  Settings.dbname "postgres"
-                ]
-        result <- Connection.acquire settings
-        case result of
-          Right conn -> do
-            Connection.release conn
-          Left err -> do
-            expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { tagName = "postgres:17",
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+            forwardLogs = False
+          }
+        \(host, port) -> do
+          let settings =
+                mconcat
+                  [ Settings.hostAndPort host port,
+                    Settings.user "postgres",
+                    Settings.password "postgres",
+                    Settings.dbname "postgres"
+                  ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+            Left err -> do
+              expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
-    it "Fails with authentication error on wrong password" do
-      TestcontainersPostgresql.hook "postgres:17" "postgres" "postgres" False \(host, port) -> do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host port,
-                  Settings.user "postgres",
-                  Settings.password "",
-                  Settings.dbname "postgres1"
-                ]
-        result <- Connection.acquire settings
-        case result of
-          Right conn -> do
-            Connection.release conn
-            expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-          Left (Errors.AuthenticationConnectionError _) ->
-            pure ()
-          Left err ->
-            expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
+    it "Fails with authentication error on incorrect password" do
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { tagName = "postgres:17",
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+            forwardLogs = False
+          }
+        \(host, port) -> do
+          let settings =
+                mconcat
+                  [ Settings.hostAndPort host port,
+                    Settings.user "postgres",
+                    Settings.password "",
+                    Settings.dbname "postgres1"
+                  ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left (Errors.AuthenticationConnectionError _) ->
+              pure ()
+            Left err ->
+              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
-    it "Fails with authentication error on wrong user" do
-      TestcontainersPostgresql.hook "postgres:17" "postgres" "postgres" False \(host, port) -> do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host port,
-                  Settings.user "postgres1",
-                  Settings.password "",
-                  Settings.dbname "postgres"
-                ]
-        result <- Connection.acquire settings
-        case result of
-          Right conn -> do
-            Connection.release conn
-            expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-          Left (Errors.AuthenticationConnectionError _) ->
-            pure ()
-          Left err ->
-            expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
+    it "Fails with authentication error on incorrect user" do
+      TestcontainersPostgresql.run
+        TestcontainersPostgresql.Config
+          { tagName = "postgres:17",
+            auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+            forwardLogs = False
+          }
+        \(host, port) -> do
+          let settings =
+                mconcat
+                  [ Settings.hostAndPort host port,
+                    Settings.user "postgres1",
+                    Settings.password "",
+                    Settings.dbname "postgres"
+                  ]
+          result <- Connection.acquire settings
+          case result of
+            Right conn -> do
+              Connection.release conn
+              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
+            Left (Errors.AuthenticationConnectionError _) ->
+              pure ()
+            Left err ->
+              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
   describe "postgres:10" do
     byDistro "postgres:10"
@@ -129,11 +159,12 @@ byDistro tagName = do
         describe ("username: " <> toList username) do
           describe ("password: " <> toList password) do
             it "connects" do
-              TestcontainersPostgresql.hook
-                tagName
-                username
-                password
-                False
+              TestcontainersPostgresql.run
+                TestcontainersPostgresql.Config
+                  { tagName,
+                    auth = TestcontainersPostgresql.CredentialsAuth username password,
+                    forwardLogs = False
+                  }
                 ( \(host, port) -> do
                     result <-
                       Hasql.Connection.acquire
@@ -187,16 +218,22 @@ byDistro tagName = do
 
     describe "AuthenticationConnectionError" do
       it "is reported for invalid credentials" do
-        TestcontainersPostgresql.hook tagName "postgres" "correctpassword" False \(host, port) -> do
-          result <-
-            Hasql.Connection.acquire
-              ( mconcat
-                  [ Settings.hostAndPort host port,
-                    Settings.user "wronguser",
-                    Settings.password "wrongpassword"
-                  ]
-              )
-          case result of
-            Left (Errors.AuthenticationConnectionError _) -> pure ()
-            Left err -> expectationFailure ("Expected AuthenticationConnectionError, got: " <> show err)
-            Right _conn -> expectationFailure "Expected connection to fail with authentication error"
+        TestcontainersPostgresql.run
+          TestcontainersPostgresql.Config
+            { tagName,
+              auth = TestcontainersPostgresql.CredentialsAuth "password" "correctpassword",
+              forwardLogs = False
+            }
+          \(host, port) -> do
+            result <-
+              Hasql.Connection.acquire
+                ( mconcat
+                    [ Settings.hostAndPort host port,
+                      Settings.user "incorrectuser",
+                      Settings.password "incorrectpassword"
+                    ]
+                )
+            case result of
+              Left (Errors.AuthenticationConnectionError _) -> pure ()
+              Left err -> expectationFailure ("Expected AuthenticationConnectionError, got: " <> show err)
+              Right _conn -> expectationFailure "Expected connection to fail with authentication error"
