@@ -22,24 +22,28 @@ toValueDecoder (Composite imp) =
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
   NullableOrNot.NonNullable imp ->
-    case Value.toBaseOid imp of
-      Just oid ->
-        Composite (RequestingOid.hoist (Binary.typedValueComposite oid) (Value.toDecoder imp))
-      Nothing ->
-        Composite
-          ( RequestingOid.hoistLookingUp
-              (Value.toSchema imp, Value.toTypeName imp)
-              (\(baseOid, _arrayOid) -> Binary.typedValueComposite baseOid)
-              (Value.toDecoder imp)
-          )
+    let dimensionality = Value.toDimensionality imp
+        staticOid = if dimensionality == 0 then Value.toBaseOid imp else Value.toArrayOid imp
+     in case staticOid of
+          Just oid ->
+            Composite (RequestingOid.hoist (Binary.typedValueComposite oid) (Value.toDecoder imp))
+          Nothing ->
+            Composite
+              ( RequestingOid.hoistLookingUp
+                  (Value.toSchema imp, Value.toTypeName imp)
+                  (\(baseOid, arrayOid) -> Binary.typedValueComposite (if dimensionality == 0 then baseOid else arrayOid))
+                  (Value.toDecoder imp)
+              )
   NullableOrNot.Nullable imp ->
-    case Value.toBaseOid imp of
-      Just oid ->
-        Composite (RequestingOid.hoist (Binary.typedNullableValueComposite oid) (Value.toDecoder imp))
-      Nothing ->
-        Composite
-          ( RequestingOid.hoistLookingUp
-              (Value.toSchema imp, Value.toTypeName imp)
-              (\(baseOid, _arrayOid) -> Binary.typedNullableValueComposite baseOid)
-              (Value.toDecoder imp)
-          )
+    let dimensionality = Value.toDimensionality imp
+        staticOid = if dimensionality == 0 then Value.toBaseOid imp else Value.toArrayOid imp
+     in case staticOid of
+          Just oid ->
+            Composite (RequestingOid.hoist (Binary.typedNullableValueComposite oid) (Value.toDecoder imp))
+          Nothing ->
+            Composite
+              ( RequestingOid.hoistLookingUp
+                  (Value.toSchema imp, Value.toTypeName imp)
+                  (\(baseOid, arrayOid) -> Binary.typedNullableValueComposite (if dimensionality == 0 then baseOid else arrayOid))
+                  (Value.toDecoder imp)
+              )
