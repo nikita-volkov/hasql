@@ -48,6 +48,7 @@ module Hasql.Codecs.Decoders.Value
     toArrayOid,
     toHandler,
     toByteStringParser,
+    isArray,
   )
 where
 
@@ -429,3 +430,6 @@ toHandler (Value _ _ _ _ _ decoder) = RequestingOid.toBase decoder
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: Value a -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a)
 toByteStringParser (Value _ _ _ _ _ decoder) oidCache = Binary.valueParser (RequestingOid.toBase decoder oidCache)
+
+isArray :: Value a -> Bool
+isArray (Value _ _ _ _ dimensionality _) = dimensionality > 0
