@@ -95,7 +95,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right (42 :: Int64, "green")
 
     it "decodes multiple levels of nesting with enums" \config -> do
@@ -151,7 +150,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right (("large", 5 :: Int32), "test")
 
   describe "Arrays of enums" do
@@ -182,7 +180,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right ["first", "third", "second"]
 
     it "decodes 2D arrays of named enums" \config -> do
@@ -215,7 +212,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right [["a", "b"], ["c", "a"]]
 
     it "decodes arrays of composites containing enums" \config -> do
@@ -263,7 +259,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right [("high", 1 :: Int32), ("low", 2)]
 
   it "detects attempts to decode non-existent enum types" \config -> do
@@ -300,7 +295,6 @@ spec = do
                     )
                 )
             )
-            True
 
       case result of
         Left (Errors.MissingTypesSessionError missingTypes) ->

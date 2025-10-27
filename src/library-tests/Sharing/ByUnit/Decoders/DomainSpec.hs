@@ -170,7 +170,6 @@ spec = do
                     )
                 )
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.listArray (Decoders.nonNullable Decoders.text)))))
-                True
           result `shouldBe` Right (["a", "b", "c"] :: [Text])
 
       it "decodes base type array that can work with domain arrays via cast" \config -> do
@@ -193,5 +192,4 @@ spec = do
                     )
                 )
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.listArray (Decoders.nonNullable Decoders.int8)))))
-                True
           result `shouldBe` Right ([10, 20, 30] :: [Int64])

@@ -203,7 +203,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right ["beta", "alpha", "gamma"]
 
   describe "OID lookup verification" do
