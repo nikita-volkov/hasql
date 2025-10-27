@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 module Hasql.Pipeline
   ( Pipeline.Pipeline,
     statement,

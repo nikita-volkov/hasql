@@ -1,5 +1,7 @@
 module Hasql.Statement
-  ( Statement (..),
+  ( Statement (Statement),
+    preparable,
+    unpreparable,
     refineResult,
 
     -- * Recipes
@@ -26,7 +28,7 @@ import Hasql.Platform.Prelude
 -- @
 -- selectSum :: 'Statement' (Int64, Int64) Int64
 -- selectSum =
---   'Statement' sql encoder decoder True
+--   'preparable' sql encoder decoder
 --   where
 --     sql =
 --       \"select ($1 + $2)\"
@@ -59,6 +61,42 @@ data Statement params result
       -- Set it to 'True' if your application has a limited amount of queries and doesn't generate the SQL dynamically.
       -- This will boost the performance by allowing Postgres to avoid reconstructing the execution plan each time the query gets executed.
       Bool
+
+{-# DEPRECATED Statement "Use 'preparable' or 'unpreparable' instead of the Statement constructor" #-}
+
+-- |
+-- Construct a preparable statement.
+--
+-- Use this for statements that will be executed multiple times with different parameters.
+-- Preparable statements are cached by PostgreSQL, which avoids reconstructing the execution plan each time.
+--
+-- Suitable for applications with a limited amount of queries that don't generate SQL dynamically.
+preparable ::
+  -- | SQL template with parameters in positional notation (@$1@, @$2@, etc.)
+  ByteString ->
+  -- | Parameters encoder
+  Encoders.Params params ->
+  -- | Result decoder
+  Decoders.Result result ->
+  Statement params result
+preparable sql encoder decoder = Statement sql encoder decoder True
+
+-- |
+-- Construct an unpreparable statement.
+--
+-- Use this for statements that are dynamically generated or executed only once.
+-- Unpreparable statements are not cached by PostgreSQL.
+--
+-- Suitable for dynamic SQL or one-off queries.
+unpreparable ::
+  -- | SQL template with parameters in positional notation (@$1@, @$2@, etc.)
+  ByteString ->
+  -- | Parameters encoder
+  Encoders.Params params ->
+  -- | Result decoder
+  Decoders.Result result ->
+  Statement params result
+unpreparable sql encoder decoder = Statement sql encoder decoder False
 
 instance Functor (Statement params) where
   {-# INLINE fmap #-}
@@ -93,7 +131,7 @@ refineResult refiner (Statement template encoder decoder preparable) =
 -- @
 -- insertMultipleLocations :: 'Statement' (Vector (UUID, Double, Double)) ()
 -- insertMultipleLocations =
---   'Statement' sql encoder decoder True
+--   'preparable' sql encoder decoder
 --   where
 --     sql =
 --       "insert into location (id, x, y) select * from unnest ($1, $2, $3)"

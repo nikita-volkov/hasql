@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 module Hasql.Session
   ( Session.Session,
     Session.pipeline,
