@@ -129,8 +129,8 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
 -- Lift a composite encoder into a value encoder for named composite types.
 --
 -- This function is for named composite types where the type name is known.
--- For anonymous composite types (like those created with ROW constructor),
--- use 'record' instead.
+-- If you need to encode an anonymous composite type (like those created with the ROW constructor),
+-- PostgreSQL itself does not support that.
 composite ::
   -- | Schema name where the composite type is defined.
   Maybe Text ->
