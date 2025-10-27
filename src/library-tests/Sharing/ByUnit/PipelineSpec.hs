@@ -114,11 +114,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         case result of
           Right val ->
@@ -131,11 +130,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         -- If there is an error the cache got corrupted.
         case result of
@@ -151,19 +149,17 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
               <* Pipeline.statement
                 ()
-                ( Statement.Statement
+                ( Statement.preparable
                     "select 1"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                    True
                 )
         case result of
           Right val ->

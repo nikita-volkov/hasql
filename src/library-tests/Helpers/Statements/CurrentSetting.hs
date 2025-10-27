@@ -15,7 +15,7 @@ type CurrentSettingResult = Maybe Text
 
 instance StatementModule CurrentSetting CurrentSettingResult where
   statement =
-    Statement.Statement sql encoder decoder preparable
+    Statement.preparable sql encoder decoder
     where
       sql =
         "SELECT current_setting($1, $2)"
@@ -29,6 +29,3 @@ instance StatementModule CurrentSetting CurrentSettingResult where
       decoder =
         Decoders.singleRow
           (Decoders.column (Decoders.nullable Decoders.text))
-
-      preparable =
-        True

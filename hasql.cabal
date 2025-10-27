@@ -141,6 +141,7 @@ library
     Hasql.Engine.Decoders.Row
     Hasql.Engine.Errors
     Hasql.Engine.PqProcedures.SelectTypeInfo
+    Hasql.Engine.Statement
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache

@@ -16,11 +16,10 @@ spec = do
     it "encodes UUID correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1 = '550e8400-e29b-41d4-a716-446655440000'::uuid"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-                True
         case UUID.fromString "550e8400-e29b-41d4-a716-446655440000" of
           Just testUuid -> do
             result <- Connection.use connection (Session.statement testUuid statement)
@@ -30,11 +29,10 @@ spec = do
     it "roundtrips UUID correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
-                True
         case UUID.fromString "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" of
           Just testUuid -> do
             result <- Connection.use connection (Session.statement testUuid statement)
@@ -44,10 +42,9 @@ spec = do
     it "encodes nil UUID correctly" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
-                True
         result <- Connection.use connection (Session.statement UUID.nil statement)
         result `shouldBe` Right UUID.nil

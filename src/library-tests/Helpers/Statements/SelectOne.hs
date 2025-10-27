@@ -11,8 +11,7 @@ type SelectOneResult = Int32
 
 instance StatementModule SelectOne SelectOneResult where
   statement =
-    Statement.Statement
+    Statement.preparable
       "select 1"
       mempty
       (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-      True

@@ -20,7 +20,10 @@ spec = do
           it "gets reported properly" \config -> do
             Scripts.onPreparableConnection config \connection -> do
               result <- Connection.use connection do
-                let statement = Statement.Statement "-" mempty Decoders.noResult preparable
+                let statement =
+                      if preparable
+                        then Statement.preparable "-" mempty Decoders.noResult
+                        else Statement.unpreparable "-" mempty Decoders.noResult
                 if inPipeline
                   then Session.pipeline (Pipeline.statement () statement)
                   else Session.statement () statement

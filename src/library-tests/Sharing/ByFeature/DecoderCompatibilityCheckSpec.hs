@@ -31,11 +31,10 @@ byPreparedStatusAndExecutor preparable executorName executor = do
         it "gets reported when result has more columns" \config -> do
           Scripts.onPreparableConnection config \connection -> do
             let statement =
-                  Statement.Statement
+                  (if preparable then Statement.preparable else Statement.unpreparable)
                     "select 1, 2"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                    preparable
             result <- Connection.use connection (executor statement)
             case result of
               Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
@@ -49,7 +48,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
         it "gets reported when result has fewer columns" \config -> do
           Scripts.onPreparableConnection config \connection -> do
             let statement =
-                  Statement.Statement
+                  (if preparable then Statement.preparable else Statement.unpreparable)
                     "select 1"
                     mempty
                     ( Decoders.singleRow
@@ -58,7 +57,6 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                             <*> Decoders.column (Decoders.nonNullable Decoders.int8)
                         )
                     )
-                    preparable
             result <- Connection.use connection (executor statement)
             case result of
               Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
@@ -74,7 +72,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           it "gets reported when column type mismatches decoder" \config -> do
             Scripts.onPreparableConnection config \connection -> do
               let statement =
-                    Statement.Statement
+                    (if preparable then Statement.preparable else Statement.unpreparable)
                       "select 1::int8, 'text'"
                       mempty
                       ( Decoders.singleRow
@@ -83,7 +81,6 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                               <*> Decoders.column (Decoders.nonNullable Decoders.int8)
                           )
                       )
-                      preparable
               result <- Connection.use connection (executor statement)
               case result of
                 Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
@@ -98,7 +95,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           it "gets reported when column type mismatches decoder" \config -> do
             Scripts.onPreparableConnection config \connection -> do
               let statement =
-                    Statement.Statement
+                    (if preparable then Statement.preparable else Statement.unpreparable)
                       "select 1::int8, 'text'"
                       mempty
                       ( Decoders.rowMaybe
@@ -107,7 +104,6 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                               <*> Decoders.column (Decoders.nonNullable Decoders.int8)
                           )
                       )
-                      preparable
               result <- Connection.use connection (executor statement)
               case result of
                 Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
@@ -122,7 +118,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           it "gets reported when column type mismatches decoder" \config -> do
             Scripts.onPreparableConnection config \connection -> do
               let statement =
-                    Statement.Statement
+                    (if preparable then Statement.preparable else Statement.unpreparable)
                       "select int8 '1', text 'text'"
                       mempty
                       ( Decoders.rowVector
@@ -131,7 +127,6 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                               <*> Decoders.column (Decoders.nonNullable Decoders.int8)
                           )
                       )
-                      preparable
               result <- Connection.use connection (executor statement)
               case result of
                 Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
@@ -148,13 +143,12 @@ byPreparedStatusAndExecutor preparable executorName executor = do
               it "reports properly" \config -> do
                 Scripts.onPreparableConnection config \connection -> do
                   let statement =
-                        Statement.Statement
+                        (if preparable then Statement.preparable else Statement.unpreparable)
                           "select 1::int8"
                           mempty
                           ( Decoders.singleRow
                               (Decoders.column (Decoders.nonNullable (Decoders.vectorArray @Vector (Decoders.nonNullable Decoders.int8))))
                           )
-                          preparable
                   result <- Connection.use connection (executor statement)
                   case result of
                     Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
@@ -170,13 +164,12 @@ byPreparedStatusAndExecutor preparable executorName executor = do
               it "decodes properly" \config -> do
                 Scripts.onPreparableConnection config \connection -> do
                   let statement =
-                        Statement.Statement
+                        (if preparable then Statement.preparable else Statement.unpreparable)
                           "select ARRAY[1::int8, 2::int8]"
                           mempty
                           ( Decoders.singleRow
                               (Decoders.column (Decoders.nonNullable (Decoders.vectorArray @Vector (Decoders.nonNullable Decoders.int8))))
                           )
-                          preparable
                   result <- Connection.use connection (executor statement)
                   shouldBe result (Right (Vector.fromList [1, 2]))
 
@@ -185,13 +178,12 @@ byPreparedStatusAndExecutor preparable executorName executor = do
               it "reports properly" \config -> do
                 Scripts.onPreparableConnection config \connection -> do
                   let statement =
-                        Statement.Statement
+                        (if preparable then Statement.preparable else Statement.unpreparable)
                           "select ARRAY[1::int8, 2::int8]"
                           mempty
                           ( Decoders.singleRow
                               (Decoders.column (Decoders.nonNullable Decoders.int8))
                           )
-                          preparable
                   result <- Connection.use connection (executor statement)
                   case result of
                     Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
