@@ -29,8 +29,8 @@ spec = do
                 result
                 ( Left
                     ( (Errors.StatementSessionError 1 0 "-" [] preparable)
-                        ( Errors.ExecutionStatementError
-                            ( Errors.ExecutionError
+                        ( Errors.ServerStatementError
+                            ( Errors.ServerError
                                 "42601"
                                 "syntax error at or near \"-\""
                                 Nothing

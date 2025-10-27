@@ -62,7 +62,7 @@ spec = do
                 <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
                 <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do

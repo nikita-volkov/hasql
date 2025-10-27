@@ -40,5 +40,5 @@ spec = do
                 True
         result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
-          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
+          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result

@@ -28,9 +28,9 @@ data ConnectionError
   deriving stock (Show, Eq)
 
 -- |
--- Execution error from PostgreSQL server.
-data ExecutionError
-  = ExecutionError
+-- Error reported by the PostgreSQL server.
+data ServerError
+  = ServerError
       -- | SQL State Code.
       Text
       -- | Message.
@@ -56,7 +56,7 @@ data CellError
 -- Statement-level error.
 data StatementError
   = -- | The server rejected the statement with an error.
-    ExecutionStatementError ExecutionError
+    ServerStatementError ServerError
   | UnexpectedRowCountStatementError
       -- | Expected minimum.
       Int
@@ -119,7 +119,7 @@ data SessionError
       -- | SQL.
       ByteString
       -- | Server error.
-      ExecutionError
+      ServerError
   | ConnectionSessionError
       Text
   | -- | Either the server misbehaves or there is a bug in Hasql.
@@ -195,8 +195,8 @@ fromRecvError = \case
 fromStatementResultError :: Hasql.Comms.ResultDecoder.Error -> StatementError
 fromStatementResultError = \case
   Hasql.Comms.ResultDecoder.ServerError code message detail hint position ->
-    ExecutionStatementError
-      ( ExecutionError
+    ServerStatementError
+      ( ServerError
           (decodeUtf8Lenient code)
           (decodeUtf8Lenient message)
           (fmap decodeUtf8Lenient detail)
@@ -239,7 +239,7 @@ fromRecvErrorInScript scriptSql = \case
       Hasql.Comms.ResultDecoder.ServerError code message detail hint position ->
         ScriptSessionError
           scriptSql
-          ( ExecutionError
+          ( ServerError
               (decodeUtf8Lenient code)
               (decodeUtf8Lenient message)
               (fmap decodeUtf8Lenient detail)
