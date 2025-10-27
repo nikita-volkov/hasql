@@ -44,35 +44,48 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable (Value.Value _ _ (Just elementOid) _ _ _ unknownTypes encode print) ->
-    Composite
-      unknownTypes
-      (\oidCache val -> Binary.field elementOid (encode oidCache val))
-      (\val -> [print val])
-  NullableOrNot.NonNullable (Value.Value schemaName typeName Nothing _ _ _ unknownTypes encode print) ->
-    Composite
-      (HashSet.insert (schemaName, typeName) unknownTypes)
-      (\oidCache val -> Binary.field (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache)) (encode oidCache val))
-      (\val -> [print val])
-  NullableOrNot.Nullable (Value.Value _ _ (Just elementOid) _ _ _ unknownTypes encode print) ->
-    Composite
-      unknownTypes
-      ( \oidCache -> \case
-          Nothing -> Binary.nullField elementOid
-          Just val -> Binary.field elementOid (encode oidCache val)
-      )
-      ( \case
-          Nothing -> ["NULL"]
-          Just val -> [print val]
-      )
-  NullableOrNot.Nullable (Value.Value schemaName typeName Nothing _ _ _ unknownTypes encode print) ->
-    Composite
-      (HashSet.insert (schemaName, typeName) unknownTypes)
-      ( \oidCache -> \case
-          Nothing -> Binary.nullField (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache))
-          Just val -> Binary.field (maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache)) (encode oidCache val)
-      )
-      ( \case
-          Nothing -> ["NULL"]
-          Just val -> [print val]
-      )
+  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality _ unknownTypes encode print) ->
+    let staticOid = if dimensionality == 0 then scalarOid else arrayOid
+     in case staticOid of
+          Just oid ->
+            Composite
+              unknownTypes
+              (\oidCache val -> Binary.field oid (encode oidCache val))
+              (\val -> [print val])
+          Nothing ->
+            Composite
+              (HashSet.insert (schemaName, typeName) unknownTypes)
+              ( \oidCache val ->
+                  let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                   in Binary.field oid (encode oidCache val)
+              )
+              (\val -> [print val])
+  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality _ unknownTypes encode print) ->
+    let staticOid = if dimensionality == 0 then scalarOid else arrayOid
+     in case staticOid of
+          Just oid ->
+            Composite
+              unknownTypes
+              ( \oidCache -> \case
+                  Nothing -> Binary.nullField oid
+                  Just val -> Binary.field oid (encode oidCache val)
+              )
+              ( \case
+                  Nothing -> ["NULL"]
+                  Just val -> [print val]
+              )
+          Nothing ->
+            Composite
+              (HashSet.insert (schemaName, typeName) unknownTypes)
+              ( \oidCache -> \case
+                  Nothing ->
+                    let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                     in Binary.nullField oid
+                  Just val ->
+                    let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                     in Binary.field oid (encode oidCache val)
+              )
+              ( \case
+                  Nothing -> ["NULL"]
+                  Just val -> [print val]
+              )
