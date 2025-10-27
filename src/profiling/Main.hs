@@ -6,7 +6,7 @@ import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
-import Hasql.Statement qualified as C
+import Hasql.Statement qualified as Statement
 import TestcontainersPostgresql qualified
 import Prelude
 
@@ -43,13 +43,13 @@ sessionWithManySmallResults =
 
 -- * Statements
 
-statementWithManyParameters :: C.Statement (Vector (Int64, Int64)) ()
+statementWithManyParameters :: Statement.Statement (Vector (Int64, Int64)) ()
 statementWithManyParameters =
   error "TODO: statementWithManyParameters"
 
-statementWithSingleRow :: C.Statement () (Int64, Int64)
+statementWithSingleRow :: Statement.Statement () (Int64, Int64)
 statementWithSingleRow =
-  C.Statement template encoder decoder True
+  Statement.preparable template encoder decoder
   where
     template =
       "SELECT 1 :: int8, 2 :: int8"
@@ -64,9 +64,9 @@ statementWithSingleRow =
             tuple !a !b =
               (a, b)
 
-statementWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Statement () result
+statementWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> Statement.Statement () result
 statementWithManyRows decoder =
-  C.Statement template encoder (decoder rowDecoder) True
+  Statement.preparable template encoder (decoder rowDecoder)
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
@@ -78,11 +78,11 @@ statementWithManyRows decoder =
         tuple !a !b =
           (a, b)
 
-statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
+statementWithManyRowsInVector :: Statement.Statement () (Vector (Int64, Int64))
 statementWithManyRowsInVector =
   statementWithManyRows D.rowVector
 
-statementWithManyRowsInList :: C.Statement () [(Int64, Int64)]
+statementWithManyRowsInList :: Statement.Statement () [(Int64, Int64)]
 statementWithManyRowsInList =
   statementWithManyRows D.rowList
 

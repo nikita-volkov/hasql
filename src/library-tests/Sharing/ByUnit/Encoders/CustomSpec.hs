@@ -22,14 +22,13 @@ spec = do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"]))
               mempty
               Decoders.noResult
-              True
           -- Test custom encoder with runtime OID lookup
           Session.statement "beta"
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", enumName, ") = 'beta' :: ", enumName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -44,7 +43,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "encodes a custom type with static OIDs" \config -> do
@@ -52,7 +50,7 @@ spec = do
         result <- Connection.use connection do
           -- Test custom encoder with static OIDs for text (type OID 25, array OID 1009)
           Session.statement "hello"
-            $ Statement.Statement
+            $ Statement.preparable
               "select $1::text = 'hello'::text"
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -67,7 +65,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "encodes with dependent type OID requests" \config -> do
@@ -76,14 +73,13 @@ spec = do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('small', 'large')"]))
               mempty
               Decoders.noResult
-              True
           -- Test custom encoder that requests OID of the enum type itself
           Session.statement "large"
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", enumName, ") = 'large' :: ", enumName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -104,7 +100,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
   describe "Error handling" do
@@ -112,7 +107,7 @@ spec = do
       Scripts.onPreparableConnection config \connection -> do
         result <- Connection.use connection do
           Session.statement "test_value"
-            $ Statement.Statement
+            $ Statement.preparable
               "select $1"
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -127,7 +122,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
-              True
 
         case result of
           Left (Errors.MissingTypesSessionError missingTypes) ->
@@ -141,14 +135,13 @@ spec = do
         result <- Connection.use connection do
           -- Create a custom type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", customTypeName, " as (id int4)"]))
               mempty
               Decoders.noResult
-              True
           -- Try to encode it but request a non-existent dependent type
           Session.statement (42 :: Int32)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", customTypeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -163,7 +156,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
-              True
 
         case result of
           Left (Errors.MissingTypesSessionError missingTypes) ->
@@ -178,14 +170,13 @@ spec = do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"]))
               mempty
               Decoders.noResult
-              True
           -- Test roundtrip using custom encoder and decoder
           Session.statement "three"
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -212,7 +203,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right "three"
 
     it "roundtrips multiple values" \config -> do
@@ -221,15 +211,14 @@ spec = do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"]))
               mempty
               Decoders.noResult
-              True
           -- Test roundtrip for multiple values
           r1 <-
             Session.statement "first"
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -256,10 +245,9 @@ spec = do
                         )
                     )
                 )
-                True
           r2 <-
             Session.statement "third"
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -286,7 +274,6 @@ spec = do
                         )
                     )
                 )
-                True
           return (r1, r2)
         result `shouldBe` Right ("first", "third")
 
@@ -298,21 +285,19 @@ spec = do
         result <- Connection.use connection do
           -- Create schema
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create schema ", schemaName]))
               mempty
               Decoders.noResult
-              True
           -- Create enum type in that schema
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y', 'z')"]))
               mempty
               Decoders.noResult
-              True
           -- Test custom encoder with schema qualification
           Session.statement "z"
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", schemaName, ".", typeName, ") = 'z' :: ", schemaName, ".", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -327,14 +312,13 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "detects missing types in non-existent schemas" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         result <- Connection.use connection do
           Session.statement "test"
-            $ Statement.Statement
+            $ Statement.preparable
               "select $1"
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -349,7 +333,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
-              True
 
         case result of
           Left (Errors.MissingTypesSessionError missingTypes) ->
