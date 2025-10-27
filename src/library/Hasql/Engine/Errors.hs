@@ -108,7 +108,7 @@ data SessionError
       -- | 0-based index of the statement in the pipeline.
       Int
       -- | SQL template.
-      ByteString
+      Text
       -- | Parameters.
       [Text]
       -- | Whether the statement was executed as a prepared statement.
@@ -117,7 +117,7 @@ data SessionError
       StatementError
   | ScriptSessionError
       -- | SQL.
-      ByteString
+      Text
       -- | Server error.
       ExecutionError
   | ConnectionSessionError
@@ -153,7 +153,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (fromStatementResultError resultError)
@@ -170,7 +170,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 0)
@@ -187,7 +187,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 actual)
@@ -238,7 +238,7 @@ fromRecvErrorInScript scriptSql = \case
     case resultError of
       Hasql.Comms.ResultDecoder.ServerError code message detail hint position ->
         ScriptSessionError
-          scriptSql
+          (decodeUtf8Lenient scriptSql)
           ( ExecutionError
               (decodeUtf8Lenient code)
               (decodeUtf8Lenient message)

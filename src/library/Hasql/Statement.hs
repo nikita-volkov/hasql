@@ -43,13 +43,12 @@ data Statement params result
   = Statement
       -- | SQL template.
       --
-      -- Must be formatted according to the Postgres standard,
-      -- with any non-ASCII characters of the template encoded using UTF-8.
+      -- Must be formatted according to the Postgres standard.
       -- The parameters must be referred to using the positional notation, as in the following:
       -- @$1@, @$2@, @$3@ and etc.
       -- These references must be used in accordance with the order in which
       -- the value encoders are specified in the parameters encoder.
-      ByteString
+      Text
       -- | Parameters encoder.
       (Encoders.Params params)
       -- | Decoder of result.

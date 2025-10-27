@@ -1,7 +1,6 @@
 module Sharing.ByUnit.Decoders.EnumSpec (spec) where
 
 import Data.HashSet qualified as HashSet
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Errors qualified as Errors
@@ -21,14 +20,14 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('sad', 'ok', 'happy')"]))
+              (mconcat ["create type ", enumName, " as enum ('sad', 'ok', 'happy')"])
               mempty
               Decoders.noResult
               True
           -- Test decoding from static value
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select 'happy' :: ", enumName]))
+              (mconcat ["select 'happy' :: ", enumName])
               mempty
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
               True
@@ -41,7 +40,7 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"]))
+              (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"])
               mempty
               Decoders.noResult
               True
@@ -49,14 +48,14 @@ spec = do
           r1 <-
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'alpha' :: ", enumName]))
+                (mconcat ["select 'alpha' :: ", enumName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
                 True
           r2 <-
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select 'gamma' :: ", enumName]))
+                (mconcat ["select 'gamma' :: ", enumName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
                 True
@@ -72,21 +71,21 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('red', 'green', 'blue')"]))
+              (mconcat ["create type ", enumName, " as enum ('red', 'green', 'blue')"])
               mempty
               Decoders.noResult
               True
           -- Create composite type with enum
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", compositeName, " as (id int8, color ", enumName, ")"]))
+              (mconcat ["create type ", compositeName, " as (id int8, color ", enumName, ")"])
               mempty
               Decoders.noResult
               True
           -- Test decoding
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select (42, 'green') :: ", compositeName]))
+              (mconcat ["select (42, 'green') :: ", compositeName])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -114,28 +113,28 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('small', 'medium', 'large')"]))
+              (mconcat ["create type ", enumName, " as enum ('small', 'medium', 'large')"])
               mempty
               Decoders.noResult
               True
           -- Create inner composite with enum
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (size ", enumName, ", count int4)"]))
+              (mconcat ["create type ", innerType, " as (size ", enumName, ", count int4)"])
               mempty
               Decoders.noResult
               True
           -- Create outer composite
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", name text)"]))
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", name text)"])
               mempty
               Decoders.noResult
               True
           -- Test decoding
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select (('large', 5), 'test') :: ", outerType]))
+              (mconcat ["select (('large', 5), 'test') :: ", outerType])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -172,14 +171,14 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"]))
+              (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"])
               mempty
               Decoders.noResult
               True
           -- Test array decoding
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select array['first', 'third', 'second'] :: ", enumName, "[]"]))
+              (mconcat ["select array['first', 'third', 'second'] :: ", enumName, "[]"])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -203,14 +202,14 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('a', 'b', 'c')"]))
+              (mconcat ["create type ", enumName, " as enum ('a', 'b', 'c')"])
               mempty
               Decoders.noResult
               True
           -- Test 2D array decoding
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select array[array['a', 'b'], array['c', 'a']] :: ", enumName, "[][]"]))
+              (mconcat ["select array[array['a', 'b'], array['c', 'a']] :: ", enumName, "[][]"])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -238,21 +237,21 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('low', 'high')"]))
+              (mconcat ["create type ", enumName, " as enum ('low', 'high')"])
               mempty
               Decoders.noResult
               True
           -- Create composite type with enum
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", compositeName, " as (priority ", enumName, ", id int4)"]))
+              (mconcat ["create type ", compositeName, " as (priority ", enumName, ", id int4)"])
               mempty
               Decoders.noResult
               True
           -- Test decoding array of composites with enums
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select array[('high', 1), ('low', 2)] :: ", compositeName, "[]"]))
+              (mconcat ["select array[('high', 1), ('low', 2)] :: ", compositeName, "[]"])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column

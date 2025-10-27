@@ -1,6 +1,5 @@
 module Sharing.ByUnit.Decoders.Composite.OidMismatchSpec (spec) where
 
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Errors qualified as Errors
@@ -21,14 +20,14 @@ spec = do
             -- Create composite type with int8 field
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
+                (mconcat ["create type ", typeName, " as (x int8)"])
                 mempty
                 Decoders.noResult
                 True
             -- Try to decode with int4 decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
+                (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -60,14 +59,14 @@ spec = do
             -- Create composite type with int4 field
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int4)"]))
+                (mconcat ["create type ", typeName, " as (x int4)"])
                 mempty
                 Decoders.noResult
                 True
             -- Try to decode with int8 decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
+                (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -99,14 +98,14 @@ spec = do
             -- Create composite type with int8 field
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
+                (mconcat ["create type ", typeName, " as (x int8)"])
                 mempty
                 Decoders.noResult
                 True
             -- Try to decode with text decoder
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row(42) :: ", typeName]))
+                (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -139,14 +138,14 @@ spec = do
             -- Create composite type with int8, int4 fields
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (a int8, b int4)"]))
+                (mconcat ["create type ", typeName, " as (a int8, b int4)"])
                 mempty
                 Decoders.noResult
                 True
             -- Try to decode with correct first field but wrong second field
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row(1, 2) :: ", typeName]))
+                (mconcat ["select row(1, 2) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column

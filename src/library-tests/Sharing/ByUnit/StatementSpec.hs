@@ -1,6 +1,5 @@
 module Sharing.ByUnit.StatementSpec (spec) where
 
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -40,10 +39,10 @@ spec = do
       it "counts affected rows correctly" \config -> do
         tableName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.Statement (encodeUtf8 ("drop table if exists " <> tableName)) mempty Decoders.noResult True
-          let createTable = Statement.Statement (encodeUtf8 ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))")) mempty Decoders.noResult True
-          let insertRow = Statement.Statement (encodeUtf8 ("insert into " <> tableName <> " (name) values ('a')")) mempty Decoders.noResult False
-          let deleteRows = Statement.Statement (encodeUtf8 ("delete from " <> tableName)) mempty Decoders.rowsAffected False
+          let dropTable = Statement.Statement ("drop table if exists " <> tableName) mempty Decoders.noResult True
+          let createTable = Statement.Statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult True
+          let insertRow = Statement.Statement ("insert into " <> tableName <> " (name) values ('a')") mempty Decoders.noResult False
+          let deleteRows = Statement.Statement ("delete from " <> tableName) mempty Decoders.rowsAffected False
 
           result <-
             Connection.use connection do
@@ -59,10 +58,10 @@ spec = do
       it "returns auto-incremented column results" \config -> do
         tableName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.Statement (encodeUtf8 ("drop table if exists " <> tableName)) mempty Decoders.noResult True
-          let createTable = Statement.Statement (encodeUtf8 ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))")) mempty Decoders.noResult True
-          let insertRow = Statement.Statement (encodeUtf8 ("insert into " <> tableName <> " (name) values ('a') returning id")) mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))) False
-          let insertRow2 = Statement.Statement (encodeUtf8 ("insert into " <> tableName <> " (name) values ('b') returning id")) mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))) False
+          let dropTable = Statement.Statement ("drop table if exists " <> tableName) mempty Decoders.noResult True
+          let createTable = Statement.Statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult True
+          let insertRow = Statement.Statement ("insert into " <> tableName <> " (name) values ('a') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))) False
+          let insertRow2 = Statement.Statement ("insert into " <> tableName <> " (name) values ('b') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8))) False
 
           result <-
             Connection.use connection do

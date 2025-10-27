@@ -169,7 +169,6 @@ instance IsError SessionError where
           TextBuilder.decimal totalStatements,
           " statements.\n  SQL:\n    ",
           sql
-            & decodeUtf8Lenient
             & TextExtras.prefixEachLine "    "
             & TextBuilder.text,
           "\n  Params:\n    ",
@@ -184,7 +183,7 @@ instance IsError SessionError where
     ScriptSessionError sql execErr ->
       mconcat
         [ "In script.\n  SQL:\n    ",
-          TextExtras.prefixEachLine "    " (decodeUtf8Lenient sql),
+          TextExtras.prefixEachLine "    " sql,
           "\n  Error: ",
           toErrorMessage execErr
         ]

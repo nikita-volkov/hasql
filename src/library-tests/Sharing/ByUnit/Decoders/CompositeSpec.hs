@@ -1,7 +1,6 @@
 module Sharing.ByUnit.Decoders.CompositeSpec (spec) where
 
 import Data.HashSet qualified as HashSet
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Errors qualified as Errors
@@ -22,14 +21,14 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test decoding from static value
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select (42, true) :: ", typeName]))
+                (mconcat ["select (42, true) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -55,14 +54,14 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (a text, b int4)"]))
+                (mconcat ["create type ", typeName, " as (a text, b int4)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select ('hello', 123) :: ", typeName]))
+                (mconcat ["select ('hello', 123) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -90,21 +89,21 @@ spec = do
             -- Create inner composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
+                (mconcat ["create type ", innerType, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
                 True
             -- Create outer composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
+                (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test nested decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select ((42, true), 'world') :: ", outerType]))
+                (mconcat ["select ((42, true), 'world') :: ", outerType])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -142,28 +141,28 @@ spec = do
             -- Create level 1 composite
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type1, " as (val int8)"]))
+                (mconcat ["create type ", type1, " as (val int8)"])
                 mempty
                 Decoders.noResult
                 True
             -- Create level 2 composite
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type2, " as (\"inner\" ", type1, ", flag bool)"]))
+                (mconcat ["create type ", type2, " as (\"inner\" ", type1, ", flag bool)"])
                 mempty
                 Decoders.noResult
                 True
             -- Create level 3 composite
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type3, " as (\"nested\" ", type2, ", name text)"]))
+                (mconcat ["create type ", type3, " as (\"nested\" ", type2, ", name text)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test deeply nested decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row (row (row (99), true), 'deep') :: ", type3]))
+                (mconcat ["select row (row (row (99), true), 'deep') :: ", type3])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -207,14 +206,14 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test array decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"]))
+                (mconcat ["select array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -249,14 +248,14 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (val int4)"]))
+                (mconcat ["create type ", typeName, " as (val int4)"])
                 mempty
                 Decoders.noResult
                 True
             -- Test 2D array decoding
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select array[array[row (1), row (2)], array[row (3), row (4)]] :: ", typeName, "[][]"]))
+                (mconcat ["select array[array[row (1), row (2)], array[row (3), row (4)]] :: ", typeName, "[][]"])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -292,7 +291,7 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
                 True
@@ -333,14 +332,14 @@ spec = do
             -- Create first composite type with two fields
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type1, " as (x int8, y text)"]))
+                (mconcat ["create type ", type1, " as (x int8, y text)"])
                 mempty
                 Decoders.noResult
                 True
             -- Create second composite type with different structure
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", type2, " as (a bool)"]))
+                (mconcat ["create type ", type2, " as (a bool)"])
                 mempty
                 Decoders.noResult
                 True
@@ -348,7 +347,7 @@ spec = do
             -- type2 has 1 field, type1 decoder expects 2 fields
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row (true) :: ", type2]))
+                (mconcat ["select row (true) :: ", type2])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column
@@ -381,14 +380,14 @@ spec = do
             -- Create composite type
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
                 True
             -- Decode with correct type - should succeed
             Session.statement ()
               $ Statement.Statement
-                (encodeUtf8 (mconcat ["select row (42, true) :: ", typeName]))
+                (mconcat ["select row (42, true) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
                     ( Decoders.column

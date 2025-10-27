@@ -1,6 +1,5 @@
 module Sharing.ByUnit.Encoders.UnknownSpec (spec) where
 
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -20,14 +19,14 @@ spec = do
           -- First create the enum type
           Session.statement ()
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"]))
+              (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"])
               mempty
               Decoders.noResult
               True
           -- Then test encoding
           Session.statement "ok"
             $ Statement.Statement
-              (encodeUtf8 (mconcat ["select $1 = ('ok' :: ", name, ")"]))
+              (mconcat ["select $1 = ('ok' :: ", name, ")"])
               (Encoders.param (Encoders.nonNullable Encoders.unknown))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
               True
