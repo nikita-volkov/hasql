@@ -279,18 +279,6 @@ data SessionError
     ConnectionSessionError
       -- | Human-readable details about the connection error.
       Text
-  | -- | An internal driver error occurred.
-    --
-    -- This indicates either:
-    --
-    -- * A bug in Hasql
-    -- * The PostgreSQL server misbehaving
-    -- * An unexpected response from the server
-    --
-    -- If you encounter this error, please report it as a bug.
-    DriverSessionError
-      -- | Human-readable details about what went wrong.
-      Text
   | -- | One or more types referenced in the statement could not be found in the database.
     --
     -- This occurs when using custom types (enums, composite types, domains) that
@@ -306,6 +294,18 @@ data SessionError
       --
       -- Schema name is 'Nothing' when the type was looked up without a schema qualifier.
       (HashSet (Maybe Text, Text))
+  | -- | An internal driver error occurred.
+    --
+    -- This indicates either:
+    --
+    -- * A bug in Hasql
+    -- * The PostgreSQL server misbehaving
+    -- * An unexpected response from the server
+    --
+    -- If you encounter this error, please report it as a bug.
+    DriverSessionError
+      -- | Human-readable details about what went wrong.
+      Text
   deriving stock (Show, Eq)
 
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error context -> SessionError
