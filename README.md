@@ -90,8 +90,7 @@ import Hasql.Session (Session)
 import Hasql.Statement (Statement (..))
 import Prelude
 import qualified Hasql.Connection as Connection
-import qualified Hasql.Connection.Setting as Connection.Setting
-import qualified Hasql.Connection.Setting.Connection as Connection.Setting.Connection
+import qualified Hasql.Connection.Settings as Settings
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
@@ -99,23 +98,19 @@ import qualified Hasql.Session as Session
 main :: IO ()
 main = do
   Right connection <- Connection.acquire connectionSettings
-  result <- Session.run (sumAndDivModSession 3 8 3) connection
+  result <- Connection.use connection (sumAndDivModSession 3 8 3)
   print result
   where
     connectionSettings =
-      [ Connection.Setting.connection
-          ( Connection.Setting.Connection.params
-              [ Connection.Setting.Connection.Param.host "localhost",
-                Connection.Setting.Connection.Param.port 5432,
-                Connection.Setting.Connection.Param.user "postgres",
-                Connection.Setting.Connection.Param.password "postgres",
-                Connection.Setting.Connection.Param.dbname "postgres"
-              ]
-          ),
-        -- States that this connection can prepare statements.
-        -- True by default.
-        Connection.Setting.usePreparedStatements True
-      ]
+      mconcat
+        [ Settings.hostAndPort "localhost" 5432,
+          Settings.user "postgres",
+          Settings.password "postgres",
+          Settings.dbname "postgres"
+          -- Prepared statements are enabled by default.
+          -- To disable them (e.g., for pgbouncer compatibility):
+          -- Settings.noPreparedStatements True
+        ]
 
 -- * Sessions
 
@@ -164,7 +159,7 @@ sumStatement = Statement sql encoder decoder preparable
     -- States that this statement is allowed to be prepared on the server side.
     -- Unless your application generates the statements dynamically,
     -- you should always set this to True.
-    -- If in the connection settings the usePreparedStatements option is set to False,
+    -- If in the connection settings the noPreparedStatements option is set to True,
     -- the statement will not be prepared regardless of this flag.
     preparable = True
 
