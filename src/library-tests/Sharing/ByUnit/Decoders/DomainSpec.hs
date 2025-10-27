@@ -20,18 +20,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select 42 :: ", domainName]))
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                True
           result `shouldBe` Right (42 :: Int64)
 
       it "decodes a domain based on text using text codec" \config -> do
@@ -40,18 +38,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as text"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select 'hello' :: ", domainName]))
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
-                True
           result `shouldBe` Right "hello"
 
       it "decodes a domain based on bool using bool codec" \config -> do
@@ -60,18 +56,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as bool"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select true :: ", domainName]))
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-                True
           result `shouldBe` Right True
 
       it "roundtrips a domain based on numeric" \config -> do
@@ -80,18 +74,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as numeric"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test roundtrip
             Session.statement (123.456 :: Scientific)
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", domainName]))
                 (Encoders.param (Encoders.nonNullable Encoders.numeric))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.numeric)))
-                True
           result `shouldBe` Right (123.456 :: Scientific)
 
     describe "Domain with constraints" do
@@ -101,18 +93,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type with constraint
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as int8 check (value > 0)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Decode value that satisfies constraint
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select 42 :: ", domainName]))
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                True
           result `shouldBe` Right (42 :: Int64)
 
     describe "Domain type cast compatibility for composite usage" do
@@ -123,25 +113,22 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create composite type with domain field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", compositeName, " as (x ", domainName, ", y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Extract and cast domain field to base type for decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select ((42 :: ", domainName, ") :: int8)"]))
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                True
           result `shouldBe` Right (42 :: Int64)
 
     describe "Domain type cast compatibility for array usage" do
@@ -151,18 +138,16 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
                 mempty
                 Decoders.noResult
-                True
             -- Decode base type array
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 "select ARRAY[1,2,3] :: int8[]")
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.listArray (Decoders.nonNullable Decoders.int8)))))
-                True
           result `shouldBe` Right ([1, 2, 3] :: [Int64])
 
       it "roundtrips array using base type codec" \config -> do
@@ -171,14 +156,13 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as text"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test roundtrip using base type codec
             Session.statement (["a", "b", "c"] :: [Text])
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 "select $1 :: text[]")
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -195,14 +179,13 @@ spec = do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
                 mempty
                 Decoders.noResult
-                True
             -- Demonstrate that base codec works for arrays
             Session.statement ([10, 20, 30] :: [Int64])
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 "select $1 :: int8[]")
                 ( Encoders.param
                     ( Encoders.nonNullable

@@ -21,14 +21,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Test encoding by comparing with static value
           Session.statement (42 :: Int64, True)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -44,7 +43,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "encodes and roundtrips a simple named composite" \config -> do
@@ -53,14 +51,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Test roundtrip
           Session.statement (42 :: Int64, True)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -89,7 +86,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right (42 :: Int64, True)
 
   describe "Nested composites" do
@@ -100,21 +96,19 @@ spec = do
         result <- Connection.use connection do
           -- Create inner composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Create outer composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
               mempty
               Decoders.noResult
-              True
           -- Test nested encoding
           Session.statement ((42 :: Int64, True), "hello")
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -142,7 +136,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "roundtrips nested named composites" \config -> do
@@ -152,21 +145,19 @@ spec = do
         result <- Connection.use connection do
           -- Create inner composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Create outer composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
               mempty
               Decoders.noResult
-              True
           -- Test roundtrip
           Session.statement ((42 :: Int64, True), "hello")
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", outerType]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -217,7 +208,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right ((42 :: Int64, True), "hello")
 
   describe "Arrays of composites" do
@@ -227,14 +217,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Test array encoding
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 = array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -259,7 +248,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "roundtrips arrays of named composites" \config -> do
@@ -268,14 +256,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Test roundtrip
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", typeName, "[]"]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -322,7 +309,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right [(1 :: Int64, True), (2, False), (3, True)]
 
   describe "OID lookup verification" do
@@ -334,14 +320,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (value int8)"]))
               mempty
               Decoders.noResult
-              True
           -- Use named composite - this requires OID lookup to succeed
           Session.statement (100 :: Int64)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -359,7 +344,6 @@ spec = do
                       )
                   )
               )
-              True
         result `shouldBe` Right (100 :: Int64)
 
     it "correctly tracks unknown types for nested composites with built-in field types" \config -> do
@@ -378,24 +362,22 @@ spec = do
         result <- Connection.use connection do
           -- Create inner composite with a built-in type field
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
               mempty
               Decoders.noResult
-              True
           -- Create outer composite containing the inner composite
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"]))
               mempty
               Decoders.noResult
-              True
           -- With the bug: innerType wouldn't be in the OID cache because
           -- field (with Nothing elementOid) didn't add it to unknownTypes.
           -- Instead, int8 (with Just elementOid) was being added (incorrectly).
           -- This would cause the encoder to use OID 0 for innerType, causing an error.
           Session.statement (42 :: Int64)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ").inner.value"]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -415,7 +397,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-              True
         result `shouldBe` Right (42 :: Int64)
 
   describe "OID compatibility checking" do
@@ -427,14 +408,13 @@ spec = do
         result <- Connection.use connection do
           -- Create composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Encode and verify - the DB will validate the OID is correct
           Session.statement (42 :: Int64, True)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -450,7 +430,6 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
     it "validates OID lookup for nested composite types during encoding" \config -> do
@@ -461,21 +440,19 @@ spec = do
         result <- Connection.use connection do
           -- Create inner composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
               mempty
               Decoders.noResult
-              True
           -- Create outer composite type
           Session.statement ()
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"]))
               mempty
               Decoders.noResult
-              True
           -- Encode nested composite - both type OIDs must be looked up correctly
           Session.statement (99 :: Int64, True)
-            $ Statement.Statement
+            $ Statement.preparable
               (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType]))
               ( Encoders.param
                   ( Encoders.nonNullable
@@ -499,14 +476,13 @@ spec = do
                   )
               )
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
         result `shouldBe` Right True
 
   it "detects attempts to encode non-existent composite types" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement (42 :: Int64, "test")
-          $ Statement.Statement
+          $ Statement.preparable
             "select $1::nonexistent_composite_type"
             ( Encoders.param
                 ( Encoders.nonNullable
@@ -522,7 +498,6 @@ spec = do
                 )
             )
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
-            True
 
       case result of
         Left (Errors.MissingTypesSessionError missingTypes) ->
