@@ -1,4 +1,4 @@
-module Hasql.TextExtras where
+module Hasql.Errors.TextExtras where
 
 import Data.Text qualified as Text
 import Hasql.Platform.Prelude

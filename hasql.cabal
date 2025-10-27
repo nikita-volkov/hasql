@@ -144,12 +144,12 @@ library
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
+    Hasql.Errors.TextExtras
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq
     Hasql.Pq.Ffi
     Hasql.Pq.Mappings
-    Hasql.TextExtras
 
   build-depends:
     aeson >=2 && <3,
