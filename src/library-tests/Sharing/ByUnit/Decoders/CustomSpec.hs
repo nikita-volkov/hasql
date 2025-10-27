@@ -113,8 +113,8 @@ spec = do
                               Nothing
                               [(Nothing, enumName), (Nothing, "int4")]
                               ( \lookupOid bytes -> do
-                                  let (enumOidScalar, enumOidArray) = lookupOid (Nothing, enumName)
-                                      (int4OidScalar, int4OidArray) = lookupOid (Nothing, "int4")
+                                  let (enumOidScalar, _enumOidArray) = lookupOid (Nothing, enumName)
+                                      (int4OidScalar, _int4OidArray) = lookupOid (Nothing, "int4")
                                   -- Verify we got valid OIDs
                                   if enumOidScalar > 0 && int4OidScalar > 0
                                     then Right (enumOidScalar, int4OidScalar, ByteString.length bytes)
