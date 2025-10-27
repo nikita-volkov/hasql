@@ -112,91 +112,59 @@ library
     Hasql.Statement
 
   other-modules:
+    Hasql.Codecs.Decoders
+    Hasql.Codecs.Decoders.Array
+    Hasql.Codecs.Decoders.Composite
+    Hasql.Codecs.Decoders.NullableOrNot
+    Hasql.Codecs.Decoders.Value
+    Hasql.Codecs.Encoders
+    Hasql.Codecs.Encoders.Array
+    Hasql.Codecs.Encoders.Composite
+    Hasql.Codecs.Encoders.NullableOrNot
+    Hasql.Codecs.Encoders.Params
+    Hasql.Codecs.Encoders.Value
+    Hasql.Codecs.RequestingOid
+    Hasql.Codecs.RequestingOid.LookingUp
+    Hasql.Codecs.TypeInfo
+    Hasql.Comms.Recv
+    Hasql.Comms.ResultDecoder
+    Hasql.Comms.Roundtrip
+    Hasql.Comms.RowDecoder
+    Hasql.Comms.RowReader
+    Hasql.Comms.Send
+    Hasql.Comms.Session
     Hasql.Connection.Config
     Hasql.Connection.ServerVersion
-
-  build-depends:
-    hasql:codecs,
-    hasql:comms,
-    hasql:engine,
-    hasql:platform,
-    hasql:pq,
-    hasql:text-extras,
-    postgresql-connection-string ^>=0.1,
-    text >=1 && <3,
-    text-builder >=1 && <1.1,
-
-library codecs
-  import: base
-  hs-source-dirs: src/codecs
-  exposed-modules:
-    Codecs.Decoders
-    Codecs.Decoders.Array
-    Codecs.Decoders.Composite
-    Codecs.Decoders.NullableOrNot
-    Codecs.Decoders.Value
-    Codecs.Encoders
-    Codecs.Encoders.Array
-    Codecs.Encoders.Composite
-    Codecs.Encoders.NullableOrNot
-    Codecs.Encoders.Params
-    Codecs.Encoders.Value
-    Codecs.RequestingOid
-    Codecs.TypeInfo
+    Hasql.Engine.Contexts.Pipeline
+    Hasql.Engine.Contexts.Session
+    Hasql.Engine.Decoders.Result
+    Hasql.Engine.Decoders.Row
+    Hasql.Engine.Errors
+    Hasql.Engine.PqProcedures.SelectTypeInfo
+    Hasql.Engine.Structures.ConnectionState
+    Hasql.Engine.Structures.OidCache
+    Hasql.Engine.Structures.StatementCache
+    Hasql.Errors.TextExtras
+    Hasql.Platform.Prelude
+    Hasql.Platform.Prelude.Text
+    Hasql.Pq
+    Hasql.Pq.Ffi
+    Hasql.Pq.Mappings
 
   build-depends:
     aeson >=2 && <3,
-    bytestring >=0.10 && <0.13,
-    bytestring-strict-builder >=0.4.5.4 && <0.5,
-    hasql:platform,
-    iproute >=1.7 && <1.8,
-    postgresql-binary ^>=0.15,
-    text-builder >=1 && <1.1,
-    unordered-containers >=0.2 && <0.3,
-    vector >=0.10 && <0.14,
-
-library engine
-  import: base
-  hs-source-dirs: src/engine
-  exposed-modules:
-    Engine.Contexts.Pipeline
-    Engine.Contexts.Session
-    Engine.Decoders.Result
-    Engine.Decoders.Row
-    Engine.Errors
-    Engine.PqProcedures.SelectTypeInfo
-    Engine.Structures.ConnectionState
-    Engine.Structures.OidCache
-    Engine.Structures.StatementCache
-
-  build-depends:
-    hasql:codecs,
-    hasql:comms,
-    hasql:platform,
-    hasql:pq,
-    postgresql-binary ^>=0.15,
-    text-builder >=1 && <1.1,
-    unordered-containers >=0.2 && <0.3,
-
--- Replacement of the "base" library for all the sublibs here.
--- Covers such things as Prelude and shared utils.
-library platform
-  import: base
-  hs-source-dirs: src/platform
-  exposed-modules:
-    Platform.LookingUp
-    Platform.Prelude
-
-  other-modules:
-    Platform.Prelude.Text
-
-  build-depends:
+    attoparsec >=0.10 && <0.15,
     base >=4.14 && <5,
     bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
     contravariant >=1.3 && <2,
     dlist >=0.8 && <0.9 || >=1 && <2,
     hashable >=1.2 && <2,
+    iproute >=1.7 && <1.8,
     mtl >=2 && <3,
+    postgresql-binary ^>=0.15,
+    postgresql-connection-string ^>=0.1,
+    postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
@@ -207,62 +175,6 @@ library platform
     uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
     witherable >=0.5 && <0.6,
-
--- Composable abstraction layer over patterns of using libpq with no extra responsibilities.
-library comms
-  import: base
-  hs-source-dirs: src/comms
-  exposed-modules:
-    Comms.Recv
-    Comms.ResultDecoder
-    Comms.Roundtrip
-    Comms.RowDecoder
-    Comms.RowReader
-    Comms.Send
-    Comms.Session
-
-  build-depends:
-    attoparsec >=0.10 && <0.15,
-    bytestring >=0.10 && <0.13,
-    hasql:platform,
-    hasql:pq,
-    vector >=0.10 && <0.14,
-
-library pq
-  import: base
-  hs-source-dirs: src/pq
-  exposed-modules:
-    Pq
-
-  other-modules:
-    Pq.Ffi
-    Pq.Mappings
-
-  build-depends:
-    base >=4.14 && <5,
-    hasql:platform,
-    postgresql-libpq >=0.10.1 && <0.12,
-
-library text-extras
-  import: base
-  hs-source-dirs: src/text-extras
-  exposed-modules:
-    TextExtras
-
-  build-depends:
-    hasql:platform,
-    text >=1 && <3,
-
-library testcontainers-postgresql
-  import: base
-  hs-source-dirs: src/testcontainers-postgresql
-  exposed-modules:
-    TestcontainersPostgresql
-
-  build-depends:
-    hasql:platform,
-    testcontainers ^>=0.5.1,
-    text >=1 && <3,
 
 benchmark benchmarks
   import: executable
@@ -286,29 +198,57 @@ test-suite profiling
 
   build-depends:
     hasql,
-    hasql:testcontainers-postgresql,
     rerebase >=1 && <2,
+    testcontainers-postgresql ^>=0.2,
 
 test-suite comms-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs: src/comms-tests
+  hs-source-dirs:
+    src/comms-tests
+    src/library
+
   main-is: Main.hs
   other-modules:
-    Comms.Session.CleanUpAfterInterruptionSpec
-    SpecHook
+    Hasql.Comms.Recv
+    Hasql.Comms.ResultDecoder
+    Hasql.Comms.Roundtrip
+    Hasql.Comms.RowDecoder
+    Hasql.Comms.RowReader
+    Hasql.Comms.Send
+    Hasql.Comms.Session
+    Hasql.Comms.Session.CleanUpAfterInterruptionSpec
+    Hasql.Comms.SpecHook
+    Hasql.Platform.Prelude
+    Hasql.Platform.Prelude.Text
+    Hasql.Pq
+    Hasql.Pq.Ffi
+    Hasql.Pq.Mappings
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
-    hasql:comms,
-    hasql:platform,
-    hasql:pq,
-    hasql:testcontainers-postgresql,
+    attoparsec >=0.10 && <0.15,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    contravariant >=1.3 && <2,
+    dlist >=0.8 && <0.9 || >=1 && <2,
+    hashable >=1.2 && <2,
     hspec ^>=2.11.12,
-    rerebase >=1 && <2,
+    mtl >=2 && <3,
+    postgresql-libpq >=0.10.1 && <0.12,
+    profunctors >=5.1 && <6,
+    scientific >=0.3 && <0.4,
+    testcontainers-postgresql ^>=0.2,
+    text >=1 && <3,
     text-builder >=1 && <1.1,
+    time >=1.9 && <2,
+    transformers >=0.6 && <0.7,
+    unordered-containers >=0.2 && <0.3,
+    uuid >=1.3 && <2,
+    vector >=0.10 && <0.14,
+    witherable >=0.5 && <0.6,
 
 test-suite library-tests
   import: test
@@ -373,11 +313,11 @@ test-suite library-tests
     QuickCheck,
     aeson,
     hasql,
-    hasql:testcontainers-postgresql,
     hspec ^>=2.11.12,
     iproute,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,
     random ^>=1.3.1,
     rerebase >=1 && <2,
+    testcontainers-postgresql ^>=0.2,
     text-builder >=1 && <1.1,

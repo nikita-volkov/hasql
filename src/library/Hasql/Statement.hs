@@ -14,7 +14,7 @@ where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Platform.Prelude
+import Hasql.Platform.Prelude
 
 -- |
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.

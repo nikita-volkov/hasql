@@ -24,10 +24,10 @@ module Hasql.Errors
 where
 
 import Data.Text qualified as Text
-import Engine.Errors
-import Platform.Prelude
+import Hasql.Engine.Errors
+import Hasql.Errors.TextExtras qualified as TextExtras
+import Hasql.Platform.Prelude
 import TextBuilder qualified
-import TextExtras qualified
 
 -- * Classes
 
@@ -101,7 +101,7 @@ instance IsError StatementError where
         [ "Server error: ",
           toErrorMessage executionError
         ]
-    UnexpectedRowCountError min max actual ->
+    UnexpectedRowCountStatementError min max actual ->
       (TextBuilder.toText . mconcat)
         [ "Unexpected number of rows: expected ",
           if min == max

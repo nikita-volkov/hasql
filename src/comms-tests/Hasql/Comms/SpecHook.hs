@@ -1,9 +1,9 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
-module Sharing.SpecHook where
+module Hasql.Comms.SpecHook where
 
+import Hasql.Platform.Prelude
 import Test.Hspec
 import TestcontainersPostgresql qualified
-import Prelude
 
 type HookedSpec = SpecWith (Text, Word16)
 
