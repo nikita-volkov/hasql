@@ -374,7 +374,6 @@ hstore =
     Nothing
     Nothing
     0
-    False
     HashSet.empty
     (const Binary.hStore_foldable)
     renderHstore

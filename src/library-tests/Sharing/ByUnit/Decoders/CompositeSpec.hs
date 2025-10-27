@@ -194,13 +194,12 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           result <- Connection.use connection do
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int4[])"]))
                 mempty
                 Decoders.noResult
-                True
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(array[1,2,3])", " :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -225,7 +224,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right [1, 2, 3]
 
       it "decodes arrays of named composites from static SQL" \config -> do
@@ -316,21 +314,19 @@ spec = do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enumType, " as enum ('red', 'green', 'blue')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create composite type with enum array field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", compositeType, " as (id int8, colors ", enumType, "[])"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding composite with enum array field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select (42, array['red', 'green', 'blue'] :: ", enumType, "[]) :: ", compositeType]))
                 mempty
                 ( Decoders.singleRow
@@ -363,7 +359,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right (42 :: Int64, ["red", "green", "blue"])
 
       it "decodes a composite with multiple enum array fields" \config -> do
@@ -374,28 +369,25 @@ spec = do
           result <- Connection.use connection do
             -- Create first enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enum1, " as enum ('small', 'medium', 'large')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create second enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enum2, " as enum ('low', 'high')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create composite type with multiple enum array fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", compositeType, " as (sizes ", enum1, "[], priorities ", enum2, "[])"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding composite with multiple enum array fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select (array['small', 'large'] :: ", enum1, "[], array['high', 'low'] :: ", enum2, "[]) :: ", compositeType]))
                 mempty
                 ( Decoders.singleRow
@@ -444,7 +436,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right (["small", "large"], ["high", "low"])
 
       it "decodes a composite with mixed scalar and enum array fields" \config -> do
@@ -454,21 +445,19 @@ spec = do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enumType, " as enum ('A', 'B', 'C')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create composite type with mixed fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", compositeType, " as (name text, age int4, grades ", enumType, "[])"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding composite with mixed fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select ('Alice', 25, array['A', 'B', 'A'] :: ", enumType, "[]) :: ", compositeType]))
                 mempty
                 ( Decoders.singleRow
@@ -509,7 +498,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right ("Alice", 25 :: Int32, ['A', 'B', 'A'])
 
       it "decodes nested composite with enum array field" \config -> do
@@ -520,28 +508,25 @@ spec = do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enumType, " as enum ('x', 'y', 'z')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create inner composite type with enum array field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", innerType, " as (values ", enumType, "[])"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create outer composite type containing the inner type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", outerType, " as (id int4, data ", innerType, ")"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test nested decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select (100, row(array['x', 'y', 'z'] :: ", enumType, "[]) :: ", innerType, ") :: ", outerType]))
                 mempty
                 ( Decoders.singleRow
@@ -587,7 +572,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right (100 :: Int32, ['x', 'y', 'z'])
 
       it "decodes a composite with 2D enum array field" \config -> do
@@ -597,21 +581,19 @@ spec = do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", enumType, " as enum ('0', '1')"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create composite type with 2D enum array field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", compositeType, " as (matrix ", enumType, "[][])"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding composite with 2D enum array field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row(array[array['0', '1'], array['1', '0']] :: ", enumType, "[][]) :: ", compositeType]))
                 mempty
                 ( Decoders.singleRow
@@ -649,7 +631,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right [[0, 1], [1, 0]]
 
     describe "OID compatibility checking" do
