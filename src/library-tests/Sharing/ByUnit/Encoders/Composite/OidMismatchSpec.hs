@@ -21,14 +21,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to encode with int4 encoder to int8 field
             Session.statement (42 :: Int32)
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -47,7 +46,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a type mismatch from the server
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
@@ -65,14 +63,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int4 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to encode with int8 encoder to int4 field
             Session.statement (42 :: Int64)
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -91,7 +88,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a type mismatch from the server
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
@@ -109,14 +105,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to encode with text encoder to int8 field
             Session.statement ("hello" :: Text)
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -135,7 +130,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a type mismatch from the server
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
@@ -153,14 +147,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type with int8, int4 fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (a int8, b int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to encode with correct first field but wrong second field
             Session.statement (1 :: Int64, 2 :: Int64)
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -190,7 +183,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- The error should indicate a type mismatch from the server
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do

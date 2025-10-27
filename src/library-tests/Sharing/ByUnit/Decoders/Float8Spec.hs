@@ -13,7 +13,7 @@ spec = do
   it "decodes static value properly" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       let statement =
-            Statement.Statement
+            Statement.preparable
               "select 3.14 :: float8"
               mempty
               ( Decoders.singleRow
@@ -23,6 +23,5 @@ spec = do
                       )
                   )
               )
-              True
       result <- Connection.use connection (Session.statement () statement)
       result `shouldBe` Right 3.14

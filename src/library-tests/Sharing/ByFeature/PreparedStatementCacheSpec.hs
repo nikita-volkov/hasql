@@ -19,22 +19,20 @@ spec = do
         result <- Connection.use connection do
           Session.statement
             ()
-            ( Statement.Statement
+            ( Statement.preparable
                 "select null"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
             )
         shouldBe (isLeft result) True
         -- Run a succeeding prepared statement to see if the cache is still in a good state.
         result <- Connection.use connection do
           Session.statement
             ()
-            ( Statement.Statement
+            ( Statement.preparable
                 "select 1"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
             )
         -- If there is an error the cache got corrupted.
         case result of
@@ -51,11 +49,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         case result of
           Right val ->
@@ -68,11 +65,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         -- If there is an error the cache got corrupted.
         case result of

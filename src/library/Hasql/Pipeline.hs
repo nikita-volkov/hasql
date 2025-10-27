@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-deprecations #-}
-
 module Hasql.Pipeline
   ( Pipeline.Pipeline,
     statement,
@@ -7,7 +5,7 @@ module Hasql.Pipeline
 where
 
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
-import Hasql.Statement qualified as Statement
+import Hasql.Engine.Statement qualified as Statement
 
 -- |
 -- Execute a statement by providing parameters to it.

@@ -21,14 +21,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select (42, true) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -45,7 +44,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right (42 :: Int64, True)
 
       it "decodes a simple named composite with different values" \config -> do
@@ -54,14 +52,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (a text, b int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select ('hello', 123) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -78,7 +75,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right ("hello", 123 :: Int32)
 
     describe "Nested composites" do
@@ -89,21 +85,19 @@ spec = do
           result <- Connection.use connection do
             -- Create inner composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create outer composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test nested decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select ((42, true), 'world') :: ", outerType]))
                 mempty
                 ( Decoders.singleRow
@@ -130,7 +124,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right ((42 :: Int64, True), "world")
 
       it "decodes deeply nested named composites" \config -> do
@@ -141,28 +134,25 @@ spec = do
           result <- Connection.use connection do
             -- Create level 1 composite
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", type1, " as (val int8)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create level 2 composite
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", type2, " as (\"inner\" ", type1, ", flag bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create level 3 composite
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", type3, " as (\"nested\" ", type2, ", name text)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test deeply nested decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row (row (row (99), true), 'deep') :: ", type3]))
                 mempty
                 ( Decoders.singleRow
@@ -196,7 +186,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right ((99 :: Int64, True), "deep")
 
     describe "Arrays of composites" do
@@ -206,14 +195,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test array decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"]))
                 mempty
                 ( Decoders.singleRow
@@ -239,7 +227,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right [(1 :: Int64, True), (2, False), (3, True)]
 
       it "decodes 2D arrays of named composites" \config -> do
@@ -248,14 +235,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (val int4)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Test 2D array decoding
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select array[array[row (1), row (2)], array[row (3), row (4)]] :: ", typeName, "[][]"]))
                 mempty
                 ( Decoders.singleRow
@@ -281,7 +267,6 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right [[1 :: Int32, 2], [3, 4]]
 
     describe "OID compatibility checking" do
@@ -291,14 +276,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode text as the composite type (should fail during deserialization)
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 "select 'some text'::text"
                 mempty
                 ( Decoders.singleRow
@@ -315,7 +299,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- Should fail with a cell error because text cannot be decoded as a composite
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
@@ -332,22 +315,20 @@ spec = do
           result <- Connection.use connection do
             -- Create first composite type with two fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", type1, " as (x int8, y text)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Create second composite type with different structure
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", type2, " as (a bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Try to decode type2 value as type1 (should fail during deserialization)
             -- type2 has 1 field, type1 decoder expects 2 fields
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row (true) :: ", type2]))
                 mempty
                 ( Decoders.singleRow
@@ -364,7 +345,6 @@ spec = do
                         )
                     )
                 )
-                True
           -- Should fail with a cell error because the field count doesn't match
           case result of
             Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
@@ -380,14 +360,13 @@ spec = do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
                 mempty
                 Decoders.noResult
-                True
             -- Decode with correct type - should succeed
             Session.statement ()
-              $ Statement.Statement
+              $ Statement.preparable
                 (encodeUtf8 (mconcat ["select row (42, true) :: ", typeName]))
                 mempty
                 ( Decoders.singleRow
@@ -404,14 +383,13 @@ spec = do
                         )
                     )
                 )
-                True
           result `shouldBe` Right (42 :: Int64, True)
 
   it "detects attempts to decode non-existent composite types" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement ()
-          $ Statement.Statement
+          $ Statement.preparable
             "select row(42, text 'test')"
             mempty
             ( Decoders.singleRow
@@ -428,7 +406,6 @@ spec = do
                     )
                 )
             )
-            True
 
       case result of
         Left (Errors.MissingTypesSessionError missingTypes) ->

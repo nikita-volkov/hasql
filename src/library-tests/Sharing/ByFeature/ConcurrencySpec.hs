@@ -16,11 +16,10 @@ spec = do
     Scripts.onPreparableConnection config \connection1 -> do
       Scripts.onPreparableConnection config \connection2 -> do
         let selectSleep =
-              Statement.Statement
+              Statement.preparable
                 "select pg_sleep($1)"
                 (Encoders.param (Encoders.nonNullable Encoders.float8))
                 Decoders.noResult
-                True
 
         beginVar <- newEmptyMVar
         finishVar <- newEmptyMVar

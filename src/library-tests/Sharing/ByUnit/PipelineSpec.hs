@@ -114,11 +114,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         case result of
           Right val ->
