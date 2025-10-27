@@ -14,8 +14,7 @@ type SleepResult = ()
 
 instance StatementModule Sleep SleepResult where
   statement =
-    Statement.Statement
+    Statement.preparable
       "select pg_sleep($1)"
       (seconds >$< Encoders.param (Encoders.nonNullable Encoders.float8))
       Decoders.noResult
-      True

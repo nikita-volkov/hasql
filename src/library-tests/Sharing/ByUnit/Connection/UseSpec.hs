@@ -19,7 +19,7 @@ spec = do
     it "Do not cause \"in progress after error\"" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let sumStatement =
-              Statement.Statement
+              Statement.preparable
                 "select ($1 + $2)"
                 ( mconcat
                     [ fst >$< Encoders.param (Encoders.nonNullable Encoders.int8),
@@ -27,7 +27,6 @@ spec = do
                     ]
                 )
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-                True
 
         result <-
           Connection.use connection do
@@ -81,11 +80,10 @@ spec = do
 
       it "Lets us start another transaction" do
         let checkTransactionStatus =
-              Statement.Statement
+              Statement.preparable
                 "select case when pg_advisory_lock(1) is null then 0 else 1 end"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
          in \config -> Scripts.onPreparableConnection config \connection -> do
               -- Timeout during a transaction
               result <-
@@ -108,11 +106,10 @@ spec = do
 
       it "Does not corrupt the prepared statement registry" do
         let returnIntStatement =
-              Statement.Statement
+              Statement.preparable
                 "select $1::int"
                 (Encoders.param (Encoders.nonNullable Encoders.int4))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                True
          in \config -> Scripts.onPreparableConnection config \connection -> do
               -- Use a prepared statement first
               result <-
