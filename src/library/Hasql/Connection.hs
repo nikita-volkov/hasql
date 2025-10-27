@@ -8,17 +8,17 @@ module Hasql.Connection
   )
 where
 
-import Comms.Session qualified
 import Data.Text qualified as Text
-import Engine.Contexts.Session qualified as Session
-import Engine.Errors
-import Engine.Structures.ConnectionState qualified as ConnectionState
-import Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.Comms.Session qualified as Comms.Session
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
-import Platform.Prelude
-import Pq qualified
+import Hasql.Engine.Contexts.Session qualified as Session
+import Hasql.Engine.Errors
+import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
+import Hasql.Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.Platform.Prelude
+import Hasql.Pq qualified as Pq
 
 -- |
 -- A single connection to the database.

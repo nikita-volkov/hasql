@@ -14,7 +14,8 @@ where
 
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Platform.Prelude
+import Hasql.Engine.Decoders.Result qualified
+import Hasql.Platform.Prelude
 
 -- |
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.
@@ -81,7 +82,7 @@ instance Profunctor Statement where
 -- <http://hackage.haskell.org/package/hasql-th the \"hasql-th\" library>.
 refineResult :: (a -> Either Text b) -> Statement params a -> Statement params b
 refineResult refiner (Statement template encoder decoder preparable) =
-  Statement template encoder (Decoders.refineResult refiner decoder) preparable
+  Statement template encoder (Hasql.Engine.Decoders.Result.refineResult refiner decoder) preparable
 
 -- $insertMany
 --

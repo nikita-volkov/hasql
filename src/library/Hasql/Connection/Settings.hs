@@ -17,7 +17,7 @@ where
 
 import Data.Text qualified as Text
 import Hasql.Connection.Config qualified as Config
-import Platform.Prelude
+import Hasql.Platform.Prelude
 import PostgresqlConnectionString qualified as ConnectionString
 
 -- | Connection settings.

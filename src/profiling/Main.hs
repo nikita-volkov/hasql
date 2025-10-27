@@ -100,12 +100,18 @@ withConnectionByTagName tagName action = withConnectionSettings tagName \setting
 
 withConnectionSettings :: Text -> (Settings.Settings -> IO ()) -> IO ()
 withConnectionSettings tagName action = do
-  TestcontainersPostgresql.hook tagName "postgres" "postgres" False \(host, port) -> do
-    let settings =
-          mconcat
-            [ Settings.hostAndPort host port,
-              Settings.user "postgres",
-              Settings.password "postgres",
-              Settings.dbname "postgres"
-            ]
-    action settings
+  TestcontainersPostgresql.run
+    TestcontainersPostgresql.Config
+      { tagName,
+        auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+        forwardLogs = False
+      }
+    \(host, port) -> do
+      let settings =
+            mconcat
+              [ Settings.hostAndPort host port,
+                Settings.user "postgres",
+                Settings.password "postgres",
+                Settings.dbname "postgres"
+              ]
+      action settings

@@ -18,16 +18,17 @@ module Hasql.Errors
     -- * Session errors
     SessionError (..),
     StatementError (..),
+    RowError (..),
     CellError (..),
     ExecutionError (..),
   )
 where
 
 import Data.Text qualified as Text
-import Engine.Errors
-import Platform.Prelude
+import Hasql.Engine.Errors
+import Hasql.Errors.TextExtras qualified as TextExtras
+import Hasql.Platform.Prelude
 import TextBuilder qualified
-import TextExtras qualified
 
 -- * Classes
 
@@ -101,7 +102,7 @@ instance IsError StatementError where
         [ "Server error: ",
           toErrorMessage executionError
         ]
-    RowCountStatementError min max actual ->
+    UnexpectedRowCountStatementError min max actual ->
       (TextBuilder.toText . mconcat)
         [ "Unexpected number of rows: expected ",
           if min == max
@@ -126,20 +127,34 @@ instance IsError StatementError where
           ", got OID ",
           TextBuilder.decimal actual
         ]
-    CellStatementError rowIdx colIdx cellErr ->
+    RowStatementError rowIdx rowError ->
       (TextBuilder.toText . mconcat)
         [ "In row ",
           TextBuilder.decimal rowIdx,
-          ", column ",
-          TextBuilder.decimal colIdx,
           ": ",
-          TextBuilder.text (toErrorMessage cellErr)
+          TextBuilder.text (toErrorMessage rowError)
         ]
     UnexpectedResultStatementError message ->
       mconcat
         [ "Driver error: ",
           message
         ]
+  isTransient = const False
+
+instance IsError RowError where
+  toErrorMessage = \case
+    CellRowError colIdx oid cellErr ->
+      (TextBuilder.toText . mconcat)
+        [ "In column ",
+          TextBuilder.decimal colIdx,
+          " with type OID ",
+          TextBuilder.decimal oid,
+          ": ",
+          TextBuilder.text (toErrorMessage cellErr)
+        ]
+    RefinementRowError msg ->
+      msg
+
   isTransient = const False
 
 instance IsError SessionError where

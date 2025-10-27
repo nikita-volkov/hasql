@@ -7,7 +7,7 @@ module Hasql.Session
   )
 where
 
-import Engine.Contexts.Session qualified as Session
+import Hasql.Engine.Contexts.Session qualified as Session
 import Hasql.Statement qualified as Statement
 
 -- |

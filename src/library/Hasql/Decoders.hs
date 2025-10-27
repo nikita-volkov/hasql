@@ -6,7 +6,6 @@ module Hasql.Decoders
     noResult,
     rowsAffected,
     singleRow,
-    refineResult,
 
     -- ** Specialized multi-row results
     rowMaybe,
@@ -84,6 +83,6 @@ module Hasql.Decoders
   )
 where
 
-import Codecs.Decoders
-import Engine.Decoders.Result
-import Engine.Decoders.Row
+import Hasql.Codecs.Decoders
+import Hasql.Engine.Decoders.Result
+import Hasql.Engine.Decoders.Row
