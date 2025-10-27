@@ -29,7 +29,10 @@ field = \case
         Composite
           ( RequestingOid.hoistLookingUp
               (Value.toSchema imp, Value.toTypeName imp)
-              (\(baseOid, _arrayOid) -> Binary.typedValueComposite baseOid)
+              ( \(baseOid, arrayOid) ->
+                  let oid = if Value.isArray imp then arrayOid else baseOid
+                   in Binary.typedValueComposite oid
+              )
               (Value.toDecoder imp)
           )
   NullableOrNot.Nullable imp ->
@@ -40,6 +43,9 @@ field = \case
         Composite
           ( RequestingOid.hoistLookingUp
               (Value.toSchema imp, Value.toTypeName imp)
-              (\(baseOid, _arrayOid) -> Binary.typedNullableValueComposite baseOid)
+              ( \(baseOid, arrayOid) ->
+                  let oid = if Value.isArray imp then arrayOid else baseOid
+                   in Binary.typedNullableValueComposite oid
+              )
               (Value.toDecoder imp)
           )
