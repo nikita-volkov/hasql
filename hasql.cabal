@@ -293,6 +293,7 @@ test-suite library-tests
     Sharing.ByUnit.Encoders.CompositeSpec
     Sharing.ByUnit.Encoders.DomainSpec
     Sharing.ByUnit.Encoders.EnumSpec
+    Sharing.ByUnit.Encoders.HstoreSpec
     Sharing.ByUnit.Encoders.InetSpec
     Sharing.ByUnit.Encoders.IntervalSpec
     Sharing.ByUnit.Encoders.JsonSpec
