@@ -2,6 +2,7 @@ module Hasql.Codecs.RequestingOid
   ( RequestingOid,
     toUnknownTypes,
     toBase,
+    requestAndHandle,
     lift,
     hoist,
     lookup,
@@ -11,28 +12,34 @@ module Hasql.Codecs.RequestingOid
 where
 
 import Data.HashMap.Strict qualified as HashMap
-import Hasql.Platform.LookingUp qualified as LookingUp
+import Hasql.Codecs.RequestingOid.LookingUp qualified as LookingUp
 import Hasql.Platform.Prelude hiding (lift, lookup)
 
 type RequestingOid =
-  LookingUp
+  LookingUp.LookingUp
     (Maybe Text, Text)
     (Word32, Word32)
 
 toUnknownTypes ::
   RequestingOid f a ->
   HashSet (Maybe Text, Text)
-toUnknownTypes (LookingUp unknownTypes _) =
+toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
   fromList unknownTypes
 
 toBase ::
   RequestingOid f a ->
   HashMap (Maybe Text, Text) (Word32, Word32) ->
   f a
-toBase (LookingUp _unknownTypes decoder) oidCache =
+toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
   decoder \key ->
     HashMap.lookup key oidCache
       & fromMaybe (0, 0)
+
+requestAndHandle ::
+  [(Maybe Text, Text)] ->
+  (((Maybe Text, Text) -> (Word32, Word32)) -> f a) ->
+  RequestingOid f a
+requestAndHandle = LookingUp.LookingUp
 
 lift :: f a -> RequestingOid f a
 lift = LookingUp.lift

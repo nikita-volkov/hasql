@@ -124,6 +124,7 @@ library
     Hasql.Codecs.Encoders.Params
     Hasql.Codecs.Encoders.Value
     Hasql.Codecs.RequestingOid
+    Hasql.Codecs.RequestingOid.LookingUp
     Hasql.Codecs.TypeInfo
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
@@ -143,7 +144,6 @@ library
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
-    Hasql.Platform.LookingUp
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq
@@ -229,7 +229,6 @@ test-suite comms-tests
     Hasql.Comms.RowReader
     Hasql.Comms.Send
     Hasql.Comms.Session
-    Hasql.Platform.LookingUp
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq

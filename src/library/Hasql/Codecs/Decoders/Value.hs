@@ -357,7 +357,7 @@ custom schema typeName staticOids requestedTypes fn =
     (fst <$> staticOids)
     (snd <$> staticOids)
     0
-    ( LookingUp
+    ( RequestingOid.requestAndHandle
         ([(schema, typeName)] <> requestedTypes)
         (\project -> Binary.fn (fn project))
     )

@@ -1,4 +1,4 @@
-module Hasql.Platform.LookingUp where
+module Hasql.Codecs.RequestingOid.LookingUp where
 
 import Control.Applicative
 import Witherable
