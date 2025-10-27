@@ -1,4 +1,4 @@
-module Comms.Session.CleanUpAfterInterruptionSpec (spec) where
+module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
 import Hasql.Comms.Session qualified as Session
 import Hasql.Platform.Prelude

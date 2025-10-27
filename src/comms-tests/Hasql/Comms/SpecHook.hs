@@ -1,5 +1,5 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
-module SpecHook where
+module Hasql.Comms.SpecHook where
 
 import Hasql.Platform.Prelude
 import Test.Hspec

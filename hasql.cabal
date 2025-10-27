@@ -221,7 +221,6 @@ test-suite comms-tests
 
   main-is: Main.hs
   other-modules:
-    Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -229,12 +228,13 @@ test-suite comms-tests
     Hasql.Comms.RowReader
     Hasql.Comms.Send
     Hasql.Comms.Session
+    Hasql.Comms.Session.CleanUpAfterInterruptionSpec
+    Hasql.Comms.SpecHook
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq
     Hasql.Pq.Ffi
     Hasql.Pq.Mappings
-    SpecHook
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
