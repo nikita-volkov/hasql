@@ -21,9 +21,10 @@ data Error
       -- | Column index, 0-based.
       Int
       -- | OID of the column type as reported by Postgres.
-      Pq.Oid
+      Word32
       -- | Underlying error.
       CellError
+  | RefinementError Text
   deriving stock (Eq, Show)
 
 data CellError
@@ -41,6 +42,17 @@ data Env
   = Env
       Pq.Result
       Pq.Row
+
+-- * Instances
+
+instance Filterable RowReader where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn (RowReader run) =
+    RowReader do
+      result <- run
+      case fn result of
+        Just refined -> pure refined
+        Nothing -> throwError (RefinementError "Filtration failed")
 
 -- * Functions
 
@@ -65,14 +77,14 @@ column processNullable valueDec = RowReader do
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
     Just v -> do
-      oid <- liftIO (Pq.ftype result col)
+      oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
       case {-# SCC "decode" #-} valueDec v of
         Left err -> throwError (CellError colInt oid (DecodingCellError err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
     Nothing -> do
-      oid <- liftIO (Pq.ftype result col)
+      oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
       throwError (CellError colInt oid UnexpectedNullCellError)
     Just decoded -> pure decoded
 

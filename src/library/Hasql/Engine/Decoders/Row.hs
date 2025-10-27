@@ -19,7 +19,7 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 newtype Row a
   = Row (RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder a)
   deriving newtype
-    (Functor, Applicative)
+    (Functor, Applicative, Filterable)
 
 toDecoder ::
   Row a ->

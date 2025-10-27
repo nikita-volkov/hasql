@@ -18,6 +18,7 @@ module Hasql.Errors
     -- * Session errors
     SessionError (..),
     StatementError (..),
+    RowError (..),
     CellError (..),
     ExecutionError (..),
   )
@@ -126,20 +127,34 @@ instance IsError StatementError where
           ", got OID ",
           TextBuilder.decimal actual
         ]
-    CellStatementError rowIdx colIdx cellErr ->
+    RowStatementError rowIdx rowError ->
       (TextBuilder.toText . mconcat)
         [ "In row ",
           TextBuilder.decimal rowIdx,
-          ", column ",
-          TextBuilder.decimal colIdx,
           ": ",
-          TextBuilder.text (toErrorMessage cellErr)
+          TextBuilder.text (toErrorMessage rowError)
         ]
     UnexpectedResultStatementError message ->
       mconcat
         [ "Driver error: ",
           message
         ]
+  isTransient = const False
+
+instance IsError RowError where
+  toErrorMessage = \case
+    CellRowError colIdx oid cellErr ->
+      (TextBuilder.toText . mconcat)
+        [ "In column ",
+          TextBuilder.decimal colIdx,
+          " with type OID ",
+          TextBuilder.decimal oid,
+          ": ",
+          TextBuilder.text (toErrorMessage cellErr)
+        ]
+    RefinementRowError msg ->
+      msg
+
   isTransient = const False
 
 instance IsError SessionError where

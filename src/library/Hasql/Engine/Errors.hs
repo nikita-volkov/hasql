@@ -76,16 +76,27 @@ data StatementError
       Word32
       -- | Actual type OID.
       Word32
-  | CellStatementError
+  | RowStatementError
       -- | 0-based row index.
       Int
-      -- | 0-based column index.
-      Int
-      -- | Underlying cell error.
-      CellError
+      -- | Underlying row error.
+      RowError
   | -- | The database returned an unexpected result.
     -- Indicates an improper statement or a schema mismatch.
     UnexpectedResultStatementError
+      -- | Details.
+      Text
+  deriving stock (Show, Eq)
+
+data RowError
+  = CellRowError
+      -- | 0-based column index.
+      Int
+      -- | OID of the column type as reported by Postgres.
+      Word32
+      -- | Underlying cell error.
+      CellError
+  | RefinementRowError
       -- | Details.
       Text
   deriving stock (Show, Eq)
@@ -205,14 +216,21 @@ fromStatementResultError = \case
       actualOid
   Hasql.Comms.ResultDecoder.RowError rowIndex rowError ->
     case rowError of
-      Hasql.Comms.RowReader.CellError column _oid cellErr ->
-        CellStatementError
+      Hasql.Comms.RowReader.CellError column oid cellErr ->
+        RowStatementError
           rowIndex
-          column
-          ( case cellErr of
-              Hasql.Comms.RowReader.DecodingCellError msg -> DeserializationCellError msg
-              Hasql.Comms.RowReader.UnexpectedNullCellError -> UnexpectedNullCellError
+          ( CellRowError
+              column
+              oid
+              ( case cellErr of
+                  Hasql.Comms.RowReader.DecodingCellError msg -> DeserializationCellError msg
+                  Hasql.Comms.RowReader.UnexpectedNullCellError -> UnexpectedNullCellError
+              )
           )
+      Hasql.Comms.RowReader.RefinementError msg ->
+        RowStatementError
+          rowIndex
+          (RefinementRowError msg)
 
 fromRecvErrorInScript :: ByteString -> Hasql.Comms.Recv.Error (Maybe ByteString) -> SessionError
 fromRecvErrorInScript scriptSql = \case

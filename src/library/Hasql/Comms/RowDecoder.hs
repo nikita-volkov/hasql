@@ -34,6 +34,10 @@ instance Applicative RowDecoder where
   RowDecoder lOids lDec <*> RowDecoder rOids rDec =
     RowDecoder (lOids <> rOids) (lDec <*> rDec)
 
+instance Filterable RowDecoder where
+  mapMaybe fn (RowDecoder oids dec) =
+    RowDecoder oids (mapMaybe fn dec)
+
 -- * Functions
 
 -- |
