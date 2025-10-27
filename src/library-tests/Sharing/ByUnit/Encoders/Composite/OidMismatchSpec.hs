@@ -29,7 +29,7 @@ spec = do
               $ Statement.preparable
                 (mconcat ["select $1 :: ", typeName])
                 ( Encoders.param
-                ( Encoders.nonNullable
+                    ( Encoders.nonNullable
                         ( Encoders.composite
                             Nothing
                             typeName
@@ -47,7 +47,7 @@ spec = do
                 )
           -- The error should indicate a type mismatch from the server
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError code _msg _detail _hint _pos))) -> do
               -- PostgreSQL should reject the mismatched types
               -- Error code 42804 is "datatype_mismatch"
               code `shouldSatisfy` (\c -> c == "42804" || c == "42P01" || c == "22P02")
@@ -71,7 +71,7 @@ spec = do
               $ Statement.preparable
                 (mconcat ["select $1 :: ", typeName])
                 ( Encoders.param
-                ( Encoders.nonNullable
+                    ( Encoders.nonNullable
                         ( Encoders.composite
                             Nothing
                             typeName
@@ -89,7 +89,7 @@ spec = do
                 )
           -- The error should indicate a type mismatch from the server
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError code _msg _detail _hint _pos))) -> do
               -- PostgreSQL should reject the mismatched types
               -- Error code 42804 is "datatype_mismatch"
               code `shouldSatisfy` (\c -> c == "42804" || c == "42P01" || c == "22P02")
@@ -113,7 +113,7 @@ spec = do
               $ Statement.preparable
                 (mconcat ["select $1 :: ", typeName])
                 ( Encoders.param
-                ( Encoders.nonNullable
+                    ( Encoders.nonNullable
                         ( Encoders.composite
                             Nothing
                             typeName
@@ -131,7 +131,7 @@ spec = do
                 )
           -- The error should indicate a type mismatch from the server
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError code _msg _detail _hint _pos))) -> do
               -- PostgreSQL should reject the mismatched types
               code `shouldSatisfy` (\c -> c == "42804" || c == "42P01" || c == "22P02")
             Left err ->
@@ -155,7 +155,7 @@ spec = do
               $ Statement.preparable
                 (mconcat ["select $1 :: ", typeName])
                 ( Encoders.param
-                ( Encoders.nonNullable
+                    ( Encoders.nonNullable
                         ( Encoders.composite
                             Nothing
                             typeName
@@ -184,7 +184,7 @@ spec = do
                 )
           -- The error should indicate a type mismatch from the server
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError (Errors.ExecutionError code _msg _detail _hint _pos))) -> do
+            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError code _msg _detail _hint _pos))) -> do
               -- PostgreSQL should reject the mismatched types
               code `shouldSatisfy` (\c -> c == "42804" || c == "42P01" || c == "22P02")
             Left err ->

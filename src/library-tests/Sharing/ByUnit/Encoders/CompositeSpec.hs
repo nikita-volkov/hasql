@@ -21,15 +21,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Test encoding by comparing with static value
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-                (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           typeName
@@ -51,15 +51,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Test roundtrip
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-                (mconcat ["select $1 :: ", typeName])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select $1 :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           typeName
@@ -96,21 +96,21 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", innerType, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
+              mempty
+              Decoders.noResult
           -- Test nested encoding
           Session.statement ((42 :: Int64, True), "hello")
             $ Statement.preparable
-                (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           outerType
@@ -145,21 +145,21 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", innerType, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
+              mempty
+              Decoders.noResult
           -- Test roundtrip
           Session.statement ((42 :: Int64, True), "hello")
             $ Statement.preparable
-                (mconcat ["select $1 :: ", outerType])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select $1 :: ", outerType])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           outerType
@@ -217,15 +217,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Test array encoding
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
             $ Statement.preparable
-                (mconcat ["select $1 = array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select $1 = array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.array
                           ( Encoders.dimension
                               foldl'
@@ -256,15 +256,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Test roundtrip
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
             $ Statement.preparable
-                (mconcat ["select $1 :: ", typeName, "[]"])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select $1 :: ", typeName, "[]"])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.array
                           ( Encoders.dimension
                               foldl'
@@ -320,15 +320,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (value int8)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (value int8)"])
+              mempty
+              Decoders.noResult
           -- Use named composite - this requires OID lookup to succeed
           Session.statement (100 :: Int64)
             $ Statement.preparable
-                (mconcat ["select $1 :: ", typeName])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select $1 :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           typeName
@@ -362,24 +362,24 @@ spec = do
           -- Create inner composite with a built-in type field
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", innerType, " as (value int8)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", innerType, " as (value int8)"])
+              mempty
+              Decoders.noResult
           -- Create outer composite containing the inner composite
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"])
+              mempty
+              Decoders.noResult
           -- With the bug: innerType wouldn't be in the OID cache because
           -- field (with Nothing elementOid) didn't add it to unknownTypes.
           -- Instead, int8 (with Just elementOid) was being added (incorrectly).
           -- This would cause the encoder to use OID 0 for innerType, causing an error.
           Session.statement (42 :: Int64)
             $ Statement.preparable
-                (mconcat ["select ($1 :: ", outerType, ").inner.value"])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select ($1 :: ", outerType, ").inner.value"])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           outerType
@@ -408,15 +408,15 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", typeName, " as (x int8, y bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
           -- Encode and verify - the DB will validate the OID is correct
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-                (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           typeName
@@ -440,21 +440,21 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", innerType, " as (value int8)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", innerType, " as (value int8)"])
+              mempty
+              Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-                (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"])
-                mempty
-                Decoders.noResult
+              (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"])
+              mempty
+              Decoders.noResult
           -- Encode nested composite - both type OIDs must be looked up correctly
           Session.statement (99 :: Int64, True)
             $ Statement.preparable
-                (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType])
-                ( Encoders.param
-                ( Encoders.nonNullable
+              (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType])
+              ( Encoders.param
+                  ( Encoders.nonNullable
                       ( Encoders.composite
                           Nothing
                           outerType
@@ -477,13 +477,315 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
 
+  describe "Composite with array fields" do
+    it "encodes composite types containing array fields" \config -> do
+      typeName <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create composite type with an array field
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", typeName, " as (id int8, values int8[])"])
+              mempty
+              Decoders.noResult
+          -- Test encoding composite with array field
+          Session.statement (42 :: Int64, [1, 2, 3] :: [Int64])
+            $ Statement.preparable
+              (mconcat ["select ($1 :: ", typeName, ") = (42, '{1, 2, 3}') :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          typeName
+                          ( divide
+                              (\(i, vs) -> (i, vs))
+                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
+        result `shouldBe` Right True
+
+    it "roundtrips composite types containing array fields" \config -> do
+      typeName <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create composite type with an array field
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", typeName, " as (id int8, values int8[])"])
+              mempty
+              Decoders.noResult
+          -- Test roundtrip
+          Session.statement (42 :: Int64, [1, 2, 3] :: [Int64])
+            $ Statement.preparable
+              (mconcat ["select $1 :: ", typeName])
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          typeName
+                          ( divide
+                              (\(i, vs) -> (i, vs))
+                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              ( Decoders.singleRow
+                  ( Decoders.column
+                      ( Decoders.nonNullable
+                          ( Decoders.composite
+                              Nothing
+                              typeName
+                              ( (,)
+                                  <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                  <*> Decoders.field
+                                    ( Decoders.nonNullable
+                                        (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))
+                                    )
+                              )
+                          )
+                      )
+                  )
+              )
+        result `shouldBe` Right (42 :: Int64, [1, 2, 3] :: [Int64])
+
+    it "encodes composite types containing arrays of named composite types" \config -> do
+      innerType <- Scripts.generateSymname
+      outerType <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create inner composite type
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
+          -- Create outer composite type with array of inner composite
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"])
+              mempty
+              Decoders.noResult
+          -- Test encoding composite with array of composite field by checking a field value
+          Session.statement (99 :: Int64, [(1 :: Int64, True), (2, False), (3, True)])
+            $ Statement.preparable
+              (mconcat ["select ($1 :: ", outerType, ").id"])
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          outerType
+                          ( divide
+                              (\(i, items) -> (i, items))
+                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      ( Encoders.array
+                                          ( Encoders.dimension
+                                              foldl'
+                                              ( Encoders.element
+                                                  ( Encoders.nonNullable
+                                                      ( Encoders.composite
+                                                          Nothing
+                                                          innerType
+                                                          ( divide
+                                                              (\(x, y) -> (x, y))
+                                                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                                              (Encoders.field (Encoders.nonNullable Encoders.bool))
+                                                          )
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                      )
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+        result `shouldBe` Right (99 :: Int64)
+
+    it "roundtrips composite types containing arrays of named composite types" \config -> do
+      innerType <- Scripts.generateSymname
+      outerType <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create inner composite type
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
+              mempty
+              Decoders.noResult
+          -- Create outer composite type with array of inner composite
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"])
+              mempty
+              Decoders.noResult
+          -- Test roundtrip
+          Session.statement (99 :: Int64, [(1 :: Int64, True), (2, False), (3, True)])
+            $ Statement.preparable
+              (mconcat ["select $1 :: ", outerType])
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          outerType
+                          ( divide
+                              (\(i, items) -> (i, items))
+                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      ( Encoders.array
+                                          ( Encoders.dimension
+                                              foldl'
+                                              ( Encoders.element
+                                                  ( Encoders.nonNullable
+                                                      ( Encoders.composite
+                                                          Nothing
+                                                          innerType
+                                                          ( divide
+                                                              (\(x, y) -> (x, y))
+                                                              (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                                              (Encoders.field (Encoders.nonNullable Encoders.bool))
+                                                          )
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                      )
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              ( Decoders.singleRow
+                  ( Decoders.column
+                      ( Decoders.nonNullable
+                          ( Decoders.composite
+                              Nothing
+                              outerType
+                              ( (,)
+                                  <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                  <*> Decoders.field
+                                    ( Decoders.nonNullable
+                                        ( Decoders.array
+                                            ( Decoders.dimension
+                                                replicateM
+                                                ( Decoders.element
+                                                    ( Decoders.nonNullable
+                                                        ( Decoders.composite
+                                                            Nothing
+                                                            innerType
+                                                            ( (,)
+                                                                <$> Decoders.field (Decoders.nonNullable Decoders.int8)
+                                                                <*> Decoders.field (Decoders.nonNullable Decoders.bool)
+                                                            )
+                                                        )
+                                                    )
+                                                )
+                                            )
+                                        )
+                                    )
+                              )
+                          )
+                      )
+                  )
+              )
+        result `shouldBe` Right (99 :: Int64, [(1 :: Int64, True), (2, False), (3, True)])
+
+    it "encodes composite types with multiple levels of nesting: composite -> array -> composite" \config -> do
+      deepType <- Scripts.generateSymname
+      midType <- Scripts.generateSymname
+      topType <- Scripts.generateSymname
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection do
+          -- Create deepest composite type
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", deepType, " as (value int8)"])
+              mempty
+              Decoders.noResult
+          -- Create middle composite type with array of deep composite
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", midType, " as (data ", deepType, "[])"])
+              mempty
+              Decoders.noResult
+          -- Create top composite type containing middle composite
+          Session.statement ()
+            $ Statement.preparable
+              (mconcat ["create type ", topType, " as (name text, \"nested\" ", midType, ")"])
+              mempty
+              Decoders.noResult
+          -- Test encoding deeply nested structure by extracting a value
+          Session.statement ("test", [1 :: Int64, 2, 3])
+            $ Statement.preparable
+              (mconcat ["select ($1 :: ", topType, ").name"])
+              ( Encoders.param
+                  ( Encoders.nonNullable
+                      ( Encoders.composite
+                          Nothing
+                          topType
+                          ( divide
+                              (\(name, nested) -> (name, nested))
+                              (Encoders.field (Encoders.nonNullable Encoders.text))
+                              ( Encoders.field
+                                  ( Encoders.nonNullable
+                                      ( Encoders.composite
+                                          Nothing
+                                          midType
+                                          ( Encoders.field
+                                              ( Encoders.nonNullable
+                                                  ( Encoders.array
+                                                      ( Encoders.dimension
+                                                          foldl'
+                                                          ( Encoders.element
+                                                              ( Encoders.nonNullable
+                                                                  ( Encoders.composite
+                                                                      Nothing
+                                                                      deepType
+                                                                      (Encoders.field (Encoders.nonNullable Encoders.int8))
+                                                                  )
+                                                              )
+                                                          )
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                      )
+                                  )
+                              )
+                          )
+                      )
+                  )
+              )
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
+        result `shouldBe` Right "test"
+
   it "detects attempts to encode non-existent composite types" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement (42 :: Int64, "test")
           $ Statement.preparable
-                "select $1::nonexistent_composite_type"
-                ( Encoders.param
+            "select $1::nonexistent_composite_type"
+            ( Encoders.param
                 ( Encoders.nonNullable
                     ( Encoders.composite
                         Nothing
