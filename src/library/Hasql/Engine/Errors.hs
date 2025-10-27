@@ -251,7 +251,7 @@ data SessionError
       -- | 0-based index of the statement that failed.
       Int
       -- | SQL template of the failing statement.
-      ByteString
+      Text
       -- | Parameter values as text (for logging purposes).
       [Text]
       -- | Whether the statement was executed as a prepared statement.
@@ -265,7 +265,7 @@ data SessionError
     -- and errors are limited to server-reported issues.
     ScriptSessionError
       -- | The SQL text of the script.
-      ByteString
+      Text
       -- | The server error that occurred.
       ServerError
   | -- | A connection-level error occurred during session execution.
@@ -330,7 +330,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (fromStatementResultError resultError)
@@ -347,7 +347,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 0)
@@ -364,7 +364,7 @@ fromRecvError = \case
         StatementSessionError
           totalStatements
           statementIndex
-          sql
+          (decodeUtf8Lenient sql)
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 actual)
@@ -415,7 +415,7 @@ fromRecvErrorInScript scriptSql = \case
     case resultError of
       Hasql.Comms.ResultDecoder.ServerError code message detail hint position ->
         ScriptSessionError
-          scriptSql
+          (decodeUtf8Lenient scriptSql)
           ( ServerError
               (decodeUtf8Lenient code)
               (decodeUtf8Lenient message)

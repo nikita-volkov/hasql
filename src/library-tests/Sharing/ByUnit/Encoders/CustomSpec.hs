@@ -23,13 +23,13 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"]))
+              (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"])
               mempty
               Decoders.noResult
           -- Test custom encoder with runtime OID lookup
           Session.statement "beta"
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", enumName, ") = 'beta' :: ", enumName]))
+              (mconcat ["select ($1 :: ", enumName, ") = 'beta' :: ", enumName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.custom
@@ -74,13 +74,13 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('small', 'large')"]))
+              (mconcat ["create type ", enumName, " as enum ('small', 'large')"])
               mempty
               Decoders.noResult
           -- Test custom encoder that requests OID of the enum type itself
           Session.statement "large"
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", enumName, ") = 'large' :: ", enumName]))
+              (mconcat ["select ($1 :: ", enumName, ") = 'large' :: ", enumName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.custom
@@ -136,13 +136,13 @@ spec = do
           -- Create a custom type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", customTypeName, " as (id int4)"]))
+              (mconcat ["create type ", customTypeName, " as (id int4)"])
               mempty
               Decoders.noResult
           -- Try to encode it but request a non-existent dependent type
           Session.statement (42 :: Int32)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", customTypeName]))
+              (mconcat ["select $1 :: ", customTypeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.custom
@@ -171,13 +171,13 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"]))
+              (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"])
               mempty
               Decoders.noResult
           -- Test roundtrip using custom encoder and decoder
           Session.statement "three"
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
+              (mconcat ["select $1 :: ", enumName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.custom
@@ -212,14 +212,14 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"]))
+              (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"])
               mempty
               Decoders.noResult
           -- Test roundtrip for multiple values
           r1 <-
             Session.statement "first"
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
+                (mconcat ["select $1 :: ", enumName])
                 ( Encoders.param
                     ( Encoders.nonNullable
                         ( Encoders.custom
@@ -248,7 +248,7 @@ spec = do
           r2 <-
             Session.statement "third"
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
+                (mconcat ["select $1 :: ", enumName])
                 ( Encoders.param
                     ( Encoders.nonNullable
                         ( Encoders.custom
@@ -286,19 +286,19 @@ spec = do
           -- Create schema
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create schema ", schemaName]))
+              (mconcat ["create schema ", schemaName])
               mempty
               Decoders.noResult
           -- Create enum type in that schema
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y', 'z')"]))
+              (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y', 'z')"])
               mempty
               Decoders.noResult
           -- Test custom encoder with schema qualification
           Session.statement "z"
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", schemaName, ".", typeName, ") = 'z' :: ", schemaName, ".", typeName]))
+              (mconcat ["select ($1 :: ", schemaName, ".", typeName, ") = 'z' :: ", schemaName, ".", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.custom
