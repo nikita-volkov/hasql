@@ -327,12 +327,7 @@ spec = do
                                                           ( Decoders.enum
                                                               Nothing
                                                               enumType
-                                                              ( \case
-                                                                  "red" -> Just "red"
-                                                                  "green" -> Just "green"
-                                                                  "blue" -> Just "blue"
-                                                                  _ -> Nothing
-                                                              )
+                                                              Just
                                                           )
                                                       )
                                                   )
@@ -396,12 +391,7 @@ spec = do
                                                           ( Decoders.enum
                                                               Nothing
                                                               enum1
-                                                              ( \case
-                                                                  "small" -> Just "small"
-                                                                  "medium" -> Just "medium"
-                                                                  "large" -> Just "large"
-                                                                  _ -> Nothing
-                                                              )
+                                                              Just
                                                           )
                                                       )
                                                   )
@@ -418,11 +408,7 @@ spec = do
                                                           ( Decoders.enum
                                                               Nothing
                                                               enum2
-                                                              ( \case
-                                                                  "low" -> Just "low"
-                                                                  "high" -> Just "high"
-                                                                  _ -> Nothing
-                                                              )
+                                                              Just
                                                           )
                                                       )
                                                   )
@@ -482,9 +468,9 @@ spec = do
                                                                 Nothing
                                                                 enumType
                                                                 ( \case
-                                                                    "A" -> Just "A"
-                                                                    "B" -> Just "B"
-                                                                    "C" -> Just "C"
+                                                                    "A" -> Just 'A'
+                                                                    "B" -> Just 'B'
+                                                                    "C" -> Just 'C'
                                                                     _ -> Nothing
                                                                 )
                                                             )
@@ -500,7 +486,7 @@ spec = do
                     )
                 )
                 True
-          result `shouldBe` Right ("Alice", 25 :: Int32, ["A", "B", "A"])
+          result `shouldBe` Right ("Alice", 25 :: Int32, ['A', 'B', 'A'])
 
       it "decodes nested composite with enum array field" \config -> do
         enumType <- Scripts.generateSymname
@@ -558,9 +544,9 @@ spec = do
                                                                           Nothing
                                                                           enumType
                                                                           ( \case
-                                                                              "x" -> Just "x"
-                                                                              "y" -> Just "y"
-                                                                              "z" -> Just "z"
+                                                                              "x" -> Just 'x'
+                                                                              "y" -> Just 'y'
+                                                                              "z" -> Just 'z'
                                                                               _ -> Nothing
                                                                           )
                                                                       )
@@ -578,7 +564,7 @@ spec = do
                     )
                 )
                 True
-          result `shouldBe` Right (100 :: Int32, ["x", "y", "z"])
+          result `shouldBe` Right (100 :: Int32, ['x', 'y', 'z'])
 
       it "decodes a composite with 2D enum array field" \config -> do
         enumType <- Scripts.generateSymname
@@ -623,8 +609,8 @@ spec = do
                                                                 Nothing
                                                                 enumType
                                                                 ( \case
-                                                                    "0" -> Just "0"
-                                                                    "1" -> Just "1"
+                                                                    "0" -> Just (0 :: Int)
+                                                                    "1" -> Just 1
                                                                     _ -> Nothing
                                                                 )
                                                             )
@@ -640,7 +626,7 @@ spec = do
                     )
                 )
                 True
-          result `shouldBe` Right [["0", "1"], ["1", "0"]]
+          result `shouldBe` Right [[0, 1], [1, 0]]
 
     describe "OID compatibility checking" do
       it "fails when decoder expects a composite but gets a different type" \config -> do
