@@ -5,14 +5,14 @@ module Hasql.Engine.PqProcedures.SelectTypeInfo
   )
 where
 
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Decoders.Value qualified as Decoders.Value
 import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Encoders.Params
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq

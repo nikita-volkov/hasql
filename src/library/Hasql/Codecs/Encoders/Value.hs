@@ -1,12 +1,12 @@
 module Hasql.Codecs.Encoders.Value where
 
 import ByteString.StrictBuilder qualified
-import Hasql.Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Data.IP qualified as Iproute
+import Hasql.Codecs.TypeInfo qualified as TypeInfo
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as Range

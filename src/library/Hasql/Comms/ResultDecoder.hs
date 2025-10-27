@@ -32,11 +32,11 @@ module Hasql.Comms.ResultDecoder
   )
 where
 
-import Hasql.Comms.RowDecoder qualified as RowDecoder
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
+import Hasql.Comms.RowDecoder qualified as RowDecoder
 import Hasql.Platform.Prelude hiding (foldl, foldr, maybe)
 import Hasql.Platform.Prelude qualified as Prelude
 import Hasql.Pq qualified as Pq

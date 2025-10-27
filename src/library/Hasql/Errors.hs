@@ -26,8 +26,8 @@ where
 import Data.Text qualified as Text
 import Hasql.Engine.Errors
 import Hasql.Platform.Prelude
-import TextBuilder qualified
 import Hasql.TextExtras qualified as TextExtras
+import TextBuilder qualified
 
 -- * Classes
 

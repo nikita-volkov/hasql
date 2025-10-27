@@ -51,10 +51,10 @@ module Hasql.Codecs.Decoders.Value
   )
 where
 
-import Hasql.Codecs.RequestingOid qualified as RequestingOid
-import Hasql.Codecs.TypeInfo qualified as TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
+import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.TypeInfo qualified as TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Decoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as R

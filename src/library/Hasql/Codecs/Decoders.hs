@@ -62,12 +62,12 @@ module Hasql.Codecs.Decoders
   )
 where
 
+import Data.Vector.Generic qualified as GenericVector
 import Hasql.Codecs.Decoders.Array qualified as Array
 import Hasql.Codecs.Decoders.Composite qualified as Composite
 import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.Codecs.TypeInfo qualified as TypeInfo
-import Data.Vector.Generic qualified as GenericVector
 import Hasql.Platform.Prelude
 
 -- * Value

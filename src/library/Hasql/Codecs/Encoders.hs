@@ -73,13 +73,13 @@ module Hasql.Codecs.Encoders
   )
 where
 
+import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.Encoders.Array qualified as Array
 import Hasql.Codecs.Encoders.Composite qualified as Composite
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.Codecs.TypeInfo qualified as TypeInfo
-import Data.HashMap.Strict qualified as HashMap
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified

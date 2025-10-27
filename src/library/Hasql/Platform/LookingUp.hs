@@ -1,9 +1,8 @@
-
 module Hasql.Platform.LookingUp where
 
 import Control.Applicative
-import Prelude
 import Witherable
+import Prelude
 
 data LookingUp k v f a
   = LookingUp

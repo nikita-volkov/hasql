@@ -8,15 +8,15 @@ module Hasql.Connection
   )
 where
 
-import Hasql.Comms.Session qualified as Comms.Session
 import Data.Text qualified as Text
+import Hasql.Comms.Session qualified as Comms.Session
+import Hasql.Connection.Config qualified as Config
+import Hasql.Connection.ServerVersion qualified as ServerVersion
+import Hasql.Connection.Settings qualified as Settings
 import Hasql.Engine.Contexts.Session qualified as Session
 import Hasql.Engine.Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
-import Hasql.Connection.Config qualified as Config
-import Hasql.Connection.ServerVersion qualified as ServerVersion
-import Hasql.Connection.Settings qualified as Settings
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 

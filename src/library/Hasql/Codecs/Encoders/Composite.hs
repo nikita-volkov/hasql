@@ -1,9 +1,9 @@
 module Hasql.Codecs.Encoders.Composite where
 
-import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
-import Hasql.Codecs.Encoders.Value qualified as Value
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
+import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified

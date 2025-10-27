@@ -86,9 +86,9 @@ import GHC.Exts as Exports (IsList (..), groupWith, inline, lazy, sortWith)
 import GHC.Generics as Exports (Generic)
 import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
-import Numeric as Exports
 import Hasql.Platform.LookingUp as Exports (LookingUp (..))
 import Hasql.Platform.Prelude.Text as Exports
+import Numeric as Exports
 import System.Environment as Exports
 import System.Exit as Exports
 import System.IO as Exports (Handle, hClose)
