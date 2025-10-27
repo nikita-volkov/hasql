@@ -15,11 +15,10 @@ spec = do
   it "Leaves the session usable" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       let tryStatement =
-            Statement.Statement
+            Statement.preparable
               "select $1 :: int8"
               (Encoders.param (Encoders.nonNullable Encoders.int8))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-              True
 
       result <-
         Connection.use connection do

@@ -20,11 +20,10 @@ spec = do
           Connection.use connection do
             Session.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select 1 + 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         result `shouldBe` Right 2
 
@@ -44,11 +43,10 @@ spec = do
           Connection.use connection do
             Session.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select 2 + 2"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         result `shouldBe` Right 4
 

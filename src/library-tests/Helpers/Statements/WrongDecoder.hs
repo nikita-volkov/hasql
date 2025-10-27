@@ -17,7 +17,7 @@ type WrongDecoderResult = [Data.UUID.UUID]
 
 instance StatementModule WrongDecoder WrongDecoderResult where
   statement =
-    Statement.Statement
+    Statement.preparable
       "SELECT generate_series($1, $2)"
       ( mconcat
           [ start >$< Encoders.param (Encoders.nonNullable Encoders.int8),
@@ -27,4 +27,3 @@ instance StatementModule WrongDecoder WrongDecoderResult where
       ( Decoders.rowList
           (Decoders.column (Decoders.nonNullable Decoders.uuid))
       )
-      True

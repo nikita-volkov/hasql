@@ -8,8 +8,8 @@ module Hasql.Session
 where
 
 import Hasql.Engine.Contexts.Session qualified as Session
+import Hasql.Engine.Statement qualified as Statement
 import Hasql.Platform.Prelude
-import Hasql.Statement qualified as Statement
 
 -- |
 -- Possibly a multi-statement query,

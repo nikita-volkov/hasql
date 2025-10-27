@@ -18,11 +18,10 @@ spec = do
     describe "1D arrays" do
       it "roundtrips 1D arrays" \config -> property $ \(values :: [Int64]) -> monadicIO $ do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1"
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8)))))))
-                True
         result <- run $ Scripts.onPreparableConnection config \connection ->
           Connection.use connection (Session.statement values statement)
         assert $ result == Right values
@@ -32,11 +31,10 @@ spec = do
         pre (not (null values))
         let input = replicate 3 values
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select $1"
                 (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.array (Decoders.dimension replicateM (Decoders.dimension replicateM (Decoders.element (Decoders.nonNullable Decoders.int8))))))))
-                True
         result <- run $ Scripts.onPreparableConnection config \connection ->
           Connection.use connection (Session.statement input statement)
         assert $ result == Right input

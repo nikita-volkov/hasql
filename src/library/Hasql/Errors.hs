@@ -20,7 +20,7 @@ module Hasql.Errors
     StatementError (..),
     RowError (..),
     CellError (..),
-    ExecutionError (..),
+    ServerError (..),
   )
 where
 
@@ -71,8 +71,8 @@ instance IsError ConnectionError where
     CompatibilityConnectionError {} -> False
     OtherConnectionError {} -> False
 
-instance IsError ExecutionError where
-  toErrorMessage (ExecutionError code message detail hint position) =
+instance IsError ServerError where
+  toErrorMessage (ServerError code message detail hint position) =
     (TextBuilder.toText . mconcat . mconcat)
       [ [ TextBuilder.text code,
           " - ",
@@ -97,7 +97,7 @@ instance IsError CellError where
 
 instance IsError StatementError where
   toErrorMessage = \case
-    ExecutionStatementError executionError ->
+    ServerStatementError executionError ->
       mconcat
         [ "Server error: ",
           toErrorMessage executionError

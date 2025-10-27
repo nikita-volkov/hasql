@@ -16,11 +16,10 @@ spec = do
     it "decodes UUID from static value" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select '550e8400-e29b-41d4-a716-446655440000'::uuid"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
-                True
         result <- Connection.use connection (Session.statement () statement)
         case UUID.fromString "550e8400-e29b-41d4-a716-446655440000" of
           Just expectedUuid -> result `shouldBe` Right expectedUuid
@@ -29,10 +28,9 @@ spec = do
     it "decodes nil UUID" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let statement =
-              Statement.Statement
+              Statement.preparable
                 "select '00000000-0000-0000-0000-000000000000'::uuid"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
-                True
         result <- Connection.use connection (Session.statement () statement)
         result `shouldBe` Right UUID.nil

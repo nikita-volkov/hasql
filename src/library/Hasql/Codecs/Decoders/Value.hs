@@ -48,6 +48,7 @@ module Hasql.Codecs.Decoders.Value
     toArrayOid,
     toHandler,
     toByteStringParser,
+    isArray,
   )
 where
 
@@ -357,10 +358,7 @@ custom schema typeName staticOids requestedTypes fn =
     (fst <$> staticOids)
     (snd <$> staticOids)
     0
-    ( RequestingOid.requestAndHandle
-        ([(schema, typeName)] <> requestedTypes)
-        (\project -> Binary.fn (fn project))
-    )
+    (RequestingOid.requestAndHandle requestedTypes (Binary.fn . fn))
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
@@ -429,3 +427,6 @@ toHandler (Value _ _ _ _ _ decoder) = RequestingOid.toBase decoder
 {-# INLINE toByteStringParser #-}
 toByteStringParser :: Value a -> (HashMap (Maybe Text, Text) (Word32, Word32) -> ByteString -> Either Text a)
 toByteStringParser (Value _ _ _ _ _ decoder) oidCache = Binary.valueParser (RequestingOid.toBase decoder oidCache)
+
+isArray :: Value a -> Bool
+isArray (Value _ _ _ _ dimensionality _) = dimensionality > 0

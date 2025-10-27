@@ -62,7 +62,7 @@ spec = do
                 <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
                 <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ExecutionStatementError _)) -> pure ()
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do
@@ -114,11 +114,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         case result of
           Right val ->
@@ -131,11 +130,10 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
         -- If there is an error the cache got corrupted.
         case result of
@@ -151,19 +149,17 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.Statement
+              ( Statement.preparable
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                  True
               )
               <* Pipeline.statement
                 ()
-                ( Statement.Statement
+                ( Statement.preparable
                     "select 1"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                    True
                 )
         case result of
           Right val ->

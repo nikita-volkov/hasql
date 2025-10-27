@@ -5,8 +5,8 @@ module Hasql.Pipeline
 where
 
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
+import Hasql.Engine.Statement qualified as Statement
 import Hasql.Platform.Prelude
-import Hasql.Statement qualified as Statement
 
 -- |
 -- Execute a statement by providing parameters to it.

@@ -18,16 +18,14 @@ spec = do
         result <- Connection.use connection do
           -- First create the enum type
           Session.statement ()
-            $ Statement.Statement
-              (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"])
-              mempty
-              Decoders.noResult
-              True
+            $ Statement.preparable
+                (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"])
+                mempty
+                Decoders.noResult
           -- Then test encoding
           Session.statement "ok"
-            $ Statement.Statement
-              (mconcat ["select $1 = ('ok' :: ", name, ")"])
-              (Encoders.param (Encoders.nonNullable Encoders.unknown))
-              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
-              True
+            $ Statement.preparable
+                (mconcat ["select $1 = ('ok' :: ", name, ")"])
+                (Encoders.param (Encoders.nonNullable Encoders.unknown))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True

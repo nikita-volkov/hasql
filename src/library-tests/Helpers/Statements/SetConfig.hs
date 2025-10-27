@@ -16,7 +16,7 @@ type SetConfigResult = ()
 
 instance StatementModule SetConfig SetConfigResult where
   statement =
-    Statement.Statement sql encoder decoder preparable
+    Statement.preparable sql encoder decoder
     where
       sql =
         "SELECT set_config($1, $2, $3)"
@@ -30,6 +30,3 @@ instance StatementModule SetConfig SetConfigResult where
 
       decoder =
         Decoders.noResult
-
-      preparable =
-        True
