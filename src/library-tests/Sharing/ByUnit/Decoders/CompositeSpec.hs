@@ -200,6 +200,45 @@ spec = do
           result `shouldBe` Right ((99 :: Int64, True), "deep")
 
     describe "Arrays of composites" do
+      it "decodes arrays of primitives" \config -> do
+        typeName <- Scripts.generateSymname
+        Scripts.onPreparableConnection config \connection -> do
+          result <- Connection.use connection do
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["create type ", typeName, " as (x int4[])"]))
+                mempty
+                Decoders.noResult
+                True
+            Session.statement ()
+              $ Statement.Statement
+                (encodeUtf8 (mconcat ["select row(array[1,2,3])", " :: ", typeName]))
+                mempty
+                ( Decoders.singleRow
+                    ( Decoders.column
+                        ( Decoders.nonNullable
+                            ( Decoders.composite
+                                Nothing
+                                typeName
+                                ( Decoders.field
+                                    ( Decoders.nonNullable
+                                        ( Decoders.array
+                                            ( Decoders.dimension
+                                                replicateM
+                                                ( Decoders.element
+                                                    (Decoders.nonNullable Decoders.int4)
+                                                )
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                True
+          result `shouldBe` Right [1, 2, 3]
+
       it "decodes arrays of named composites from static SQL" \config -> do
         typeName <- Scripts.generateSymname
         Scripts.onPreparableConnection config \connection -> do
