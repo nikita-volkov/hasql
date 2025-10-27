@@ -57,6 +57,7 @@ module Hasql.Encoders
     oid,
     foldableArray,
     array,
+    hstore,
     enum,
     composite,
     custom,

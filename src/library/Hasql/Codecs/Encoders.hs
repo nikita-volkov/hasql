@@ -57,6 +57,7 @@ module Hasql.Codecs.Encoders
     Value.oid,
     foldableArray,
     array,
+    Value.hstore,
     Value.enum,
     composite,
     Value.unknown,
