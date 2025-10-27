@@ -13,7 +13,7 @@ import Hasql.Pq qualified as Pq
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.
 --
 -- Construct sessions using helpers in this module such as
--- 'statement', 'pipeline' and 'sql', or use 'onLibpqConnection' for a low-level
+-- 'statement', 'pipeline' and 'script', or use 'onLibpqConnection' for a low-level
 -- escape hatch.
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
