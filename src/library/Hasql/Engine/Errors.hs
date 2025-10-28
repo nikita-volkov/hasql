@@ -66,165 +66,6 @@ data ConnectionError
   deriving stock (Show, Eq)
 
 -- |
--- Error reported by the PostgreSQL server when executing a statement.
---
--- The server provides structured error information including error codes
--- (SQL state), messages, and optional context like hints and position information.
---
--- For a complete list of PostgreSQL error codes, see:
--- <https://www.postgresql.org/docs/current/errcodes-appendix.html>
-data ServerError
-  = ServerError
-      -- | SQL State Code (SQLSTATE).
-      --
-      -- A five-character code that identifies the error class and condition.
-      -- Examples: @\"23505\"@ (unique violation), @\"42P01\"@ (undefined table).
-      Text
-      -- | Primary error message.
-      --
-      -- A human-readable description of the error.
-      Text
-      -- | Optional detailed error information.
-      --
-      -- Additional context about the error, if available.
-      (Maybe Text)
-      -- | Optional hint for resolving the error.
-      --
-      -- A suggestion for how to fix the problem, if available.
-      (Maybe Text)
-      -- | Optional position in the SQL string where the error occurred.
-      --
-      -- A 1-based character index into the SQL string, if the error
-      -- relates to a specific location in the query.
-      (Maybe Int)
-  deriving stock (Show, Eq)
-
--- |
--- Error that occurs when decoding a single cell (column value) in a result row.
---
--- Cell errors indicate problems with individual values returned by the database,
--- such as unexpected nulls or failures in binary deserialization.
-data CellError
-  = -- | A NULL value was encountered when a non-NULL value was expected.
-    --
-    -- This occurs when using non-nullable decoders (e.g., @Decoders.nonNullable@)
-    -- on a column that contains a NULL value.
-    UnexpectedNullCellError
-  | -- | Failed to deserialize the cell value from its binary representation.
-    --
-    -- This can occur when:
-    --
-    -- * The binary data is corrupted
-    -- * The decoder doesn't match the actual data type
-    -- * The data format is invalid for the expected type
-    DeserializationCellError
-      -- | Human-readable error message describing what went wrong.
-      Text
-  deriving stock (Show, Eq)
-
--- |
--- Error that occurs when executing a single statement.
---
--- Statement errors can be caused by server-side issues (SQL errors, constraint violations)
--- or by mismatches between the decoder specification and the actual result structure
--- (wrong number of rows/columns, type mismatches, or cell-level decoding failures).
-data StatementError
-  = -- | The server rejected the statement and returned an error.
-    --
-    -- This includes SQL syntax errors, constraint violations, permission errors,
-    -- and any other error reported by PostgreSQL during statement execution.
-    ServerStatementError ServerError
-  | -- | The statement returned a different number of rows than expected.
-    --
-    -- This occurs when using result decoders like @Decoders.singleRow@ or
-    -- @Decoders.rowsAffectedAtLeast@ that have specific row count expectations.
-    UnexpectedRowCountStatementError
-      -- | Expected minimum number of rows.
-      Int
-      -- | Expected maximum number of rows.
-      Int
-      -- | Actual number of rows returned.
-      Int
-  | -- | The statement returned a different number of columns than expected.
-    --
-    -- This indicates a mismatch between the decoder specification and the
-    -- actual result structure, possibly due to:
-    --
-    -- * Schema changes (columns added or removed)
-    -- * Wrong query (selecting different columns than expected)
-    -- * Decoder configuration error
-    UnexpectedAmountOfColumnsStatementError
-      -- | Expected number of columns.
-      Int
-      -- | Actual number of columns returned.
-      Int
-  | -- | A column has a different type than expected.
-    --
-    -- This occurs when the decoder expects a specific PostgreSQL type (by OID)
-    -- but the actual column has a different type. This can happen due to:
-    --
-    -- * Schema changes (column type changed)
-    -- * Wrong query (selecting wrong column or using a cast)
-    -- * Decoder configuration error
-    --
-    -- Note: As of version 1.10, Hasql performs strict type checking and will
-    -- report this error instead of attempting automatic type coercion.
-    UnexpectedColumnTypeStatementError
-      -- | 0-based column index where the type mismatch occurred.
-      Int
-      -- | Expected PostgreSQL type OID.
-      Word32
-      -- | Actual PostgreSQL type OID of the column.
-      Word32
-  | -- | An error occurred while decoding a specific row.
-    --
-    -- This wraps errors that occur at the row or cell level, providing
-    -- context about which row failed.
-    RowStatementError
-      -- | 0-based index of the row that failed to decode.
-      Int
-      -- | The underlying row-level error.
-      RowError
-  | -- | The database returned an unexpected result structure.
-    --
-    -- This is a catch-all error that indicates either:
-    --
-    -- * An improper statement (e.g., executing a query that doesn't match expectations)
-    -- * A schema mismatch between the code and database
-    -- * A bug in Hasql or server misbehavior
-    UnexpectedResultStatementError
-      -- | Human-readable details about what went wrong.
-      Text
-  deriving stock (Show, Eq)
-
--- |
--- Error that occurs when decoding a result row.
---
--- Row errors indicate problems when processing an individual row from the result set,
--- either at the cell level or during row refinement/validation.
-data RowError
-  = -- | An error occurred while decoding a specific cell in the row.
-    --
-    -- This wraps cell-level errors (null handling, deserialization failures)
-    -- and provides context about which column failed and its type.
-    CellRowError
-      -- | 0-based index of the column where the error occurred.
-      Int
-      -- | PostgreSQL type OID of the column, as reported by the server.
-      Word32
-      -- | The underlying cell-level error.
-      CellError
-  | -- | A refinement or validation error when processing the row.
-    --
-    -- This occurs when using refinement functions in row decoders
-    -- (e.g., with 'Decoders.refineRow') to validate or transform
-    -- decoded values. The refinement function rejected the row data.
-    RefinementRowError
-      -- | Human-readable details about why the refinement failed.
-      Text
-  deriving stock (Show, Eq)
-
--- |
 -- Error that occurs during session execution.
 --
 -- A session is a batch of actions executed in a database connection context.
@@ -305,6 +146,165 @@ data SessionError
     -- If you encounter this error, please report it as a bug.
     DriverSessionError
       -- | Human-readable details about what went wrong.
+      Text
+  deriving stock (Show, Eq)
+
+-- |
+-- Error that occurs when executing a single statement.
+--
+-- Statement errors can be caused by server-side issues (SQL errors, constraint violations)
+-- or by mismatches between the decoder specification and the actual result structure
+-- (wrong number of rows/columns, type mismatches, or cell-level decoding failures).
+data StatementError
+  = -- | The server rejected the statement and returned an error.
+    --
+    -- This includes SQL syntax errors, constraint violations, permission errors,
+    -- and any other error reported by PostgreSQL during statement execution.
+    ServerStatementError ServerError
+  | -- | The statement returned a different number of rows than expected.
+    --
+    -- This occurs when using result decoders like @Decoders.singleRow@ or
+    -- @Decoders.rowsAffectedAtLeast@ that have specific row count expectations.
+    UnexpectedRowCountStatementError
+      -- | Expected minimum number of rows.
+      Int
+      -- | Expected maximum number of rows.
+      Int
+      -- | Actual number of rows returned.
+      Int
+  | -- | The statement returned a different number of columns than expected.
+    --
+    -- This indicates a mismatch between the decoder specification and the
+    -- actual result structure, possibly due to:
+    --
+    -- * Schema changes (columns added or removed)
+    -- * Wrong query (selecting different columns than expected)
+    -- * Decoder configuration error
+    UnexpectedAmountOfColumnsStatementError
+      -- | Expected number of columns.
+      Int
+      -- | Actual number of columns returned.
+      Int
+  | -- | A column has a different type than expected.
+    --
+    -- This occurs when the decoder expects a specific PostgreSQL type (by OID)
+    -- but the actual column has a different type. This can happen due to:
+    --
+    -- * Schema changes (column type changed)
+    -- * Wrong query (selecting wrong column or using a cast)
+    -- * Decoder configuration error
+    --
+    -- Note: As of version 1.10, Hasql performs strict type checking and will
+    -- report this error instead of attempting automatic type coercion.
+    UnexpectedColumnTypeStatementError
+      -- | 0-based column index where the type mismatch occurred.
+      Int
+      -- | Expected PostgreSQL type OID.
+      Word32
+      -- | Actual PostgreSQL type OID of the column.
+      Word32
+  | -- | An error occurred while decoding a specific row.
+    --
+    -- This wraps errors that occur at the row or cell level, providing
+    -- context about which row failed.
+    RowStatementError
+      -- | 0-based index of the row that failed to decode.
+      Int
+      -- | The underlying row-level error.
+      RowError
+  | -- | The database returned an unexpected result structure.
+    --
+    -- This is a catch-all error that indicates either:
+    --
+    -- * An improper statement (e.g., executing a query that doesn't match expectations)
+    -- * A schema mismatch between the code and database
+    -- * A bug in Hasql or server misbehavior
+    UnexpectedResultStatementError
+      -- | Human-readable details about what went wrong.
+      Text
+  deriving stock (Show, Eq)
+
+-- |
+-- Error reported by the PostgreSQL server when executing a statement.
+--
+-- The server provides structured error information including error codes
+-- (SQL state), messages, and optional context like hints and position information.
+--
+-- For a complete list of PostgreSQL error codes, see:
+-- <https://www.postgresql.org/docs/current/errcodes-appendix.html>
+data ServerError
+  = ServerError
+      -- | SQL State Code (SQLSTATE).
+      --
+      -- A five-character code that identifies the error class and condition.
+      -- Examples: @\"23505\"@ (unique violation), @\"42P01\"@ (undefined table).
+      Text
+      -- | Primary error message.
+      --
+      -- A human-readable description of the error.
+      Text
+      -- | Optional detailed error information.
+      --
+      -- Additional context about the error, if available.
+      (Maybe Text)
+      -- | Optional hint for resolving the error.
+      --
+      -- A suggestion for how to fix the problem, if available.
+      (Maybe Text)
+      -- | Optional position in the SQL string where the error occurred.
+      --
+      -- A 1-based character index into the SQL string, if the error
+      -- relates to a specific location in the query.
+      (Maybe Int)
+  deriving stock (Show, Eq)
+
+-- |
+-- Error that occurs when decoding a result row.
+--
+-- Row errors indicate problems when processing an individual row from the result set,
+-- either at the cell level or during row refinement/validation.
+data RowError
+  = -- | An error occurred while decoding a specific cell in the row.
+    --
+    -- This wraps cell-level errors (null handling, deserialization failures)
+    -- and provides context about which column failed and its type.
+    CellRowError
+      -- | 0-based index of the column where the error occurred.
+      Int
+      -- | PostgreSQL type OID of the column, as reported by the server.
+      Word32
+      -- | The underlying cell-level error.
+      CellError
+  | -- | A refinement or validation error when processing the row.
+    --
+    -- This occurs when using refinement functions in row decoders
+    -- (e.g., with 'Decoders.refineRow') to validate or transform
+    -- decoded values. The refinement function rejected the row data.
+    RefinementRowError
+      -- | Human-readable details about why the refinement failed.
+      Text
+  deriving stock (Show, Eq)
+
+-- |
+-- Error that occurs when decoding a single cell (column value) in a result row.
+--
+-- Cell errors indicate problems with individual values returned by the database,
+-- such as unexpected nulls or failures in binary deserialization.
+data CellError
+  = -- | A NULL value was encountered when a non-NULL value was expected.
+    --
+    -- This occurs when using non-nullable decoders (e.g., @Decoders.nonNullable@)
+    -- on a column that contains a NULL value.
+    UnexpectedNullCellError
+  | -- | Failed to deserialize the cell value from its binary representation.
+    --
+    -- This can occur when:
+    --
+    -- * The binary data is corrupted
+    -- * The decoder doesn't match the actual data type
+    -- * The data format is invalid for the expected type
+    DeserializationCellError
+      -- | Human-readable error message describing what went wrong.
       Text
   deriving stock (Show, Eq)
 
