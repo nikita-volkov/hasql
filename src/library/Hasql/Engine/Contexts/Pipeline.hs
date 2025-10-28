@@ -206,7 +206,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
         then runPrepared
         else runUnprepared
       where
-        (oidList, valueAndFormatList) =
+        (oidList, valueList) =
           Params.compilePreparedStatementData encoder oidCache params
 
         pqOidList =
@@ -237,8 +237,8 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                 *> Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
-                  valueAndFormatList
-                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
+                  valueList
+                    & fmap (fmap (,Pq.Binary))
 
         runUnprepared statementCache =
           (roundtrip, statementCache)
@@ -249,7 +249,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                 encodedParams =
                   params
                     & Params.compileUnpreparedStatementData encoder oidCache
-                    & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+                    & fmap (fmap (\(oid, bytes) -> (Pq.Oid (fromIntegral oid), bytes, Pq.Binary)))
 
         decoder' =
           RequestingOid.toBase decoder oidCache

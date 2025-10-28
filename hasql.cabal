@@ -300,7 +300,6 @@ test-suite library-tests
     Sharing.ByUnit.Encoders.InetSpec
     Sharing.ByUnit.Encoders.IntervalSpec
     Sharing.ByUnit.Encoders.JsonSpec
-    Sharing.ByUnit.Encoders.UnknownSpec
     Sharing.ByUnit.Encoders.UuidSpec
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec

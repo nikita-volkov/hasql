@@ -24,8 +24,6 @@ data Array a
       (Maybe Text)
       -- | Type name.
       Text
-      -- | Text format?
-      Bool
       -- | Dimensionality. If 0 then it is not an array, but a scalar value.
       Word
       -- | OID of the element type.
@@ -40,25 +38,24 @@ data Array a
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Array where
-  contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
-    Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes (\oidCache -> elEncoder oidCache . fn) (elRenderer . fn)
+  contramap fn (Array schemaName typeName dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
+    Array schemaName typeName dimensionality valueOid arrayOid unknownTypes (\oidCache -> elEncoder oidCache . fn) (elRenderer . fn)
 
 -- |
 -- Lifts a 'Value.Value' encoder into an 'Array' encoder.
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
+  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes serialize print) ->
     Array
       schemaName
       typeName
-      textFormat
       dimensionality
       scalarOid
       arrayOid
       unknownTypes
       (\oidCache -> Binary.encodingArray . serialize oidCache)
       print
-  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
+  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes serialize print) ->
     let maybeSerialize oidCache =
           maybe Binary.nullArray (Binary.encodingArray . serialize oidCache)
         maybePrint =
@@ -66,7 +63,6 @@ element = \case
      in Array
           schemaName
           typeName
-          textFormat
           dimensionality
           scalarOid
           arrayOid
@@ -87,7 +83,7 @@ element = \case
 -- * A component encoder, which can be either another 'dimension' or 'element'.
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
-dimension fold (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
+dimension fold (Array schemaName typeName dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
   let encoder oidCache =
         Binary.dimensionArray fold (elEncoder oidCache)
       renderer els =
@@ -100,4 +96,4 @@ dimension fold (Array schemaName typeName textFormat dimensionality valueOid arr
          in if TextBuilder.isEmpty folded
               then TextBuilder.string "[]"
               else folded <> TextBuilder.char ']'
-   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid unknownTypes encoder renderer
+   in Array schemaName typeName (succ dimensionality) valueOid arrayOid unknownTypes encoder renderer

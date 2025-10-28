@@ -44,7 +44,7 @@ instance Monoid (Composite a) where
 -- | Single field of a row-type.
 field :: NullableOrNot.NullableOrNot Value.Value a -> Composite a
 field = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality _ unknownTypes encode print) ->
+  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes encode print) ->
     let staticOid = if dimensionality == 0 then scalarOid else arrayOid
      in case staticOid of
           Just oid ->
@@ -60,7 +60,7 @@ field = \case
                    in Binary.field oid (encode oidCache val)
               )
               (\val -> [print val])
-  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality _ unknownTypes encode print) ->
+  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality unknownTypes encode print) ->
     let staticOid = if dimensionality == 0 then scalarOid else arrayOid
      in case staticOid of
           Just oid ->
