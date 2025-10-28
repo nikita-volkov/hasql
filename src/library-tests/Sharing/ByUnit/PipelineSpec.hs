@@ -70,12 +70,16 @@ spec = do
             result <-
               Connection.use connection do
                 _ <-
-                  tryError
-                    $ Session.pipeline
-                    $ (,,)
-                    <$> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
-                    <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
-                    <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                  catchError
+                    ( Just
+                        <$> Session.pipeline
+                          ( (,,)
+                              <$> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                              <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
+                              <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                          )
+                    )
+                    (const (pure Nothing))
                 Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 0}
             shouldBe result (Right [0])
 
@@ -97,12 +101,16 @@ spec = do
             result <-
               Connection.use connection do
                 _ <-
-                  tryError
-                    $ Session.pipeline
-                    $ (,,)
-                    <$> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
-                    <*> Execution.pipelineByParams Statements.WrongDecoder {start = 0, end = 2}
-                    <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                  catchError
+                    ( Just
+                        <$> Session.pipeline
+                          ( (,,)
+                              <$> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                              <*> Execution.pipelineByParams Statements.WrongDecoder {start = 0, end = 2}
+                              <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
+                          )
+                    )
+                    (const (pure Nothing))
                 Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 0}
             shouldBe result (Right [0])
 
