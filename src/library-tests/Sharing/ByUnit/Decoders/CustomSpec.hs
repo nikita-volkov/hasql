@@ -24,13 +24,13 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"]))
+              (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"])
               mempty
               Decoders.noResult
           -- Test custom decoder with runtime OID lookup
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select 'beta' :: ", enumName]))
+              (mconcat ["select 'beta' :: ", enumName])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -85,19 +85,19 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('small', 'large')"]))
+              (mconcat ["create type ", enumName, " as enum ('small', 'large')"])
               mempty
               Decoders.noResult
           -- Create composite type with the enum
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", compositeName, " as (size ", enumName, ", count int4)"]))
+              (mconcat ["create type ", compositeName, " as (size ", enumName, ", count int4)"])
               mempty
               Decoders.noResult
           -- Test custom decoder requesting OIDs of dependent types
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ('large', 5) :: ", compositeName]))
+              (mconcat ["select ('large', 5) :: ", compositeName])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -163,13 +163,13 @@ spec = do
           -- Create a custom type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", customTypeName, " as (id int4)"]))
+              (mconcat ["create type ", customTypeName, " as (id int4)"])
               mempty
               Decoders.noResult
           -- Try to decode it but request a non-existent dependent type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select (42) :: ", customTypeName]))
+              (mconcat ["select (42) :: ", customTypeName])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column
@@ -225,13 +225,13 @@ spec = do
           -- Create enum type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"]))
+              (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"])
               mempty
               Decoders.noResult
           -- Test roundtrip using custom encoder and decoder
           Session.statement "two"
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", enumName]))
+              (mconcat ["select $1 :: ", enumName])
               (Encoders.param (Encoders.nonNullable (Encoders.custom Nothing enumName Nothing [] (\_ val -> encodeUtf8 val) TextBuilder.text)))
               ( Decoders.singleRow
                   ( Decoders.column
@@ -257,19 +257,19 @@ spec = do
           -- Create schema
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create schema ", schemaName]))
+              (mconcat ["create schema ", schemaName])
               mempty
               Decoders.noResult
           -- Create enum type in that schema
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y')"]))
+              (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y')"])
               mempty
               Decoders.noResult
           -- Test custom decoder with schema qualification
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select 'y' :: ", schemaName, ".", typeName]))
+              (mconcat ["select 'y' :: ", schemaName, ".", typeName])
               mempty
               ( Decoders.singleRow
                   ( Decoders.column

@@ -1,7 +1,6 @@
 module Sharing.ByUnit.Encoders.CompositeSpec (spec) where
 
 import Data.HashSet qualified as HashSet
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -22,13 +21,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Test encoding by comparing with static value
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName]))
+              (mconcat ["select ($1 :: ", typeName, ") = (42, true) :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -52,13 +51,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Test roundtrip
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
+              (mconcat ["select $1 :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -97,19 +96,19 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
               mempty
               Decoders.noResult
           -- Test nested encoding
           Session.statement ((42 :: Int64, True), "hello")
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType]))
+              (mconcat ["select ($1 :: ", outerType, ") = ((42, true), 'hello') :: ", outerType])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -146,19 +145,19 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"]))
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
               mempty
               Decoders.noResult
           -- Test roundtrip
           Session.statement ((42 :: Int64, True), "hello")
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", outerType]))
+              (mconcat ["select $1 :: ", outerType])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -218,13 +217,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Test array encoding
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 = array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"]))
+              (mconcat ["select $1 = array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.array
@@ -257,13 +256,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Test roundtrip
           Session.statement [(1 :: Int64, True), (2, False), (3, True)]
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", typeName, "[]"]))
+              (mconcat ["select $1 :: ", typeName, "[]"])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.array
@@ -321,13 +320,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (value int8)"]))
+              (mconcat ["create type ", typeName, " as (value int8)"])
               mempty
               Decoders.noResult
           -- Use named composite - this requires OID lookup to succeed
           Session.statement (100 :: Int64)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
+              (mconcat ["select $1 :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -363,13 +362,13 @@ spec = do
           -- Create inner composite with a built-in type field
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
+              (mconcat ["create type ", innerType, " as (value int8)"])
               mempty
               Decoders.noResult
           -- Create outer composite containing the inner composite
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"]))
+              (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ")"])
               mempty
               Decoders.noResult
           -- With the bug: innerType wouldn't be in the OID cache because
@@ -378,7 +377,7 @@ spec = do
           -- This would cause the encoder to use OID 0 for innerType, causing an error.
           Session.statement (42 :: Int64)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ").inner.value"]))
+              (mconcat ["select ($1 :: ", outerType, ").inner.value"])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -409,13 +408,13 @@ spec = do
           -- Create composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (x int8, y bool)"]))
+              (mconcat ["create type ", typeName, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Encode and verify - the DB will validate the OID is correct
           Session.statement (42 :: Int64, True)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName]))
+              (mconcat ["select ($1 :: ", typeName, ") = row (42, true) :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -441,19 +440,19 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (value int8)"]))
+              (mconcat ["create type ", innerType, " as (value int8)"])
               mempty
               Decoders.noResult
           -- Create outer composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"]))
+              (mconcat ["create type ", outerType, " as (\"nested\" ", innerType, ", flag bool)"])
               mempty
               Decoders.noResult
           -- Encode nested composite - both type OIDs must be looked up correctly
           Session.statement (99 :: Int64, True)
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType]))
+              (mconcat ["select ($1 :: ", outerType, ") = row (row (99), true) :: ", outerType])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -486,13 +485,13 @@ spec = do
           -- Create composite type with an array field
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (id int8, values int8[])"]))
+              (mconcat ["create type ", typeName, " as (id int8, values int8[])"])
               mempty
               Decoders.noResult
           -- Test encoding composite with array field
           Session.statement (42 :: Int64, [1, 2, 3] :: [Int64])
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", typeName, ") = (42, '{1, 2, 3}') :: ", typeName]))
+              (mconcat ["select ($1 :: ", typeName, ") = (42, '{1, 2, 3}') :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -520,13 +519,13 @@ spec = do
           -- Create composite type with an array field
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", typeName, " as (id int8, values int8[])"]))
+              (mconcat ["create type ", typeName, " as (id int8, values int8[])"])
               mempty
               Decoders.noResult
           -- Test roundtrip
           Session.statement (42 :: Int64, [1, 2, 3] :: [Int64])
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", typeName]))
+              (mconcat ["select $1 :: ", typeName])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -571,19 +570,19 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Create outer composite type with array of inner composite
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"]))
+              (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"])
               mempty
               Decoders.noResult
           -- Test encoding composite with array of composite field by checking a field value
           Session.statement (99 :: Int64, [(1 :: Int64, True), (2, False), (3, True)])
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", outerType, ").id"]))
+              (mconcat ["select ($1 :: ", outerType, ").id"])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -629,19 +628,19 @@ spec = do
           -- Create inner composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", innerType, " as (x int8, y bool)"]))
+              (mconcat ["create type ", innerType, " as (x int8, y bool)"])
               mempty
               Decoders.noResult
           -- Create outer composite type with array of inner composite
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"]))
+              (mconcat ["create type ", outerType, " as (id int8, items ", innerType, "[])"])
               mempty
               Decoders.noResult
           -- Test roundtrip
           Session.statement (99 :: Int64, [(1 :: Int64, True), (2, False), (3, True)])
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select $1 :: ", outerType]))
+              (mconcat ["select $1 :: ", outerType])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite
@@ -720,25 +719,25 @@ spec = do
           -- Create deepest composite type
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", deepType, " as (value int8)"]))
+              (mconcat ["create type ", deepType, " as (value int8)"])
               mempty
               Decoders.noResult
           -- Create middle composite type with array of deep composite
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", midType, " as (data ", deepType, "[])"]))
+              (mconcat ["create type ", midType, " as (data ", deepType, "[])"])
               mempty
               Decoders.noResult
           -- Create top composite type containing middle composite
           Session.statement ()
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["create type ", topType, " as (name text, \"nested\" ", midType, ")"]))
+              (mconcat ["create type ", topType, " as (name text, \"nested\" ", midType, ")"])
               mempty
               Decoders.noResult
           -- Test encoding deeply nested structure by extracting a value
           Session.statement ("test", [1 :: Int64, 2, 3])
             $ Statement.preparable
-              (encodeUtf8 (mconcat ["select ($1 :: ", topType, ").name"]))
+              (mconcat ["select ($1 :: ", topType, ").name"])
               ( Encoders.param
                   ( Encoders.nonNullable
                       ( Encoders.composite

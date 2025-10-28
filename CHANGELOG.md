@@ -32,6 +32,9 @@ Major revision happened.
 
 ## Breaking changes
 
+- Text instead of ByteString for textual data.
+  - The public API now uses `Text` instead of `ByteString` for SQL statements and error messages.
+
 - Custom type mappings (enums and composite types) now require specifying names for the types being mapped.
   - This will automatically identify the types with the DB and do deep compatibility checks.
 

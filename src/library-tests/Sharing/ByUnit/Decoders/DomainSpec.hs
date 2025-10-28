@@ -1,6 +1,5 @@
 module Sharing.ByUnit.Decoders.DomainSpec (spec) where
 
-import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -21,13 +20,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
+                (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select 42 :: ", domainName]))
+                (mconcat ["select 42 :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
           result `shouldBe` Right (42 :: Int64)
@@ -39,13 +38,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as text"]))
+                (mconcat ["create domain ", domainName, " as text"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select 'hello' :: ", domainName]))
+                (mconcat ["select 'hello' :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
           result `shouldBe` Right "hello"
@@ -57,13 +56,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as bool"]))
+                (mconcat ["create domain ", domainName, " as bool"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select true :: ", domainName]))
+                (mconcat ["select true :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
           result `shouldBe` Right True
@@ -75,13 +74,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as numeric"]))
+                (mconcat ["create domain ", domainName, " as numeric"])
                 mempty
                 Decoders.noResult
             -- Test roundtrip
             Session.statement (123.456 :: Scientific)
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select $1 :: ", domainName]))
+                (mconcat ["select $1 :: ", domainName])
                 (Encoders.param (Encoders.nonNullable Encoders.numeric))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.numeric)))
           result `shouldBe` Right (123.456 :: Scientific)
@@ -94,13 +93,13 @@ spec = do
             -- Create domain type with constraint
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as int8 check (value > 0)"]))
+                (mconcat ["create domain ", domainName, " as int8 check (value > 0)"])
                 mempty
                 Decoders.noResult
             -- Decode value that satisfies constraint
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select 42 :: ", domainName]))
+                (mconcat ["select 42 :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
           result `shouldBe` Right (42 :: Int64)
@@ -114,19 +113,19 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
+                (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Create composite type with domain field
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create type ", compositeName, " as (x ", domainName, ", y bool)"]))
+                (mconcat ["create type ", compositeName, " as (x ", domainName, ", y bool)"])
                 mempty
                 Decoders.noResult
             -- Extract and cast domain field to base type for decoding
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["select ((42 :: ", domainName, ") :: int8)"]))
+                (mconcat ["select ((42 :: ", domainName, ") :: int8)"])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
           result `shouldBe` Right (42 :: Int64)
@@ -139,13 +138,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
+                (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Decode base type array
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 "select ARRAY[1,2,3] :: int8[]")
+                "select ARRAY[1,2,3] :: int8[]"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.listArray (Decoders.nonNullable Decoders.int8)))))
           result `shouldBe` Right ([1, 2, 3] :: [Int64])
@@ -157,13 +156,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as text"]))
+                (mconcat ["create domain ", domainName, " as text"])
                 mempty
                 Decoders.noResult
             -- Test roundtrip using base type codec
             Session.statement (["a", "b", "c"] :: [Text])
               $ Statement.preparable
-                (encodeUtf8 "select $1 :: text[]")
+                "select $1 :: text[]"
                 ( Encoders.param
                     ( Encoders.nonNullable
                         (Encoders.foldableArray (Encoders.nonNullable Encoders.text))
@@ -179,13 +178,13 @@ spec = do
             -- Create domain type
             Session.statement ()
               $ Statement.preparable
-                (encodeUtf8 (mconcat ["create domain ", domainName, " as int8"]))
+                (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Demonstrate that base codec works for arrays
             Session.statement ([10, 20, 30] :: [Int64])
               $ Statement.preparable
-                (encodeUtf8 "select $1 :: int8[]")
+                "select $1 :: int8[]"
                 ( Encoders.param
                     ( Encoders.nonNullable
                         (Encoders.foldableArray (Encoders.nonNullable Encoders.int8))
