@@ -11,7 +11,6 @@ import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
 import Test.Hspec
-import TextBuilder qualified
 import Prelude
 
 spec :: SpecWith (Text, Word16)
@@ -232,7 +231,7 @@ spec = do
           Session.statement "two"
             $ Statement.preparable
               (mconcat ["select $1 :: ", enumName])
-              (Encoders.param (Encoders.nonNullable (Encoders.custom Nothing enumName Nothing [] (\_ val -> encodeUtf8 val) TextBuilder.text)))
+              (Encoders.param (Encoders.nonNullable (Encoders.custom Nothing enumName Nothing [] (\_ val -> encodeUtf8 val) id)))
               ( Decoders.singleRow
                   ( Decoders.column
                       ( Decoders.nonNullable

@@ -38,7 +38,7 @@ spec = do
                           Nothing
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -60,7 +60,7 @@ spec = do
                           (Just (25, 1009))
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -95,7 +95,7 @@ spec = do
                                 then encodeUtf8 val
                                 else error "Failed to resolve enum OID"
                           )
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -117,7 +117,7 @@ spec = do
                           Nothing
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -151,7 +151,7 @@ spec = do
                           Nothing
                           [(Nothing, "nonexistent_dependency")]
                           (\_ val -> encodeUtf8 (TextBuilder.toText (TextBuilder.decimal val)))
-                          TextBuilder.decimal
+                          (TextBuilder.toText . TextBuilder.decimal)
                       )
                   )
               )
@@ -186,7 +186,7 @@ spec = do
                           Nothing
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -228,7 +228,7 @@ spec = do
                             Nothing
                             []
                             (\_ val -> encodeUtf8 val)
-                            TextBuilder.text
+                            id
                         )
                     )
                 )
@@ -257,7 +257,7 @@ spec = do
                             Nothing
                             []
                             (\_ val -> encodeUtf8 val)
-                            TextBuilder.text
+                            id
                         )
                     )
                 )
@@ -307,7 +307,7 @@ spec = do
                           Nothing
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )
@@ -328,7 +328,7 @@ spec = do
                           Nothing
                           []
                           (\_ val -> encodeUtf8 val)
-                          TextBuilder.text
+                          id
                       )
                   )
               )

@@ -365,7 +365,7 @@ custom ::
     ByteString
   ) ->
   -- | Render function for error messages.
-  (a -> TextBuilder.TextBuilder) ->
+  (a -> Text) ->
   Value a
 custom schemaName typeName staticOids requiredTypes encode render =
   Value
@@ -379,7 +379,7 @@ custom schemaName typeName staticOids requiredTypes encode render =
     ( \hashMap ->
         ByteString.StrictBuilder.bytes . encode (fromMaybe (0, 0) . flip HashMap.lookup hashMap)
     )
-    render
+    (TextBuilder.text . render)
 
 -- |
 -- Encoder of @HSTORE@ values from a foldable container of key-value pairs.
