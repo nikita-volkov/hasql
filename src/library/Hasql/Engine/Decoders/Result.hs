@@ -37,7 +37,7 @@ rowsAffected =
 
 -- |
 -- Exactly one row.
--- Will raise the 'Errors.UnexpectedAmountOfRows' error if it's any other.
+-- Will raise the 'Hasql.Errors.UnexpectedRowCountStatementError' error if it's any other.
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow decoder =
