@@ -60,7 +60,6 @@ module Hasql.Codecs.Encoders
     Value.hstore,
     Value.enum,
     composite,
-    Value.unknown,
     Value.custom,
 
     -- * Array
@@ -112,7 +111,7 @@ foldableArray = array . Array.dimension foldl' . Array.element
 -- |
 -- Lift an array encoder into a value encoder.
 array :: Array.Array a -> Value.Value a
-array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes arrayEncoder renderer) =
+array (Array.Array baseTypeSchema baseTypeName dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes arrayEncoder renderer) =
   let encoder oidCache input =
         let resolvedOid =
               asum
@@ -124,7 +123,7 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
                 -- Should only happen on a bug.
                 & fromMaybe (TypeInfo.toBaseOid TypeInfo.unknown)
          in Binary.array resolvedOid (arrayEncoder oidCache input)
-   in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False unknownTypes encoder renderer
+   in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality unknownTypes encoder renderer
 
 -- |
 -- Lift a composite encoder into a value encoder for named composite types.
@@ -140,7 +139,7 @@ composite ::
   Composite.Composite a ->
   Value.Value a
 composite schema name (Composite.Composite unknownTypes encode print) =
-  Value.Value schema name Nothing Nothing 0 False unknownTypes encodeValue printValue
+  Value.Value schema name Nothing Nothing 0 unknownTypes encodeValue printValue
   where
     encodeValue oidCache val =
       Binary.composite (encode oidCache val)
