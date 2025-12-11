@@ -35,7 +35,7 @@ import TextBuilder qualified
 -- | A class for types that can be treated as errors.
 class IsError a where
   -- | Convert the error to a human-readable message.
-  toErrorMessage :: a -> Text
+  toMessage :: a -> Text
 
   -- | Whether the error is transient and the operation causing it can be retried.
   isTransient :: a -> Bool
@@ -43,7 +43,7 @@ class IsError a where
 -- * Instances
 
 instance IsError ConnectionError where
-  toErrorMessage = \case
+  toMessage = \case
     NetworkingConnectionError details ->
       mconcat
         [ "Networking error while connecting to the database: ",
@@ -72,7 +72,7 @@ instance IsError ConnectionError where
     OtherConnectionError {} -> False
 
 instance IsError ServerError where
-  toErrorMessage (ServerError code message detail hint position) =
+  toMessage (ServerError code message detail hint position) =
     (TextBuilder.toText . mconcat . mconcat)
       [ [ TextBuilder.text code,
           " - ",
@@ -85,7 +85,7 @@ instance IsError ServerError where
   isTransient = const False
 
 instance IsError CellError where
-  toErrorMessage = \case
+  toMessage = \case
     UnexpectedNullCellError ->
       "Unexpected null value"
     DeserializationCellError message ->
@@ -96,11 +96,11 @@ instance IsError CellError where
   isTransient = const False
 
 instance IsError StatementError where
-  toErrorMessage = \case
+  toMessage = \case
     ServerStatementError executionError ->
       mconcat
         [ "Server error: ",
-          toErrorMessage executionError
+          toMessage executionError
         ]
     UnexpectedRowCountStatementError min max actual ->
       (TextBuilder.toText . mconcat)
@@ -132,7 +132,7 @@ instance IsError StatementError where
         [ "In row ",
           TextBuilder.decimal rowIdx,
           ": ",
-          TextBuilder.text (toErrorMessage rowError)
+          TextBuilder.text (toMessage rowError)
         ]
     UnexpectedResultStatementError message ->
       mconcat
@@ -142,7 +142,7 @@ instance IsError StatementError where
   isTransient = const False
 
 instance IsError RowError where
-  toErrorMessage = \case
+  toMessage = \case
     CellRowError colIdx oid cellErr ->
       (TextBuilder.toText . mconcat)
         [ "In column ",
@@ -150,7 +150,7 @@ instance IsError RowError where
           " with type OID ",
           TextBuilder.decimal oid,
           ": ",
-          TextBuilder.text (toErrorMessage cellErr)
+          TextBuilder.text (toMessage cellErr)
         ]
     RefinementRowError msg ->
       msg
@@ -158,7 +158,7 @@ instance IsError RowError where
   isTransient = const False
 
 instance IsError SessionError where
-  toErrorMessage = \case
+  toMessage = \case
     StatementSessionError totalStatements statementIndex sql parameters prepared statementError ->
       (TextBuilder.toText . mconcat)
         [ "In ",
@@ -178,14 +178,14 @@ instance IsError SessionError where
             & TextExtras.prefixEachLine "    "
             & TextBuilder.text,
           "\n  Error: ",
-          TextBuilder.text (toErrorMessage statementError)
+          TextBuilder.text (toMessage statementError)
         ]
     ScriptSessionError sql execErr ->
       mconcat
         [ "In script.\n  SQL:\n    ",
           TextExtras.prefixEachLine "    " sql,
           "\n  Error: ",
-          toErrorMessage execErr
+          toMessage execErr
         ]
     ConnectionSessionError message ->
       mconcat
