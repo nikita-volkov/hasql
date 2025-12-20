@@ -334,6 +334,7 @@ enum schemaName typeName mapping =
 --
 -- __Warning:__ Do not use this as part of composite encoders like 'array' since
 -- it is the only encoder that doesn't use the binary format.
+{-# DEPRECATED unknown "Use 'custom' instead." #-}
 {-# INLINEABLE unknown #-}
 unknown :: Value ByteString
 unknown = primitive "unknown" True TypeInfo.unknown Binary.bytea_strict (TextBuilder.string . show)
