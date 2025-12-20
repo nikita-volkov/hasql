@@ -75,7 +75,7 @@ There's several videos on Hasql done as part of a nice intro-level series of liv
 
 ## Articles
 
-- [Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1)
+- (Outdated).[Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1).
 
 # Short Example
 
@@ -87,13 +87,13 @@ Following is a complete application, which performs some arithmetic in Postgres 
 import Data.Functor.Contravariant
 import Data.Int
 import Hasql.Session (Session)
-import Hasql.Statement (Statement (..))
 import Prelude
 import qualified Hasql.Connection as Connection
 import qualified Hasql.Connection.Settings as Settings
 import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
+import qualified Hasql.Statement as Statement
 
 main :: IO ()
 main = do
@@ -133,8 +133,8 @@ sumAndDivModSession a b c = do
 -------------------------
 
 -- | A statement with two integer parameters and an integer result.
-sumStatement :: Statement (Int64, Int64) Int64
-sumStatement = Statement sql encoder decoder preparable
+sumStatement :: Statement.Statement (Int64, Int64) Int64
+sumStatement = Statement.preparable sql encoder decoder
   where
     -- The SQL of the statement, with $1, $2, ... placeholders for parameters.
     sql =
@@ -156,15 +156,9 @@ sumStatement = Statement sql encoder decoder preparable
     decoder =
       Decoders.singleRow
         (Decoders.column (Decoders.nonNullable Decoders.int8))
-    -- States that this statement is allowed to be prepared on the server side.
-    -- Unless your application generates the statements dynamically,
-    -- you should always set this to True.
-    -- If in the connection settings the noPreparedStatements option is set to True,
-    -- the statement will not be prepared regardless of this flag.
-    preparable = True
 
-divModStatement :: Statement (Int64, Int64) (Int64, Int64)
-divModStatement = Statement sql encoder decoder preparable
+divModStatement :: Statement.Statement (Int64, Int64) (Int64, Int64)
+divModStatement = Statement.preparable sql encoder decoder
   where
     sql =
       "select $1 / $2, $1 % $2"
@@ -182,7 +176,6 @@ divModStatement = Statement sql encoder decoder preparable
             <$> Decoders.column (Decoders.nonNullable Decoders.int8)
             <*> Decoders.column (Decoders.nonNullable Decoders.int8)
         )
-    preparable = True
 ```
 
 For the general use-case it is advised to prefer declaring statements using the "hasql-th" library, which validates the statements at compile-time and generates codecs automatically. So the above two statements could be implemented the following way:
@@ -190,13 +183,13 @@ For the general use-case it is advised to prefer declaring statements using the 
 ```haskell
 import qualified Hasql.TH as TH -- from "hasql-th"
 
-sumStatement :: Statement (Int64, Int64) Int64
+sumStatement :: Statement.Statement (Int64, Int64) Int64
 sumStatement =
   [TH.singletonStatement|
     select ($1 :: int8 + $2 :: int8) :: int8
   |]
 
-divModStatement :: Statement (Int64, Int64) (Int64, Int64)
+divModStatement :: Statement.Statement (Int64, Int64) (Int64, Int64)
 divModStatement =
   [TH.singletonStatement|
     select
