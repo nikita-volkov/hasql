@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-deprecations #-}
+
 module Sharing.ByUnit.Encoders.UnknownSpec (spec) where
 
 import Hasql.Connection qualified as Connection
