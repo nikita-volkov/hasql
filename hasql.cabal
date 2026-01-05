@@ -145,7 +145,6 @@ library
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
-    Hasql.Errors.TextExtras
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq

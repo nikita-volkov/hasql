@@ -11,6 +11,7 @@
 module Hasql.Errors
   ( -- * Error class
     IsError (..),
+    toDetailedText,
 
     -- * Connection errors
     ConnectionError (..),
@@ -24,9 +25,9 @@ module Hasql.Errors
   )
 where
 
+import Data.HashSet qualified as HashSet
 import Data.Text qualified as Text
 import Hasql.Engine.Errors
-import Hasql.Errors.TextExtras qualified as TextExtras
 import Hasql.Platform.Prelude
 import TextBuilder qualified
 
@@ -34,36 +35,57 @@ import TextBuilder qualified
 
 -- | A class for types that can be treated as errors.
 class IsError a where
-  -- | Convert the error to a human-readable message.
+  -- | Convert the error to a human-readable message with no dynamic details.
   toMessage :: a -> Text
+
+  -- | Convert the error to a list of key-value pairs of dynamic details.
+  toDetails :: a -> [(Text, Text)]
 
   -- | Whether the error is transient and the operation causing it can be retried.
   isTransient :: a -> Bool
+
+-- | Convert the error to a multiline detailed human-readable text representation containing all details.
+toDetailedText :: (IsError e) => e -> Text
+toDetailedText err =
+  TextBuilder.toText
+    ( TextBuilder.text (toMessage err)
+        <> foldMap
+          ( \(key, value) ->
+              mconcat
+                [ "\n  ",
+                  TextBuilder.text key,
+                  ": ",
+                  TextBuilder.intercalateMap
+                    "\n    "
+                    TextBuilder.text
+                    (Text.lines value)
+                ]
+          )
+          (toDetails err)
+    )
 
 -- * Instances
 
 instance IsError ConnectionError where
   toMessage = \case
-    NetworkingConnectionError details ->
-      mconcat
-        [ "Networking error while connecting to the database: ",
-          details
-        ]
-    AuthenticationConnectionError details ->
-      mconcat
-        [ "Authentication error while connecting to the database: ",
-          details
-        ]
-    CompatibilityConnectionError details ->
-      mconcat
-        [ "Compatibility error while connecting to the database: ",
-          details
-        ]
-    OtherConnectionError details ->
-      mconcat
-        [ "Connection error while connecting to the database: ",
-          details
-        ]
+    NetworkingConnectionError {} ->
+      "Networking error while connecting to the database"
+    AuthenticationConnectionError {} ->
+      "Authentication error while connecting to the database"
+    CompatibilityConnectionError {} ->
+      "Compatibility error while connecting to the database"
+    OtherConnectionError {} ->
+      "Connection error while connecting to the database"
+
+  toDetails = \case
+    NetworkingConnectionError reason ->
+      [("reason", reason)]
+    AuthenticationConnectionError reason ->
+      [("reason", reason)]
+    CompatibilityConnectionError reason ->
+      [("reason", reason)]
+    OtherConnectionError reason ->
+      [("reason", reason)]
 
   isTransient = \case
     NetworkingConnectionError {} -> True
@@ -72,146 +94,126 @@ instance IsError ConnectionError where
     OtherConnectionError {} -> False
 
 instance IsError ServerError where
-  toMessage (ServerError code message detail hint position) =
-    (TextBuilder.toText . mconcat . mconcat)
-      [ [ TextBuilder.text code,
-          " - ",
-          TextBuilder.text message
-        ],
-        maybe [] (\d -> [" Detail: " <> TextBuilder.text d]) detail,
-        maybe [] (\h -> [" Hint: " <> TextBuilder.text h]) hint,
-        maybe [] (\p -> [" Position: " <> TextBuilder.decimal p]) position
+  toMessage _ =
+    "Server error"
+
+  toDetails (ServerError code message detail hint position) =
+    mconcat
+      [ [("code", code), ("message", message)],
+        maybe [] (\d -> [("detail", d)]) detail,
+        maybe [] (\h -> [("hint", h)]) hint,
+        maybe [] (\p -> [("position", (TextBuilder.toText . TextBuilder.decimal) p)]) position
       ]
+
   isTransient = const False
 
 instance IsError CellError where
   toMessage = \case
     UnexpectedNullCellError ->
       "Unexpected null value"
-    DeserializationCellError message ->
-      mconcat
-        [ "Failed to deserialize cell: ",
-          message
-        ]
+    DeserializationCellError {} ->
+      "Failed to deserialize cell"
+
+  toDetails = \case
+    UnexpectedNullCellError ->
+      []
+    DeserializationCellError reason ->
+      [("reason", reason)]
+
   isTransient = const False
 
 instance IsError StatementError where
   toMessage = \case
     ServerStatementError executionError ->
-      mconcat
-        [ "Server error: ",
-          toMessage executionError
-        ]
+      toMessage executionError
+    UnexpectedRowCountStatementError {} ->
+      "Unexpected number of rows"
+    UnexpectedAmountOfColumnsStatementError {} ->
+      "Unexpected number of columns"
+    UnexpectedColumnTypeStatementError {} ->
+      "Unexpected column type"
+    RowStatementError _ rowError ->
+      toMessage rowError
+    UnexpectedResultStatementError {} ->
+      "Driver error"
+
+  toDetails = \case
+    ServerStatementError executionError ->
+      toDetails executionError
     UnexpectedRowCountStatementError min max actual ->
-      (TextBuilder.toText . mconcat)
-        [ "Unexpected number of rows: expected ",
-          if min == max
-            then TextBuilder.decimal min
-            else TextBuilder.decimal min <> " to " <> TextBuilder.decimal max,
-          ", got ",
-          TextBuilder.decimal actual
-        ]
+      [ ("expectedMin", (TextBuilder.toText . TextBuilder.decimal) min),
+        ("expectedMax", (TextBuilder.toText . TextBuilder.decimal) max),
+        ("actual", (TextBuilder.toText . TextBuilder.decimal) actual)
+      ]
     UnexpectedAmountOfColumnsStatementError expected actual ->
-      (TextBuilder.toText . mconcat)
-        [ "Unexpected number of columns: expected ",
-          TextBuilder.decimal expected,
-          ", got ",
-          TextBuilder.decimal actual
-        ]
+      [ ("expected", (TextBuilder.toText . TextBuilder.decimal) expected),
+        ("actual", (TextBuilder.toText . TextBuilder.decimal) actual)
+      ]
     UnexpectedColumnTypeStatementError colIdx expected actual ->
-      (TextBuilder.toText . mconcat)
-        [ "Unexpected column type at index ",
-          TextBuilder.decimal colIdx,
-          ": expected OID ",
-          TextBuilder.decimal expected,
-          ", got OID ",
-          TextBuilder.decimal actual
-        ]
+      [ ("columnIndex", (TextBuilder.toText . TextBuilder.decimal) colIdx),
+        ("expectedOid", (TextBuilder.toText . TextBuilder.decimal) expected),
+        ("actualOid", (TextBuilder.toText . TextBuilder.decimal) actual)
+      ]
     RowStatementError rowIdx rowError ->
-      (TextBuilder.toText . mconcat)
-        [ "In row ",
-          TextBuilder.decimal rowIdx,
-          ": ",
-          TextBuilder.text (toMessage rowError)
-        ]
-    UnexpectedResultStatementError message ->
-      mconcat
-        [ "Driver error: ",
-          message
-        ]
+      ("rowIndex", (TextBuilder.toText . TextBuilder.decimal) rowIdx) : toDetails rowError
+    UnexpectedResultStatementError reason ->
+      [("reason", reason)]
+
   isTransient = const False
 
 instance IsError RowError where
   toMessage = \case
+    CellRowError _ _ cellErr ->
+      toMessage cellErr
+    RefinementRowError {} ->
+      "Refinement error"
+
+  toDetails = \case
     CellRowError colIdx oid cellErr ->
-      (TextBuilder.toText . mconcat)
-        [ "In column ",
-          TextBuilder.decimal colIdx,
-          " with type OID ",
-          TextBuilder.decimal oid,
-          ": ",
-          TextBuilder.text (toMessage cellErr)
-        ]
-    RefinementRowError msg ->
-      msg
+      [ ("columnIndex", (TextBuilder.toText . TextBuilder.decimal) colIdx),
+        ("oid", (TextBuilder.toText . TextBuilder.decimal) oid)
+      ]
+        <> toDetails cellErr
+    RefinementRowError reason ->
+      [("reason", reason)]
 
   isTransient = const False
 
 instance IsError SessionError where
   toMessage = \case
+    StatementSessionError _ _ _ _ _ statementError ->
+      toMessage statementError
+    ScriptSessionError _ execErr ->
+      toMessage execErr
+    ConnectionSessionError {} ->
+      "Connection error"
+    DriverSessionError {} ->
+      "Driver error"
+    MissingTypesSessionError {} ->
+      "Types not found in database"
+
+  toDetails = \case
     StatementSessionError totalStatements statementIndex sql parameters prepared statementError ->
-      (TextBuilder.toText . mconcat)
-        [ "In ",
-          if prepared then "prepared" else "unprepared",
-          " statement at offset ",
-          TextBuilder.decimal statementIndex,
-          " of pipeline with ",
-          TextBuilder.decimal totalStatements,
-          " statements.\n  SQL:\n    ",
-          sql
-            & TextExtras.prefixEachLine "    "
-            & TextBuilder.text,
-          "\n  Params:\n    ",
-          parameters
-            & fmap (mappend "- " . TextExtras.prefixEachLine "  ")
-            & Text.intercalate "\n"
-            & TextExtras.prefixEachLine "    "
-            & TextBuilder.text,
-          "\n  Error: ",
-          TextBuilder.text (toMessage statementError)
-        ]
+      [ ("totalStatements", (TextBuilder.toText . TextBuilder.decimal) totalStatements),
+        ("statementIndex", (TextBuilder.toText . TextBuilder.decimal) statementIndex),
+        ("sql", sql),
+        ("parameters", Text.intercalate ", " parameters),
+        ("prepared", if prepared then "true" else "false")
+      ]
+        <> toDetails statementError
     ScriptSessionError sql execErr ->
-      mconcat
-        [ "In script.\n  SQL:\n    ",
-          TextExtras.prefixEachLine "    " sql,
-          "\n  Error: ",
-          toMessage execErr
-        ]
-    ConnectionSessionError message ->
-      mconcat
-        [ "Connection error: ",
-          message
-        ]
-    DriverSessionError message ->
-      mconcat
-        [ "Driver error: ",
-          message
-        ]
+      ("sql", sql) : toDetails execErr
+    ConnectionSessionError reason ->
+      [("reason", reason)]
+    DriverSessionError reason ->
+      [("reason", reason)]
     MissingTypesSessionError missingTypes ->
-      (TextBuilder.toText . mconcat)
-        [ "The following types were not found in the database:\n",
-          missingTypes
-            & toList
-            & fmap
-              ( \(schema, name) ->
-                  "  - "
-                    <> maybe "" (<> ".") schema
-                    <> name
-              )
-            & mconcat
-            . intersperse "\n"
-            & TextBuilder.text
-        ]
+      [ ( "missingTypes",
+          (TextBuilder.toText . mconcat . intersperse ", " . fmap formatType . HashSet.toList) missingTypes
+        )
+      ]
+      where
+        formatType (schema, name) = maybe "" ((<> ".") . TextBuilder.text) schema <> TextBuilder.text name
 
   isTransient = \case
     ConnectionSessionError _ -> True
