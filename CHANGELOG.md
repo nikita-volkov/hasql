@@ -73,6 +73,8 @@ Major revision happened.
 
   This change enables more robust custom type handling but requires updating existing custom decoder implementations.
 
+- Exception instances on error types removed. The error types here were never thrown as exceptions. Wrap them in your own exception type if you need to throw them.
+
 # 1.9
 
 - Revised the settings construction exposing a tree of modules
