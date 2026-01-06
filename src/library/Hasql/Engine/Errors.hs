@@ -87,15 +87,15 @@ data SessionError
     -- The error message includes formatted output showing all this context,
     -- making it easier to diagnose issues in production.
     StatementSessionError
-      -- | Total number of statements in the pipeline.
+      -- | Total number of statements in the running pipeline. 1 if it's executed alone.
       Int
-      -- | 0-based index of the statement that failed.
+      -- | 0-based index of the statement that failed. 0 if it's executed alone.
       Int
       -- | SQL template of the failing statement.
       Text
       -- | Parameter values as text (for logging purposes).
       [Text]
-      -- | Whether the statement was executed as a prepared statement.
+      -- | Whether the statement was executed as a prepared one.
       Bool
       -- | The underlying statement error.
       StatementError
@@ -180,7 +180,7 @@ data StatementError
     -- * Schema changes (columns added or removed)
     -- * Wrong query (selecting different columns than expected)
     -- * Decoder configuration error
-    UnexpectedAmountOfColumnsStatementError
+    UnexpectedColumnCountStatementError
       -- | Expected number of columns.
       Int
       -- | Actual number of columns returned.
@@ -382,10 +382,10 @@ fromStatementResultError = \case
       )
   Hasql.Comms.ResultDecoder.UnexpectedResult msg ->
     UnexpectedResultStatementError msg
-  Hasql.Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
+  Hasql.Comms.ResultDecoder.UnexpectedRowCount actual ->
     UnexpectedRowCountStatementError 1 1 actual
-  Hasql.Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
-    UnexpectedAmountOfColumnsStatementError expected actual
+  Hasql.Comms.ResultDecoder.UnexpectedColumnCount expected actual ->
+    UnexpectedColumnCountStatementError expected actual
   Hasql.Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
     UnexpectedColumnTypeStatementError
       colIdx
@@ -428,12 +428,12 @@ fromRecvErrorInScript scriptSql = \case
           [ "Unexpected result in script: ",
             TextBuilder.text msg
           ]
-      Hasql.Comms.ResultDecoder.UnexpectedAmountOfRows actual ->
+      Hasql.Comms.ResultDecoder.UnexpectedRowCount actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of rows in script: ",
             TextBuilder.decimal actual
           ]
-      Hasql.Comms.ResultDecoder.UnexpectedAmountOfColumns expected actual ->
+      Hasql.Comms.ResultDecoder.UnexpectedColumnCount expected actual ->
         (DriverSessionError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of columns in script: expected ",
             TextBuilder.decimal expected,

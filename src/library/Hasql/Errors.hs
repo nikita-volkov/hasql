@@ -131,7 +131,7 @@ instance IsError StatementError where
       toMessage executionError
     UnexpectedRowCountStatementError {} ->
       "Unexpected number of rows"
-    UnexpectedAmountOfColumnsStatementError {} ->
+    UnexpectedColumnCountStatementError {} ->
       "Unexpected number of columns"
     UnexpectedColumnTypeStatementError {} ->
       "Unexpected column type"
@@ -148,7 +148,7 @@ instance IsError StatementError where
         ("expectedMax", (TextBuilder.toText . TextBuilder.decimal) max),
         ("actual", (TextBuilder.toText . TextBuilder.decimal) actual)
       ]
-    UnexpectedAmountOfColumnsStatementError expected actual ->
+    UnexpectedColumnCountStatementError expected actual ->
       [ ("expected", (TextBuilder.toText . TextBuilder.decimal) expected),
         ("actual", (TextBuilder.toText . TextBuilder.decimal) actual)
       ]

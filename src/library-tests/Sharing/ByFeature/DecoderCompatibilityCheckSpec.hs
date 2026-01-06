@@ -27,7 +27,7 @@ byPreparedStatusAndExecutor ::
 byPreparedStatusAndExecutor preparable executorName executor = do
   describe (if preparable then "Preparable" else "Unpreparable") do
     describe (toList executorName) do
-      describe "UnexpectedAmountOfColumns" do
+      describe "UnexpectedColumnCount" do
         it "gets reported when result has more columns" \config -> do
           Scripts.onPreparableConnection config \connection -> do
             let statement =
@@ -37,7 +37,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual)) -> do
                 shouldBe expected 1
                 shouldBe actual 2
               Left err ->
@@ -59,7 +59,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                     )
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedAmountOfColumnsStatementError expected actual)) -> do
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual)) -> do
                 shouldBe expected 2
                 shouldBe actual 1
               Left err ->

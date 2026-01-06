@@ -179,7 +179,7 @@ checkCompatibility rowDec =
                             )
                         )
              in go oids 0
-          else pure (Left (UnexpectedAmountOfColumns (length oids) (Pq.colToInt maxCols)))
+          else pure (Left (UnexpectedColumnCount (length oids) (Pq.colToInt maxCols)))
 
 {-# INLINE maybe #-}
 maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
@@ -197,7 +197,7 @@ maybe rowDec =
               RowDecoder.toDecoder rowDec result 0
                 <&> first (RowError 0)
             pure (fmap Just result)
-          _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
+          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
@@ -215,7 +215,7 @@ single rowDec =
           1 -> do
             RowDecoder.toDecoder rowDec result 0
               <&> first (RowError 0)
-          _ -> return (Left (UnexpectedAmountOfRows (rowToInt maxRows)))
+          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
   where
     rowToInt (Pq.Row n) =
       fromIntegral n
@@ -338,10 +338,10 @@ data Error
     UnexpectedResult Text
   | -- |
     -- An unexpected amount of rows.
-    UnexpectedAmountOfRows Int
+    UnexpectedRowCount Int
   | -- |
     -- An unexpected amount of columns in the result.
-    UnexpectedAmountOfColumns
+    UnexpectedColumnCount
       -- | Expected amount of columns.
       Int
       -- | Actual amount of columns.
