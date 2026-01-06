@@ -108,7 +108,7 @@ release (Connection connectionRef) =
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
 --
--- Blocks until the connection is available when there is another session running upon the connection.
+-- Blocks until the connection is available when there is another session running upon the connection on a different thread.
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
 use (Connection var) session =
   mask \restore -> do
