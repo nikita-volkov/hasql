@@ -45,7 +45,7 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 - ["hasql-interpolate"](https://github.com/awkward-squad/hasql-interpolate) - a QuasiQuoter that supports interpolating Haskell expressions into Hasql queries.
 
-<small>Want to list your package or correct something here? Make a PR.</small>
+<sup>Want to list your package or correct something here? Make a PR.</sup>
 
 ## Why make it an ecosystem?
 
@@ -75,7 +75,7 @@ There's several videos on Hasql done as part of a nice intro-level series of liv
 
 ## Articles
 
-- (Outdated).[Organization of Hasql code in a dedicated library](https://github.com/nikita-volkov/hasql-tutorial1).
+- [Organization of Hasql code in a dedicated library <sup>(outdated)</sup>](https://github.com/nikita-volkov/hasql-tutorial1)
 
 # Short Example
 
