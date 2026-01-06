@@ -270,6 +270,7 @@ test-suite library-tests
     Helpers.Statements.Sleep
     Helpers.Statements.WrongDecoder
     Isolated.ByUnit.Connection.AcquireSpec
+    Pure.ByUnit.ErrorsSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
     Sharing.ByFeature.ConcurrencySpec
     Sharing.ByFeature.DecoderCompatibilityCheckSpec
