@@ -199,7 +199,15 @@ spec = do
     describe "toDetailedText" do
       it "renders StatementSessionError with all context" do
         (Errors.toDetailedText (Errors.StatementSessionError 1 0 "SELECT * FROM users" [] True (Errors.UnexpectedRowCountStatementError 1 1 10)))
-          `shouldBe` "Unexpected number of rows\n  totalStatements: 1\n  statementIndex: 0\n  sql: SELECT * FROM users\n  parameters: \n  prepared: true\n  expectedMin: 1\n  expectedMax: 1\n  actual: 10"
+          `shouldBe` "Unexpected number of rows\n\
+                     \  totalStatements: 1\n\
+                     \  statementIndex: 0\n\
+                     \  sql: SELECT * FROM users\n\
+                     \  parameters:\n\
+                     \  prepared: true\n\
+                     \  expectedMin: 1\n\
+                     \  expectedMax: 1\n\
+                     \  actual: 10"
 
   describe "toDetailedText with multiline values" do
     it "indents multiline detail values correctly" do
@@ -207,7 +215,8 @@ spec = do
         `shouldBe` "Server error\n\
                    \  code: 42601\n\
                    \  message: syntax error\n\
-                   \  detail: Line 1: syntax error\n\
+                   \  detail:\n\
+                   \    Line 1: syntax error\n\
                    \    Line 2: near unexpected token\n\
                    \    Line 3: suggestion here"
 
@@ -216,7 +225,8 @@ spec = do
         `shouldBe` "Server error\n\
                    \  code: 42P01\n\
                    \  message: relation not found\n\
-                   \  hint: Perhaps you meant:\n\
+                   \  hint:\n\
+                   \    Perhaps you meant:\n\
                    \      users\n\
                    \      user_accounts\n\
                    \      user_profiles"
@@ -226,7 +236,8 @@ spec = do
         `shouldBe` "Unexpected number of rows\n\
                    \  totalStatements: 1\n\
                    \  statementIndex: 0\n\
-                   \  sql: SELECT *\n\
+                   \  sql:\n\
+                   \    SELECT *\n\
                    \    FROM users\n\
                    \    WHERE id = $1\n\
                    \  parameters: 1\n\

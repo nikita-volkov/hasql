@@ -54,11 +54,12 @@ toDetailedText err =
               mconcat
                 [ "\n  ",
                   TextBuilder.text key,
-                  ": ",
-                  TextBuilder.intercalateMap
-                    "\n    "
-                    TextBuilder.text
-                    (Text.lines value)
+                  case Text.lines value of
+                    [] -> ":"
+                    [singleLine] ->
+                      ": " <> TextBuilder.text singleLine
+                    multipleLines ->
+                      ":" <> foldMap (mappend "\n    " . TextBuilder.text) multipleLines
                 ]
           )
           (toDetails err)
