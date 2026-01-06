@@ -46,24 +46,26 @@ class IsError a where
 
 -- | Convert the error to a multiline detailed human-readable text representation containing all details.
 toDetailedText :: (IsError e) => e -> Text
-toDetailedText err =
-  TextBuilder.toText
-    ( TextBuilder.text (toMessage err)
-        <> foldMap
-          ( \(key, value) ->
-              mconcat
-                [ "\n  ",
-                  TextBuilder.text key,
-                  case Text.lines value of
-                    [] -> ":"
-                    [singleLine] ->
-                      ": " <> TextBuilder.text singleLine
-                    multipleLines ->
-                      ":" <> foldMap (mappend "\n    " . TextBuilder.text) multipleLines
-                ]
-          )
-          (toDetails err)
-    )
+toDetailedText = TextBuilder.toText . toDetailedTextBuilder
+
+-- | Convert the error to a multiline detailed human-readable text representation containing all details.
+toDetailedTextBuilder :: (IsError e) => e -> TextBuilder
+toDetailedTextBuilder err =
+  TextBuilder.text (toMessage err)
+    <> foldMap
+      ( \(key, value) ->
+          mconcat
+            [ "\n  ",
+              TextBuilder.text key,
+              case Text.lines value of
+                [] -> ":"
+                [singleLine] ->
+                  ": " <> TextBuilder.text singleLine
+                multipleLines ->
+                  ":" <> foldMap (mappend "\n    " . TextBuilder.text) multipleLines
+            ]
+      )
+      (toDetails err)
 
 -- * Instances
 
