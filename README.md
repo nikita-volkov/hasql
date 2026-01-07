@@ -13,6 +13,16 @@ PostgreSQL driver for Haskell, that prioritizes:
 
 Hasql is production-ready, actively maintained and the API is moderately stable. It's used by many companies and most notably by the [Postgrest](https://github.com/PostgREST/postgrest) project.
 
+# Support Policy
+
+This policy is intended to balance stability for users with the ability to evolve the library.
+
+Each major release of Hasql is supported for at least **one year** from the date of its first release. During this period, fixes are backported to the latest minor version of that major release.
+
+After the support period ends, the release may continue to work but is no longer guaranteed to receive fixes.
+
+You're welcome to post requests to change the policy or issues if you believe something is not being addressed.
+
 # Discussions
 
 Join [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions) to ask questions, provide feedback, suggest and vote on features, and help shape the future of Hasql.
