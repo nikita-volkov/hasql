@@ -3,6 +3,7 @@ module Hasql.Engine.Statement
     preparable,
     unpreparable,
     refineResult,
+    toSql,
   )
 where
 
@@ -110,3 +111,7 @@ instance Profunctor Statement where
 refineResult :: (a -> Either Text b) -> Statement params a -> Statement params b
 refineResult refiner (Statement template encoder decoder preparable) =
   Statement template encoder (Hasql.Engine.Decoders.Result.refineResult refiner decoder) preparable
+
+-- | Extract the SQL template from a statement.
+toSql :: Statement params result -> Text
+toSql (Statement sql _ _ _) = sql

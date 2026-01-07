@@ -3,6 +3,7 @@ module Hasql.Statement
     preparable,
     unpreparable,
     refineResult,
+    toSql,
 
     -- * Recipes
 
