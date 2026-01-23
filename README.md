@@ -37,6 +37,8 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 
 - ["hasql-pool"](https://github.com/nikita-volkov/hasql-pool) - a Hasql-specialized abstraction over the connection pool.
 
+- ["hasql-postgresql-types"](https://github.com/nikita-volkov/hasql-postgresql-types) - integration with the ["postgresql-types"](https://github.com/nikita-volkov/postgresql-types) library, which is a collection of Haskell types precisely modeling PostgreSQL types without data loss or compromise.
+
 - ["hasql-dynamic-statements"](https://github.com/nikita-volkov/hasql-dynamic-statements) - a toolkit for generating statements based on the parameters.
 
 - ["hasql-th"](https://github.com/nikita-volkov/hasql-th) - Template Haskell utilities, providing compile-time syntax checking and easy statement declaration. 
