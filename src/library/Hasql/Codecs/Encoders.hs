@@ -26,6 +26,7 @@ module Hasql.Codecs.Encoders
     Value.char,
     Value.text,
     Value.varchar,
+    Value.bpchar,
     Value.bytea,
     Value.date,
     Value.timestamp,

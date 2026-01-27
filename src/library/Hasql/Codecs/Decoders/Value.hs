@@ -10,6 +10,7 @@ module Hasql.Codecs.Decoders.Value
     char,
     text,
     varchar,
+    bpchar,
     bytea,
     date,
     timestamp,
@@ -155,6 +156,12 @@ text = primitive "text" TypeInfo.text Binary.text_strict
 {-# INLINEABLE varchar #-}
 varchar :: Value Text
 varchar = primitive "varchar" TypeInfo.varchar Binary.text_strict
+
+-- |
+-- Decoder of @BPCHAR@ or @CHAR(n)@, @CHARACTER(n)@ values.
+{-# INLINEABLE bpchar #-}
+bpchar :: Value Text
+bpchar = primitive "bpchar" TypeInfo.bpchar Binary.text_strict
 
 -- |
 -- Decoder of the @BYTEA@ values.
