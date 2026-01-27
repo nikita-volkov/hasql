@@ -115,6 +115,12 @@ text :: Value Text
 text = primitive "text" False TypeInfo.text Binary.text_strict (TextBuilder.string . show)
 
 -- |
+-- Encoder of @VARCHAR@ values.
+{-# INLINEABLE varchar #-}
+varchar :: Value Text
+varchar = primitive "varchar" False TypeInfo.varchar Binary.text_strict (TextBuilder.string . show)
+
+-- |
 -- Encoder of @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString

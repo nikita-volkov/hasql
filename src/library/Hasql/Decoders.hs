@@ -36,6 +36,7 @@ module Hasql.Decoders
     numeric,
     char,
     text,
+    varchar,
     bytea,
     date,
     timestamp,

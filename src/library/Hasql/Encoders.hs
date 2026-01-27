@@ -25,6 +25,7 @@ module Hasql.Encoders
     numeric,
     char,
     text,
+    varchar,
     bytea,
     date,
     timestamp,
