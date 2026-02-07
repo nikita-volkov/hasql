@@ -4,6 +4,7 @@ import Data.Either
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
+import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
@@ -42,6 +43,39 @@ spec = do
             return s
 
         result `shouldBe` Right (3 :: Int64)
+
+  describe "Pipeline Mode" do
+    it "Allows sequential sessions with pipeline operations" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        let selectStatement =
+              Statement.preparable
+                "select $1::int"
+                (Encoders.param (Encoders.nonNullable Encoders.int4))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+
+        -- First session with pipeline
+        result1 <-
+          Connection.use connection do
+            Session.pipeline do
+              Pipeline.statement 42 selectStatement
+
+        result1 `shouldBe` Right 42
+
+        -- Second session with pipeline (this would fail with "connection not idle" before the fix)
+        result2 <-
+          Connection.use connection do
+            Session.pipeline do
+              Pipeline.statement 99 selectStatement
+
+        result2 `shouldBe` Right 99
+
+        -- Third session with pipeline
+        result3 <-
+          Connection.use connection do
+            Session.pipeline do
+              Pipeline.statement 123 selectStatement
+
+        result3 `shouldBe` Right 123
 
   describe "Timing out" do
     describe "On a statement" do
