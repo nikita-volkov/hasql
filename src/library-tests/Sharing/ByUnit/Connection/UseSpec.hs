@@ -45,7 +45,7 @@ spec = do
         result `shouldBe` Right (3 :: Int64)
 
   describe "Pipeline Mode" do
-    it "Allows sequential sessions with pipeline operations" \config -> do
+    it "Leaves the connection usable after timeout in pipeline" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let selectStatement =
               Statement.preparable
@@ -53,29 +53,24 @@ spec = do
                 (Encoders.param (Encoders.nonNullable Encoders.int4))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
 
-        -- First session with pipeline
-        result1 <-
-          Connection.use connection do
-            Session.pipeline do
-              Pipeline.statement 42 selectStatement
+        -- Timeout during a pipeline operation
+        result <-
+          timeout 50_000 do
+            Connection.use connection $
+              Session.pipeline $
+                (,) <$> Pipeline.statement 42 selectStatement
+                    <*> Execution.pipelineByParams (Statements.Sleep 0.1)
 
-        result1 `shouldBe` Right 42
+        result `shouldBe` Nothing
 
-        -- Second session with pipeline (this would fail with "connection not idle" before the fix)
+        -- Try to use pipeline again after timeout cleanup
+        -- This should work but fails with "connection not idle" without the fix
         result2 <-
-          Connection.use connection do
-            Session.pipeline do
+          Connection.use connection $
+            Session.pipeline $
               Pipeline.statement 99 selectStatement
 
         result2 `shouldBe` Right 99
-
-        -- Third session with pipeline
-        result3 <-
-          Connection.use connection do
-            Session.pipeline do
-              Pipeline.statement 123 selectStatement
-
-        result3 `shouldBe` Right 123
 
   describe "Timing out" do
     describe "On a statement" do

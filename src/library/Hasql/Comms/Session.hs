@@ -76,10 +76,13 @@ leavePipeline :: Session ()
 leavePipeline = do
   pipelineStatus <- getPipelineStatus
   when (pipelineStatus == Pq.PipelineOn) do
-    -- Send pipeline sync to ensure all pending commands are processed.
-    -- This is required before we can exit pipeline mode.
+    -- In pipeline mode, we need to ensure the pipeline is synchronized before exiting.
+    -- Send a pipeline sync marker to flush any pending operations.
     syncSuccess <- sendPipelineSync
     when syncSuccess drainResults
+    -- After sync, send a flush to ensure all queued commands are sent to the server.
+    flushSuccess <- sendFlushRequest
+    when flushSuccess drainResults
     -- Try to exit pipeline mode.
     -- This might fail if there are pending results that need to be consumed.
     success <- exitPipelineMode
@@ -132,6 +135,10 @@ exitPipelineMode = Session \connection -> do
 sendPipelineSync :: Session Bool
 sendPipelineSync = Session \connection -> do
   Right <$> Pq.pipelineSync connection
+
+sendFlushRequest :: Session Bool
+sendFlushRequest = Session \connection -> do
+  Right <$> Pq.sendFlushRequest connection
 
 -- Drain all pending results from the connection.
 drainResults :: Session ()
