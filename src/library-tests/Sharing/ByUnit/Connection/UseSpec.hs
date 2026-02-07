@@ -4,6 +4,7 @@ import Data.Either
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
+import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
@@ -42,6 +43,34 @@ spec = do
             return s
 
         result `shouldBe` Right (3 :: Int64)
+
+  describe "Pipeline Mode" do
+    it "Leaves the connection usable after timeout in pipeline" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        let selectStatement =
+              Statement.preparable
+                "select $1::int"
+                (Encoders.param (Encoders.nonNullable Encoders.int4))
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+
+        -- Timeout during a pipeline operation
+        result <-
+          timeout 50_000 do
+            Connection.use connection $
+              Session.pipeline $
+                (,) <$> Pipeline.statement 42 selectStatement
+                    <*> Execution.pipelineByParams (Statements.Sleep 0.1)
+
+        result `shouldBe` Nothing
+
+        -- Try to use pipeline again after timeout cleanup
+        -- This should work but fails with "connection not idle" without the fix
+        result2 <-
+          Connection.use connection $
+            Session.pipeline $
+              Pipeline.statement 99 selectStatement
+
+        result2 `shouldBe` Right 99
 
   describe "Timing out" do
     describe "On a statement" do
