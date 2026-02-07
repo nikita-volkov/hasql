@@ -56,19 +56,20 @@ spec = do
         -- Timeout during a pipeline operation
         result <-
           timeout 50_000 do
-            Connection.use connection $
-              Session.pipeline $
-                (,) <$> Pipeline.statement 42 selectStatement
-                    <*> Execution.pipelineByParams (Statements.Sleep 0.1)
+            Connection.use connection
+              $ Session.pipeline
+              $ (,)
+              <$> Pipeline.statement 42 selectStatement
+              <*> Execution.pipelineByParams (Statements.Sleep 0.1)
 
         result `shouldBe` Nothing
 
         -- Try to use pipeline again after timeout cleanup
         -- This should work but fails with "connection not idle" without the fix
         result2 <-
-          Connection.use connection $
-            Session.pipeline $
-              Pipeline.statement 99 selectStatement
+          Connection.use connection
+            $ Session.pipeline
+            $ Pipeline.statement 99 selectStatement
 
         result2 `shouldBe` Right 99
 
