@@ -10,16 +10,9 @@ import Hasql.Platform.Prelude
 -- Decoder of a query result.
 newtype Result a
   = Result (RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a))
-
-instance Functor Result where
-  fmap f (Result r) = Result (fmap (fmap f) r)
-
-instance Applicative Result where
-  pure a = Result (pure (pure a))
-  Result f <*> Result x = Result (liftA2 (<*>) f x)
-
-instance Filterable Result where
-  mapMaybe f (Result r) = Result (fmap (mapMaybe f) r)
+  deriving
+    (Functor, Applicative, Filterable)
+    via (Compose RequestingOid.RequestingOid ResultDecoder.ResultDecoder)
 
 unwrap :: Result a -> RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a)
 unwrap (Result decoder) = decoder

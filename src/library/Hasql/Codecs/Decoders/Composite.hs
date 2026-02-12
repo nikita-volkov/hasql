@@ -10,13 +10,9 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- Composable decoder of composite values (rows, records).
 newtype Composite a
   = Composite (RequestingOid.RequestingOid (Binary.Composite a))
-
-instance Functor Composite where
-  fmap f (Composite r) = Composite (fmap (fmap f) r)
-
-instance Applicative Composite where
-  pure a = Composite (pure (pure a))
-  Composite f <*> Composite x = Composite (liftA2 (<*>) f x)
+  deriving
+    (Functor, Applicative)
+    via (Compose RequestingOid.RequestingOid Binary.Composite)
 
 toValueDecoder :: Composite a -> RequestingOid.RequestingOid (Binary.Value a)
 toValueDecoder (Composite imp) =

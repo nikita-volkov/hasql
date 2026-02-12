@@ -18,16 +18,9 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- @
 newtype Row a
   = Row (RequestingOid.RequestingOid (Hasql.Comms.RowDecoder.RowDecoder a))
-
-instance Functor Row where
-  fmap f (Row r) = Row (fmap (fmap f) r)
-
-instance Applicative Row where
-  pure a = Row (pure (pure a))
-  Row f <*> Row x = Row (liftA2 (<*>) f x)
-
-instance Filterable Row where
-  mapMaybe f (Row r) = Row (fmap (mapMaybe f) r)
+  deriving
+    (Functor, Applicative, Filterable)
+    via (Compose RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder)
 
 toDecoder ::
   Row a ->
