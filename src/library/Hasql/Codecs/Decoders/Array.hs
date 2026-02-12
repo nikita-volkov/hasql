@@ -41,13 +41,13 @@ data Array a
       -- | Number of dimensions.
       Word
       -- | Decoding function
-      (RequestingOid.RequestingOid Binary.Array a)
+      (RequestingOid.RequestingOid (Binary.Array a))
   deriving (Functor)
 
 {-# INLINE toValueDecoder #-}
-toValueDecoder :: Array a -> RequestingOid.RequestingOid Binary.Value a
+toValueDecoder :: Array a -> RequestingOid.RequestingOid (Binary.Value a)
 toValueDecoder (Array _ _ _ _ _ decoder) =
-  RequestingOid.hoist Binary.array decoder
+  fmap Binary.array decoder
 
 -- | Get the type signature for the array based on element type name
 {-# INLINE toTypeSig #-}
@@ -114,7 +114,7 @@ dimension replicateM (Array schema typeName baseOid arrayOid ndims decoder) =
     baseOid
     arrayOid
     (succ ndims)
-    (RequestingOid.hoist (Binary.dimensionArray replicateM) decoder)
+    (fmap (Binary.dimensionArray replicateM) decoder)
 
 -- |
 -- Lift a 'Value.Value' decoder into an 'Array' decoder for parsing of leaf values.
@@ -128,7 +128,7 @@ element = \case
       (Value.toBaseOid imp)
       (Value.toArrayOid imp)
       1
-      (RequestingOid.hoist Binary.valueArray (Value.toDecoder imp))
+      (fmap Binary.valueArray (Value.toDecoder imp))
   NullableOrNot.Nullable imp ->
     Array
       (Value.toSchema imp)
@@ -136,4 +136,4 @@ element = \case
       (Value.toBaseOid imp)
       (Value.toArrayOid imp)
       1
-      (RequestingOid.hoist Binary.nullableValueArray (Value.toDecoder imp))
+      (fmap Binary.nullableValueArray (Value.toDecoder imp))

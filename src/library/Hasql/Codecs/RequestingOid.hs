@@ -14,6 +14,7 @@ where
 import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.RequestingOid.LookingUp qualified as LookingUp
 import Hasql.Platform.Prelude hiding (lift, lookup)
+import PostgreSQL.Binary.Decoding qualified as Binary
 
 type RequestingOid =
   LookingUp.LookingUp
@@ -21,15 +22,15 @@ type RequestingOid =
     (Word32, Word32)
 
 toUnknownTypes ::
-  RequestingOid f a ->
+  RequestingOid a ->
   HashSet (Maybe Text, Text)
 toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
   fromList unknownTypes
 
 toBase ::
-  RequestingOid f a ->
+  RequestingOid a ->
   HashMap (Maybe Text, Text) (Word32, Word32) ->
-  f a
+  a
 toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
   decoder \key ->
     HashMap.lookup key oidCache
@@ -37,21 +38,21 @@ toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
 
 requestAndHandle ::
   [(Maybe Text, Text)] ->
-  (((Maybe Text, Text) -> (Word32, Word32)) -> f a) ->
-  RequestingOid f a
-requestAndHandle = LookingUp.LookingUp
+  (((Maybe Text, Text) -> (Word32, Word32)) -> a) ->
+  RequestingOid a
+requestAndHandle keys fn = LookingUp.LookingUp keys fn
 
-lift :: f a -> RequestingOid f a
+lift :: a -> RequestingOid a
 lift = LookingUp.lift
 
-hoist :: (f a -> g b) -> RequestingOid f a -> RequestingOid g b
-hoist = LookingUp.hoist
+hoist :: (a -> b) -> RequestingOid a -> RequestingOid b
+hoist fn (LookingUp.LookingUp keys use) = LookingUp.LookingUp keys (fn . use)
 
-lookup :: (Applicative f) => (Maybe Text, Text) -> RequestingOid f (Word32, Word32)
+lookup :: (Maybe Text, Text) -> RequestingOid (Word32, Word32)
 lookup = LookingUp.lookup
 
-lookingUp :: (Applicative f) => (Maybe Text, Text) -> ((Word32, Word32) -> f a) -> RequestingOid f a
+lookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a) -> RequestingOid a
 lookingUp = LookingUp.lookingUp
 
-hoistLookingUp :: (Applicative f) => (Maybe Text, Text) -> ((Word32, Word32) -> f a -> g b) -> RequestingOid f a -> RequestingOid g b
+hoistLookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a -> b) -> RequestingOid a -> RequestingOid b
 hoistLookingUp = LookingUp.hoistLookingUp
