@@ -4,44 +4,37 @@ import Control.Applicative
 import Witherable
 import Prelude
 
-data LookingUp k v f a
+data LookingUp k v a
   = LookingUp
       -- | Keys requested to be available for lookup.
       [k]
       -- | Continuation that looks up values by keys.
-      ((k -> v) -> f a)
+      ((k -> v) -> a)
 
-deriving instance (Functor f) => Functor (LookingUp k v f)
+type role LookingUp _ _ representational
 
-instance (Applicative f) => Applicative (LookingUp k v f) where
+deriving stock instance Functor (LookingUp k v)
+
+instance Applicative (LookingUp k v) where
   pure a =
-    LookingUp [] (\_ -> pure a)
+    LookingUp [] (\_ -> a)
   LookingUp lKeys lUse <*> LookingUp rKeys rUse =
     LookingUp
       (lKeys <> rKeys)
-      (\lookup -> lUse lookup <*> rUse lookup)
+      (\lookup -> lUse lookup (rUse lookup))
 
-instance (Filterable f) => Filterable (LookingUp k v f) where
-  {-# INLINE mapMaybe #-}
-  mapMaybe fn (LookingUp keys use) =
-    LookingUp keys (mapMaybe fn . use)
-
-lookup :: (Applicative f) => k -> LookingUp k v f v
+lookup :: k -> LookingUp k v v
 lookup key =
-  LookingUp [key] (\lookupFn -> pure (lookupFn key))
+  LookingUp [key] (\lookupFn -> lookupFn key)
 
-lift :: f a -> LookingUp k v f a
+lift :: a -> LookingUp k v a
 lift fa =
   LookingUp [] (const fa)
 
-hoist :: (f a -> g b) -> LookingUp k v f a -> LookingUp k v g b
-hoist tx (LookingUp keys use) =
-  LookingUp keys (tx . use)
-
-lookingUp :: k -> (v -> f a) -> LookingUp k v f a
+lookingUp :: k -> (v -> a) -> LookingUp k v a
 lookingUp key cont =
   LookingUp [key] (\lookupFn -> cont (lookupFn key))
 
-hoistLookingUp :: k -> (v -> f a -> g b) -> LookingUp k v f a -> LookingUp k v g b
+hoistLookingUp :: k -> (v -> a -> b) -> LookingUp k v a -> LookingUp k v b
 hoistLookingUp k tx (LookingUp keys use) =
   LookingUp (k : keys) (\lookupFn -> tx (lookupFn k) (use lookupFn))

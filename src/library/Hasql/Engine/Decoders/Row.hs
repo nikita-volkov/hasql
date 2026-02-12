@@ -17,13 +17,14 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a
-  = Row (RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder a)
-  deriving newtype
+  = Row (RequestingOid.RequestingOid (Hasql.Comms.RowDecoder.RowDecoder a))
+  deriving
     (Functor, Applicative, Filterable)
+    via (Compose RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder)
 
 toDecoder ::
   Row a ->
-  RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder a
+  RequestingOid.RequestingOid (Hasql.Comms.RowDecoder.RowDecoder a)
 toDecoder (Row f) = f
 
 -- |
@@ -34,26 +35,26 @@ column = \case
   Nullable valueDecoder ->
     Row case Value.toOid valueDecoder of
       Just oid ->
-        RequestingOid.hoist
+        fmap
           (Hasql.Comms.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
-          ( \lookupResult ->
-              Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser
+          ( \lookupResult decoder ->
+              Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
           )
           (Value.toDecoder valueDecoder)
   NonNullable valueDecoder ->
     Row case Value.toOid valueDecoder of
       Just oid ->
-        RequestingOid.hoist
+        fmap
           (Hasql.Comms.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
           (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
-          (\lookupResult -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) . Binary.valueParser)
+          (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
           (Value.toDecoder valueDecoder)
   where
     chooseLookedUpOid valueDecoder (elementOid, arrayOid) =

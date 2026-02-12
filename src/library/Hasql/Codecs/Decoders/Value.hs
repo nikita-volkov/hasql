@@ -77,8 +77,10 @@ data Value a
       -- | Dimensionality. If 0 then it is a scalar value, otherwise it is an array with that many dimensions.
       Word
       -- | Decoding function on a registry of OIDs by type name.
-      (RequestingOid.RequestingOid Binary.Value a)
+      (RequestingOid.RequestingOid (Binary.Value a))
   deriving (Functor)
+
+type role Value representational
 
 instance Filterable Value where
   {-# INLINE mapMaybe #-}
@@ -379,7 +381,7 @@ custom schema typeName staticOids requestedTypes fn =
 {-# INLINE refine #-}
 refine :: (a -> Either Text b) -> Value a -> Value b
 refine fn (Value schema typeName typeOid arrayOid dimensionality decoder) =
-  Value schema typeName typeOid arrayOid dimensionality (RequestingOid.hoist (Binary.refine fn) decoder)
+  Value schema typeName typeOid arrayOid dimensionality (fmap (Binary.refine fn) decoder)
 
 -- |
 -- Binary generic decoder of @HSTORE@ values.
@@ -431,7 +433,7 @@ toBaseOid (Value _ _ baseOid _ _ _) = baseOid
 toArrayOid :: Value a -> Maybe Word32
 toArrayOid (Value _ _ _ oid _ _) = oid
 
-toDecoder :: Value a -> RequestingOid.RequestingOid Binary.Value a
+toDecoder :: Value a -> RequestingOid.RequestingOid (Binary.Value a)
 toDecoder (Value _ _ _ _ _ decoder) = decoder
 
 {-# INLINE toHandler #-}

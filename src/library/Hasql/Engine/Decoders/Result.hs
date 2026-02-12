@@ -9,11 +9,12 @@ import Hasql.Platform.Prelude
 -- |
 -- Decoder of a query result.
 newtype Result a
-  = Result (RequestingOid.RequestingOid ResultDecoder.ResultDecoder a)
-  deriving newtype
+  = Result (RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a))
+  deriving
     (Functor, Applicative, Filterable)
+    via (Compose RequestingOid.RequestingOid ResultDecoder.ResultDecoder)
 
-unwrap :: Result a -> RequestingOid.RequestingOid ResultDecoder.ResultDecoder a
+unwrap :: Result a -> RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a)
 unwrap (Result decoder) = decoder
 
 -- * Construction
@@ -41,11 +42,11 @@ rowsAffected =
 {-# INLINEABLE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow decoder =
-  Result (RequestingOid.hoist ResultDecoder.single (Row.toDecoder decoder))
+  Result (fmap ResultDecoder.single (Row.toDecoder decoder))
 
 refineResult :: (a -> Either Text b) -> Result a -> Result b
 refineResult refiner (Result decoder) =
-  Result (RequestingOid.hoist (ResultDecoder.refine refiner) decoder)
+  Result (fmap (ResultDecoder.refine refiner) decoder)
 
 -- ** Multi-row traversers
 
@@ -55,7 +56,7 @@ refineResult refiner (Result decoder) =
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
 foldlRows step init decoder =
   Result
-    (RequestingOid.hoist (ResultDecoder.foldl step init) (Row.toDecoder decoder))
+    (fmap (ResultDecoder.foldl step init) (Row.toDecoder decoder))
 
 -- |
 -- Foldr multiple rows.
@@ -63,7 +64,7 @@ foldlRows step init decoder =
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
 foldrRows step init decoder =
   Result
-    (RequestingOid.hoist (ResultDecoder.foldr step init) (Row.toDecoder decoder))
+    (fmap (ResultDecoder.foldr step init) (Row.toDecoder decoder))
 
 -- ** Specialized multi-row results
 
@@ -73,7 +74,7 @@ foldrRows step init decoder =
 rowMaybe :: Row a -> Result (Maybe a)
 rowMaybe decoder =
   Result
-    (RequestingOid.hoist ResultDecoder.maybe (Row.toDecoder decoder))
+    (fmap ResultDecoder.maybe (Row.toDecoder decoder))
 
 -- |
 -- Zero or more rows packed into the vector.
@@ -84,7 +85,7 @@ rowMaybe decoder =
 rowVector :: Row a -> Result (Vector a)
 rowVector decoder =
   Result
-    (RequestingOid.hoist ResultDecoder.vector (Row.toDecoder decoder))
+    (fmap ResultDecoder.vector (Row.toDecoder decoder))
 
 -- |
 -- Zero or more rows packed into the list.
