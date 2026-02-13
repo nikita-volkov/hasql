@@ -1,6 +1,7 @@
 module Hasql.Comms.Recv
   ( Recv,
     singleResult,
+    allResults,
     toHandler,
     Error (..),
   )
@@ -50,6 +51,29 @@ singleResult context handler = Recv \connection -> runExceptT do
     result <- ResultDecoder.toHandler handler result
     pure (first (ResultError context 0) result)
   pure result
+
+-- | Consume all results from a multi-statement query (e.g., scripts).
+-- Each result is decoded using the provided handler.
+-- This is useful for scripts that may contain multiple statements,
+-- where each statement produces a result that needs to be validated.
+-- All results are consumed even if an error occurs, to leave the connection
+-- in a clean state.
+allResults :: context -> ResultDecoder.ResultDecoder a -> Recv context ()
+allResults context handler = Recv \connection -> do
+  let loop resultIndex maybeError = do
+        result <- Pq.getResult connection
+        case result of
+          Nothing -> pure maybeError
+          Just result -> do
+            decodedResult <- ResultDecoder.toHandler handler result
+            case decodedResult of
+              Left err ->
+                -- Continue consuming results even after error to clean up connection
+                loop (resultIndex + 1) (Just (ResultError context resultIndex err))
+              Right _ ->
+                loop (resultIndex + 1) maybeError
+  errorOrUnit <- loop 0 Nothing
+  pure (maybe (Right ()) Left errorOrUnit)
 
 -- * Errors
 
