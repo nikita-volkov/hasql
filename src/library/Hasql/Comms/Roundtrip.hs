@@ -8,6 +8,7 @@ module Hasql.Comms.Roundtrip
     queryPrepared,
     queryParams,
     query,
+    script,
 
     -- * Errors
     Error (..),
@@ -112,6 +113,15 @@ query context sql =
   Roundtrip
     (Send.query context sql)
     (Recv.singleResult context ResultDecoder.ok)
+
+-- | Execute a script (multi-statement SQL).
+-- Unlike 'query', this consumes all results from the execution,
+-- which is necessary for scripts containing multiple statements.
+script :: context -> ByteString -> Roundtrip context ()
+script context sql =
+  Roundtrip
+    (Send.query context sql)
+    (Recv.allResults context ResultDecoder.ok)
 
 data Error context
   = ClientError context (Maybe ByteString)

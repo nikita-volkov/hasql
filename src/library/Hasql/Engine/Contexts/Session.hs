@@ -42,7 +42,7 @@ script :: ByteString -> Session ()
 script sql =
   Session \connectionState -> do
     let connection = ConnectionState.connection connectionState
-    result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.query (Just sql) sql) connection
+    result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.script (Just sql) sql) connection
     case result of
       Left err -> case err of
         Comms.Roundtrip.ClientError _ details -> do
