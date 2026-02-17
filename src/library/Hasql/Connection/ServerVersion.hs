@@ -32,7 +32,7 @@ data ServerVersion = ServerVersion Int Int Int
 -- >>> fromInt 90200
 -- ServerVersion 9 2 0
 --
--- Ref: https://www.postgresql.org/docs/17/libpq-status.html#LIBPQ-PQSERVERVERSION
+-- Ref: https://www.postgresql.org/docs/18/libpq-status.html#LIBPQ-PQSERVERVERSION
 fromInt :: Int -> ServerVersion
 fromInt x =
   if x < 100_000
@@ -63,7 +63,7 @@ toText (ServerVersion major minor patch) =
 
 -- | Minimum supported version.
 minimum :: ServerVersion
-minimum = ServerVersion 10 0 0
+minimum = ServerVersion 9 0 0
 
 -- | Load from PQ connection.
 load :: Pq.Connection -> IO ServerVersion

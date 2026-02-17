@@ -73,7 +73,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
             Scripts.onPreparableConnection config \connection -> do
               let statement =
                     (if preparable then Statement.preparable else Statement.unpreparable)
-                      "select 1::int8, 'text'"
+                      "select 1::int8, 'text'::text"
                       mempty
                       ( Decoders.singleRow
                           ( (,)
@@ -85,7 +85,8 @@ byPreparedStatusAndExecutor preparable executorName executor = do
               case result of
                 Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
                   shouldBe column 1
-                  (expected, actual) `shouldBe` (20, 25)
+                  shouldBe expected 20
+                  shouldBe actual 25
                 Left err ->
                   expectationFailure ("Unexpected type of error: " <> show err)
                 result ->
@@ -96,7 +97,7 @@ byPreparedStatusAndExecutor preparable executorName executor = do
             Scripts.onPreparableConnection config \connection -> do
               let statement =
                     (if preparable then Statement.preparable else Statement.unpreparable)
-                      "select 1::int8, 'text'"
+                      "select 1::int8, 'text'::text"
                       mempty
                       ( Decoders.rowMaybe
                           ( (,)

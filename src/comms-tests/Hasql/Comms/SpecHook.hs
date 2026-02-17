@@ -9,8 +9,8 @@ type HookedSpec = SpecWith (Text, Word16)
 
 hook :: HookedSpec -> Spec
 hook hookedSpec = parallel do
-  byDistro "postgres:10"
-  byDistro "postgres:17"
+  byDistro "postgres:9"
+  byDistro "postgres:18"
   where
     byDistro tagName =
       describe (toList tagName) do

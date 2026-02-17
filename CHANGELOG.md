@@ -41,8 +41,6 @@ Major revision happened.
 - Decoder checks are now more strict and report `UnexpectedColumnTypeStatementError` when the actual type of a column does not match the expected type of the decoder. Previously such mismatches were silently ignored and could lead to either autocasts or runtime errors in later stages.
   - E.g., `int4` column decoded with `int8` decoder will now report `UnexpectedColumnTypeStatementError` instead of silently accepting the value.
 
-- Due to the above the oldest supported PostgreSQL version now is 10. In older versions some types had different OIDs.
-
 - Session now has exclusive access to the connection for its entire duration. Previously it was releasing and reacquiring the lock on the connection between statements.
   - If you need the old behaviour, you can use `ReaderT Connection (ExceptT SessionError IO)`.
 

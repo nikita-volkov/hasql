@@ -49,7 +49,7 @@ acquire settings =
     -- Check version:
     version <- lift (ServerVersion.load pqConnection)
     when (version < ServerVersion.minimum) do
-      throwError (CompatibilityConnectionError ("Server version is lower than 10: " <> ServerVersion.toText version))
+      throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
 
     -- Initialize:
     lift do

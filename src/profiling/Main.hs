@@ -89,7 +89,7 @@ statementWithManyRowsInList =
 -- * Testcontainers
 
 withConnection :: (Connection.Connection -> IO ()) -> IO ()
-withConnection = withConnectionByTagName "postgres:17"
+withConnection = withConnectionByTagName "postgres:18"
 
 withConnectionByTagName :: Text -> (Connection.Connection -> IO ()) -> IO ()
 withConnectionByTagName tagName action = withConnectionSettings tagName \settings -> do
