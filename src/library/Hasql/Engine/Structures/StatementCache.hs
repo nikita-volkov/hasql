@@ -35,7 +35,7 @@ insert sql oids (StatementCache hashMap counter) = (remoteKey, newState)
   where
     remoteKey = fromString $ show $ newCounter
     newHashMap = HashMap.insert localKey remoteKey hashMap
-    newCounter = succ counter
+    newCounter = counter + 1
     newState = StatementCache newHashMap newCounter
     localKey = LocalKey sql oids
 
@@ -52,5 +52,5 @@ data LocalKey
 
 instance Hashable LocalKey where
   {-# INLINE hashWithSalt #-}
-  hashWithSalt salt (LocalKey template _) =
-    hashWithSalt salt template
+  hashWithSalt salt (LocalKey template oids) =
+    hashWithSalt (hashWithSalt salt template) (fmap Pq.oidToWord32 oids)
