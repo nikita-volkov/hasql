@@ -64,6 +64,7 @@ module Hasql.Decoders
     tsmultirange,
     tstzmultirange,
     datemultirange,
+    citext,
     array,
     listArray,
     vectorArray,

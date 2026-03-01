@@ -43,6 +43,7 @@ module Hasql.Codecs.Decoders
     Value.tsmultirange,
     Value.tstzmultirange,
     Value.datemultirange,
+    Value.citext,
     array,
     listArray,
     vectorArray,
