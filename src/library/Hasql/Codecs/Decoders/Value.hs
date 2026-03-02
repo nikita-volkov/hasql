@@ -37,6 +37,7 @@ module Hasql.Codecs.Decoders.Value
     tsmultirange,
     tstzmultirange,
     datemultirange,
+    citext,
     custom,
     refine,
     hstore,
@@ -339,6 +340,14 @@ tstzmultirange = primitive "tstzmultirange" TypeInfo.tstzmultirange Binary.tstzm
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
 datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datemultirange
+
+-- |
+-- Decoder of the @CITEXT@ values.
+--
+-- Requires the @citext@ extension to be installed in the database.
+{-# INLINEABLE citext #-}
+citext :: Value Text
+citext = Value Nothing "citext" Nothing Nothing 0 (RequestingOid.lift Binary.text_strict)
 
 -- |
 -- Low level API for defining custom value decoders.

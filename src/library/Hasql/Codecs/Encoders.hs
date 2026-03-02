@@ -55,6 +55,7 @@ module Hasql.Codecs.Encoders
     Value.tsmultirange,
     Value.tstzmultirange,
     Value.datemultirange,
+    Value.citext,
     Value.name,
     Value.oid,
     foldableArray,

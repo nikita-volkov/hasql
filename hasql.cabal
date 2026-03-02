@@ -320,6 +320,7 @@ test-suite library-tests
     Sharing.ByFeature.PreparedStatementsSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
+    Sharing.ByUnit.Decoders.CitextSpec
     Sharing.ByUnit.Decoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Decoders.CompositeSpec
     Sharing.ByUnit.Decoders.CustomSpec
@@ -333,6 +334,7 @@ test-suite library-tests
     Sharing.ByUnit.Decoders.RecordSpec
     Sharing.ByUnit.Decoders.UuidSpec
     Sharing.ByUnit.Encoders.ArraySpec
+    Sharing.ByUnit.Encoders.CitextSpec
     Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
     Sharing.ByUnit.Encoders.CompositeSpec
     Sharing.ByUnit.Encoders.CustomSpec

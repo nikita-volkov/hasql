@@ -312,6 +312,24 @@ datemultirange :: Value (Range.Multirange Day)
 datemultirange = primitive "datemultirange" False TypeInfo.datemultirange Binary.datemultirange (TextBuilder.string . show)
 
 -- |
+-- Encoder of @CITEXT@ values.
+--
+-- Requires the @citext@ extension to be installed in the database.
+{-# INLINEABLE citext #-}
+citext :: Value Text
+citext =
+  Value
+    Nothing
+    "citext"
+    Nothing
+    Nothing
+    0
+    False
+    HashSet.empty
+    (const Binary.text_strict)
+    (TextBuilder.string . show)
+
+-- |
 -- Given a function which maps a value into a textual enum label used on the DB side,
 -- produces an encoder of that value for a named enum type.
 {-# INLINEABLE enum #-}
