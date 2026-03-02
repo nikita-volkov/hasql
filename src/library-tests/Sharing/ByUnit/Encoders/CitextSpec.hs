@@ -25,7 +25,7 @@ spec = do
             (const (pure ()))
           Session.statement "hello"
             $ Statement.preparable
-              "select $1::citext = 'hello'::citext"
+              "select $1 = 'hello'"
               (Encoders.param (Encoders.nonNullable Encoders.citext))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
@@ -43,7 +43,7 @@ spec = do
             (const (pure ()))
           Session.statement "Hello"
             $ Statement.preparable
-              "select $1::citext = 'hello'::citext"
+              "select $1 = 'hello'"
               (Encoders.param (Encoders.nonNullable Encoders.citext))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
@@ -61,7 +61,7 @@ spec = do
             (const (pure ()))
           Session.statement "Hello World"
             $ Statement.preparable
-              "select $1::citext"
+              "select $1"
               (Encoders.param (Encoders.nonNullable Encoders.citext))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.citext)))
         result `shouldBe` Right "Hello World"
