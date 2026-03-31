@@ -326,6 +326,7 @@ test-suite library-tests
     Sharing.ByUnit.Decoders.CustomSpec
     Sharing.ByUnit.Decoders.DomainSpec
     Sharing.ByUnit.Decoders.EnumSpec
+    Sharing.ByUnit.Decoders.RenameSpec
     Sharing.ByUnit.Decoders.Float8Spec
     Sharing.ByUnit.Decoders.HstoreSpec
     Sharing.ByUnit.Decoders.InetSpec
@@ -340,6 +341,7 @@ test-suite library-tests
     Sharing.ByUnit.Encoders.CustomSpec
     Sharing.ByUnit.Encoders.DomainSpec
     Sharing.ByUnit.Encoders.EnumSpec
+    Sharing.ByUnit.Encoders.RenameSpec
     Sharing.ByUnit.Encoders.HstoreSpec
     Sharing.ByUnit.Encoders.InetSpec
     Sharing.ByUnit.Encoders.IntervalSpec
