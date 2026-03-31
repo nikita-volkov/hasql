@@ -40,6 +40,7 @@ module Hasql.Codecs.Decoders.Value
     citext,
     custom,
     refine,
+    rename,
     hstore,
     enum,
     toDimensionality,
@@ -348,6 +349,20 @@ datemultirange = primitive "datemultirange" TypeInfo.datemultirange Binary.datem
 {-# INLINEABLE citext #-}
 citext :: Value Text
 citext = Value Nothing "citext" Nothing Nothing 0 (RequestingOid.lift Binary.text_strict)
+
+-- |
+-- Reset the OIDs and rename the type of a value decoder.
+-- This is useful for mapping to domain types (@CREATE DOMAIN@).
+{-# INLINE rename #-}
+rename ::
+  -- | Schema name where the type is defined.
+  Maybe Text ->
+  -- | Type name.
+  Text ->
+  Value a ->
+  Value a
+rename schema typeName (Value _ _ _ _ dimensionality decoder) =
+  Value schema typeName Nothing Nothing dimensionality decoder
 
 -- |
 -- Low level API for defining custom value decoders.

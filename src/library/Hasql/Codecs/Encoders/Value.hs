@@ -370,6 +370,20 @@ unknown :: Value ByteString
 unknown = primitive "unknown" True TypeInfo.unknown Binary.bytea_strict (TextBuilder.string . show)
 
 -- |
+-- Reset the OIDs and rename the type of a value encoder.
+-- This is useful for mapping to domain types (@CREATE DOMAIN@).
+{-# INLINEABLE rename #-}
+rename ::
+  -- | Schema name where the type is defined.
+  Maybe Text ->
+  -- | Type name.
+  Text ->
+  Value a ->
+  Value a
+rename schema typeName (Value _ _ _ _ dimensionality textFormat unknownTypes encode render) =
+  Value schema typeName Nothing Nothing dimensionality textFormat unknownTypes encode render
+
+-- |
 -- Low level API for defining custom value encoders.
 {-# INLINEABLE custom #-}
 custom ::
