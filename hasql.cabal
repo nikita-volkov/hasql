@@ -140,6 +140,7 @@ library
     Hasql.Engine.Decoders.Result
     Hasql.Engine.Decoders.Row
     Hasql.Engine.Errors
+    Hasql.Engine.PqProcedures.SelectDomainBaseTypes
     Hasql.Engine.PqProcedures.SelectTypeInfo
     Hasql.Engine.Statement
     Hasql.Engine.Structures.ConnectionState

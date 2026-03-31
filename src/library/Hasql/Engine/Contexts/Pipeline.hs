@@ -12,6 +12,7 @@ import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
+import Hasql.Engine.PqProcedures.SelectDomainBaseTypes qualified as PqProcedures.SelectDomainBaseTypes
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
@@ -43,26 +44,40 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
         else do
           let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
 
-          let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+          -- Query domain types if not already loaded
+          domainResult <-
+            if OidCache.domainMapLoaded newOidCache
+              then pure (Right newOidCache)
+              else do
+                domainMapResult <- PqProcedures.SelectDomainBaseTypes.run connection
+                pure case domainMapResult of
+                  Left err -> Left err
+                  Right dm -> Right (OidCache.setDomainMap dm newOidCache)
 
-          result <-
-            let adaptedRoundtrip = first adaptContext roundtrip
-                  where
-                    adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
-                    adaptContext (Context index sql params prepared) =
-                      Just (totalStatements, index, sql, params, prepared)
-             in Comms.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
-                  & fmap
-                    ( first
-                        ( \case
-                            Comms.Roundtrip.ClientError _context details ->
-                              Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                            Comms.Roundtrip.ServerError recvError ->
-                              Errors.fromRecvError recvError
+          case domainResult of
+            Left err -> pure (Left err, oidCache, statementCache)
+            Right finalOidCache -> do
+              let domainMap = OidCache.getDomainMap finalOidCache
+                  (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap finalOidCache) domainMap statementCache
+
+              result <-
+                let adaptedRoundtrip = first adaptContext roundtrip
+                      where
+                        adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
+                        adaptContext (Context index sql params prepared) =
+                          Just (totalStatements, index, sql, params, prepared)
+                 in Comms.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
+                      & fmap
+                        ( first
+                            ( \case
+                                Comms.Roundtrip.ClientError _context details ->
+                                  Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                                Comms.Roundtrip.ServerError recvError ->
+                                  Errors.fromRecvError recvError
+                            )
                         )
-                    )
 
-          pure (result, newOidCache, newStatementCache)
+              pure (result, finalOidCache, newStatementCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
@@ -143,12 +158,15 @@ data Pipeline a
       --
       -- OidCache is provided in which the names of types used in this pipeline are already resolved.
       --
+      -- The domain OID map is provided for resolving domain types to their base types during decoder compatibility checking.
+      --
       -- The function takes the current statement cache and returns a tuple of:
       -- 1. The actual roundtrip action to be executed in the pipeline.
       -- 2. The updated statement cache after executing this part of the pipeline.
       ( Int ->
         Bool ->
         HashMap (Maybe Text, Text) (Word32, Word32) ->
+        HashMap Word32 Word32 ->
         StatementCache.StatementCache ->
         (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
@@ -168,20 +186,20 @@ data Context
 -- * Instances
 
 instance Functor Pipeline where
-  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset usePreparedStatements oidCache cache ->
-    let (roundtrip, newStatementCache) = run offset usePreparedStatements oidCache cache
+  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset usePreparedStatements oidCache domainMap cache ->
+    let (roundtrip, newStatementCache) = run offset usePreparedStatements oidCache domainMap cache
      in (fmap f roundtrip, newStatementCache)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline 0 mempty (\_ _ _ cache -> (pure a, cache))
+    Pipeline 0 mempty (\_ _ _ _ cache -> (pure a, cache))
 
   Pipeline lCount leftUnknownTypes lRun <*> Pipeline rCount rightUnknownTypes rRun =
     let unknownTypes = leftUnknownTypes <> rightUnknownTypes
-     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements oidCache statementCache ->
-          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements oidCache statementCache
+     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements oidCache domainMap statementCache ->
+          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements oidCache domainMap statementCache
               offset1 = offset + lCount
-              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements oidCache statementCache1
+              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements oidCache domainMap statementCache1
            in (lRoundtrip <*> rRoundtrip, statementCache2)
 
 -- * Construction
@@ -201,7 +219,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
     unknownTypes =
       Params.toUnknownTypes encoder
         <> RequestingOid.toUnknownTypes decoder
-    run offset usePreparedStatements oidCache =
+    run offset usePreparedStatements oidCache domainMap =
       if prepare
         then runPrepared
         else runUnprepared
@@ -252,4 +270,4 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                     & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
-          RequestingOid.toBase decoder oidCache
+          (RequestingOid.toBase decoder oidCache) domainMap

@@ -95,7 +95,7 @@ paramsEncoder =
 
 decoder :: Hasql.Comms.ResultDecoder.ResultDecoder SelectTypeInfoResult
 decoder =
-  Hasql.Comms.ResultDecoder.foldl step HashMap.empty rowDecoder
+  Hasql.Comms.ResultDecoder.foldl HashMap.empty step HashMap.empty rowDecoder
   where
     step acc (schemaName, typeName, typeOid, arrayOid) =
       HashMap.insert (schemaName, typeName) (typeOid, arrayOid) acc
