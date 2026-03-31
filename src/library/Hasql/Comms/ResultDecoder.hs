@@ -34,6 +34,7 @@ where
 
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
+import Data.HashMap.Strict qualified as HashMap
 import Data.Vector qualified as Vector
 import Data.Vector.Mutable qualified as MutableVector
 import Hasql.Comms.RowDecoder qualified as RowDecoder
@@ -156,8 +157,8 @@ columnOids = ResultDecoder \result -> do
 -- * Higher-level decoders
 
 {-# INLINE checkCompatibility #-}
-checkCompatibility :: RowDecoder.RowDecoder a -> ResultDecoder ()
-checkCompatibility rowDec =
+checkCompatibility :: HashMap Word32 Word32 -> RowDecoder.RowDecoder a -> ResultDecoder ()
+checkCompatibility domainMap rowDec =
   let oids = RowDecoder.toExpectedOids rowDec
    in ResultDecoder \result -> do
         maxCols <- Pq.nfields result
@@ -167,7 +168,7 @@ checkCompatibility rowDec =
                 go (Nothing : rest) colIndex = go rest (succ colIndex)
                 go (Just expectedOid : rest) colIndex = do
                   actualOid <- Pq.ftype result (Pq.toColumn colIndex)
-                  if actualOid == expectedOid
+                  if actualOid == expectedOid || isDomainOf domainMap (Pq.oidToWord32 actualOid) (Pq.oidToWord32 expectedOid)
                     then go rest (succ colIndex)
                     else
                       pure
@@ -182,11 +183,11 @@ checkCompatibility rowDec =
           else pure (Left (UnexpectedColumnCount (length oids) (Pq.colToInt maxCols)))
 
 {-# INLINE maybe #-}
-maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
-maybe rowDec =
+maybe :: HashMap Word32 Word32 -> RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
+maybe domainMap rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
+    checkCompatibility domainMap rowDec
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
@@ -203,11 +204,11 @@ maybe rowDec =
       fromIntegral n
 
 {-# INLINE single #-}
-single :: RowDecoder.RowDecoder a -> ResultDecoder a
-single rowDec =
+single :: HashMap Word32 Word32 -> RowDecoder.RowDecoder a -> ResultDecoder a
+single domainMap rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
+    checkCompatibility domainMap rowDec
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
@@ -221,11 +222,11 @@ single rowDec =
       fromIntegral n
 
 {-# INLINE vector #-}
-vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
-vector rowDec =
+vector :: HashMap Word32 Word32 -> RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
+vector domainMap rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
+    checkCompatibility domainMap rowDec
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
@@ -246,12 +247,12 @@ vector rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldl #-}
-foldl :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
-foldl step init rowDec =
+foldl :: HashMap Word32 Word32 -> (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
+foldl domainMap step init rowDec =
   {-# SCC "foldl" #-}
   do
     checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
+    checkCompatibility domainMap rowDec
     ResultDecoder
       $ \result ->
         {-# SCC "traversal" #-}
@@ -274,12 +275,12 @@ foldl step init rowDec =
       Pq.Row . fromIntegral
 
 {-# INLINE foldr #-}
-foldr :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
-foldr step init rowDec =
+foldr :: HashMap Word32 Word32 -> (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
+foldr domainMap step init rowDec =
   {-# SCC "foldr" #-}
   do
     checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
+    checkCompatibility domainMap rowDec
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
@@ -363,3 +364,28 @@ data Error
       -- | Underlying error.
       RowDecoder.Error
   deriving (Show, Eq)
+
+-- * Domain type resolution
+
+-- | Check if the actual OID is a domain type whose ultimate base type matches the expected OID.
+{-# INLINE isDomainOf #-}
+isDomainOf :: HashMap Word32 Word32 -> Word32 -> Word32 -> Bool
+isDomainOf domainMap actualOid expectedOid =
+  case resolveBaseType domainMap actualOid of
+    Nothing -> False
+    Just baseOid -> baseOid == expectedOid
+
+-- | Resolve a potentially domain OID to its ultimate base type OID.
+-- Returns 'Nothing' if the OID is not a domain type.
+-- Follows chains of nested domains (domain of domain).
+{-# INLINE resolveBaseType #-}
+resolveBaseType :: HashMap Word32 Word32 -> Word32 -> Maybe Word32
+resolveBaseType domainMap oid =
+  case HashMap.lookup oid domainMap of
+    Nothing -> Nothing
+    Just baseOid -> Just (followChain baseOid)
+  where
+    followChain currentOid =
+      case HashMap.lookup currentOid domainMap of
+        Nothing -> currentOid
+        Just nextOid -> followChain nextOid
