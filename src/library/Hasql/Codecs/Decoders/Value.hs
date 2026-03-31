@@ -351,8 +351,11 @@ citext :: Value Text
 citext = Value Nothing "citext" Nothing Nothing 0 (RequestingOid.lift Binary.text_strict)
 
 -- |
--- Reset the OIDs and rename the type of a value decoder.
--- This is useful for mapping to domain types (@CREATE DOMAIN@).
+-- Rename the type of a value decoder while preserving OID-based type checking.
+-- This is useful for mapping to domain types (@CREATE DOMAIN@), which share
+-- binary encoding with their base types.  PostgreSQL reports domain columns
+-- using the base type OID, so the original static OIDs are preserved so that
+-- OID checking continues to work correctly.
 {-# INLINE rename #-}
 rename ::
   -- | Schema name where the type is defined.
@@ -361,8 +364,8 @@ rename ::
   Text ->
   Value a ->
   Value a
-rename schema typeName (Value _ _ _ _ dimensionality decoder) =
-  Value schema typeName Nothing Nothing dimensionality decoder
+rename schema typeName (Value _ _ typeOid arrayOid dimensionality decoder) =
+  Value schema typeName typeOid arrayOid dimensionality decoder
 
 -- |
 -- Low level API for defining custom value decoders.
