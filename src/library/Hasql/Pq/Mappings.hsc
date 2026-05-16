@@ -3,7 +3,7 @@ module Hasql.Pq.Mappings where
 #include "libpq-fe.h"
 
 import Foreign.C.Types (CInt (..))
-import Hasql.Platform.Prelude
+import Prelude
 
 data ExecStatus
   = EmptyQuery

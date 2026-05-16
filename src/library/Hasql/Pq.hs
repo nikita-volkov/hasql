@@ -22,9 +22,13 @@ where
 
 import Database.PostgreSQL.LibPQ as Base hiding (ExecStatus (..), PipelineStatus (..), enterPipelineMode, exitPipelineMode, pipelineStatus, pipelineSync, resultStatus, sendFlushRequest)
 import Database.PostgreSQL.LibPQ.Internal qualified as BaseInternal
-import Hasql.Platform.Prelude
+import Data.Word (Word32)
+import Foreign.ForeignPtr (withForeignPtr)
+import Foreign.Ptr (Ptr)
+import Unsafe.Coerce (unsafeCoerce)
 import Hasql.Pq.Ffi qualified as Ffi
 import Hasql.Pq.Mappings qualified as Mappings
+import Prelude
 
 resultStatus :: Result -> IO Mappings.ExecStatus
 resultStatus result = do

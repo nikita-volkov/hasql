@@ -10,18 +10,19 @@ import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
+import Hasql.Driver.Interface qualified as Interface
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 
 run ::
-  Pipeline a ->
+  Interface.Driver conn result ->
+  Pipeline conn a ->
   Bool ->
-  Pq.Connection ->
+  conn ->
   OidCache.OidCache ->
   StatementCache.StatementCache ->
   IO
@@ -29,9 +30,9 @@ run ::
       OidCache.OidCache,
       StatementCache.StatementCache
     )
-run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection oidCache statementCache = do
+run drv (Pipeline totalStatements unknownTypes runFn) usePreparedStatements connection oidCache statementCache = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
-  oidCacheUpdates <- PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
+  oidCacheUpdates <- PqProcedures.SelectTypeInfo.run drv connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
   case oidCacheUpdates of
     Left err -> pure (Left err, oidCache, statementCache)
     Right oidCacheUpdates -> do
@@ -43,7 +44,7 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
         else do
           let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
 
-          let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+          let (roundtrip, newStatementCache) = runFn 0 usePreparedStatements drv (OidCache.toHashMap newOidCache) statementCache
 
           result <-
             let adaptedRoundtrip = first adaptContext roundtrip
@@ -51,7 +52,7 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
                     adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
                     adaptContext (Context index sql params prepared) =
                       Just (totalStatements, index, sql, params, prepared)
-             in Comms.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
+             in Comms.Roundtrip.toPipelineIO drv adaptedRoundtrip Nothing connection
                   & fmap
                     ( first
                         ( \case
@@ -124,7 +125,7 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
 --     transactions <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderFinancialTransactions
 --     pure (details, products, transactions)
 -- @
-data Pipeline a
+data Pipeline conn a
   = Pipeline
       -- | Amount of statements in this pipeline.
       Int
@@ -133,7 +134,7 @@ data Pipeline a
       -- They will be used to pre-resolve type OIDs before running the pipeline providing them in OidCache.
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
-      -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
+      -- In the execution function we will be defaulting to OID 0 for unknown types as a fallback in case of bugs.
       (HashSet (Maybe Text, Text))
       -- | Function that runs the pipeline.
       --
@@ -141,16 +142,20 @@ data Pipeline a
       --
       -- The boolean parameter indicates whether preparable statements should be prepared.
       --
+      -- The driver is provided to construct Send/Recv actions.
+      --
       -- OidCache is provided in which the names of types used in this pipeline are already resolved.
       --
       -- The function takes the current statement cache and returns a tuple of:
       -- 1. The actual roundtrip action to be executed in the pipeline.
       -- 2. The updated statement cache after executing this part of the pipeline.
-      ( Int ->
+      ( forall result.
+        Int ->
         Bool ->
+        Interface.Driver conn result ->
         HashMap (Maybe Text, Text) (Word32, Word32) ->
         StatementCache.StatementCache ->
-        (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
+        (Comms.Roundtrip.Roundtrip conn Context a, StatementCache.StatementCache)
       )
 
 data Context
@@ -167,21 +172,21 @@ data Context
 
 -- * Instances
 
-instance Functor Pipeline where
-  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset usePreparedStatements oidCache cache ->
-    let (roundtrip, newStatementCache) = run offset usePreparedStatements oidCache cache
+instance Functor (Pipeline conn) where
+  fmap f (Pipeline count unknownTypes runFn) = Pipeline count unknownTypes \offset usePreparedStatements drv oidCache cache ->
+    let (roundtrip, newStatementCache) = runFn offset usePreparedStatements drv oidCache cache
      in (fmap f roundtrip, newStatementCache)
 
-instance Applicative Pipeline where
+instance Applicative (Pipeline conn) where
   pure a =
-    Pipeline 0 mempty (\_ _ _ cache -> (pure a, cache))
+    Pipeline 0 mempty (\_ _ _ _ cache -> (pure a, cache))
 
   Pipeline lCount leftUnknownTypes lRun <*> Pipeline rCount rightUnknownTypes rRun =
     let unknownTypes = leftUnknownTypes <> rightUnknownTypes
-     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements oidCache statementCache ->
-          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements oidCache statementCache
+     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements drv oidCache statementCache ->
+          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements drv oidCache statementCache
               offset1 = offset + lCount
-              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements oidCache statementCache1
+              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements drv oidCache statementCache1
            in (lRoundtrip <*> rRoundtrip, statementCache2)
 
 -- * Construction
@@ -194,62 +199,46 @@ statement ::
   Decoders.Result.Result result ->
   Bool ->
   params ->
-  Pipeline result
+  Pipeline conn result
 statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
-  Pipeline 1 unknownTypes run
+  Pipeline 1 unknownTypes
+    ( \offset usePreparedStatements drv oidCache statementCache ->
+        let (oidList, valueAndFormatList) =
+              Params.compilePreparedStatementData encoder oidCache params
+
+            prepare =
+              usePreparedStatements && preparable
+
+            context =
+              Context
+                offset
+                sql
+                (Params.renderReadable encoder params)
+                prepare
+
+            decoder' =
+              RequestingOid.toBase decoder oidCache
+         in if prepare
+              then
+                let (isNew, remoteKey, newStatementCache) =
+                      case StatementCache.lookup sql oidList statementCache of
+                        Just remoteKey -> (False, remoteKey, statementCache)
+                        Nothing ->
+                          let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
+                           in (True, remoteKey, newStatementCache)
+                    roundtrip =
+                      when isNew (Comms.Roundtrip.prepare drv context remoteKey sql oidList)
+                        *> Comms.Roundtrip.queryPrepared drv context remoteKey valueAndFormatList decoder'
+                 in (roundtrip, newStatementCache)
+              else
+                let roundtrip =
+                      Comms.Roundtrip.queryParams drv context sql
+                        (Params.compileUnpreparedStatementData encoder oidCache params)
+                        decoder'
+                 in (roundtrip, statementCache)
+    )
   where
     unknownTypes =
       Params.toUnknownTypes encoder
         <> RequestingOid.toUnknownTypes decoder
-    run offset usePreparedStatements oidCache =
-      if prepare
-        then runPrepared
-        else runUnprepared
-      where
-        (oidList, valueAndFormatList) =
-          Params.compilePreparedStatementData encoder oidCache params
 
-        pqOidList =
-          fmap (Pq.Oid . fromIntegral) oidList
-
-        prepare =
-          usePreparedStatements && preparable
-
-        context =
-          Context
-            offset
-            sql
-            (Params.renderReadable encoder params)
-            prepare
-
-        runPrepared statementCache =
-          (roundtrip, newStatementCache)
-          where
-            (isNew, remoteKey, newStatementCache) =
-              case StatementCache.lookup sql pqOidList statementCache of
-                Just remoteKey -> (False, remoteKey, statementCache)
-                Nothing ->
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
-                   in (True, remoteKey, newStatementCache)
-
-            roundtrip =
-              when isNew (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
-                *> Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
-              where
-                encodedParams =
-                  valueAndFormatList
-                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
-
-        runUnprepared statementCache =
-          (roundtrip, statementCache)
-          where
-            roundtrip =
-              Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder'
-              where
-                encodedParams =
-                  params
-                    & Params.compileUnpreparedStatementData encoder oidCache
-                    & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
-
-        decoder' =
-          RequestingOid.toBase decoder oidCache

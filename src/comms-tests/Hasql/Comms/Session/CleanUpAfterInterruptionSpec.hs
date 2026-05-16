@@ -1,6 +1,7 @@
 module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
 import Hasql.Comms.Session qualified as Session
+import Hasql.LibpqDriver (libpqDriver)
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 import Test.Hspec
@@ -20,7 +21,7 @@ spec = do
         status `shouldBe` Pq.PipelineOn
 
         -- Run cleanup
-        result <- Session.toHandler Session.cleanUpAfterInterruption connection
+        result <- Session.toHandler (Session.cleanUpAfterInterruption libpqDriver) connection
         result `shouldBe` Right ()
 
         -- Verify we're out of pipeline mode
@@ -37,7 +38,7 @@ spec = do
         transStatus `shouldBe` Pq.TransInTrans
 
         -- Run cleanup
-        result <- Session.toHandler Session.cleanUpAfterInterruption connection
+        result <- Session.toHandler (Session.cleanUpAfterInterruption libpqDriver) connection
         result `shouldBe` Right ()
 
         -- Verify transaction was aborted (idle state)
@@ -57,7 +58,7 @@ spec = do
         transStatus `shouldBe` Pq.TransInError
 
         -- Run cleanup
-        result <- Session.toHandler Session.cleanUpAfterInterruption connection
+        result <- Session.toHandler (Session.cleanUpAfterInterruption libpqDriver) connection
         result `shouldBe` Right ()
 
         -- Verify transaction was aborted (idle state)
@@ -71,7 +72,7 @@ spec = do
         success `shouldBe` True
 
         -- Run cleanup (should drain results)
-        result <- Session.toHandler Session.cleanUpAfterInterruption connection
+        result <- Session.toHandler (Session.cleanUpAfterInterruption libpqDriver) connection
         result `shouldBe` Right ()
 
         -- Verify connection is in idle state
@@ -93,7 +94,7 @@ spec = do
         _ <- Pq.execPrepared connection "test_stmt" [Just ("42", Pq.Text)] Pq.Text
 
         -- Run cleanup (should deallocate all statements)
-        cleanupResult <- Session.toHandler Session.cleanUpAfterInterruption connection
+        cleanupResult <- Session.toHandler (Session.cleanUpAfterInterruption libpqDriver) connection
         cleanupResult `shouldBe` Right ()
 
         -- Try to execute the prepared statement - it should fail now

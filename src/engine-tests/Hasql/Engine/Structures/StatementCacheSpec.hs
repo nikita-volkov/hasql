@@ -1,7 +1,6 @@
 module Hasql.Engine.Structures.StatementCacheSpec (spec) where
 
-import Data.Maybe (isJust, isNothing)
-import Database.PostgreSQL.LibPQ (Oid (..))
+import Data.Maybe (isJust)
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Test.Hspec
 import Prelude
@@ -25,15 +24,15 @@ spec = do
       key1 `shouldNotBe` key2
 
     it "generates unique remote keys for same SQL with different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
+      let oid23 = 23 :: Word32
+          oid25 = 25 :: Word32
           (key1, cache1) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
           (key2, _cache2) = StatementCache.insert "SELECT $1" [oid25] cache1
       key1 `shouldNotBe` key2
 
     it "distinguishes statements with same SQL but different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
+      let oid23 = 23 :: Word32
+          oid25 = 25 :: Word32
           (_key1, cache1) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
           (_key2, cache2) = StatementCache.insert "SELECT $1" [oid25] cache1
       -- Both should be findable
@@ -52,8 +51,8 @@ spec = do
         `shouldBe` Nothing
 
     it "returns Nothing for matching SQL but different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
+      let oid23 = 23 :: Word32
+          oid25 = 25 :: Word32
           (_key, cache) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
       StatementCache.lookup "SELECT $1" [oid25] cache
         `shouldBe` Nothing
@@ -64,14 +63,14 @@ spec = do
         `shouldBe` Just key
 
     it "handles multiple OIDs" do
-      let oids = [Oid 23, Oid 25, Oid 1043]
+      let oids = [23, 25, 1043 :: Word32]
           (key, cache) = StatementCache.insert "SELECT $1, $2, $3" oids StatementCache.empty
       StatementCache.lookup "SELECT $1, $2, $3" oids cache
         `shouldBe` Just key
 
     it "distinguishes different OID ordering" do
-      let oidsA = [Oid 23, Oid 25]
-          oidsB = [Oid 25, Oid 23]
+      let oidsA = [23, 25 :: Word32]
+          oidsB = [25, 23 :: Word32]
           (_keyA, cache1) = StatementCache.insert "SELECT $1, $2" oidsA StatementCache.empty
           (_keyB, cache2) = StatementCache.insert "SELECT $1, $2" oidsB cache1
       StatementCache.lookup "SELECT $1, $2" oidsA cache2

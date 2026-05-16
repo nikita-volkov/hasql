@@ -13,17 +13,19 @@ import Hasql.Comms.Session qualified as Comms.Session
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
+import Hasql.Driver.Interface qualified as Interface
 import Hasql.Engine.Contexts.Session qualified as Session
 import Hasql.Engine.Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.LibpqDriver (libpqDriver)
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
 -- |
 -- A single connection to the database.
 newtype Connection
-  = Connection (MVar ConnectionState.ConnectionState)
+  = Connection (MVar (ConnectionState.ConnectionState Pq.Connection Pq.Result))
 
 -- |
 -- Establish a connection according to the provided settings.
@@ -34,32 +36,32 @@ acquire settings =
   {-# SCC "acquire" #-}
   runExceptT do
     let config = Config.construct settings
+        drv = libpqDriver
 
     -- Connect:
-    pqConnection <- lift (Pq.connectdb (Config.connectionString config))
+    pqConnection <- lift (Interface.driverConnect drv (Config.connectionString config))
 
     -- Check status:
-    status <- lift (Pq.status pqConnection)
-    case status of
-      Pq.ConnectionOk -> pure ()
-      _ -> do
-        errorMessage <- lift (Pq.errorMessage pqConnection)
-        throwError (interpretConnectionError errorMessage)
+    connectionOk <- lift (Interface.driverConnectOk drv pqConnection)
+    unless connectionOk $ do
+      errorMessage <- lift (Interface.driverErrorMessage drv pqConnection)
+      throwError (interpretConnectionError errorMessage)
 
     -- Check version:
-    version <- lift (ServerVersion.load pqConnection)
+    version <- lift (ServerVersion.load (Interface.driverServerVersion drv) pqConnection)
     when (version < ServerVersion.minimum) do
       throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
 
     -- Initialize:
     lift do
-      Pq.exec pqConnection do
+      Interface.driverExec drv pqConnection
         "SET client_encoding = 'UTF8';\n\
         \SET client_min_messages TO WARNING;"
 
     let connectionState =
           ConnectionState.ConnectionState
-            { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
+            { ConnectionState.driver = drv,
+              ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
               ConnectionState.statementCache = StatementCache.empty,
               ConnectionState.oidCache = mempty,
               ConnectionState.connection = pqConnection
@@ -103,13 +105,14 @@ release :: Connection -> IO ()
 release (Connection connectionRef) =
   mask_ do
     connectionState <- readMVar connectionRef
-    Pq.finish (ConnectionState.connection connectionState)
+    let drv = ConnectionState.driver connectionState
+    Interface.driverDisconnect drv (ConnectionState.connection connectionState)
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
 --
 -- Blocks until the connection is available when there is another session running upon the connection on a different thread.
-use :: Connection -> Session.Session a -> IO (Either SessionError a)
+use :: Connection -> Session.Session Pq.Connection a -> IO (Either SessionError a)
 use (Connection var) session =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
@@ -118,12 +121,12 @@ use (Connection var) session =
       Left exception -> do
         -- If an exception happened, we need to bring the connection back to idle
         -- without resetting (to preserve session state).
-        result <- Comms.Session.toHandler Comms.Session.cleanUpAfterInterruption connection
+        result <- Comms.Session.toHandler (Comms.Session.cleanUpAfterInterruption driver) connection
         case result of
           Left err -> do
             -- If cleanup failed, we have to close the connection.
             -- There's not much else we can do.
-            Pq.finish connection
+            Interface.driverDisconnect driver connection
             putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             let message =
                   mconcat

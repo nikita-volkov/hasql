@@ -13,9 +13,9 @@ import Hasql.Codecs.Encoders.Params qualified as Encoders.Params
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
+import Hasql.Driver.Interface qualified as Interface
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
@@ -26,13 +26,13 @@ newtype SelectTypeInfo = SelectTypeInfo
 type SelectTypeInfoResult =
   HashMap (Maybe Text, Text) (Word32, Word32)
 
-run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
-run connection (SelectTypeInfo keys) =
+run :: Interface.Driver conn result -> conn -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
+run drv connection (SelectTypeInfo keys) =
   if HashSet.null keys
     then pure (Right HashMap.empty)
     else
       first Errors.fromRoundtripError
-        <$> Hasql.Comms.Roundtrip.toSerialIO (roundtrip (SelectTypeInfo keys)) connection
+        <$> Hasql.Comms.Roundtrip.toSerialIO (roundtrip drv (SelectTypeInfo keys)) connection
 
 sql :: ByteString
 sql =
@@ -68,22 +68,13 @@ sql =
   \union\n\
   \select * from namespaced_results"
 
-roundtrip :: SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip () SelectTypeInfoResult
-roundtrip params =
-  Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
+roundtrip :: Interface.Driver conn result -> SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip conn () SelectTypeInfoResult
+roundtrip drv params =
+  Hasql.Comms.Roundtrip.queryParams drv () sql (encodeParams params) decoder
 
-encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
+encodeParams :: SelectTypeInfo -> [Maybe (Word32, ByteString, Bool)]
 encodeParams =
-  fmap
-    ( fmap
-        ( \(oid, bytes, format) ->
-            ( Pq.Oid (fromIntegral oid),
-              bytes,
-              bool Pq.Binary Pq.Text format
-            )
-        )
-    )
-    . Encoders.Params.compileUnpreparedStatementData paramsEncoder mempty
+  Encoders.Params.compileUnpreparedStatementData paramsEncoder mempty
 
 paramsEncoder :: Encoders.Params SelectTypeInfo
 paramsEncoder =

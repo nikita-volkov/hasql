@@ -8,14 +8,14 @@ module Hasql.Comms.Recv
 where
 
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
+import Hasql.Driver.Interface qualified as Interface
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 
-newtype Recv context a
-  = Recv (Pq.Connection -> IO (Either (Error context) a))
+newtype Recv conn context a
+  = Recv (conn -> IO (Either (Error context) a))
   deriving stock (Functor)
 
-instance Applicative (Recv context) where
+instance Applicative (Recv conn context) where
   {-# INLINE pure #-}
   pure x = Recv \_ -> pure (Right x)
   {-# INLINE (<*>) #-}
@@ -25,47 +25,41 @@ instance Applicative (Recv context) where
       eg <- recv2 cs
       pure (ef <*> eg)
 
-instance Bifunctor Recv where
+instance Bifunctor (Recv conn) where
   {-# INLINE bimap #-}
   bimap f g (Recv recv) = Recv (fmap (bimap (fmap f) g) . recv)
 
-toHandler :: Recv context a -> Pq.Connection -> IO (Either (Error context) a)
+toHandler :: Recv conn context a -> conn -> IO (Either (Error context) a)
 toHandler (Recv recv) = recv
 
 -- | Exactly one result.
-singleResult :: context -> ResultDecoder.ResultDecoder a -> Recv context a
-singleResult context handler = Recv \connection -> runExceptT do
-  result <- ExceptT do
-    result <- Pq.getResult connection
-    case result of
+singleResult :: Interface.Driver conn result -> context -> ResultDecoder.ResultDecoder a -> Recv conn context a
+singleResult drv context handler = Recv \connection -> runExceptT do
+  firstResult <- ExceptT do
+    mResult <- Interface.driverGetResult drv connection
+    case mResult of
       Nothing -> do
-        errorMessage <- Pq.errorMessage connection
+        errorMessage <- Interface.driverErrorMessage drv connection
         pure (Left (NoResultsError context errorMessage))
-      Just result -> pure (Right result)
+      Just r -> pure (Right r)
   ExceptT do
-    result <- Pq.getResult connection
-    case result of
-      Nothing -> pure (Right result)
+    mExtra <- Interface.driverGetResult drv connection
+    case mExtra of
+      Nothing -> pure (Right ())
       Just _ -> pure (Left (TooManyResultsError context 1))
-  result <- ExceptT do
-    result <- ResultDecoder.toHandler handler result
-    pure (first (ResultError context 0) result)
-  pure result
+  ExceptT do
+    decoded <- ResultDecoder.toHandler handler (Interface.driverResult drv) firstResult
+    pure (first (ResultError context 0) decoded)
 
 -- | Consume all results from a multi-statement query (e.g., scripts).
--- Each result is decoded using the provided handler.
--- This is useful for scripts that may contain multiple statements,
--- where each statement produces a result that needs to be validated.
--- All results are consumed even if an error occurs, to leave the connection
--- in a clean state.
-allResults :: context -> ResultDecoder.ResultDecoder a -> Recv context ()
-allResults context handler = Recv \connection -> do
+allResults :: Interface.Driver conn result -> context -> ResultDecoder.ResultDecoder a -> Recv conn context ()
+allResults drv context handler = Recv \connection -> do
   let loop resultIndex maybeError = do
-        result <- Pq.getResult connection
+        result <- Interface.driverGetResult drv connection
         case result of
           Nothing -> pure maybeError
           Just result -> do
-            decodedResult <- ResultDecoder.toHandler handler result
+            decodedResult <- ResultDecoder.toHandler handler (Interface.driverResult drv) result
             case decodedResult of
               Left err ->
                 -- Continue consuming results even after error to clean up connection

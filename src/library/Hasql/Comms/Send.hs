@@ -1,18 +1,18 @@
 module Hasql.Comms.Send where
 
+import Hasql.Driver.Interface qualified as Interface
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 
 data Result context
   = Ok
   | Error context (Maybe ByteString)
   deriving stock (Eq, Show, Functor)
 
-newtype Send context
-  = Send (Pq.Connection -> IO (Result context))
+newtype Send conn context
+  = Send (conn -> IO (Result context))
   deriving stock (Functor)
 
-instance Semigroup (Send context) where
+instance Semigroup (Send conn context) where
   {-# INLINE (<>) #-}
   Send send1 <> Send send2 = Send \cs -> do
     result <- send1 cs
@@ -22,46 +22,60 @@ instance Semigroup (Send context) where
         result2 <- send2 cs
         pure result2
 
-instance Monoid (Send context) where
+instance Monoid (Send conn context) where
   {-# INLINE mempty #-}
   mempty = Send \_ -> pure Ok
 
-toHandler :: Send context -> Pq.Connection -> IO (Result context)
+toHandler :: Send conn context -> conn -> IO (Result context)
 toHandler (Send send) = send
 
-liftPqSend :: context -> (Pq.Connection -> IO Bool) -> Send context
-liftPqSend context pqSend = Send \connection -> do
-  success <- pqSend connection
+liftSend :: context -> (conn -> IO Bool) -> (conn -> IO (Maybe ByteString)) -> Send conn context
+liftSend context sendFn getErrorMessage = Send \connection -> do
+  success <- sendFn connection
   if success
     then pure Ok
     else do
-      errorMessage <- Pq.errorMessage connection
+      errorMessage <- getErrorMessage connection
       pure (Error context errorMessage)
 
-prepare :: context -> ByteString -> ByteString -> Maybe [Pq.Oid] -> Send context
-prepare context statementName sql oidList =
-  liftPqSend context \connection -> Pq.sendPrepare connection statementName sql oidList
+prepare :: Interface.Driver conn result -> context -> ByteString -> ByteString -> [Word32] -> Send conn context
+prepare drv context statementName sql oidList =
+  liftSend context
+    (\connection -> Interface.driverSendPrepare drv connection statementName sql oidList)
+    (Interface.driverErrorMessage drv)
 
-query :: context -> ByteString -> Send context
-query context sql =
-  liftPqSend context \connection -> Pq.sendQuery connection sql
+query :: Interface.Driver conn result -> context -> ByteString -> Send conn context
+query drv context sql =
+  liftSend context
+    (\connection -> Interface.driverSendQuery drv connection sql)
+    (Interface.driverErrorMessage drv)
 
-queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send context
-queryPrepared context statementName params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
+queryPrepared :: Interface.Driver conn result -> context -> ByteString -> [Maybe (ByteString, Bool)] -> Send conn context
+queryPrepared drv context statementName params =
+  liftSend context
+    (\connection -> Interface.driverSendQueryPrepared drv connection statementName params)
+    (Interface.driverErrorMessage drv)
 
-queryParams :: context -> ByteString -> [Maybe (Pq.Oid, ByteString, Pq.Format)] -> Pq.Format -> Send context
-queryParams context sql params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryParams connection sql params resultFormat
+queryParams :: Interface.Driver conn result -> context -> ByteString -> [Maybe (Word32, ByteString, Bool)] -> Send conn context
+queryParams drv context sql params =
+  liftSend context
+    (\connection -> Interface.driverSendQueryParams drv connection sql params)
+    (Interface.driverErrorMessage drv)
 
-pipelineSync :: context -> Send context
-pipelineSync context =
-  liftPqSend context \connection -> Pq.pipelineSync connection
+pipelineSync :: Interface.Driver conn result -> context -> Send conn context
+pipelineSync drv context =
+  liftSend context
+    (Interface.driverPipelineSync drv)
+    (Interface.driverErrorMessage drv)
 
-enterPipelineMode :: context -> Send context
-enterPipelineMode context =
-  liftPqSend context \connection -> Pq.enterPipelineMode connection
+enterPipelineMode :: Interface.Driver conn result -> context -> Send conn context
+enterPipelineMode drv context =
+  liftSend context
+    (Interface.driverEnterPipelineMode drv)
+    (Interface.driverErrorMessage drv)
 
-exitPipelineMode :: context -> Send context
-exitPipelineMode context =
-  liftPqSend context \connection -> Pq.exitPipelineMode connection
+exitPipelineMode :: Interface.Driver conn result -> context -> Send conn context
+exitPipelineMode drv context =
+  liftSend context
+    (Interface.driverExitPipelineMode drv)
+    (Interface.driverErrorMessage drv)
