@@ -124,6 +124,47 @@ spec = do
           Right _ ->
             expectationFailure "Second run unexpectedly succeeded"
 
+    it "A pipeline with a broken statement first and a valid one after it can be retried with the same syntax error" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        let broken = Statement.preparable "S" mempty Decoders.noResult
+            ok = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+        result1 <- Connection.use connection do
+          Session.pipeline do
+            (,)
+              <$> Pipeline.statement () broken
+              <*> Pipeline.statement () ok
+        error1 <- case result1 of
+          Left error1 -> pure error1
+          Right _ -> fail "First run unexpectedly succeeded"
+
+        result2 <- Connection.use connection do
+          Session.pipeline do
+            (,)
+              <$> Pipeline.statement () broken
+              <*> Pipeline.statement () ok
+        error2 <- case result2 of
+          Left error2 -> pure error2
+          Right _ -> fail "Second run unexpectedly succeeded"
+        shouldBe error2 error1
+
+    it "A valid statement after a broken pipeline statement still prepares in a later pipeline" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        let broken = Statement.preparable "S" mempty Decoders.noResult
+            trailing = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+        result1 <- Connection.use connection do
+          Session.pipeline do
+            (,)
+              <$> Pipeline.statement () broken
+              <*> Pipeline.statement () trailing
+        shouldBe (isLeft result1) True
+
+        result2 <- Connection.use connection do
+          Session.pipeline do
+            Pipeline.statement () trailing
+        case result2 of
+          Right val -> val `shouldBe` 1
+          Left err -> expectationFailure ("Unexpected error on follow-up pipeline: " <> show err)
+
     it "A pipeline with successful statements followed by a broken one can be retried without 'already exists' errors" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let ok1 = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
