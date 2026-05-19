@@ -80,7 +80,7 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
 -- An obvious question rises then: why not execute all queries like that?
 -- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next.
 -- This reasoning is essentially the same as the one for the difference between 'Applicative' and 'Monad'.
--- That\'s why 'Pipeline' does not have the 'Monad' instance.
+-- That's why 'Pipeline' does not have the 'Monad' instance.
 --
 -- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
 --
@@ -103,7 +103,7 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
 -- insertOrders :: [OrderDetails] -> 'Hasql.Session.Session' [OrderId]
 -- insertOrders orders =
 --   'Hasql.Session.pipeline' $
---     for orders $ \\order ->
+--     for orders $ \order ->
 --       'Hasql.Pipeline.statement' order Statements.insertOrder
 -- @
 --
