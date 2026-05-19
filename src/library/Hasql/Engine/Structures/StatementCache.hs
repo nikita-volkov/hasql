@@ -5,7 +5,6 @@ module Hasql.Engine.Structures.StatementCache
     lookup,
     insert,
     reset,
-    revertTo,
   )
 where
 
@@ -44,16 +43,6 @@ insert sql oids (StatementCache hashMap counter) = (remoteKey, newState)
 {-# INLINEABLE reset #-}
 reset :: StatementCache -> StatementCache
 reset _ = StatementCache HashMap.empty 0
-
--- | Revert the entries to those of the provided cache, preserving the counter of the receiver.
---
--- This is useful when a pipeline fails and we want to discard tentative entries
--- (which might not have been successfully prepared on the server)
--- while keeping the counter advanced to avoid name collisions with orphaned server-side statements.
-{-# INLINEABLE revertTo #-}
-revertTo :: StatementCache -> StatementCache -> StatementCache
-revertTo (StatementCache oldHashMap _) (StatementCache _ newCounter) =
-  StatementCache oldHashMap newCounter
 
 -- |
 -- Local statement key.
