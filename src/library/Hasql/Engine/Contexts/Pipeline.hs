@@ -55,40 +55,19 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
                       Comms.Roundtrip.ClientError _context details ->
                         Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
                       Comms.Roundtrip.ServerError recvError ->
-                        Errors.fromRecvError (fmap (fmap adaptContext) recvError)
+                        Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
                   )
                   executionResult
               finalStatementCache =
                 case executionResult of
                   Right _ -> newStatementCache
                   Left executionError ->
-                    fromMaybe statementCache (extractStatementCacheFromRoundtripError executionError)
+                    maybe
+                      statementCache
+                      (\(Context _ _ _ _ statementCache) -> statementCache)
+                      (extract executionError)
 
           pure (result, newOidCache, finalStatementCache)
-  where
-    adaptContext :: Context -> (Int, Int, ByteString, [Text], Bool)
-    adaptContext (Context index sql params prepared _statementCache) =
-      (totalStatements, index, sql, params, prepared)
-
-    extractStatementCacheFromRoundtripError :: Comms.Roundtrip.Error (Maybe Context) -> Maybe StatementCache.StatementCache
-    extractStatementCacheFromRoundtripError = \case
-      Comms.Roundtrip.ClientError maybeContext _details ->
-        fmap contextStatementCache maybeContext
-      Comms.Roundtrip.ServerError recvError ->
-        extractStatementCacheFromRecvError recvError
-
-    extractStatementCacheFromRecvError :: Comms.Recv.Error (Maybe Context) -> Maybe StatementCache.StatementCache
-    extractStatementCacheFromRecvError = \case
-      Comms.Recv.ResultError maybeContext _resultOffset _resultDecoderError ->
-        fmap contextStatementCache maybeContext
-      Comms.Recv.NoResultsError maybeContext _details ->
-        fmap contextStatementCache maybeContext
-      Comms.Recv.TooManyResultsError maybeContext _actual ->
-        fmap contextStatementCache maybeContext
-
-    contextStatementCache :: Context -> StatementCache.StatementCache
-    contextStatementCache (Context _ _ _ _ statementCache) =
-      statementCache
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).

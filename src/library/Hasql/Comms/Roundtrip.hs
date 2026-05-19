@@ -126,4 +126,15 @@ script context sql =
 data Error context
   = ClientError context (Maybe ByteString)
   | ServerError (Recv.Error context)
-  deriving stock (Show, Eq)
+  deriving stock (Show, Eq, Functor)
+
+instance Comonad Error where
+  {-# INLINE extract #-}
+  extract = \case
+    ClientError context _ -> context
+    ServerError recvError -> extract recvError
+
+  {-# INLINE duplicate #-}
+  duplicate = \case
+    clientError@(ClientError _ details) -> ClientError clientError details
+    ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))

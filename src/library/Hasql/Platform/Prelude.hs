@@ -10,6 +10,7 @@ where
 import Control.Applicative as Exports hiding (WrappedArrow (..))
 import Control.Arrow as Exports hiding (first, second)
 import Control.Category as Exports
+import Control.Comonad as Exports (Comonad (..))
 import Control.Concurrent as Exports
 import Control.Exception as Exports hiding (Handler)
 import Control.Monad as Exports hiding (fail, forM, forM_, mapM, mapM_, msum, sequence, sequence_)
