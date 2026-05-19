@@ -12,7 +12,7 @@ description:
   The API comes free from all kinds of exceptions.
   All error-reporting is explicit and is presented using the 'Either' type.
 
-  \"hasql\" requires you to have the "\libpq\" C-library of at least version 14 installed to compile.
+  \"hasql\" requires you to have the \"libpq\" C-library of at least version 14 installed to compile.
   \"libpq\" comes distributed with PostgreSQL,
   so typically all you need is just to install the latest PostgreSQL distro.
 
