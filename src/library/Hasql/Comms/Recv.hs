@@ -93,3 +93,16 @@ data Error context
       -- | Expected count.
       Int
   deriving stock (Show, Eq, Functor)
+
+instance Comonad Error where
+  {-# INLINE extract #-}
+  extract = \case
+    ResultError context _ _ -> context
+    NoResultsError context _ -> context
+    TooManyResultsError context _ -> context
+
+  {-# INLINE duplicate #-}
+  duplicate e = case e of
+    ResultError _ resultIndex resultError -> ResultError e resultIndex resultError
+    NoResultsError _ details -> NoResultsError e details
+    TooManyResultsError _ expectedCount -> TooManyResultsError e expectedCount

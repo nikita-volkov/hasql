@@ -9,6 +9,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Comms.Recv qualified as Comms.Recv
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
@@ -29,7 +30,7 @@ run ::
       OidCache.OidCache,
       StatementCache.StatementCache
     )
-run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection oidCache statementCache = do
+run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements connection oidCache statementCache = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
   oidCacheUpdates <- PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
   case oidCacheUpdates of
@@ -42,29 +43,29 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
         then pure (Left (Errors.MissingTypesSessionError notFoundTypes), oidCache, statementCache)
         else do
           let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
+              (roundtrip, newStatementCache) =
+                runPipeline 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+              contextualRoundtrip = first Just roundtrip
 
-          let (roundtrip, newStatementCache) = run 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+          executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
 
-          result <-
-            let adaptedRoundtrip = first adaptContext roundtrip
-                  where
-                    adaptContext :: Context -> Maybe (Int, Int, ByteString, [Text], Bool)
-                    adaptContext (Context index sql params prepared) =
-                      Just (totalStatements, index, sql, params, prepared)
-             in Comms.Roundtrip.toPipelineIO adaptedRoundtrip Nothing connection
-                  & fmap
-                    ( first
-                        ( \case
-                            Comms.Roundtrip.ClientError _context details ->
-                              Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                            Comms.Roundtrip.ServerError recvError ->
-                              Errors.fromRecvError recvError
-                        )
-                    )
-
-          let finalStatementCache = case result of
-                Left _ -> StatementCache.revertTo statementCache newStatementCache
-                Right _ -> newStatementCache
+          let result =
+                first
+                  ( \case
+                      Comms.Roundtrip.ClientError _context details ->
+                        Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                      Comms.Roundtrip.ServerError recvError ->
+                        Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
+                  )
+                  executionResult
+              finalStatementCache =
+                case executionResult of
+                  Right _ -> newStatementCache
+                  Left executionError ->
+                    maybe
+                      statementCache
+                      (\(Context _ _ _ _ statementCache) -> statementCache)
+                      (extract executionError)
 
           pure (result, newOidCache, finalStatementCache)
 
@@ -149,7 +150,10 @@ data Pipeline a
       --
       -- The function takes the current statement cache and returns a tuple of:
       -- 1. The actual roundtrip action to be executed in the pipeline.
-      -- 2. The updated statement cache after executing this part of the pipeline.
+      -- 2. The updated statement cache after composing this part of the pipeline.
+      --
+      -- The resulting cache is optimistic: on failure we recover the last known
+      -- committed cache from statement contexts carried by roundtrip errors.
       ( Int ->
         Bool ->
         HashMap (Maybe Text, Text) (Word32, Word32) ->
@@ -167,6 +171,8 @@ data Context
       [Text]
       -- | Whether the statement is prepared.
       Bool
+      -- | The so far successfully updated statement cache.
+      StatementCache.StatementCache
   deriving stock (Show, Eq)
 
 -- * Instances
@@ -219,12 +225,13 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
         prepare =
           usePreparedStatements && preparable
 
-        context =
+        context soFarStatementCache =
           Context
             offset
             sql
             (Params.renderReadable encoder params)
             prepare
+            soFarStatementCache
 
         runPrepared statementCache =
           (roundtrip, newStatementCache)
@@ -237,8 +244,10 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
                    in (True, remoteKey, newStatementCache)
 
             roundtrip =
-              when isNew (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
-                *> Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder'
+              when
+                isNew
+                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql pqOidList)
+                *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
@@ -248,7 +257,7 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder'
+              Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   params
