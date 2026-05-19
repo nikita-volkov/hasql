@@ -62,7 +62,11 @@ run (Pipeline totalStatements unknownTypes run) usePreparedStatements connection
                         )
                     )
 
-          pure (result, newOidCache, newStatementCache)
+          let finalStatementCache = case result of
+                Left _ -> StatementCache.revertTo statementCache newStatementCache
+                Right _ -> newStatementCache
+
+          pure (result, newOidCache, finalStatementCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
