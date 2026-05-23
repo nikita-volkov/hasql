@@ -74,6 +74,7 @@ module Hasql.Decoders
     enum,
     custom,
     refine,
+    rename,
 
     -- * Array
     Array,

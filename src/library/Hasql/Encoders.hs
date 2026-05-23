@@ -64,6 +64,7 @@ module Hasql.Encoders
     enum,
     composite,
     custom,
+    rename,
     unknown,
 
     -- * Array

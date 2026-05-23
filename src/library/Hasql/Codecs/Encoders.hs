@@ -65,6 +65,7 @@ module Hasql.Codecs.Encoders
     composite,
     Value.unknown,
     Value.custom,
+    Value.rename,
 
     -- * Array
     Array.Array,
