@@ -26,22 +26,22 @@ main =
           sessionBench "manySmallResults" sessionWithManySmallResults,
           sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline,
           -- Isolates the per-statement pipeline-mode overhead that
-          -- 'Session.statement' carries since 1.10 (enter/exit pipeline mode,
+          -- 'Session.statementLegacy' carries since 1.10 (enter/exit pipeline mode,
           -- pipeline sync, async-exception masking).
           --
           -- Both arms of each pair issue N single-statement queries, i.e. N
           -- network roundtrips. The only difference is the execution path:
-          -- "pipeline" uses 'Session.statement' (pipeline-wrapped), "serial"
-          -- uses 'Session.statementSerial' (direct serial). The delta is the
+          -- "pipeline" uses 'Session.statementLegacy' (pipeline-wrapped),
+          -- "serial" uses 'Session.statement' (direct serial). The delta is the
           -- wrapper overhead, with roundtrip count held equal.
           bgroup
             "serialVsPipelineStatement"
-            [ sessionBench "1-pipeline" (sessionWithNStatements 1),
-              sessionBench "1-serial" (sessionWithNStatementsSerial 1),
-              sessionBench "10-pipeline" (sessionWithNStatements 10),
-              sessionBench "10-serial" (sessionWithNStatementsSerial 10),
-              sessionBench "100-pipeline" (sessionWithNStatements 100),
-              sessionBench "100-serial" (sessionWithNStatementsSerial 100)
+            [ sessionBench "1-pipeline" (sessionWithNStatementsLegacy 1),
+              sessionBench "1-serial" (sessionWithNStatements 1),
+              sessionBench "10-pipeline" (sessionWithNStatementsLegacy 10),
+              sessionBench "10-serial" (sessionWithNStatements 10),
+              sessionBench "100-pipeline" (sessionWithNStatementsLegacy 100),
+              sessionBench "100-serial" (sessionWithNStatements 100)
             ]
         ]
       where
@@ -79,9 +79,9 @@ sessionWithNStatements :: Int -> B.Session [(Int64, Int64)]
 sessionWithNStatements n =
   replicateM n (B.statement () statementWithSingleRow)
 
-sessionWithNStatementsSerial :: Int -> B.Session [(Int64, Int64)]
-sessionWithNStatementsSerial n =
-  replicateM n (B.statementSerial () statementWithSingleRow)
+sessionWithNStatementsLegacy :: Int -> B.Session [(Int64, Int64)]
+sessionWithNStatementsLegacy n =
+  replicateM n (B.statementLegacy () statementWithSingleRow)
 
 -- * Statements
 

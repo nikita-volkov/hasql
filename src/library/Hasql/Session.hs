@@ -3,7 +3,7 @@ module Hasql.Session
     Session.pipeline,
     script,
     statement,
-    statementSerial,
+    statementLegacy,
     Session.onLibpqConnection,
   )
 where
@@ -31,21 +31,22 @@ statement params (Statement.Statement sql encoder decoder preparable) =
     params
 
 -- |
--- Execute a statement using a direct serial path, bypassing pipeline mode.
+-- Execute a statement by providing parameters to it,
+-- using the legacy pipeline-wrapped path.
 --
--- This is an opt-in alternative to 'statement'. 'statement' routes every query
--- through pipeline mode, which for a single statement adds per-call overhead
--- (entering and exiting pipeline mode, a pipeline sync, and async-exception
--- masking) without saving any network roundtrips. 'statementSerial' issues the
--- statement directly instead.
+-- This is the pre-1.10 implementation retained for compatibility.
+-- It routes every query through pipeline mode, which for a single statement
+-- adds per-call overhead (entering and exiting pipeline mode, a pipeline sync,
+-- and async-exception masking) without saving any network roundtrips.
 --
--- The first execution of a preparable statement costs an extra network roundtrip
--- (a separate @PARSE@), after which steady-state execution is a single roundtrip.
+-- Prefer the new 'statement' for direct serial execution,
+-- or 'pipeline' when batching multiple statements.
 --
--- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
-statementSerial :: params -> Statement.Statement params result -> Session.Session result
-statementSerial params (Statement.Statement sql encoder decoder preparable) =
-  Session.statementSerial
+-- __Warning:__ This operation is deprecated and will be removed before the
+-- next release.
+statementLegacy :: params -> Statement.Statement params result -> Session.Session result
+statementLegacy params (Statement.Statement sql encoder decoder preparable) =
+  Session.statementLegacy
     (encodeUtf8 sql)
     encoder
     decoder

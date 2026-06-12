@@ -68,7 +68,41 @@ script sql =
           )
 
 -- |
--- Execute a statement by providing parameters to it.
+-- Execute a statement by providing parameters to it,
+-- using the legacy pipeline-wrapped path.
+--
+-- This is the pre-1.10 implementation retained for compatibility.
+-- It routes every query through pipeline mode, which for a single statement
+-- adds per-call overhead (entering and exiting pipeline mode, a pipeline sync,
+-- and async-exception masking) without saving any network roundtrips.
+--
+-- Prefer the new 'statement' for direct serial execution,
+-- or 'pipeline' when batching multiple statements.
+--
+-- __Warning:__ This operation is deprecated and will be removed before the
+-- next release.
+{-# DEPRECATED statementLegacy "Use 'statement' instead." #-}
+statementLegacy ::
+  ByteString ->
+  Params.Params params ->
+  Decoders.Result.Result result ->
+  Bool ->
+  params ->
+  Session result
+statementLegacy sql paramsEncoder decoder preparable params =
+  pipeline (Pipeline.statement sql paramsEncoder decoder preparable params)
+
+-- |
+-- Execute a single statement using a direct serial path, bypassing pipeline mode.
+--
+-- This avoids the per-statement pipeline-mode machinery
+-- (entering and exiting pipeline mode, the pipeline sync,
+-- and the async-exception masking it requires).
+--
+-- The first execution of a preparable statement costs an extra network roundtrip
+-- (a separate @PARSE@), after which steady-state execution is a single roundtrip.
+--
+-- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
 statement ::
   ByteString ->
   Params.Params params ->
@@ -77,25 +111,6 @@ statement ::
   params ->
   Session result
 statement sql paramsEncoder decoder preparable params =
-  pipeline (Pipeline.statement sql paramsEncoder decoder preparable params)
-
--- |
--- Execute a single statement using a direct serial path, bypassing pipeline mode.
---
--- This is an opt-in alternative to 'statement' that avoids the per-statement
--- pipeline-mode machinery (entering and exiting pipeline mode, the pipeline sync,
--- and the async-exception masking it requires).
---
--- The first execution of a preparable statement costs an extra network roundtrip
--- (a separate @PARSE@), after which steady-state execution is a single roundtrip.
-statementSerial ::
-  ByteString ->
-  Params.Params params ->
-  Decoders.Result.Result result ->
-  Bool ->
-  params ->
-  Session result
-statementSerial sql paramsEncoder decoder preparable params =
   Session \connectionState -> do
     let usePreparedStatements = ConnectionState.preparedStatements connectionState
         statementCache = ConnectionState.statementCache connectionState
