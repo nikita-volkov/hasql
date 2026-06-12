@@ -352,6 +352,7 @@ test-suite library-tests
     Sharing.ByUnit.PipelineSpec
     Sharing.ByUnit.Session.CatchErrorSpec
     Sharing.ByUnit.Session.ScriptSpec
+    Sharing.ByUnit.Session.StatementSerialSpec
     Sharing.ByUnit.Session.StatementSpec
     Sharing.ByUnit.SessionSpec
     Sharing.ByUnit.StatementSpec

@@ -24,7 +24,25 @@ main =
           sessionBench "manyLargeResults" sessionWithManyLargeResults,
           sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
           sessionBench "manySmallResults" sessionWithManySmallResults,
-          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline
+          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline,
+          -- Isolates the per-statement pipeline-mode overhead that
+          -- 'Session.statement' carries since 1.10 (enter/exit pipeline mode,
+          -- pipeline sync, async-exception masking).
+          --
+          -- Both arms of each pair issue N single-statement queries, i.e. N
+          -- network roundtrips. The only difference is the execution path:
+          -- "pipeline" uses 'Session.statement' (pipeline-wrapped), "serial"
+          -- uses 'Session.statementSerial' (direct serial). The delta is the
+          -- wrapper overhead, with roundtrip count held equal.
+          bgroup
+            "serialVsPipelineStatement"
+            [ sessionBench "1-pipeline" (sessionWithNStatements 1),
+              sessionBench "1-serial" (sessionWithNStatementsSerial 1),
+              sessionBench "10-pipeline" (sessionWithNStatements 10),
+              sessionBench "10-serial" (sessionWithNStatementsSerial 10),
+              sessionBench "100-pipeline" (sessionWithNStatements 100),
+              sessionBench "100-serial" (sessionWithNStatementsSerial 100)
+            ]
         ]
       where
         sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
@@ -57,6 +75,14 @@ sessionWithManySmallResultsViaPipeline :: B.Session [(Int64, Int64)]
 sessionWithManySmallResultsViaPipeline =
   B.pipeline (replicateM 100 (E.statement () statementWithSingleRow))
 
+sessionWithNStatements :: Int -> B.Session [(Int64, Int64)]
+sessionWithNStatements n =
+  replicateM n (B.statement () statementWithSingleRow)
+
+sessionWithNStatementsSerial :: Int -> B.Session [(Int64, Int64)]
+sessionWithNStatementsSerial n =
+  replicateM n (B.statementSerial () statementWithSingleRow)
+
 -- * Statements
 
 statementWithSingleRow :: C.Statement () (Int64, Int64)
@@ -64,7 +90,7 @@ statementWithSingleRow =
   C.preparable template encoder decoder
   where
     template =
-      "SELECT 1, 2"
+      "SELECT 1::int8, 2::int8"
     encoder =
       conquer
     decoder =
@@ -81,7 +107,7 @@ statementWithManyRows decoder =
   C.preparable template encoder (decoder rowDecoder)
   where
     template =
-      "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"
+      "SELECT generate_series(0,1000)::int8 as a, generate_series(1000,2000)::int8 as b"
     encoder =
       conquer
     rowDecoder =
