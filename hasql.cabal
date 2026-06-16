@@ -147,9 +147,6 @@ library
     Hasql.Engine.Structures.StatementCache
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-depends:
     aeson >=2 && <3,
@@ -165,9 +162,9 @@ library
     mtl >=2 && <3,
     postgresql-binary ^>=0.15,
     postgresql-connection-string ^>=0.1,
-    postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
+    pqi,
     text >=1 && <3,
     text-builder >=1 && <1.1,
     time >=1.9 && <2,
@@ -185,6 +182,7 @@ benchmark benchmarks
   build-depends:
     criterion >=1.6 && <2,
     hasql,
+    pqi-ffi,
     rerebase <2,
 
 test-suite profiling
@@ -199,6 +197,7 @@ test-suite profiling
 
   build-depends:
     hasql,
+    pqi-ffi,
     rerebase >=1 && <2,
     testcontainers-postgresql ^>=0.2,
 
@@ -222,9 +221,6 @@ test-suite comms-tests
     Hasql.Comms.SpecHook
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
@@ -239,7 +235,8 @@ test-suite comms-tests
     hashable >=1.2 && <2,
     hspec ^>=2.11.12,
     mtl >=2 && <3,
-    postgresql-libpq >=0.10.1 && <0.12,
+    pqi,
+    pqi-ffi,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     testcontainers-postgresql ^>=0.2,
@@ -267,9 +264,6 @@ test-suite engine-tests
     Hasql.Engine.Structures.StatementCacheSpec
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
@@ -283,7 +277,6 @@ test-suite engine-tests
     hashable >=1.2 && <2,
     hspec ^>=2.11.12,
     mtl >=2 && <3,
-    postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
@@ -365,6 +358,7 @@ test-suite library-tests
     hasql,
     hspec ^>=2.11.12,
     iproute,
+    pqi-ffi,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,

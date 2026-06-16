@@ -15,7 +15,7 @@ import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
@@ -26,7 +26,7 @@ newtype SelectTypeInfo = SelectTypeInfo
 type SelectTypeInfoResult =
   HashMap (Maybe Text, Text) (Word32, Word32)
 
-run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
+run :: (Pqi.IsConnection c) => c -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
   if HashSet.null keys
     then pure (Right HashMap.empty)
@@ -70,16 +70,16 @@ sql =
 
 roundtrip :: SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip () SelectTypeInfoResult
 roundtrip params =
-  Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
+  Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pqi.Binary decoder
 
-encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
+encodeParams :: SelectTypeInfo -> [Maybe (Word32, ByteString, Pqi.Format)]
 encodeParams =
   fmap
     ( fmap
         ( \(oid, bytes, format) ->
-            ( Pq.Oid (fromIntegral oid),
+            ( oid,
               bytes,
-              bool Pq.Binary Pq.Text format
+              bool Pqi.Binary Pqi.Text format
             )
         )
     )

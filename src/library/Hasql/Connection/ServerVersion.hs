@@ -10,7 +10,7 @@ module Hasql.Connection.ServerVersion
 where
 
 import Hasql.Platform.Prelude hiding (minimum)
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 import TextBuilder qualified
 
 data ServerVersion = ServerVersion Int Int Int
@@ -65,7 +65,7 @@ toText (ServerVersion major minor patch) =
 minimum :: ServerVersion
 minimum = ServerVersion 9 0 0
 
--- | Load from PQ connection.
-load :: Pq.Connection -> IO ServerVersion
+-- | Load from connection.
+load :: (Pqi.IsConnection c) => c -> IO ServerVersion
 load connection =
-  fromInt <$> Pq.serverVersion connection
+  fromInt <$> Pqi.serverVersion connection

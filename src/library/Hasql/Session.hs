@@ -3,7 +3,7 @@ module Hasql.Session
     Session.pipeline,
     script,
     statement,
-    Session.onLibpqConnection,
+    Session.onPqiConnection,
   )
 where
 

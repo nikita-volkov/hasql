@@ -18,11 +18,11 @@ where
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 -- |
--- The internal state of a database connection.
-data ConnectionState = ConnectionState
+-- The internal state of a database connection, parametric over the connection type @c@.
+data ConnectionState c = ConnectionState
   { -- | Whether prepared statements are enabled.
     preparedStatements :: Bool,
     -- | The statement cache for prepared statements.
@@ -30,13 +30,13 @@ data ConnectionState = ConnectionState
     -- | The OID cache for type name to OID mapping.
     oidCache :: OidCache.OidCache,
     -- | The underlying database connection.
-    connection :: Pq.Connection
+    connection :: c
   }
 
-toStatementCache :: ConnectionState -> StatementCache.StatementCache
+toStatementCache :: ConnectionState c -> StatementCache.StatementCache
 toStatementCache ConnectionState {..} = statementCache
 
-fromConnection :: Pq.Connection -> ConnectionState
+fromConnection :: (Pqi.IsConnection c) => c -> ConnectionState c
 fromConnection connection =
   ConnectionState
     { preparedStatements = False,
@@ -45,25 +45,25 @@ fromConnection connection =
       connection = connection
     }
 
-setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
+setPreparedStatements :: Bool -> ConnectionState c -> ConnectionState c
 setPreparedStatements preparedStatements connectionState =
   connectionState {preparedStatements = preparedStatements}
 
-setStatementCache :: StatementCache.StatementCache -> ConnectionState -> ConnectionState
+setStatementCache :: StatementCache.StatementCache -> ConnectionState c -> ConnectionState c
 setStatementCache statementCache connectionState =
   connectionState {statementCache = statementCache}
 
-setConnection :: Pq.Connection -> ConnectionState -> ConnectionState
+setConnection :: c -> ConnectionState c -> ConnectionState c
 setConnection connection connectionState =
   connectionState {connection = connection}
 
-setOidCache :: OidCache.OidCache -> ConnectionState -> ConnectionState
+setOidCache :: OidCache.OidCache -> ConnectionState c -> ConnectionState c
 setOidCache oidCache connectionState =
   connectionState {oidCache}
 
 mapStatementCache ::
   (StatementCache.StatementCache -> StatementCache.StatementCache) ->
-  (ConnectionState -> ConnectionState)
+  (ConnectionState c -> ConnectionState c)
 mapStatementCache f ConnectionState {..} =
   ConnectionState
     { statementCache = f statementCache,
@@ -72,7 +72,7 @@ mapStatementCache f ConnectionState {..} =
 
 mapOidCache ::
   (OidCache.OidCache -> OidCache.OidCache) ->
-  (ConnectionState -> ConnectionState)
+  (ConnectionState c -> ConnectionState c)
 mapOidCache f ConnectionState {..} =
   ConnectionState
     { oidCache = f oidCache,
@@ -82,7 +82,7 @@ mapOidCache f ConnectionState {..} =
 traverseStatementCache ::
   (Functor f) =>
   (StatementCache.StatementCache -> f StatementCache.StatementCache) ->
-  (ConnectionState -> f ConnectionState)
+  (ConnectionState c -> f (ConnectionState c))
 traverseStatementCache f ConnectionState {..} =
   fmap
     ( \newStatementCache ->
@@ -93,6 +93,6 @@ traverseStatementCache f ConnectionState {..} =
     )
     (f statementCache)
 
-resetPreparedStatementsCache :: ConnectionState -> ConnectionState
+resetPreparedStatementsCache :: ConnectionState c -> ConnectionState c
 resetPreparedStatementsCache =
   mapStatementCache (const StatementCache.empty)

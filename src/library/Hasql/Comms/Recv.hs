@@ -9,11 +9,13 @@ where
 
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 newtype Recv context a
-  = Recv (Pq.Connection -> IO (Either (Error context) a))
-  deriving stock (Functor)
+  = Recv (forall conn. (Pqi.IsConnection conn) => conn -> IO (Either (Error context) a))
+
+instance Functor (Recv context) where
+  fmap f (Recv g) = Recv $ \conn -> fmap (fmap f) (g conn)
 
 instance Applicative (Recv context) where
   {-# INLINE pure #-}
@@ -29,28 +31,28 @@ instance Bifunctor Recv where
   {-# INLINE bimap #-}
   bimap f g (Recv recv) = Recv (fmap (bimap (fmap f) g) . recv)
 
-toHandler :: Recv context a -> Pq.Connection -> IO (Either (Error context) a)
+toHandler :: (Pqi.IsConnection conn) => Recv context a -> conn -> IO (Either (Error context) a)
 toHandler (Recv recv) = recv
 
 -- | Exactly one result.
 singleResult :: context -> ResultDecoder.ResultDecoder a -> Recv context a
 singleResult context handler = Recv \connection -> runExceptT do
   result <- ExceptT do
-    result <- Pq.getResult connection
-    case result of
+    mResult <- Pqi.getResult connection
+    case mResult of
       Nothing -> do
-        errorMessage <- Pq.errorMessage connection
+        errorMessage <- Pqi.errorMessage connection
         pure (Left (NoResultsError context errorMessage))
       Just result -> pure (Right result)
   ExceptT do
-    result <- Pq.getResult connection
-    case result of
-      Nothing -> pure (Right result)
+    mExtra <- Pqi.getResult connection
+    case mExtra of
+      Nothing -> pure (Right ())
       Just _ -> pure (Left (TooManyResultsError context 1))
-  result <- ExceptT do
-    result <- ResultDecoder.toHandler handler result
-    pure (first (ResultError context 0) result)
-  pure result
+  decResult <- ExceptT do
+    decoded <- ResultDecoder.toHandler handler result
+    pure (first (ResultError context 0) decoded)
+  pure decResult
 
 -- | Consume all results from a multi-statement query (e.g., scripts).
 -- Each result is decoded using the provided handler.
@@ -61,8 +63,8 @@ singleResult context handler = Recv \connection -> runExceptT do
 allResults :: context -> ResultDecoder.ResultDecoder a -> Recv context ()
 allResults context handler = Recv \connection -> do
   let loop resultIndex maybeError = do
-        result <- Pq.getResult connection
-        case result of
+        mResult <- Pqi.getResult connection
+        case mResult of
           Nothing -> pure maybeError
           Just result -> do
             decodedResult <- ResultDecoder.toHandler handler result

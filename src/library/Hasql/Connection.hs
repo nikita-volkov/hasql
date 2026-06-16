@@ -18,32 +18,48 @@ import Hasql.Engine.Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 -- |
--- A single connection to the database.
-newtype Connection
-  = Connection (MVar ConnectionState.ConnectionState)
+-- A single connection to the database. Opaque to callers; the underlying
+-- driver type is hidden inside an existential.
+data Connection
+  = forall c.
+    (Pqi.IsConnection c) =>
+    Connection (MVar (ConnectionState.ConnectionState c))
 
 -- |
 -- Establish a connection according to the provided settings.
 acquire ::
+  (Pqi.IsConnection a) =>
+  -- | Determines the connection adapter to use. The driver.
+  --
+  -- Use it to choose between:
+  --   * ["pqi-ffi"](https://hackage.haskell.org/package/pqi-ffi) - \"libpq\" adapter. Highly reliable, but introduces a dependency on the \"libpq\" OS-level C library.
+  --   * ["pqi-native"](https://hackage.haskell.org/package/pqi-native) - Native Haskell adapter. No external dependencies, but with alpha-level reliability claims.
+  --   * Alternative ["pqi"](https://hackage.haskell.org/package/pqi) adapter implementations.
+  Proxy a ->
+  -- | The connection settings.
   Settings.Settings ->
   IO (Either ConnectionError Connection)
-acquire settings =
+acquire proxy settings =
   {-# SCC "acquire" #-}
+  acquireWith proxy settings
+
+acquireWith :: forall a. (Pqi.IsConnection a) => Proxy a -> Settings.Settings -> IO (Either ConnectionError Connection)
+acquireWith _ settings =
   runExceptT do
     let config = Config.construct settings
 
     -- Connect:
-    pqConnection <- lift (Pq.connectdb (Config.connectionString config))
+    pqConnection <- lift (Pqi.connectdb @a (Config.connectionString config))
 
     -- Check status:
-    status <- lift (Pq.status pqConnection)
+    status <- lift (Pqi.status pqConnection)
     case status of
-      Pq.ConnectionOk -> pure ()
+      Pqi.ConnectionOk -> pure ()
       _ -> do
-        errorMessage <- lift (Pq.errorMessage pqConnection)
+        errorMessage <- lift (Pqi.errorMessage pqConnection)
         throwError (interpretConnectionError errorMessage)
 
     -- Check version:
@@ -53,7 +69,7 @@ acquire settings =
 
     -- Initialize:
     lift do
-      Pq.exec pqConnection do
+      Pqi.exec pqConnection do
         "SET client_encoding = 'UTF8';\n\
         \SET client_min_messages TO WARNING;"
 
@@ -103,7 +119,7 @@ release :: Connection -> IO ()
 release (Connection connectionRef) =
   mask_ do
     connectionState <- readMVar connectionRef
-    Pq.finish (ConnectionState.connection connectionState)
+    Pqi.finish (ConnectionState.connection connectionState)
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
@@ -123,7 +139,7 @@ use (Connection var) session =
           Left err -> do
             -- If cleanup failed, we have to close the connection.
             -- There's not much else we can do.
-            Pq.finish connection
+            Pqi.finish connection
             putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             let message =
                   mconcat

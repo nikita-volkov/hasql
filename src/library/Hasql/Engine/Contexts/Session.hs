@@ -7,13 +7,13 @@ import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 -- |
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.
 --
 -- Construct sessions using helpers in this module such as
--- 'statement', 'pipeline' and 'script', or use 'onLibpqConnection' for a low-level
+-- 'statement', 'pipeline' and 'script', or use 'onPqiConnection' for a low-level
 -- escape hatch.
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
@@ -25,13 +25,59 @@ import Hasql.Pq qualified as Pq
 -- Note: while most session errors are returned as values, user code executed
 -- inside a session may still throw exceptions; in that case the driver will
 -- reset the connection to a clean state.
+--
+-- Internally rank-2 over the connection type, keeping the public type parameter-free.
 newtype Session a
-  = Session (ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState))
-  deriving
-    (Functor, Applicative, Monad, MonadError Errors.SessionError, MonadIO)
-    via (ExceptT Errors.SessionError (StateT ConnectionState.ConnectionState IO))
+  = Session
+      ( forall c.
+        (Pqi.IsConnection c) =>
+        ConnectionState.ConnectionState c ->
+        IO (Either Errors.SessionError a, ConnectionState.ConnectionState c)
+      )
 
-run :: Session a -> ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState)
+instance Functor Session where
+  {-# INLINE fmap #-}
+  fmap f (Session run) = Session \s -> do
+    (res, s') <- run s
+    pure (fmap f res, s')
+
+instance Applicative Session where
+  {-# INLINE pure #-}
+  pure a = Session \s -> pure (Right a, s)
+  {-# INLINE (<*>) #-}
+  Session runF <*> Session runX = Session \s -> do
+    (ef, s') <- runF s
+    case ef of
+      Left err -> pure (Left err, s')
+      Right f -> do
+        (ex, s'') <- runX s'
+        pure (fmap f ex, s'')
+
+instance Monad Session where
+  {-# INLINE (>>=) #-}
+  Session runX >>= f = Session \s -> do
+    (ex, s') <- runX s
+    case ex of
+      Left err -> pure (Left err, s')
+      Right x -> run (f x) s'
+
+instance MonadError Errors.SessionError Session where
+  {-# INLINE throwError #-}
+  throwError err = Session \s -> pure (Left err, s)
+  {-# INLINE catchError #-}
+  catchError (Session runX) handler = Session \s -> do
+    (ex, s') <- runX s
+    case ex of
+      Left err -> run (handler err) s'
+      Right x -> pure (Right x, s')
+
+instance MonadIO Session where
+  {-# INLINE liftIO #-}
+  liftIO action = Session \s -> do
+    a <- action
+    pure (Right a, s)
+
+run :: (Pqi.IsConnection c) => Session a -> ConnectionState.ConnectionState c -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState c)
 run (Session session) connectionState = session connectionState
 
 -- |
@@ -76,13 +122,13 @@ statement sql paramsEncoder decoder preparable params =
 -- |
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
-pipeline pipeline = Session \connectionState -> do
+pipeline pipelineAction = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
       statementCache = ConnectionState.statementCache connectionState
       oidCache = ConnectionState.oidCache connectionState
       pqConnection = ConnectionState.connection connectionState
    in do
-        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline usePreparedStatements pqConnection oidCache statementCache
+        (result, newOidCache, newStatementCache) <- Pipeline.run pipelineAction usePreparedStatements pqConnection oidCache statementCache
         let newConnectionState =
               connectionState
                 { ConnectionState.oidCache = newOidCache,
@@ -92,21 +138,21 @@ pipeline pipeline = Session \connectionState -> do
         pure (result, newConnectionState)
 
 -- |
--- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.
+-- Execute an operation on the raw pqi connection possibly producing an error and updating the connection.
 -- This is a low-level escape hatch for custom integrations.
 --
 -- You can supply a new connection in the result to replace it in the running Hasql connection.
--- The responsibility to close the old libpq connection is on you.
+-- The responsibility to close the old connection is on you.
 -- Otherwise, just return the same connection you've received.
 --
 -- Producing a 'Left' value will cause the session to fail with the given error.
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
 -- Throwing exceptions is okay. It will lead to the connection getting reset.
-onLibpqConnection ::
-  (Pq.Connection -> IO (Either Errors.SessionError a, Pq.Connection)) ->
+onPqiConnection ::
+  (forall conn. Pqi.IsConnection conn => conn -> IO (Either Errors.SessionError a, conn)) ->
   Session a
-onLibpqConnection f = Session \connectionState -> do
+onPqiConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection
   let newState = ConnectionState.setConnection newConnection connectionState
