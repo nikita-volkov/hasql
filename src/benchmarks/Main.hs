@@ -33,33 +33,33 @@ main =
 
 -- * Sessions
 
-sessionWithSingleLargeResultInVector :: B.Session (Vector (Int64, Int64))
+sessionWithSingleLargeResultInVector :: B.Session (Vector (Int32, Int32))
 sessionWithSingleLargeResultInVector =
   B.statement () statementWithManyRowsInVector
 
-sessionWithSingleLargeResultInList :: B.Session [(Int64, Int64)]
+sessionWithSingleLargeResultInList :: B.Session [(Int32, Int32)]
 sessionWithSingleLargeResultInList =
   B.statement () statementWithManyRowsInList
 
-sessionWithManyLargeResults :: B.Session [Vector (Int64, Int64)]
+sessionWithManyLargeResults :: B.Session [Vector (Int32, Int32)]
 sessionWithManyLargeResults =
   replicateM 100 (B.statement () statementWithManyRowsInVector)
 
-sessionWithManySmallResults :: B.Session [(Int64, Int64)]
+sessionWithManySmallResults :: B.Session [(Int32, Int32)]
 sessionWithManySmallResults =
   replicateM 100 (B.statement () statementWithSingleRow)
 
-sessionWithManyLargeResultsViaPipeline :: B.Session [Vector (Int64, Int64)]
+sessionWithManyLargeResultsViaPipeline :: B.Session [Vector (Int32, Int32)]
 sessionWithManyLargeResultsViaPipeline =
   B.pipeline (replicateM 100 (E.statement () statementWithManyRowsInVector))
 
-sessionWithManySmallResultsViaPipeline :: B.Session [(Int64, Int64)]
+sessionWithManySmallResultsViaPipeline :: B.Session [(Int32, Int32)]
 sessionWithManySmallResultsViaPipeline =
   B.pipeline (replicateM 100 (E.statement () statementWithSingleRow))
 
 -- * Statements
 
-statementWithSingleRow :: C.Statement () (Int64, Int64)
+statementWithSingleRow :: C.Statement () (Int32, Int32)
 statementWithSingleRow =
   C.preparable template encoder decoder
   where
@@ -71,12 +71,12 @@ statementWithSingleRow =
       D.singleRow row
       where
         row =
-          tuple <$> (D.column . D.nonNullable) D.int8 <*> (D.column . D.nonNullable) D.int8
+          tuple <$> (D.column . D.nonNullable) D.int4 <*> (D.column . D.nonNullable) D.int4
           where
             tuple !a !b =
               (a, b)
 
-statementWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> C.Statement () result
+statementWithManyRows :: (D.Row (Int32, Int32) -> D.Result result) -> C.Statement () result
 statementWithManyRows decoder =
   C.preparable template encoder (decoder rowDecoder)
   where
@@ -85,15 +85,15 @@ statementWithManyRows decoder =
     encoder =
       conquer
     rowDecoder =
-      tuple <$> (D.column . D.nonNullable) D.int8 <*> (D.column . D.nonNullable) D.int8
+      tuple <$> (D.column . D.nonNullable) D.int4 <*> (D.column . D.nonNullable) D.int4
       where
         tuple !a !b =
           (a, b)
 
-statementWithManyRowsInVector :: C.Statement () (Vector (Int64, Int64))
+statementWithManyRowsInVector :: C.Statement () (Vector (Int32, Int32))
 statementWithManyRowsInVector =
   statementWithManyRows D.rowVector
 
-statementWithManyRowsInList :: C.Statement () [(Int64, Int64)]
+statementWithManyRowsInList :: C.Statement () [(Int32, Int32)]
 statementWithManyRowsInList =
   statementWithManyRows D.rowList
