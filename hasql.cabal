@@ -182,7 +182,7 @@ benchmark benchmarks
   build-depends:
     criterion >=1.6 && <2,
     hasql,
-    pqi-ffi,
+    pqi-native,
     rerebase <2,
 
 test-suite profiling
@@ -197,7 +197,7 @@ test-suite profiling
 
   build-depends:
     hasql,
-    pqi-ffi,
+    pqi-native,
     rerebase >=1 && <2,
     testcontainers-postgresql ^>=0.2,
 
@@ -236,7 +236,7 @@ test-suite comms-tests
     hspec ^>=2.11.12,
     mtl >=2 && <3,
     pqi,
-    pqi-ffi,
+    pqi-native,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
     testcontainers-postgresql ^>=0.2,
@@ -358,7 +358,7 @@ test-suite library-tests
     hasql,
     hspec ^>=2.11.12,
     iproute,
-    pqi-ffi,
+    pqi-native,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,

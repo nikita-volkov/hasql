@@ -7,7 +7,7 @@ import Hasql.Decoders qualified as D
 import Hasql.Pipeline qualified as E
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
-import Pqi.Ffi qualified as Pqi.Ffi
+import Pqi.Native qualified as Pqi.Native
 import Prelude
 
 main :: IO ()
@@ -20,7 +20,7 @@ main =
     useConnection connection
   where
     acquireConnection =
-      A.acquire (Proxy @Pqi.Ffi.Connection) mempty
+      A.acquire (Proxy @Pqi.Native.Connection) mempty
     useConnection connection =
       defaultMain
         [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,

@@ -4,12 +4,12 @@ import Hasql.Connection qualified
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
 import Hasql.Errors qualified as Errors
-import Pqi.Ffi qualified as Pqi.Ffi
+import Pqi.Native qualified as Pqi.Native
 import Test.Hspec
 import TestcontainersPostgresql qualified
 import Prelude
 
-proxy :: Proxy Pqi.Ffi.Connection
+proxy :: Proxy Pqi.Native.Connection
 proxy = Proxy
 
 spec :: Spec

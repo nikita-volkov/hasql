@@ -3,7 +3,7 @@ module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 import Hasql.Comms.Session qualified as Session
 import Hasql.Platform.Prelude
 import Pqi qualified
-import Pqi.Ffi qualified as Pqi.Ffi
+import Pqi.Native qualified as Pqi.Native
 import Test.Hspec
 import TextBuilder qualified
 
@@ -124,7 +124,7 @@ withConnection (host, port) action =
             " dbname=postgres"
           ]
    in bracket
-        (Pqi.connectdb @Pqi.Ffi.Connection connectionString)
+        (Pqi.connectdb @Pqi.Native.Connection connectionString)
         ( \connection -> do
             Pqi.finish connection
         )

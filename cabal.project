@@ -12,3 +12,8 @@ source-repository-package
   type: git
   location: https://github.com/nikita-volkov/pqi-ffi
   tag: 3c41e1f0889771e6c514cfae2f37a16773dc89a7
+
+source-repository-package
+  type: git
+  location: https://github.com/nikita-volkov/pqi-native
+  tag: 0d9d17b9ac3f3452de2a43d484416c562e6f29e5
