@@ -25,14 +25,6 @@ main =
           sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
           sessionBench "manySmallResults" sessionWithManySmallResults,
           sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline,
-          -- Benchmarks targeting the per-statement pipeline overhead introduced in 1.10.
-          --
-          -- Session.statement is now routed through pipeline mode even for individual
-          -- queries, adding enterPipelineMode + pipelineSync (an extra server round-trip)
-          -- + exitPipelineMode + mask per statement.  The groups below make that cost
-          -- visible: compare the per-statement time of "sequential" (N × Session.statement)
-          -- against "pipeline" (Session.pipeline with N statements).  The difference is
-          -- the per-call overhead imposed by the pipeline wrapper on sequential execution.
           bgroup
             "singleStatementOverhead"
             [ sessionBench "1-sequential" sessionWith1SmallResult,
