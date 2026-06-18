@@ -12,7 +12,10 @@ import Prelude
 main :: IO ()
 main =
   do
-    Right connection <- acquireConnection
+    connection <- acquireConnection
+    connection <- case connection of
+      Left err -> fail (show err)
+      Right connection -> pure connection
     useConnection connection
   where
     acquireConnection =
