@@ -10,7 +10,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "JSON Encoders" do
     it "encodes JSON object correctly" \config -> do

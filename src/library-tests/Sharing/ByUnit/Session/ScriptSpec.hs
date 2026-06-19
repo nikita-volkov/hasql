@@ -8,7 +8,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "returns ServerSessionError on syntax errors" \config -> do
     Scripts.onPreparableConnection config \connection -> do

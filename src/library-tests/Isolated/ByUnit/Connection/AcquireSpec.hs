@@ -4,23 +4,31 @@ import Hasql.Connection qualified
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
 import Hasql.Errors qualified as Errors
+import Helpers.Scripts qualified as Scripts
+import Pqi.Ffi qualified as Pqi.Ffi
 import Pqi.Native qualified as Pqi.Native
 import Test.Hspec
 import TestcontainersPostgresql qualified
 import Prelude
 
-proxy :: Proxy Pqi.Native.Connection
-proxy = Proxy
-
 spec :: Spec
-spec = do
+spec = forM_ adapters \(adapterName, acquire) ->
+  describe adapterName (specWith acquire)
+  where
+    adapters =
+      [ ("pqi-ffi", Connection.acquire (Proxy @Pqi.Ffi.Connection)),
+        ("pqi-native", Connection.acquire (Proxy @Pqi.Native.Connection))
+      ]
+
+specWith :: Scripts.Acquire -> Spec
+specWith acquire = do
   describe "By result" do
     describe "Left" do
       describe "Networking" do
         it "Fails on server missing" do
           let settings =
                 Settings.hostAndPort "nopostgresql.net" 5432
-          result <- Connection.acquire proxy settings
+          result <- acquire settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -46,7 +54,7 @@ spec = do
                     Settings.password "postgres",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire proxy settings
+          result <- acquire settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -69,7 +77,7 @@ spec = do
                     Settings.password "postgres",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire proxy settings
+          result <- acquire settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -91,7 +99,7 @@ spec = do
                     Settings.password "",
                     Settings.dbname "postgres1"
                   ]
-          result <- Connection.acquire proxy settings
+          result <- acquire settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -116,7 +124,7 @@ spec = do
                     Settings.password "",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire proxy settings
+          result <- acquire settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -127,13 +135,13 @@ spec = do
               expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
   describe "postgres:9" do
-    byDistro "postgres:9"
+    byDistro acquire "postgres:9"
 
   describe "postgres:18" do
-    byDistro "postgres:18"
+    byDistro acquire "postgres:18"
 
-byDistro :: Text -> Spec
-byDistro tagName = do
+byDistro :: Scripts.Acquire -> Text -> Spec
+byDistro acquire tagName = do
   let itConnects :: Text -> Text -> Spec
       itConnects username password =
         describe ("username: " <> toList username) do
@@ -147,8 +155,7 @@ byDistro tagName = do
                   }
                 ( \(host, port) -> do
                     result <-
-                      Hasql.Connection.acquire
-                        proxy
+                      acquire
                         ( mconcat
                             [ Settings.hostAndPort host port,
                               Settings.user username,
@@ -171,8 +178,7 @@ byDistro tagName = do
     describe "NetworkingConnectionError" do
       it "is reported for invalid host" do
         result <-
-          Hasql.Connection.acquire
-            proxy
+          acquire
             ( mconcat
                 [ Settings.hostAndPort "nonexistent.invalid.host" 5432,
                   Settings.user "postgres",
@@ -186,8 +192,7 @@ byDistro tagName = do
 
       it "is reported for connection refused" do
         result <-
-          Hasql.Connection.acquire
-            proxy
+          acquire
             ( mconcat
                 [ Settings.hostAndPort "127.0.0.1" 1,
                   Settings.user "postgres",
@@ -209,8 +214,7 @@ byDistro tagName = do
             }
           \(host, port) -> do
             result <-
-              Hasql.Connection.acquire
-                proxy
+              acquire
                 ( mconcat
                     [ Settings.hostAndPort host port,
                       Settings.user "incorrectuser",

@@ -10,7 +10,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "handles concurrent connections properly" \config -> do
     Scripts.onPreparableConnection config \connection1 -> do

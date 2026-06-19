@@ -11,7 +11,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Roundtrips" do
     it "handles simple values correctly" \config -> do

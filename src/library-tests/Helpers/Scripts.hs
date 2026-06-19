@@ -2,15 +2,17 @@ module Helpers.Scripts where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
-import Pqi.Native qualified as Pqi.Native
+import Hasql.Errors qualified as Errors
 import System.Random.Stateful qualified as Random
 import TextBuilder qualified
 import Prelude
 
+type Acquire = Settings.Settings -> IO (Either Errors.ConnectionError Connection.Connection)
+
 -- |
 -- Parameters provided by the scope.
--- Host and port of a running isolated postgres server.
-type ScopeParams = (Text, Word16)
+-- Acquire function and host/port of a running isolated postgres server.
+type ScopeParams = (Acquire, Text, Word16)
 
 onPreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
 onPreparableConnection = onConnection False
@@ -19,7 +21,7 @@ onUnpreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO
 onUnpreparableConnection = onConnection True
 
 onConnection :: Bool -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onConnection unpreparable (host, port) =
+onConnection unpreparable (acquire, host, port) =
   bracket
     ( do
         let settings =
@@ -30,7 +32,7 @@ onConnection unpreparable (host, port) =
                   Settings.dbname "postgres",
                   Settings.noPreparedStatements unpreparable
                 ]
-        res <- Connection.acquire (Proxy @Pqi.Native.Connection) settings
+        res <- acquire settings
         case res of
           Left err -> fail ("Connection failed: " <> show err)
           Right conn -> pure conn

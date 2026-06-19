@@ -182,6 +182,7 @@ benchmark benchmarks
   build-depends:
     criterion >=1.6 && <2,
     hasql,
+    pqi-ffi ^>=0.0,
     pqi-native ^>=0.0,
     rerebase <2,
 
@@ -236,6 +237,7 @@ test-suite comms-tests
     hspec ^>=2.11.12,
     mtl >=2 && <3,
     pqi ^>=0.0,
+    pqi-ffi ^>=0.0,
     pqi-native ^>=0.0,
     profunctors >=5.1 && <6,
     scientific >=0.3 && <0.4,
@@ -358,6 +360,7 @@ test-suite library-tests
     hasql,
     hspec ^>=2.11.12,
     iproute,
+    pqi-ffi ^>=0.0,
     pqi-native ^>=0.0,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,

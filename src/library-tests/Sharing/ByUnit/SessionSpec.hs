@@ -8,7 +8,7 @@ import Helpers.Statements qualified as Statements
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "Does not lose the server-side session state on timeout" \config -> do
     Scripts.onPreparableConnection config \connection -> do

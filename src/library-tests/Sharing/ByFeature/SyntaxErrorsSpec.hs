@@ -11,7 +11,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   forM_ [False, True] \inPipeline -> do
     describe (if inPipeline then "Pipeline" else "Session") do

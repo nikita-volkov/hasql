@@ -1,13 +1,13 @@
 module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
 import Hasql.Comms.Session qualified as Session
+import Hasql.Comms.SpecHook (ConnectWith (..))
 import Hasql.Platform.Prelude
 import Pqi qualified
-import Pqi.Native qualified as Pqi.Native
 import Test.Hspec
 import TextBuilder qualified
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (ConnectWith, Text, Word16)
 spec = do
   describe "cleanUpAfterInterruption" do
     it "cleans up when in pipeline mode" \config -> do
@@ -109,10 +109,10 @@ spec = do
 -- * Helpers
 
 withConnection ::
-  (Text, Word16) ->
+  (ConnectWith, Text, Word16) ->
   (forall c. (Pqi.IsConnection c) => c -> IO a) ->
   IO a
-withConnection (host, port) action =
+withConnection (ConnectWith connect, host, port) action =
   let connectionString =
         (encodeUtf8 . TextBuilder.toText . mconcat)
           [ "host=",
@@ -124,7 +124,7 @@ withConnection (host, port) action =
             " dbname=postgres"
           ]
    in bracket
-        (Pqi.connectdb @Pqi.Native.Connection connectionString)
+        (connect connectionString)
         ( \connection -> do
             Pqi.finish connection
         )

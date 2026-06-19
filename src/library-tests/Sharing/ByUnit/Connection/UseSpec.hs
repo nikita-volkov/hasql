@@ -14,7 +14,7 @@ import Helpers.Statements.Sleep qualified as Statements
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Transactions" do
     it "Do not cause \"in progress after error\"" \config -> do

@@ -8,7 +8,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "decodes static value properly" \config -> do
     Scripts.onPreparableConnection config \connection -> do

@@ -12,7 +12,7 @@ import System.Timeout
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Exception during session with concurrent access" do
     it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparableConnection config \connection -> do
