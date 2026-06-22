@@ -309,6 +309,7 @@ test-suite library-tests
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
     Helpers.Statements.WrongDecoder
+    Isolated.ByBug.PipelineAdapterParitySpec
     Isolated.ByUnit.Connection.AcquireSpec
     Pure.ByUnit.ErrorsSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
