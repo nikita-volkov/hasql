@@ -20,12 +20,14 @@ type RequestingOid =
     (Maybe Text, Text)
     (Word32, Word32)
 
+{-# INLINE toUnknownTypes #-}
 toUnknownTypes ::
   RequestingOid a ->
   HashSet (Maybe Text, Text)
 toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
   fromList unknownTypes
 
+{-# INLINE toBase #-}
 toBase ::
   RequestingOid a ->
   HashMap (Maybe Text, Text) (Word32, Word32) ->
@@ -35,23 +37,29 @@ toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
     HashMap.lookup key oidCache
       & fromMaybe (0, 0)
 
+{-# INLINE requestAndHandle #-}
 requestAndHandle ::
   [(Maybe Text, Text)] ->
   (((Maybe Text, Text) -> (Word32, Word32)) -> a) ->
   RequestingOid a
 requestAndHandle keys fn = LookingUp.LookingUp keys fn
 
+{-# INLINE lift #-}
 lift :: a -> RequestingOid a
 lift = LookingUp.lift
 
+{-# INLINE hoist #-}
 hoist :: (a -> b) -> RequestingOid a -> RequestingOid b
 hoist fn (LookingUp.LookingUp keys use) = LookingUp.LookingUp keys (fn . use)
 
+{-# INLINE lookup #-}
 lookup :: (Maybe Text, Text) -> RequestingOid (Word32, Word32)
 lookup = LookingUp.lookup
 
+{-# INLINE lookingUp #-}
 lookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a) -> RequestingOid a
 lookingUp = LookingUp.lookingUp
 
+{-# INLINE hoistLookingUp #-}
 hoistLookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a -> b) -> RequestingOid a -> RequestingOid b
 hoistLookingUp = LookingUp.hoistLookingUp

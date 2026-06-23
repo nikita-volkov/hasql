@@ -29,7 +29,7 @@ toDecoder (Row f) = f
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.
-{-# INLINEABLE column #-}
+{-# INLINE column #-}
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->

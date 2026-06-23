@@ -40,6 +40,7 @@ empty =
   OidCache HashMap.empty
 
 -- | Having a set of required type names, select those that are not present in the cache.
+{-# INLINE selectUnknownNames #-}
 selectUnknownNames :: HashSet (Maybe Text, Text) -> OidCache -> HashSet (Maybe Text, Text)
 selectUnknownNames keys (OidCache byName) =
   HashSet.filter (\key -> not (HashMap.member key byName)) keys
@@ -48,18 +49,22 @@ insertScalar :: Maybe Text -> Text -> Word32 -> Word32 -> OidCache -> OidCache
 insertScalar schema name scalar array (OidCache byName) =
   OidCache (HashMap.insert (schema, name) (scalar, array) byName)
 
+{-# INLINE fromHashMap #-}
 fromHashMap :: HashMap (Maybe Text, Text) (Word32, Word32) -> OidCache
 fromHashMap byName = OidCache byName
 
 -- * Accessors
 
+{-# INLINE lookupScalar #-}
 lookupScalar :: Maybe Text -> Text -> OidCache -> Maybe Word32
 lookupScalar schema name (OidCache byName) =
   HashMap.lookup (schema, name) byName <&> \(scalar, _) -> scalar
 
+{-# INLINE lookupArray #-}
 lookupArray :: Maybe Text -> Text -> OidCache -> Maybe Word32
 lookupArray schema name (OidCache byName) =
   HashMap.lookup (schema, name) byName <&> \(_, array) -> array
 
+{-# INLINE toHashMap #-}
 toHashMap :: OidCache -> HashMap (Maybe Text, Text) (Word32, Word32)
 toHashMap (OidCache byName) = byName

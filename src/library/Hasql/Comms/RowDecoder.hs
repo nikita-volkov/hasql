@@ -69,6 +69,7 @@ toExpectedOids (RowDecoder oids _) = oids
 
 type Decoder a = Pq.Result -> Pq.Row -> IO (Either Error a)
 
+{-# INLINE toDecoder #-}
 toDecoder :: RowDecoder a -> Decoder a
 toDecoder (RowDecoder _ dec) result row =
   RowReader.toHandler dec result row
