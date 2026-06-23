@@ -23,7 +23,7 @@ unwrap (Result decoder) = decoder
 -- Decode no value from the result.
 --
 -- Useful for statements like @INSERT@ or @CREATE@.
-{-# INLINEABLE noResult #-}
+{-# INLINE noResult #-}
 noResult :: Result ()
 noResult =
   Result (RequestingOid.lift ResultDecoder.ok)
@@ -31,7 +31,7 @@ noResult =
 -- |
 -- Get the amount of rows affected by such statements as
 -- @UPDATE@ or @DELETE@.
-{-# INLINEABLE rowsAffected #-}
+{-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
   Result (RequestingOid.lift ResultDecoder.rowsAffected)
@@ -39,7 +39,7 @@ rowsAffected =
 -- |
 -- Exactly one row.
 -- Will raise the 'Hasql.Errors.UnexpectedRowCountStatementError' error if it's any other.
-{-# INLINEABLE singleRow #-}
+{-# INLINE singleRow #-}
 singleRow :: Row a -> Result a
 singleRow decoder =
   Result (fmap ResultDecoder.single (Row.toDecoder decoder))
@@ -52,7 +52,7 @@ refineResult refiner (Result decoder) =
 
 -- |
 -- Foldl multiple rows.
-{-# INLINEABLE foldlRows #-}
+{-# INLINE foldlRows #-}
 foldlRows :: (a -> b -> a) -> a -> Row b -> Result a
 foldlRows step init decoder =
   Result
@@ -60,7 +60,7 @@ foldlRows step init decoder =
 
 -- |
 -- Foldr multiple rows.
-{-# INLINEABLE foldrRows #-}
+{-# INLINE foldrRows #-}
 foldrRows :: (b -> a -> a) -> a -> Row b -> Result a
 foldrRows step init decoder =
   Result
@@ -70,7 +70,7 @@ foldrRows step init decoder =
 
 -- |
 -- Maybe one row or none.
-{-# INLINEABLE rowMaybe #-}
+{-# INLINE rowMaybe #-}
 rowMaybe :: Row a -> Result (Maybe a)
 rowMaybe decoder =
   Result
@@ -81,7 +81,7 @@ rowMaybe decoder =
 --
 -- It's recommended to prefer this function to 'rowList',
 -- since it performs notably better.
-{-# INLINEABLE rowVector #-}
+{-# INLINE rowVector #-}
 rowVector :: Row a -> Result (Vector a)
 rowVector decoder =
   Result
@@ -89,7 +89,7 @@ rowVector decoder =
 
 -- |
 -- Zero or more rows packed into the list.
-{-# INLINEABLE rowList #-}
+{-# INLINE rowList #-}
 rowList :: Row a -> Result [a]
 rowList =
   foldrRows strictCons []

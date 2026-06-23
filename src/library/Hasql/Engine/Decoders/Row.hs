@@ -3,6 +3,8 @@ module Hasql.Engine.Decoders.Row where
 import Hasql.Codecs.Decoders
 import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
@@ -29,7 +31,7 @@ toDecoder (Row f) = f
 
 -- |
 -- Lift an individual value decoder to a composable row decoder.
-{-# INLINEABLE column #-}
+{-# INLINE column #-}
 column :: NullableOrNot Value a -> Row a
 column = \case
   Nullable valueDecoder ->
@@ -40,7 +42,7 @@ column = \case
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
-          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (Vocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           ( \lookupResult decoder ->
               Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
           )
@@ -53,11 +55,11 @@ column = \case
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
-          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (Vocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
           (Value.toDecoder valueDecoder)
   where
-    chooseLookedUpOid valueDecoder (elementOid, arrayOid) =
+    chooseLookedUpOid valueDecoder typeInfo =
       if Value.toDimensionality valueDecoder > 0
-        then arrayOid
-        else elementOid
+        then Vocab.TypeInfo.toArrayOid typeInfo
+        else Vocab.TypeInfo.toBaseOid typeInfo

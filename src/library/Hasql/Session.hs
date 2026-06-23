@@ -21,10 +21,4 @@ script sql = Session.script (encodeUtf8 sql)
 -- |
 -- Execute a statement by providing parameters to it.
 statement :: params -> Statement.Statement params result -> Session.Session result
-statement params (Statement.Statement sql encoder decoder preparable) =
-  Session.statement
-    (encodeUtf8 sql)
-    encoder
-    decoder
-    preparable
-    params
+statement params stmt = Session.statement stmt params

@@ -89,7 +89,7 @@ spec = do
                           Nothing
                           [(Nothing, enumName)]
                           ( \lookupOid val -> do
-                              let (enumOidScalar, _) = lookupOid (Nothing, enumName)
+                              let (enumOidScalar, _enumOidArray) = lookupOid (Nothing, enumName)
                               -- Verify we got a valid OID (non-zero)
                               if enumOidScalar > 0
                                 then encodeUtf8 val

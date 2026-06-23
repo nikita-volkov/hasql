@@ -4,6 +4,9 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
@@ -13,9 +16,9 @@ import TextBuilder qualified
 data Composite a
   = Composite
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet (Maybe Text, Text))
+      (HashSet Vocab.QualifiedTypeName)
       -- | Serialization function given the dictionary of resolved OIDs.
-      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Composite)
+      (HashMap Vocab.QualifiedTypeName Vocab.TypeInfo -> a -> Binary.Composite)
       -- | Render function for error messages.
       (a -> [TextBuilder.TextBuilder])
 
@@ -54,9 +57,10 @@ field = \case
               (\val -> [print val])
           Nothing ->
             Composite
-              (HashSet.insert (schemaName, typeName) unknownTypes)
+              (HashSet.insert (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes)
               ( \oidCache val ->
-                  let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                  let typeInfo = HashMap.lookup (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) oidCache
+                      oid = if dimensionality == 0 then maybe 0 Vocab.TypeInfo.toBaseOid typeInfo else maybe 0 Vocab.TypeInfo.toArrayOid typeInfo
                    in Binary.field oid (encode oidCache val)
               )
               (\val -> [print val])
@@ -76,13 +80,15 @@ field = \case
               )
           Nothing ->
             Composite
-              (HashSet.insert (schemaName, typeName) unknownTypes)
+              (HashSet.insert (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes)
               ( \oidCache -> \case
                   Nothing ->
-                    let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                    let typeInfo = HashMap.lookup (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) oidCache
+                        oid = if dimensionality == 0 then maybe 0 Vocab.TypeInfo.toBaseOid typeInfo else maybe 0 Vocab.TypeInfo.toArrayOid typeInfo
                      in Binary.nullField oid
                   Just val ->
-                    let oid = if dimensionality == 0 then maybe 0 fst (HashMap.lookup (schemaName, typeName) oidCache) else maybe 0 snd (HashMap.lookup (schemaName, typeName) oidCache)
+                    let typeInfo = HashMap.lookup (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) oidCache
+                        oid = if dimensionality == 0 then maybe 0 Vocab.TypeInfo.toBaseOid typeInfo else maybe 0 Vocab.TypeInfo.toArrayOid typeInfo
                      in Binary.field oid (encode oidCache val)
               )
               ( \case

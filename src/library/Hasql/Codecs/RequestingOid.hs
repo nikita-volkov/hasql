@@ -11,47 +11,57 @@ module Hasql.Codecs.RequestingOid
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.RequestingOid.LookingUp qualified as LookingUp
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.OidCache qualified as Vocab.OidCache
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude hiding (lift, lookup)
 
 type RequestingOid =
   LookingUp.LookingUp
-    (Maybe Text, Text)
-    (Word32, Word32)
+    Vocab.QualifiedTypeName
+    Vocab.TypeInfo.TypeInfo
 
+{-# INLINE toUnknownTypes #-}
 toUnknownTypes ::
   RequestingOid a ->
-  HashSet (Maybe Text, Text)
+  HashSet Vocab.QualifiedTypeName
 toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
   fromList unknownTypes
 
+{-# INLINE toBase #-}
 toBase ::
   RequestingOid a ->
-  HashMap (Maybe Text, Text) (Word32, Word32) ->
+  Vocab.OidCache ->
   a
 toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
   decoder \key ->
-    HashMap.lookup key oidCache
-      & fromMaybe (0, 0)
+    Vocab.OidCache.lookupTypeInfo key oidCache
+      & fromMaybe (Vocab.TypeInfo.TypeInfo 0 0)
 
+{-# INLINE requestAndHandle #-}
 requestAndHandle ::
-  [(Maybe Text, Text)] ->
-  (((Maybe Text, Text) -> (Word32, Word32)) -> a) ->
+  [Vocab.QualifiedTypeName] ->
+  ((Vocab.QualifiedTypeName -> Vocab.TypeInfo.TypeInfo) -> a) ->
   RequestingOid a
 requestAndHandle keys fn = LookingUp.LookingUp keys fn
 
+{-# INLINE lift #-}
 lift :: a -> RequestingOid a
 lift = LookingUp.lift
 
+{-# INLINE hoist #-}
 hoist :: (a -> b) -> RequestingOid a -> RequestingOid b
 hoist fn (LookingUp.LookingUp keys use) = LookingUp.LookingUp keys (fn . use)
 
-lookup :: (Maybe Text, Text) -> RequestingOid (Word32, Word32)
+{-# INLINE lookup #-}
+lookup :: Vocab.QualifiedTypeName -> RequestingOid Vocab.TypeInfo.TypeInfo
 lookup = LookingUp.lookup
 
-lookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a) -> RequestingOid a
+{-# INLINE lookingUp #-}
+lookingUp :: Vocab.QualifiedTypeName -> (Vocab.TypeInfo.TypeInfo -> a) -> RequestingOid a
 lookingUp = LookingUp.lookingUp
 
-hoistLookingUp :: (Maybe Text, Text) -> ((Word32, Word32) -> a -> b) -> RequestingOid a -> RequestingOid b
+{-# INLINE hoistLookingUp #-}
+hoistLookingUp :: Vocab.QualifiedTypeName -> (Vocab.TypeInfo.TypeInfo -> a -> b) -> RequestingOid a -> RequestingOid b
 hoistLookingUp = LookingUp.hoistLookingUp

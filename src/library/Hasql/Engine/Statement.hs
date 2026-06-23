@@ -4,12 +4,23 @@ module Hasql.Engine.Statement
     unpreparable,
     refineResult,
     toSql,
+    compilePreparedStatementData,
+    compileUnpreparedStatementData,
   )
 where
 
+import Data.Text.Encoding qualified as TextEncoding
+import Data.Vector qualified as Vector
+import Hasql.Codecs.Encoders.Params qualified as Params
+import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.OidCache qualified as Vocab.OidCache
+import Hasql.Codecs.Vocab.ParamMeta (ParamMeta (..))
+import Hasql.Codecs.Vocab.TypeRef qualified as Vocab.TypeRef
+import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Hasql.Engine.Decoders.Result qualified
+import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Platform.Prelude
 
 -- |
@@ -36,23 +47,22 @@ import Hasql.Platform.Prelude
 -- and produces a single result of type 'Int64'.
 data Statement params result
   = Statement
-      -- | SQL template.
-      --
-      -- Must be formatted according to the Postgres standard.
-      -- The parameters must be referred to using the positional notation, as in the following:
-      -- @$1@, @$2@, @$3@ and etc.
-      -- These references must be used in accordance with the order in which
-      -- the value encoders are specified in the parameters encoder.
-      Text
-      -- | Parameters encoder.
-      (Encoders.Params params)
-      -- | Decoder of result.
-      (Decoders.Result result)
-      -- | Flag, determining whether it can be prepared.
-      --
-      -- Set it to 'True' if your application has a limited amount of queries and doesn't generate the SQL dynamically.
-      -- This will boost the performance by allowing Postgres to avoid reconstructing the execution plan each time the query gets executed.
-      Bool
+  { -- | SQL template pre-encoded as UTF-8 for execution.
+    sql :: ByteString,
+    -- | Frozen per-parameter metadata: type reference, dimensionality, text-format flag.
+    -- Produced once at construction from the Params DList and reused across executions.
+    columnsMetadata :: Vector ParamMeta,
+    -- | Serialise params to encoded wire values given a resolved OID cache.
+    serializer :: Vocab.OidCache -> params -> [Maybe ByteString],
+    -- | Render params in human-readable form (for error reporting).
+    printer :: params -> [Text],
+    -- | Union of encoder and decoder unknown types, resolved once at construction.
+    unknownTypes :: HashSet Vocab.QualifiedTypeName,
+    -- | Unwrapped result decoder (RequestingOid layer already peeled from Result).
+    decoder :: RequestingOid.RequestingOid (ResultDecoder.ResultDecoder result),
+    -- | Whether this statement may be prepared on the server.
+    isPrepared :: Bool
+  }
 
 -- |
 -- Construct a preparable statement.
@@ -69,7 +79,18 @@ preparable ::
   -- | Result decoder
   Decoders.Result result ->
   Statement params result
-preparable sql encoder decoder = Statement sql encoder decoder True
+preparable sqlText encoder resultDecoder =
+  Statement
+    { sql = TextEncoding.encodeUtf8 sqlText,
+      columnsMetadata = Params.toColumnsMetadata encoder,
+      serializer = Params.toSerializer encoder,
+      printer = Params.toPrinter encoder,
+      unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
+      decoder = rawDecoder,
+      isPrepared = True
+    }
+  where
+    rawDecoder = Decoders.Result.unwrap resultDecoder
 
 -- |
 -- Construct an unpreparable statement.
@@ -86,21 +107,35 @@ unpreparable ::
   -- | Result decoder
   Decoders.Result result ->
   Statement params result
-unpreparable sql encoder decoder = Statement sql encoder decoder False
+unpreparable sqlText encoder resultDecoder =
+  Statement
+    { sql = TextEncoding.encodeUtf8 sqlText,
+      columnsMetadata = Params.toColumnsMetadata encoder,
+      serializer = Params.toSerializer encoder,
+      printer = Params.toPrinter encoder,
+      unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
+      decoder = rawDecoder,
+      isPrepared = False
+    }
+  where
+    rawDecoder = Decoders.Result.unwrap resultDecoder
 
 instance Functor (Statement params) where
   {-# INLINE fmap #-}
-  fmap = rmap
+  fmap f stmt = stmt {decoder = fmap (fmap f) (decoder stmt)}
 
 instance Filterable (Statement params) where
   {-# INLINE mapMaybe #-}
-  mapMaybe filtrator (Statement template encoder decoder preparable) =
-    Statement template encoder (mapMaybe filtrator decoder) preparable
+  mapMaybe filtrator stmt = stmt {decoder = fmap (mapMaybe filtrator) (decoder stmt)}
 
 instance Profunctor Statement where
   {-# INLINE dimap #-}
-  dimap f1 f2 (Statement template encoder decoder preparable) =
-    Statement template (contramap f1 encoder) (fmap f2 decoder) preparable
+  dimap f1 f2 stmt =
+    stmt
+      { serializer = \oidCache -> serializer stmt oidCache . f1,
+        printer = printer stmt . f1,
+        decoder = fmap (fmap f2) (decoder stmt)
+      }
 
 -- |
 -- Refine the result of a statement,
@@ -109,9 +144,45 @@ instance Profunctor Statement where
 -- This function is especially useful for refining the results of statements produced with
 -- <http://hackage.haskell.org/package/hasql-th the \"hasql-th\" library>.
 refineResult :: (a -> Either Text b) -> Statement params a -> Statement params b
-refineResult refiner (Statement template encoder decoder preparable) =
-  Statement template encoder (Hasql.Engine.Decoders.Result.refineResult refiner decoder) preparable
+refineResult refiner stmt = stmt {decoder = fmap (ResultDecoder.refine refiner) (decoder stmt)}
 
 -- | Extract the SQL template from a statement.
 toSql :: Statement params result -> Text
-toSql (Statement sql _ _ _) = sql
+toSql stmt = TextEncoding.decodeUtf8Lenient (sql stmt)
+
+-- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
+compilePreparedStatementData ::
+  Statement params result ->
+  Vocab.OidCache ->
+  params ->
+  ([Word32], [Maybe (ByteString, Bool)])
+compilePreparedStatementData stmt oidCache params =
+  unzip
+    $ zipWith
+      (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid typeRef dim, fmap (,fmt) encoding))
+      (Vector.toList (columnsMetadata stmt))
+      (serializer stmt oidCache params)
+  where
+    resolveOid (Vocab.TypeRef.NamedType name) dim =
+      case Vocab.OidCache.lookupTypeNameScalar name oidCache of
+        Just oid -> if dim == 0 then oid else fromMaybe 0 (Vocab.OidCache.lookupTypeNameArray name oidCache)
+        Nothing -> 0
+    resolveOid (Vocab.TypeRef.KnownOid oid) _ = oid
+
+-- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
+compileUnpreparedStatementData ::
+  Statement params result ->
+  Vocab.OidCache ->
+  params ->
+  [Maybe (Word32, ByteString, Bool)]
+compileUnpreparedStatementData stmt oidCache params =
+  zipWith
+    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid typeRef dim) <*> encoding <*> Just fmt)
+    (Vector.toList (columnsMetadata stmt))
+    (serializer stmt oidCache params)
+  where
+    resolveOid (Vocab.TypeRef.NamedType name) dim =
+      case Vocab.OidCache.lookupTypeNameScalar name oidCache of
+        Just oid -> if dim == 0 then oid else fromMaybe 0 (Vocab.OidCache.lookupTypeNameArray name oidCache)
+        Nothing -> 0
+    resolveOid (Vocab.TypeRef.KnownOid oid) _ = oid
