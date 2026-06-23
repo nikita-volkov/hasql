@@ -31,42 +31,48 @@ run ::
     )
 run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements connection oidCache statementCache = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
-  oidCacheUpdates <- PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
-  case oidCacheUpdates of
+  resolvedOidCache <-
+    if HashSet.null missingTypes
+      then pure (Right oidCache)
+      else do
+        oidCacheUpdates <-
+          PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
+        pure $ case oidCacheUpdates of
+          Left err -> Left err
+          Right oidCacheUpdates ->
+            let foundTypes = HashMap.keysSet oidCacheUpdates
+                notFoundTypes = HashSet.difference missingTypes foundTypes
+             in if not (HashSet.null notFoundTypes)
+                  then Left (Errors.MissingTypesSessionError notFoundTypes)
+                  else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
+  case resolvedOidCache of
     Left err -> pure (Left err, oidCache, statementCache)
-    Right oidCacheUpdates -> do
-      -- Validate that all requested types were found
-      let foundTypes = HashMap.keysSet oidCacheUpdates
-          notFoundTypes = HashSet.difference missingTypes foundTypes
-      if not (HashSet.null notFoundTypes)
-        then pure (Left (Errors.MissingTypesSessionError notFoundTypes), oidCache, statementCache)
-        else do
-          let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
-              (roundtrip, newStatementCache) =
-                runPipeline 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
-              contextualRoundtrip = first Just roundtrip
+    Right newOidCache -> do
+      let (roundtrip, newStatementCache) =
+            runPipeline 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+          contextualRoundtrip = first Just roundtrip
 
-          executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
+      executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
 
-          let result =
-                first
-                  ( \case
-                      Comms.Roundtrip.ClientError _context details ->
-                        Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                      Comms.Roundtrip.ServerError recvError ->
-                        Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
-                  )
-                  executionResult
-              finalStatementCache =
-                case executionResult of
-                  Right _ -> newStatementCache
-                  Left executionError ->
-                    maybe
-                      statementCache
-                      (\(Context _ _ _ _ statementCache) -> statementCache)
-                      (extract executionError)
+      let result =
+            first
+              ( \case
+                  Comms.Roundtrip.ClientError _context details ->
+                    Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                  Comms.Roundtrip.ServerError recvError ->
+                    Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
+              )
+              executionResult
+          finalStatementCache =
+            case executionResult of
+              Right _ -> newStatementCache
+              Left executionError ->
+                maybe
+                  statementCache
+                  (\(Context _ _ _ _ statementCache) -> statementCache)
+                  (extract executionError)
 
-          pure (result, newOidCache, finalStatementCache)
+      pure (result, newOidCache, finalStatementCache)
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
