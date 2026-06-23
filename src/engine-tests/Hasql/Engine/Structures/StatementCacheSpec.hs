@@ -1,10 +1,9 @@
 module Hasql.Engine.Structures.StatementCacheSpec (spec) where
 
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe
 import Database.PostgreSQL.LibPQ (Oid (..))
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Test.Hspec
-import Prelude
 
 spec :: Spec
 spec = do
@@ -42,8 +41,8 @@ spec = do
       StatementCache.lookup "SELECT $1" [oid25] cache2
         `shouldSatisfy` isJust
       -- And should have different remote keys
-      let Just rk1 = StatementCache.lookup "SELECT $1" [oid23] cache2
-          Just rk2 = StatementCache.lookup "SELECT $1" [oid25] cache2
+      let rk1 = StatementCache.lookup "SELECT $1" [oid23] cache2
+          rk2 = StatementCache.lookup "SELECT $1" [oid25] cache2
       rk1 `shouldNotBe` rk2
 
     it "returns Nothing for a non-inserted SQL" do
@@ -78,8 +77,8 @@ spec = do
         `shouldSatisfy` isJust
       StatementCache.lookup "SELECT $1, $2" oidsB cache2
         `shouldSatisfy` isJust
-      let Just rkA = StatementCache.lookup "SELECT $1, $2" oidsA cache2
-          Just rkB = StatementCache.lookup "SELECT $1, $2" oidsB cache2
+      let rkA = StatementCache.lookup "SELECT $1, $2" oidsA cache2
+          rkB = StatementCache.lookup "SELECT $1, $2" oidsB cache2
       rkA `shouldNotBe` rkB
 
   describe "reset" do

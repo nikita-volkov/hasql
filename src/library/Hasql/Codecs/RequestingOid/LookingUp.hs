@@ -1,7 +1,6 @@
 module Hasql.Codecs.RequestingOid.LookingUp where
 
 import Control.Applicative
-import Witherable
 import Prelude
 
 data LookingUp k v a
