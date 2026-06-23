@@ -4,7 +4,6 @@ import Data.ByteString qualified as ByteString
 import Data.HashSet qualified as HashSet
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
-import Hasql.Decoders (TypeInfo (..))
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors qualified as Errors
@@ -67,7 +66,7 @@ spec = do
                           ( Decoders.custom
                               Nothing
                               "int4"
-                              (Just (TypeInfo 23 1007))
+                              (Just (23, 1007))
                               []
                               (\_ bytes -> Right (ByteString.length bytes))
                           )
@@ -108,10 +107,8 @@ spec = do
                               Nothing
                               [(Nothing, enumName), (Nothing, "int4")]
                               ( \lookupOid bytes -> do
-                                  let enumTypeInfo = lookupOid (Nothing, enumName)
-                                      int4TypeInfo = lookupOid (Nothing, "int4")
-                                      enumOidScalar = toBaseOid enumTypeInfo
-                                      int4OidScalar = toBaseOid int4TypeInfo
+                                  let (enumOidScalar, _enumOidArray) = lookupOid (Nothing, enumName)
+                                      (int4OidScalar, _int4OidArray) = lookupOid (Nothing, "int4")
                                   -- Verify we got valid OIDs
                                   if enumOidScalar > 0 && int4OidScalar > 0
                                     then Right (enumOidScalar, int4OidScalar, ByteString.length bytes)
@@ -206,7 +203,7 @@ spec = do
                           ( Decoders.custom
                               Nothing
                               "int4"
-                              (Just (TypeInfo 23 1007))
+                              (Just (23, 1007))
                               []
                               (\_ _ -> Left "Custom decoding error")
                           )

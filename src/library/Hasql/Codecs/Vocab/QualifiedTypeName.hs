@@ -1,4 +1,4 @@
-module Hasql.Kernel.QualifiedTypeName
+module Hasql.Codecs.Vocab.QualifiedTypeName
   ( QualifiedTypeName (..),
     fromNameTuple,
     toNameTuple,

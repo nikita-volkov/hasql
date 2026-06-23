@@ -74,11 +74,7 @@ module Hasql.Encoders
     -- * Composite
     Composite,
     field,
-
-    -- * TypeInfo
-    TypeInfo (..),
   )
 where
 
 import Hasql.Codecs.Encoders
-import Hasql.Kernel.TypeInfo (TypeInfo (..))

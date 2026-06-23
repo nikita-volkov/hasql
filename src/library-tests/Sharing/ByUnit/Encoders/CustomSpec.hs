@@ -4,7 +4,6 @@ import Data.HashSet qualified as HashSet
 import Data.Text.Encoding (encodeUtf8)
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders (TypeInfo (..))
 import Hasql.Encoders qualified as Encoders
 import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
@@ -58,7 +57,7 @@ spec = do
                       ( Encoders.custom
                           Nothing
                           "text"
-                          (Just (TypeInfo 25 1009))
+                          (Just (25, 1009))
                           []
                           (\_ val -> encodeUtf8 val)
                           id
@@ -90,8 +89,7 @@ spec = do
                           Nothing
                           [(Nothing, enumName)]
                           ( \lookupOid val -> do
-                              let enumTypeInfo = lookupOid (Nothing, enumName)
-                                  enumOidScalar = toBaseOid enumTypeInfo
+                              let (enumOidScalar, _enumOidArray) = lookupOid (Nothing, enumName)
                               -- Verify we got a valid OID (non-zero)
                               if enumOidScalar > 0
                                 then encodeUtf8 val

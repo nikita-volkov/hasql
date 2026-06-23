@@ -2,17 +2,16 @@ module Hasql.Engine.Contexts.Session where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.Vocab.OidCache qualified as OidCache
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
-import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
@@ -101,13 +100,12 @@ statement stmt params =
               let foundTypes = HashMap.keysSet oidCacheUpdates
                   notFoundTypes = HashSet.difference missingTypes foundTypes
                in if not (HashSet.null notFoundTypes)
-                    then Left (Errors.MissingTypesSessionError (HashSet.map Kernel.QualifiedTypeName.toNameTuple notFoundTypes))
+                    then Left (Errors.MissingTypesSessionError (HashSet.map Vocab.QualifiedTypeName.toNameTuple notFoundTypes))
                     else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)
       Right newOidCache -> do
-        let oidHashMap = OidCache.toHashMap newOidCache
-            decoder' = RequestingOid.toBase (Statement.decoder stmt) oidHashMap
+        let decoder' = RequestingOid.toBase (Statement.decoder stmt) newOidCache
             prepared = usePreparedStatements && Statement.isPrepared stmt
             -- Single-statement context for error reporting:
             -- total statements 1, index 0.
@@ -128,7 +126,7 @@ statement stmt params =
           $ if prepared
             then do
               let (oidList, valueAndFormatList) =
-                    Params.compilePreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidHashMap params
+                    Statement.compilePreparedStatementData stmt newOidCache params
                   pqOidList = fmap (Pq.Oid . fromIntegral) oidList
                   encodedParams =
                     valueAndFormatList
@@ -162,7 +160,7 @@ statement stmt params =
                       pure (result, newStatementCache)
             else do
               let encodedParams =
-                    Params.compileUnpreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidHashMap params
+                    Statement.compileUnpreparedStatementData stmt newOidCache params
                       & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
               result <-
                 Comms.Roundtrip.toSerialIO

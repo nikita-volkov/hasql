@@ -70,7 +70,7 @@ import Hasql.Codecs.Decoders.Array qualified as Array
 import Hasql.Codecs.Decoders.Composite qualified as Composite
 import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Decoders.Value qualified as Value
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude
 
 -- * Value
@@ -139,9 +139,9 @@ record composite =
   Value.Value
     Nothing
     "record"
-    (Just (Kernel.TypeInfo.toBaseOid typeInfo))
-    (Just (Kernel.TypeInfo.toArrayOid typeInfo))
+    (Just (Vocab.TypeInfo.toBaseOid typeInfo))
+    (Just (Vocab.TypeInfo.toArrayOid typeInfo))
     0
     (Composite.toValueDecoder composite)
   where
-    typeInfo = Kernel.TypeInfo.record
+    typeInfo = Vocab.TypeInfo.record

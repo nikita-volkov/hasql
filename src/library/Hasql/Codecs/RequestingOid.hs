@@ -11,38 +11,38 @@ module Hasql.Codecs.RequestingOid
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.RequestingOid.LookingUp qualified as LookingUp
-import Hasql.Kernel qualified as Kernel
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.OidCache qualified as Vocab.OidCache
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude hiding (lift, lookup)
 
 type RequestingOid =
   LookingUp.LookingUp
-    Kernel.QualifiedTypeName
-    Kernel.TypeInfo.TypeInfo
+    Vocab.QualifiedTypeName
+    Vocab.TypeInfo.TypeInfo
 
 {-# INLINE toUnknownTypes #-}
 toUnknownTypes ::
   RequestingOid a ->
-  HashSet Kernel.QualifiedTypeName
+  HashSet Vocab.QualifiedTypeName
 toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
   fromList unknownTypes
 
 {-# INLINE toBase #-}
 toBase ::
   RequestingOid a ->
-  HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo ->
+  Vocab.OidCache ->
   a
 toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
   decoder \key ->
-    HashMap.lookup key oidCache
-      & fromMaybe (Kernel.TypeInfo.TypeInfo 0 0)
+    Vocab.OidCache.lookupTypeInfo key oidCache
+      & fromMaybe (Vocab.TypeInfo.TypeInfo 0 0)
 
 {-# INLINE requestAndHandle #-}
 requestAndHandle ::
-  [Kernel.QualifiedTypeName] ->
-  ((Kernel.QualifiedTypeName -> Kernel.TypeInfo.TypeInfo) -> a) ->
+  [Vocab.QualifiedTypeName] ->
+  ((Vocab.QualifiedTypeName -> Vocab.TypeInfo.TypeInfo) -> a) ->
   RequestingOid a
 requestAndHandle keys fn = LookingUp.LookingUp keys fn
 
@@ -55,13 +55,13 @@ hoist :: (a -> b) -> RequestingOid a -> RequestingOid b
 hoist fn (LookingUp.LookingUp keys use) = LookingUp.LookingUp keys (fn . use)
 
 {-# INLINE lookup #-}
-lookup :: Kernel.QualifiedTypeName -> RequestingOid Kernel.TypeInfo.TypeInfo
+lookup :: Vocab.QualifiedTypeName -> RequestingOid Vocab.TypeInfo.TypeInfo
 lookup = LookingUp.lookup
 
 {-# INLINE lookingUp #-}
-lookingUp :: Kernel.QualifiedTypeName -> (Kernel.TypeInfo.TypeInfo -> a) -> RequestingOid a
+lookingUp :: Vocab.QualifiedTypeName -> (Vocab.TypeInfo.TypeInfo -> a) -> RequestingOid a
 lookingUp = LookingUp.lookingUp
 
 {-# INLINE hoistLookingUp #-}
-hoistLookingUp :: Kernel.QualifiedTypeName -> (Kernel.TypeInfo.TypeInfo -> a -> b) -> RequestingOid a -> RequestingOid b
+hoistLookingUp :: Vocab.QualifiedTypeName -> (Vocab.TypeInfo.TypeInfo -> a -> b) -> RequestingOid a -> RequestingOid b
 hoistLookingUp = LookingUp.hoistLookingUp

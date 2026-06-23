@@ -83,8 +83,8 @@ import Hasql.Codecs.Encoders.Composite qualified as Composite
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
@@ -122,11 +122,11 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
               asum
                 [ scalarOidIfKnown,
                   oidCache
-                    & HashMap.lookup (Kernel.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
-                    & fmap Kernel.TypeInfo.toBaseOid
+                    & HashMap.lookup (Vocab.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
+                    & fmap Vocab.TypeInfo.toBaseOid
                 ]
                 -- Should only happen on a bug.
-                & fromMaybe (Kernel.TypeInfo.toBaseOid Kernel.TypeInfo.unknown)
+                & fromMaybe (Vocab.TypeInfo.toBaseOid Vocab.TypeInfo.unknown)
          in Binary.array resolvedOid (arrayEncoder oidCache input)
    in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False unknownTypes encoder renderer
 

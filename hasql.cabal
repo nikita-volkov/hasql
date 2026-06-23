@@ -141,13 +141,14 @@ library
     Hasql.Engine.Errors
     Hasql.Engine.PqProcedures.SelectTypeInfo
     Hasql.Engine.Statement
+    Hasql.Codecs.Vocab
+    Hasql.Codecs.Vocab.OidCache
+    Hasql.Codecs.Vocab.ParamMeta
+    Hasql.Codecs.Vocab.QualifiedTypeName
+    Hasql.Codecs.Vocab.TypeInfo
+    Hasql.Codecs.Vocab.TypeRef
     Hasql.Engine.Structures.ConnectionState
-    Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
-    Hasql.Kernel
-    Hasql.Kernel.QualifiedTypeName
-    Hasql.Kernel.TypeInfo
-    Hasql.Kernel.TypeRef
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq
@@ -264,14 +265,15 @@ test-suite engine-tests
 
   main-is: Main.hs
   other-modules:
-    Hasql.Engine.Structures.OidCache
-    Hasql.Engine.Structures.OidCacheSpec
+    Hasql.Codecs.Vocab
+    Hasql.Codecs.Vocab.OidCache
+    Hasql.Codecs.Vocab.ParamMeta
+    Hasql.Codecs.Vocab.QualifiedTypeName
+    Hasql.Codecs.Vocab.TypeInfo
+    Hasql.Codecs.Vocab.TypeRef
     Hasql.Engine.Structures.StatementCache
     Hasql.Engine.Structures.StatementCacheSpec
-    Hasql.Kernel
-    Hasql.Kernel.QualifiedTypeName
-    Hasql.Kernel.TypeInfo
-    Hasql.Kernel.TypeRef
+    Hasql.Engine.Structures.OidCacheSpec
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq

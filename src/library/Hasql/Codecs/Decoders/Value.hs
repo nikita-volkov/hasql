@@ -58,9 +58,9 @@ where
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
-import Hasql.Kernel qualified as Kernel
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Decoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as R
@@ -93,9 +93,9 @@ instance Filterable Value where
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE primitive #-}
-primitive :: Text -> Kernel.TypeInfo.TypeInfo -> Binary.Value a -> Value a
+primitive :: Text -> Vocab.TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName (Just (Kernel.TypeInfo.toBaseOid pti)) (Just (Kernel.TypeInfo.toArrayOid pti)) 0 (RequestingOid.lift decoder)
+  Value Nothing typeName (Just (Vocab.TypeInfo.toBaseOid pti)) (Just (Vocab.TypeInfo.toArrayOid pti)) 0 (RequestingOid.lift decoder)
 
 -- * Static types
 
@@ -103,19 +103,19 @@ primitive typeName pti decoder =
 -- Decoder of the @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
-bool = primitive "bool" Kernel.TypeInfo.bool Binary.bool
+bool = primitive "bool" Vocab.TypeInfo.bool Binary.bool
 
 -- |
 -- Decoder of the @INT2@ values.
 {-# INLINEABLE int2 #-}
 int2 :: Value Int16
-int2 = primitive "int2" Kernel.TypeInfo.int2 Binary.int
+int2 = primitive "int2" Vocab.TypeInfo.int2 Binary.int
 
 -- |
 -- Decoder of the @INT4@ values.
 {-# INLINEABLE int4 #-}
 int4 :: Value Int32
-int4 = primitive "int4" Kernel.TypeInfo.int4 Binary.int
+int4 = primitive "int4" Vocab.TypeInfo.int4 Binary.int
 
 -- |
 -- Decoder of the @INT8@ values.
@@ -123,68 +123,68 @@ int4 = primitive "int4" Kernel.TypeInfo.int4 Binary.int
 int8 :: Value Int64
 int8 =
   {-# SCC "int8" #-}
-  primitive "int8" Kernel.TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
+  primitive "int8" Vocab.TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
 
 -- |
 -- Decoder of the @FLOAT4@ values.
 {-# INLINEABLE float4 #-}
 float4 :: Value Float
-float4 = primitive "float4" Kernel.TypeInfo.float4 Binary.float4
+float4 = primitive "float4" Vocab.TypeInfo.float4 Binary.float4
 
 -- |
 -- Decoder of the @FLOAT8@ values.
 {-# INLINEABLE float8 #-}
 float8 :: Value Double
-float8 = primitive "float8" Kernel.TypeInfo.float8 Binary.float8
+float8 = primitive "float8" Vocab.TypeInfo.float8 Binary.float8
 
 -- |
 -- Decoder of the @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
 numeric :: Value Scientific
-numeric = primitive "numeric" Kernel.TypeInfo.numeric Binary.numeric
+numeric = primitive "numeric" Vocab.TypeInfo.numeric Binary.numeric
 
 -- |
 -- Decoder of the @CHAR@ values.
 -- Note that it supports Unicode values.
 {-# INLINEABLE char #-}
 char :: Value Char
-char = primitive "char" Kernel.TypeInfo.char Binary.char
+char = primitive "char" Vocab.TypeInfo.char Binary.char
 
 -- |
 -- Decoder of the @TEXT@ values.
 {-# INLINEABLE text #-}
 text :: Value Text
-text = primitive "text" Kernel.TypeInfo.text Binary.text_strict
+text = primitive "text" Vocab.TypeInfo.text Binary.text_strict
 
 -- |
 -- Decoder of the @VARCHAR@ values.
 {-# INLINEABLE varchar #-}
 varchar :: Value Text
-varchar = primitive "varchar" Kernel.TypeInfo.varchar Binary.text_strict
+varchar = primitive "varchar" Vocab.TypeInfo.varchar Binary.text_strict
 
 -- |
 -- Decoder of @BPCHAR@ or @CHAR(n)@, @CHARACTER(n)@ values.
 {-# INLINEABLE bpchar #-}
 bpchar :: Value Text
-bpchar = primitive "bpchar" Kernel.TypeInfo.bpchar Binary.text_strict
+bpchar = primitive "bpchar" Vocab.TypeInfo.bpchar Binary.text_strict
 
 -- |
 -- Decoder of the @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString
-bytea = primitive "bytea" Kernel.TypeInfo.bytea Binary.bytea_strict
+bytea = primitive "bytea" Vocab.TypeInfo.bytea Binary.bytea_strict
 
 -- |
 -- Decoder of the @DATE@ values.
 {-# INLINEABLE date #-}
 date :: Value Day
-date = primitive "date" Kernel.TypeInfo.date Binary.date
+date = primitive "date" Vocab.TypeInfo.date Binary.date
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = primitive "timestamp" Kernel.TypeInfo.timestamp Binary.timestamp_int
+timestamp = primitive "timestamp" Vocab.TypeInfo.timestamp Binary.timestamp_int
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
@@ -198,13 +198,13 @@ timestamp = primitive "timestamp" Kernel.TypeInfo.timestamp Binary.timestamp_int
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = primitive "timestamptz" Kernel.TypeInfo.timestamptz Binary.timestamptz_int
+timestamptz = primitive "timestamptz" Vocab.TypeInfo.timestamptz Binary.timestamptz_int
 
 -- |
 -- Decoder of the @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = primitive "time" Kernel.TypeInfo.time Binary.time_int
+time = primitive "time" Vocab.TypeInfo.time Binary.time_int
 
 -- |
 -- Decoder of the @TIMETZ@ values.
@@ -216,25 +216,25 @@ time = primitive "time" Kernel.TypeInfo.time Binary.time_int
 -- to represent a value on the Haskell's side.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = primitive "timetz" Kernel.TypeInfo.timetz Binary.timetz_int
+timetz = primitive "timetz" Vocab.TypeInfo.timetz Binary.timetz_int
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 {-# INLINEABLE interval #-}
 interval :: Value DiffTime
-interval = primitive "interval" Kernel.TypeInfo.interval Binary.interval_int
+interval = primitive "interval" Vocab.TypeInfo.interval Binary.interval_int
 
 -- |
 -- Decoder of the @UUID@ values.
 {-# INLINEABLE uuid #-}
 uuid :: Value UUID
-uuid = primitive "uuid" Kernel.TypeInfo.uuid Binary.uuid
+uuid = primitive "uuid" Vocab.TypeInfo.uuid Binary.uuid
 
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
 inet :: Value Iproute.IPRange
-inet = primitive "inet" Kernel.TypeInfo.inet Binary.inet
+inet = primitive "inet" Vocab.TypeInfo.inet Binary.inet
 
 -- |
 -- Decoder of the @MACADDR@ values.
@@ -245,103 +245,103 @@ inet = primitive "inet" Kernel.TypeInfo.inet Binary.inet
 -- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
 {-# INLINEABLE macaddr #-}
 macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = primitive "macaddr" Kernel.TypeInfo.macaddr Binary.macaddr
+macaddr = primitive "macaddr" Vocab.TypeInfo.macaddr Binary.macaddr
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
-json = primitive "json" Kernel.TypeInfo.json Binary.json_ast
+json = primitive "json" Vocab.TypeInfo.json Binary.json_ast
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = primitive "json" Kernel.TypeInfo.json (Binary.json_bytes fn)
+jsonBytes fn = primitive "json" Vocab.TypeInfo.json (Binary.json_bytes fn)
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value Aeson.Value
-jsonb = primitive "jsonb" Kernel.TypeInfo.jsonb Binary.jsonb_ast
+jsonb = primitive "jsonb" Vocab.TypeInfo.jsonb Binary.jsonb_ast
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = primitive "jsonb" Kernel.TypeInfo.jsonb (Binary.jsonb_bytes fn)
+jsonbBytes fn = primitive "jsonb" Vocab.TypeInfo.jsonb (Binary.jsonb_bytes fn)
 
 -- |
 -- Decoder of the @INT4RANGE@ values.
 {-# INLINEABLE int4range #-}
 int4range :: Value (R.Range Int32)
-int4range = primitive "int4range" Kernel.TypeInfo.int4range Binary.int4range
+int4range = primitive "int4range" Vocab.TypeInfo.int4range Binary.int4range
 
 -- |
 -- Decoder of the @INT8RANGE@ values.
 {-# INLINEABLE int8range #-}
 int8range :: Value (R.Range Int64)
-int8range = primitive "int8range" Kernel.TypeInfo.int8range Binary.int8range
+int8range = primitive "int8range" Vocab.TypeInfo.int8range Binary.int8range
 
 -- |
 -- Decoder of the @NUMRANGE@ values.
 {-# INLINEABLE numrange #-}
 numrange :: Value (R.Range Scientific)
-numrange = primitive "numrange" Kernel.TypeInfo.numrange Binary.numrange
+numrange = primitive "numrange" Vocab.TypeInfo.numrange Binary.numrange
 
 -- |
 -- Decoder of the @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = primitive "tsrange" Kernel.TypeInfo.tsrange Binary.tsrange_int
+tsrange = primitive "tsrange" Vocab.TypeInfo.tsrange Binary.tsrange_int
 
 -- |
 -- Decoder of the @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = primitive "tstzrange" Kernel.TypeInfo.tstzrange Binary.tstzrange_int
+tstzrange = primitive "tstzrange" Vocab.TypeInfo.tstzrange Binary.tstzrange_int
 
 -- |
 -- Decoder of the @DATERANGE@ values.
 {-# INLINEABLE daterange #-}
 daterange :: Value (R.Range Day)
-daterange = primitive "daterange" Kernel.TypeInfo.daterange Binary.daterange
+daterange = primitive "daterange" Vocab.TypeInfo.daterange Binary.daterange
 
 -- |
 -- Decoder of the @INT4MULTIRANGE@ values.
 {-# INLINEABLE int4multirange #-}
 int4multirange :: Value (R.Multirange Int32)
-int4multirange = primitive "int4multirange" Kernel.TypeInfo.int4multirange Binary.int4multirange
+int4multirange = primitive "int4multirange" Vocab.TypeInfo.int4multirange Binary.int4multirange
 
 -- |
 -- Decoder of the @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
-int8multirange = primitive "int8multirange" Kernel.TypeInfo.int8multirange Binary.int8multirange
+int8multirange = primitive "int8multirange" Vocab.TypeInfo.int8multirange Binary.int8multirange
 
 -- |
 -- Decoder of the @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
-nummultirange = primitive "nummultirange" Kernel.TypeInfo.nummultirange Binary.nummultirange
+nummultirange = primitive "nummultirange" Vocab.TypeInfo.nummultirange Binary.nummultirange
 
 -- |
 -- Decoder of the @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = primitive "tsmultirange" Kernel.TypeInfo.tsmultirange Binary.tsmultirange_int
+tsmultirange = primitive "tsmultirange" Vocab.TypeInfo.tsmultirange Binary.tsmultirange_int
 
 -- |
 -- Decoder of the @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = primitive "tstzmultirange" Kernel.TypeInfo.tstzmultirange Binary.tstzmultirange_int
+tstzmultirange = primitive "tstzmultirange" Vocab.TypeInfo.tstzmultirange Binary.tstzmultirange_int
 
 -- |
 -- Decoder of the @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
-datemultirange = primitive "datemultirange" Kernel.TypeInfo.datemultirange Binary.datemultirange
+datemultirange = primitive "datemultirange" Vocab.TypeInfo.datemultirange Binary.datemultirange
 
 -- |
 -- Decoder of the @CITEXT@ values.
@@ -362,7 +362,7 @@ custom ::
   -- | Possible static OIDs for the type. The first is for scalar values the second is for arrays.
   --
   -- When unspecified, the OIDs will be automatically determined at runtime by looking up by name.
-  Maybe Kernel.TypeInfo.TypeInfo ->
+  Maybe (Word32, Word32) ->
   -- | Other named types whose OIDs are needed for deserializing.
   --
   -- E.g., when decoding composite types you can check the OIDs of its fields against the ones specified by Postgres.
@@ -373,7 +373,7 @@ custom ::
   --
   -- It's safe to assume that all of the requested types will be present.
   -- In case you run the provided lookup function with unmentioned type names it will produce OID of 0 for them, standing for unknown type in Postgres.
-  ( ((Maybe Text, Text) -> Kernel.TypeInfo.TypeInfo) ->
+  ( ((Maybe Text, Text) -> (Word32, Word32)) ->
     ByteString ->
     Either Text a
   ) ->
@@ -382,10 +382,12 @@ custom schema typeName staticOids requestedTypes fn =
   Value
     schema
     typeName
-    (fmap Kernel.TypeInfo.toBaseOid staticOids)
-    (fmap Kernel.TypeInfo.toArrayOid staticOids)
+    (fmap fst staticOids)
+    (fmap snd staticOids)
     0
-    (RequestingOid.requestAndHandle (fmap Kernel.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (lookup . Kernel.QualifiedTypeName.fromNameTuple))))
+    (RequestingOid.requestAndHandle (fmap Vocab.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (toTuple . lookup . Vocab.QualifiedTypeName.fromNameTuple))))
+  where
+    toTuple typeInfo = (Vocab.TypeInfo.toBaseOid typeInfo, Vocab.TypeInfo.toArrayOid typeInfo)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
@@ -448,11 +450,11 @@ toDecoder :: Value a -> RequestingOid.RequestingOid (Binary.Value a)
 toDecoder (Value _ _ _ _ _ decoder) = decoder
 
 {-# INLINE toHandler #-}
-toHandler :: Value a -> HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> Binary.Value a
+toHandler :: Value a -> Vocab.OidCache -> Binary.Value a
 toHandler (Value _ _ _ _ _ decoder) = RequestingOid.toBase decoder
 
 {-# INLINE toByteStringParser #-}
-toByteStringParser :: Value a -> (HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> ByteString -> Either Text a)
+toByteStringParser :: Value a -> (Vocab.OidCache -> ByteString -> Either Text a)
 toByteStringParser (Value _ _ _ _ _ decoder) oidCache = Binary.valueParser (RequestingOid.toBase decoder oidCache)
 
 isArray :: Value a -> Bool

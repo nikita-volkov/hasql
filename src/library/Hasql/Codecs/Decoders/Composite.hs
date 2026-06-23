@@ -3,8 +3,8 @@ module Hasql.Codecs.Decoders.Composite where
 import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 
@@ -33,8 +33,8 @@ field = \case
           Nothing ->
             Composite
               ( RequestingOid.hoistLookingUp
-                  (Kernel.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
-                  (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo) decoder)
+                  (Vocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+                  (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then Vocab.TypeInfo.toBaseOid typeInfo else Vocab.TypeInfo.toArrayOid typeInfo) decoder)
                   (Value.toDecoder imp)
               )
   NullableOrNot.Nullable imp ->
@@ -46,7 +46,7 @@ field = \case
           Nothing ->
             Composite
               ( RequestingOid.hoistLookingUp
-                  (Kernel.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
-                  (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo) decoder)
+                  (Vocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+                  (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then Vocab.TypeInfo.toBaseOid typeInfo else Vocab.TypeInfo.toArrayOid typeInfo) decoder)
                   (Value.toDecoder imp)
               )

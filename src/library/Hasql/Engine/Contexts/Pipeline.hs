@@ -7,17 +7,15 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.OidCache qualified as OidCache
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Statement qualified as Statement
-import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
-import Hasql.Kernel qualified as Kernel
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
@@ -46,13 +44,13 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
             let foundTypes = HashMap.keysSet oidCacheUpdates
                 notFoundTypes = HashSet.difference missingTypes foundTypes
              in if not (HashSet.null notFoundTypes)
-                  then Left (Errors.MissingTypesSessionError (HashSet.map Kernel.QualifiedTypeName.toNameTuple notFoundTypes))
+                  then Left (Errors.MissingTypesSessionError (HashSet.map Vocab.QualifiedTypeName.toNameTuple notFoundTypes))
                   else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
   case resolvedOidCache of
     Left err -> pure (Left err, oidCache, statementCache)
     Right newOidCache -> do
       let (roundtrip, newStatementCache) =
-            runPipeline 0 usePreparedStatements (OidCache.toHashMap newOidCache) statementCache
+            runPipeline 0 usePreparedStatements newOidCache statementCache
           contextualRoundtrip = first Just roundtrip
 
       executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
@@ -147,7 +145,7 @@ data Pipeline a
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
       -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
-      (HashSet Kernel.QualifiedTypeName)
+      (HashSet Vocab.QualifiedTypeName)
       -- | Function that runs the pipeline.
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
@@ -164,7 +162,7 @@ data Pipeline a
       -- committed cache from statement contexts carried by roundtrip errors.
       ( Int ->
         Bool ->
-        HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo ->
+        OidCache.OidCache ->
         StatementCache.StatementCache ->
         (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )
@@ -220,7 +218,7 @@ statement stmt params =
         else runUnprepared
       where
         (oidList, valueAndFormatList) =
-          Params.compilePreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidCache params
+          Statement.compilePreparedStatementData stmt oidCache params
 
         pqOidList =
           fmap (Pq.Oid . fromIntegral) oidList
@@ -263,7 +261,7 @@ statement stmt params =
               Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
-                  Params.compileUnpreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidCache params
+                  Statement.compileUnpreparedStatementData stmt oidCache params
                     & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =

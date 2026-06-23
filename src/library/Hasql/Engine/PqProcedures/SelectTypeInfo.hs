@@ -8,26 +8,25 @@ where
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Decoders.Value qualified as Decoders.Value
-import Hasql.Codecs.Encoders qualified as Encoders
-import Hasql.Codecs.Encoders.Params qualified as Encoders.Params
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Codecs.Vocab.TypeInfo qualified as Vocab.TypeInfo
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Engine.Errors qualified as Errors
-import Hasql.Kernel qualified as Kernel
-import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
-import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
+import PostgreSQL.Binary.Encoding qualified as Binary
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
-    keys :: HashSet Kernel.QualifiedTypeName
+    keys :: HashSet Vocab.QualifiedTypeName
   }
 
 -- | Result maps (schema name, type name) pairs to TypeInfo (scalar OID, array OID).
 type SelectTypeInfoResult =
-  HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo
+  HashMap Vocab.QualifiedTypeName Vocab.TypeInfo.TypeInfo
 
 run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
@@ -75,38 +74,30 @@ roundtrip :: SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip () SelectTypeInfo
 roundtrip params =
   Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
 
--- | Frozen column metadata for paramsEncoder, computed once at module load.
-frozenParamsMeta :: Vector Encoders.Params.ParamMeta
-frozenParamsMeta =
-  Encoders.Params.toColumnsMetadata paramsEncoder
-
+-- | Encode the two text-array parameters directly.
+-- Text OID is 25; text-array OID is 1009.
 encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
-encodeParams =
-  fmap
-    ( fmap
-        ( \(oid, bytes, format) ->
-            ( Pq.Oid (fromIntegral oid),
-              bytes,
-              bool Pq.Binary Pq.Text format
-            )
-        )
-    )
-    . Encoders.Params.compileUnpreparedStatementData frozenParamsMeta (Encoders.Params.serializer paramsEncoder) mempty
-
-paramsEncoder :: Encoders.Params SelectTypeInfo
-paramsEncoder =
-  (\(SelectTypeInfo keys) -> unzip (fmap Kernel.QualifiedTypeName.toNameTuple (HashSet.toList keys)))
-    >$< mconcat
-      [ fst >$< Encoders.param (Encoders.nonNullable (Encoders.foldableArray (Encoders.nullable Encoders.text))),
-        snd >$< Encoders.param (Encoders.nonNullable (Encoders.foldableArray (Encoders.nonNullable Encoders.text)))
+encodeParams (SelectTypeInfo keys) =
+  let (schemaNames, typeNames) = unzip (fmap Vocab.QualifiedTypeName.toNameTuple (HashSet.toList keys))
+      schemaArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (encodeMaybeText schemaNames)))
+      typeArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (fmap (Binary.encodingArray . Binary.text_strict) typeNames)))
+   in [ Just (Pq.Oid 1009, schemaArray, Pq.Binary),
+        Just (Pq.Oid 1009, typeArray, Pq.Binary)
       ]
+  where
+    encodeTextArray elements =
+      Binary.dimensionArray foldl' id elements
+    encodeMaybeText =
+      fmap \case
+        Nothing -> Binary.nullArray
+        Just text -> Binary.encodingArray (Binary.text_strict text)
 
 decoder :: Hasql.Comms.ResultDecoder.ResultDecoder SelectTypeInfoResult
 decoder =
   Hasql.Comms.ResultDecoder.foldl step HashMap.empty rowDecoder
   where
     step acc (schemaName, typeName, typeOid, arrayOid) =
-      HashMap.insert (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName) (Kernel.TypeInfo.TypeInfo typeOid arrayOid) acc
+      HashMap.insert (Vocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) (Vocab.TypeInfo.TypeInfo typeOid arrayOid) acc
 
 rowDecoder :: Hasql.Comms.RowDecoder.RowDecoder (Maybe Text, Text, Word32, Word32)
 rowDecoder =
