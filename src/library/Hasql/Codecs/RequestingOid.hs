@@ -14,7 +14,6 @@ where
 import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.RequestingOid.LookingUp qualified as LookingUp
 import Hasql.Platform.Prelude hiding (lift, lookup)
-import PostgreSQL.Binary.Decoding qualified as Binary
 
 type RequestingOid =
   LookingUp.LookingUp

@@ -68,39 +68,12 @@ script sql =
           )
 
 -- |
--- Execute a statement by providing parameters to it,
--- using the legacy pipeline-wrapped path.
+-- Execute a single statement by providing parameters to it,
+-- running it directly in serial mode.
 --
--- This is the pre-1.10 implementation retained for compatibility.
--- It routes every query through pipeline mode, which for a single statement
--- adds per-call overhead (entering and exiting pipeline mode, a pipeline sync,
--- and async-exception masking) without saving any network roundtrips.
---
--- Prefer the new 'statement' for direct serial execution,
--- or 'pipeline' when batching multiple statements.
---
--- __Warning:__ This operation is deprecated and will be removed before the
--- next release.
-{-# DEPRECATED statementLegacy "Use 'statement' instead." #-}
-statementLegacy ::
-  ByteString ->
-  Params.Params params ->
-  Decoders.Result.Result result ->
-  Bool ->
-  params ->
-  Session result
-statementLegacy sql paramsEncoder decoder preparable params =
-  pipeline (Pipeline.statement sql paramsEncoder decoder preparable params)
-
--- |
--- Execute a single statement using a direct serial path, bypassing pipeline mode.
---
--- This avoids the per-statement pipeline-mode machinery
--- (entering and exiting pipeline mode, the pipeline sync,
--- and the async-exception masking it requires).
---
--- The first execution of a preparable statement costs an extra network roundtrip
--- (a separate @PARSE@), after which steady-state execution is a single roundtrip.
+-- Each execution is a dedicated network roundtrip. The first execution of a
+-- preparable statement costs an extra roundtrip (a separate @PARSE@), after
+-- which steady-state execution is a single roundtrip.
 --
 -- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
 statement ::
@@ -184,9 +157,7 @@ statement sql paramsEncoder decoder preparable params =
                           -- PARSE succeeded, so the statement is on the server
                           -- under remoteKey regardless of whether EXECUTE then
                           -- fails. Commit the cache so a later use hits it instead
-                          -- of re-issuing PARSE for an already-existing name. A
-                          -- ServerError on EXECUTE leaves the connection clean; a
-                          -- ClientError resets it (discarding the cache anyway).
+                          -- of re-issuing PARSE for an already-existing name.
                           result <- execute remoteKey
                           pure (result, newStatementCache)
                 else do
