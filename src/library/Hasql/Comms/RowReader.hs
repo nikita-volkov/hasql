@@ -76,10 +76,11 @@ column processNullable valueDec = RowReader do
 
   valueMaybe <- case valueMaybe of
     Nothing -> pure Nothing
-    Just v -> do
-      oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
+    Just v ->
       case {-# SCC "decode" #-} valueDec v of
-        Left err -> throwError (CellError colInt oid (DecodingCellError err))
+        Left err -> do
+          oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
+          throwError (CellError colInt oid (DecodingCellError err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
