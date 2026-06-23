@@ -4,6 +4,8 @@ import Hasql.Codecs.Decoders
 import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.RowDecoder qualified
+import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
+import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Decoding qualified as Binary
 
@@ -40,7 +42,7 @@ column = \case
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
-          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (Kernel.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           ( \lookupResult decoder ->
               Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
           )
@@ -53,11 +55,11 @@ column = \case
           (Value.toDecoder valueDecoder)
       Nothing -> do
         RequestingOid.hoistLookingUp
-          (Value.toSchema valueDecoder, Value.toTypeName valueDecoder)
+          (Kernel.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
           (Value.toDecoder valueDecoder)
   where
-    chooseLookedUpOid valueDecoder (elementOid, arrayOid) =
+    chooseLookedUpOid valueDecoder typeInfo =
       if Value.toDimensionality valueDecoder > 0
-        then arrayOid
-        else elementOid
+        then Kernel.TypeInfo.toArrayOid typeInfo
+        else Kernel.TypeInfo.toBaseOid typeInfo

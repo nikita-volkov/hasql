@@ -83,9 +83,13 @@ module Hasql.Decoders
     -- * Composite
     Composite,
     field,
+
+    -- * TypeInfo
+    TypeInfo (..),
   )
 where
 
 import Hasql.Codecs.Decoders
 import Hasql.Engine.Decoders.Result
 import Hasql.Engine.Decoders.Row
+import Hasql.Kernel.TypeInfo (TypeInfo (..))

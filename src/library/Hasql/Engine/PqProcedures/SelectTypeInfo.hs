@@ -14,17 +14,20 @@ import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Engine.Errors qualified as Errors
+import Hasql.Kernel qualified as Kernel
+import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
+import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
-    keys :: HashSet (Maybe Text, Text)
+    keys :: HashSet Kernel.QualifiedTypeName
   }
 
--- | Result maps (schema name, type name) pairs to (scalar OID, array OID) pairs.
+-- | Result maps (schema name, type name) pairs to TypeInfo (scalar OID, array OID).
 type SelectTypeInfoResult =
-  HashMap (Maybe Text, Text) (Word32, Word32)
+  HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo
 
 run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
@@ -87,7 +90,7 @@ encodeParams =
 
 paramsEncoder :: Encoders.Params SelectTypeInfo
 paramsEncoder =
-  (\(SelectTypeInfo keys) -> unzip (HashSet.toList keys))
+  (\(SelectTypeInfo keys) -> unzip (fmap Kernel.QualifiedTypeName.toNameTuple (HashSet.toList keys)))
     >$< mconcat
       [ fst >$< Encoders.param (Encoders.nonNullable (Encoders.foldableArray (Encoders.nullable Encoders.text))),
         snd >$< Encoders.param (Encoders.nonNullable (Encoders.foldableArray (Encoders.nonNullable Encoders.text)))
@@ -98,7 +101,7 @@ decoder =
   Hasql.Comms.ResultDecoder.foldl step HashMap.empty rowDecoder
   where
     step acc (schemaName, typeName, typeOid, arrayOid) =
-      HashMap.insert (schemaName, typeName) (typeOid, arrayOid) acc
+      HashMap.insert (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName) (Kernel.TypeInfo.TypeInfo typeOid arrayOid) acc
 
 rowDecoder :: Hasql.Comms.RowDecoder.RowDecoder (Maybe Text, Text, Word32, Word32)
 rowDecoder =

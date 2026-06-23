@@ -2,6 +2,7 @@ module Hasql.Engine.Structures.OidCacheSpec (spec) where
 
 import Data.HashSet qualified as HashSet
 import Hasql.Engine.Structures.OidCache qualified as OidCache
+import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
 import Test.Hspec
 import Prelude
 
@@ -54,7 +55,7 @@ spec = do
 
   describe "selectUnknownNames" do
     it "returns all names when cache is empty" do
-      let names = HashSet.fromList [(Nothing, "int4"), (Nothing, "int8")]
+      let names = HashSet.fromList [Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int4", Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
       OidCache.selectUnknownNames names OidCache.empty
         `shouldBe` names
 
@@ -66,15 +67,15 @@ spec = do
               23
               1007
               (OidCache.insertScalar Nothing "int8" 20 1016 OidCache.empty)
-          names = HashSet.fromList [(Nothing, "int4"), (Nothing, "int8")]
+          names = HashSet.fromList [Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int4", Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
       OidCache.selectUnknownNames names cache
         `shouldBe` HashSet.empty
 
     it "returns only unknown names" do
       let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-          names = HashSet.fromList [(Nothing, "int4"), (Nothing, "int8")]
+          names = HashSet.fromList [Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int4", Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
       OidCache.selectUnknownNames names cache
-        `shouldBe` HashSet.fromList [(Nothing, "int8")]
+        `shouldBe` HashSet.fromList [Kernel.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
 
   describe "Semigroup" do
     it "right operand takes precedence for duplicate keys" do

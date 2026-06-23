@@ -15,6 +15,9 @@ import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.Kernel qualified as Kernel
+import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
+import Hasql.Kernel.TypeInfo qualified as Kernel.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
@@ -43,7 +46,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
             let foundTypes = HashMap.keysSet oidCacheUpdates
                 notFoundTypes = HashSet.difference missingTypes foundTypes
              in if not (HashSet.null notFoundTypes)
-                  then Left (Errors.MissingTypesSessionError notFoundTypes)
+                  then Left (Errors.MissingTypesSessionError (HashSet.map Kernel.QualifiedTypeName.toNameTuple notFoundTypes))
                   else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
   case resolvedOidCache of
     Left err -> pure (Left err, oidCache, statementCache)
@@ -144,7 +147,7 @@ data Pipeline a
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
       -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
-      (HashSet (Maybe Text, Text))
+      (HashSet Kernel.QualifiedTypeName)
       -- | Function that runs the pipeline.
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
@@ -161,7 +164,7 @@ data Pipeline a
       -- committed cache from statement contexts carried by roundtrip errors.
       ( Int ->
         Bool ->
-        HashMap (Maybe Text, Text) (Word32, Word32) ->
+        HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo ->
         StatementCache.StatementCache ->
         (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
       )

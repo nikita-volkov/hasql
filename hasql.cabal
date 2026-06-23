@@ -112,6 +112,10 @@ library
     Hasql.Statement
 
   other-modules:
+    Hasql.Kernel
+    Hasql.Kernel.QualifiedTypeName
+    Hasql.Kernel.TypeInfo
+    Hasql.Kernel.TypeRef
     Hasql.Codecs.Decoders
     Hasql.Codecs.Decoders.Array
     Hasql.Codecs.Decoders.Composite
@@ -125,7 +129,6 @@ library
     Hasql.Codecs.Encoders.Value
     Hasql.Codecs.RequestingOid
     Hasql.Codecs.RequestingOid.LookingUp
-    Hasql.Codecs.TypeInfo
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -265,6 +268,10 @@ test-suite engine-tests
     Hasql.Engine.Structures.OidCacheSpec
     Hasql.Engine.Structures.StatementCache
     Hasql.Engine.Structures.StatementCacheSpec
+    Hasql.Kernel
+    Hasql.Kernel.QualifiedTypeName
+    Hasql.Kernel.TypeInfo
+    Hasql.Kernel.TypeRef
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq

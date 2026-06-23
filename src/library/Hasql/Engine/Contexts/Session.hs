@@ -12,6 +12,7 @@ import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.Select
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.Kernel.QualifiedTypeName qualified as Kernel.QualifiedTypeName
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
@@ -106,7 +107,7 @@ statement sql paramsEncoder decoder preparable params =
               let foundTypes = HashMap.keysSet oidCacheUpdates
                   notFoundTypes = HashSet.difference missingTypes foundTypes
                in if not (HashSet.null notFoundTypes)
-                    then Left (Errors.MissingTypesSessionError notFoundTypes)
+                    then Left (Errors.MissingTypesSessionError (HashSet.map Kernel.QualifiedTypeName.toNameTuple notFoundTypes))
                     else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)

@@ -1,9 +1,11 @@
-module Hasql.Codecs.TypeInfo where
+module Hasql.Kernel.TypeInfo where
 
 import Hasql.Platform.Prelude hiding (bool)
 
 -- | A Postgresql type info
-data TypeInfo = TypeInfo {toBaseOid :: Word32, toArrayOid :: Word32}
+data TypeInfo
+  = TypeInfo {toBaseOid :: Word32, toArrayOid :: Word32}
+  deriving (Eq, Ord, Show)
 
 abstime :: TypeInfo
 abstime = TypeInfo 702 1023

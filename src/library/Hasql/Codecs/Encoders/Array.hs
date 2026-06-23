@@ -2,6 +2,7 @@ module Hasql.Codecs.Encoders.Array where
 
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
+import Hasql.Kernel qualified as Kernel
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified as TextBuilder
@@ -33,9 +34,9 @@ data Array a
       -- | OID of the array type.
       (Maybe Word32)
       -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet (Maybe Text, Text))
+      (HashSet Kernel.QualifiedTypeName)
       -- | Serialization function given the dictionary of resolved OIDs.
-      (HashMap (Maybe Text, Text) (Word32, Word32) -> a -> Binary.Array)
+      (HashMap Kernel.QualifiedTypeName Kernel.TypeInfo -> a -> Binary.Array)
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
