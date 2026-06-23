@@ -112,10 +112,6 @@ library
     Hasql.Statement
 
   other-modules:
-    Hasql.Kernel
-    Hasql.Kernel.QualifiedTypeName
-    Hasql.Kernel.TypeInfo
-    Hasql.Kernel.TypeRef
     Hasql.Codecs.Decoders
     Hasql.Codecs.Decoders.Array
     Hasql.Codecs.Decoders.Composite
@@ -148,6 +144,10 @@ library
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.OidCache
     Hasql.Engine.Structures.StatementCache
+    Hasql.Kernel
+    Hasql.Kernel.QualifiedTypeName
+    Hasql.Kernel.TypeInfo
+    Hasql.Kernel.TypeRef
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
     Hasql.Pq
@@ -325,8 +325,8 @@ test-suite library-tests
     Pure.ByUnit.ErrorsSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
     Sharing.ByFeature.ConcurrencySpec
-    Sharing.ByFeature.DecoderCompatibilityCheckSpec
     Sharing.ByFeature.DecoderCompatibilityCacheSpec
+    Sharing.ByFeature.DecoderCompatibilityCheckSpec
     Sharing.ByFeature.PreparedStatementCacheSpec
     Sharing.ByFeature.PreparedStatementsSpec
     Sharing.ByFeature.SyntaxErrorsSpec
