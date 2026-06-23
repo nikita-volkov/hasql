@@ -23,7 +23,7 @@ script sql = Session.script (encodeUtf8 sql)
 statement :: params -> Statement.Statement params result -> Session.Session result
 statement params (Statement.Statement sql encoder decoder preparable) =
   Session.statement
-    (encodeUtf8 sql)
+    sql
     encoder
     decoder
     preparable

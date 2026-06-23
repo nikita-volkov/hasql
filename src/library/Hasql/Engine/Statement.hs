@@ -7,6 +7,7 @@ module Hasql.Engine.Statement
   )
 where
 
+import Data.Text.Encoding qualified as TextEncoding
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
 import Hasql.Engine.Decoders.Result qualified
@@ -36,14 +37,14 @@ import Hasql.Platform.Prelude
 -- and produces a single result of type 'Int64'.
 data Statement params result
   = Statement
-      -- | SQL template.
+      -- | SQL template pre-encoded as UTF-8 for execution.
       --
       -- Must be formatted according to the Postgres standard.
       -- The parameters must be referred to using the positional notation, as in the following:
       -- @$1@, @$2@, @$3@ and etc.
       -- These references must be used in accordance with the order in which
       -- the value encoders are specified in the parameters encoder.
-      Text
+      ByteString
       -- | Parameters encoder.
       (Encoders.Params params)
       -- | Decoder of result.
@@ -69,7 +70,7 @@ preparable ::
   -- | Result decoder
   Decoders.Result result ->
   Statement params result
-preparable sql encoder decoder = Statement sql encoder decoder True
+preparable sql encoder decoder = Statement (TextEncoding.encodeUtf8 sql) encoder decoder True
 
 -- |
 -- Construct an unpreparable statement.
@@ -86,7 +87,7 @@ unpreparable ::
   -- | Result decoder
   Decoders.Result result ->
   Statement params result
-unpreparable sql encoder decoder = Statement sql encoder decoder False
+unpreparable sql encoder decoder = Statement (TextEncoding.encodeUtf8 sql) encoder decoder False
 
 instance Functor (Statement params) where
   {-# INLINE fmap #-}
@@ -114,4 +115,4 @@ refineResult refiner (Statement template encoder decoder preparable) =
 
 -- | Extract the SQL template from a statement.
 toSql :: Statement params result -> Text
-toSql (Statement sql _ _ _) = sql
+toSql (Statement sql _ _ _) = TextEncoding.decodeUtf8Lenient sql
