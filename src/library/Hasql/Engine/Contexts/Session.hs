@@ -1,11 +1,17 @@
 module Hasql.Engine.Contexts.Session where
 
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Encoders.Params qualified as Params
+import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
+import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
+import Hasql.Engine.Structures.OidCache qualified as OidCache
+import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 import Hasql.Pq qualified as Pq
 
@@ -62,7 +68,14 @@ script sql =
           )
 
 -- |
--- Execute a statement by providing parameters to it.
+-- Execute a single statement by providing parameters to it,
+-- running it directly in serial mode.
+--
+-- Each execution is a dedicated network roundtrip. The first execution of a
+-- preparable statement costs an extra roundtrip (a separate @PARSE@), after
+-- which steady-state execution is a single roundtrip.
+--
+-- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
 statement ::
   ByteString ->
   Params.Params params ->
@@ -71,7 +84,92 @@ statement ::
   params ->
   Session result
 statement sql paramsEncoder decoder preparable params =
-  pipeline (Pipeline.statement sql paramsEncoder decoder preparable params)
+  Session \connectionState -> do
+    let usePreparedStatements = ConnectionState.preparedStatements connectionState
+        statementCache = ConnectionState.statementCache connectionState
+        oidCache = ConnectionState.oidCache connectionState
+        connection = ConnectionState.connection connectionState
+        requestingDecoder = Decoders.Result.unwrap decoder
+        unknownTypes =
+          Params.toUnknownTypes paramsEncoder
+            <> RequestingOid.toUnknownTypes requestingDecoder
+        missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
+    oidCacheUpdates <-
+      PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
+    case oidCacheUpdates of
+      Left err -> pure (Left err, connectionState)
+      Right oidCacheUpdates -> do
+        -- Validate that all requested types were found.
+        let foundTypes = HashMap.keysSet oidCacheUpdates
+            notFoundTypes = HashSet.difference missingTypes foundTypes
+        if not (HashSet.null notFoundTypes)
+          then pure (Left (Errors.MissingTypesSessionError notFoundTypes), connectionState)
+          else do
+            let newOidCache = oidCache <> OidCache.fromHashMap oidCacheUpdates
+                oidHashMap = OidCache.toHashMap newOidCache
+                decoder' = RequestingOid.toBase requestingDecoder oidHashMap
+                prepared = usePreparedStatements && preparable
+                -- Single-statement context for error reporting:
+                -- total statements 1, index 0.
+                context = Just (1, 0, sql, Params.renderReadable paramsEncoder params, prepared)
+                mapError = \case
+                  Comms.Roundtrip.ClientError _ details ->
+                    Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                  Comms.Roundtrip.ServerError recvError ->
+                    Errors.fromRecvError recvError
+                withState (result, newStatementCache) =
+                  ( first mapError result,
+                    connectionState
+                      { ConnectionState.oidCache = newOidCache,
+                        ConnectionState.statementCache = newStatementCache
+                      }
+                  )
+            fmap withState
+              $ if prepared
+                then do
+                  let (oidList, valueAndFormatList) =
+                        Params.compilePreparedStatementData paramsEncoder oidHashMap params
+                      pqOidList = fmap (Pq.Oid . fromIntegral) oidList
+                      encodedParams =
+                        valueAndFormatList
+                          & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
+                      execute remoteKey =
+                        Comms.Roundtrip.toSerialIO
+                          (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder')
+                          connection
+                  case StatementCache.lookup sql pqOidList statementCache of
+                    Just remoteKey -> do
+                      result <- execute remoteKey
+                      pure (result, statementCache)
+                    Nothing -> do
+                      let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                      -- In non-pipeline mode PARSE and EXECUTE cannot be sent
+                      -- back-to-back, so prepare in a dedicated roundtrip first.
+                      prepareResult <-
+                        Comms.Roundtrip.toSerialIO
+                          (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
+                          connection
+                      case prepareResult of
+                        -- PARSE failed: the statement is not on the server, so
+                        -- keep the old cache (no entry committed).
+                        Left err -> pure (Left err, statementCache)
+                        Right () -> do
+                          -- PARSE succeeded, so the statement is on the server
+                          -- under remoteKey regardless of whether EXECUTE then
+                          -- fails. Commit the cache so a later use hits it instead
+                          -- of re-issuing PARSE for an already-existing name.
+                          result <- execute remoteKey
+                          pure (result, newStatementCache)
+                else do
+                  let encodedParams =
+                        params
+                          & Params.compileUnpreparedStatementData paramsEncoder oidHashMap
+                          & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+                  result <-
+                    Comms.Roundtrip.toSerialIO
+                      (Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder')
+                      connection
+                  pure (result, statementCache)
 
 -- |
 -- Execute a pipeline.
