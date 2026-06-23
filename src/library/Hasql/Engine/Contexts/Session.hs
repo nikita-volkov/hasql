@@ -6,9 +6,9 @@ import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
-import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
+import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
@@ -78,23 +78,17 @@ script sql =
 --
 -- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
 statement ::
-  ByteString ->
-  Params.Params params ->
-  Decoders.Result.Result result ->
-  Bool ->
+  Statement.Statement params result ->
   params ->
   Session result
-statement sql paramsEncoder decoder preparable params =
+statement stmt params =
   Session \connectionState -> do
     let usePreparedStatements = ConnectionState.preparedStatements connectionState
         statementCache = ConnectionState.statementCache connectionState
         oidCache = ConnectionState.oidCache connectionState
         connection = ConnectionState.connection connectionState
-        requestingDecoder = Decoders.Result.unwrap decoder
-        unknownTypes =
-          Params.toUnknownTypes paramsEncoder
-            <> RequestingOid.toUnknownTypes requestingDecoder
-        missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
+        sql = Statement.sql stmt
+        missingTypes = OidCache.selectUnknownNames (Statement.unknownTypes stmt) oidCache
     resolvedOidCache <-
       if HashSet.null missingTypes
         then pure (Right oidCache)
@@ -113,11 +107,11 @@ statement sql paramsEncoder decoder preparable params =
       Left err -> pure (Left err, connectionState)
       Right newOidCache -> do
         let oidHashMap = OidCache.toHashMap newOidCache
-            decoder' = RequestingOid.toBase requestingDecoder oidHashMap
-            prepared = usePreparedStatements && preparable
+            decoder' = RequestingOid.toBase (Statement.decoder stmt) oidHashMap
+            prepared = usePreparedStatements && Statement.isPrepared stmt
             -- Single-statement context for error reporting:
             -- total statements 1, index 0.
-            context = Just (1, 0, sql, Params.renderReadable paramsEncoder params, prepared)
+            context = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
               Comms.Roundtrip.ClientError _ details ->
                 Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
@@ -134,7 +128,7 @@ statement sql paramsEncoder decoder preparable params =
           $ if prepared
             then do
               let (oidList, valueAndFormatList) =
-                    Params.compilePreparedStatementData paramsEncoder oidHashMap params
+                    Params.compilePreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidHashMap params
                   pqOidList = fmap (Pq.Oid . fromIntegral) oidList
                   encodedParams =
                     valueAndFormatList
@@ -168,8 +162,7 @@ statement sql paramsEncoder decoder preparable params =
                       pure (result, newStatementCache)
             else do
               let encodedParams =
-                    params
-                      & Params.compileUnpreparedStatementData paramsEncoder oidHashMap
+                    Params.compileUnpreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidHashMap params
                       & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
               result <-
                 Comms.Roundtrip.toSerialIO

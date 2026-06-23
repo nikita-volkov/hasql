@@ -10,9 +10,9 @@ import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
-import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
+import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Kernel qualified as Kernel
@@ -207,37 +207,32 @@ instance Applicative Pipeline where
 -- |
 -- Execute a statement in pipelining mode.
 statement ::
-  ByteString ->
-  Params.Params params ->
-  Decoders.Result.Result result ->
-  Bool ->
+  Statement.Statement params result ->
   params ->
   Pipeline result
-statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
-  Pipeline 1 unknownTypes run
+statement stmt params =
+  Pipeline 1 (Statement.unknownTypes stmt) run
   where
-    unknownTypes =
-      Params.toUnknownTypes encoder
-        <> RequestingOid.toUnknownTypes decoder
+    sql = Statement.sql stmt
     run offset usePreparedStatements oidCache =
       if prepare
         then runPrepared
         else runUnprepared
       where
         (oidList, valueAndFormatList) =
-          Params.compilePreparedStatementData encoder oidCache params
+          Params.compilePreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidCache params
 
         pqOidList =
           fmap (Pq.Oid . fromIntegral) oidList
 
         prepare =
-          usePreparedStatements && preparable
+          usePreparedStatements && Statement.isPrepared stmt
 
         context soFarStatementCache =
           Context
             offset
             sql
-            (Params.renderReadable encoder params)
+            (Statement.printer stmt params)
             prepare
             soFarStatementCache
 
@@ -268,9 +263,8 @@ statement sql encoder (Decoders.Result.unwrap -> decoder) preparable params =
               Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
-                  params
-                    & Params.compileUnpreparedStatementData encoder oidCache
+                  Params.compileUnpreparedStatementData (Statement.columnsMetadata stmt) (Statement.serializer stmt) oidCache params
                     & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
-          RequestingOid.toBase decoder oidCache
+          RequestingOid.toBase (Statement.decoder stmt) oidCache

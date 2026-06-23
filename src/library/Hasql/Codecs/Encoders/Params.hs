@@ -2,6 +2,7 @@ module Hasql.Codecs.Encoders.Params where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
+import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.Kernel qualified as Kernel
@@ -12,60 +13,55 @@ import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
-renderReadable :: Params a -> a -> [Text]
-renderReadable (Params _ _ _ _ printer) params =
-  printer params
-    & toList
+-- | Per-parameter metadata: type reference, array dimensionality, text-format flag.
+data ParamMeta = ParamMeta Kernel.TypeRef Word Bool
 
+-- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
+-- Fused single pass over the frozen Vector.
 compilePreparedStatementData ::
-  Params a ->
+  Vector ParamMeta ->
+  (HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> a -> [Maybe ByteString]) ->
   HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo ->
   a ->
   ([Word32], [Maybe (ByteString, Bool)])
-compilePreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
-  (oidList, valueAndFormatList)
+compilePreparedStatementData meta serializer oidCache input =
+  unzip
+    $ zipWith
+      (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid typeRef dim, fmap (,fmt) encoding))
+      (Vector.toList meta)
+      (serializer oidCache input)
   where
-    (oidList, formatList) =
-      columnsMetadata
-        & toList
-        & fmap
-          ( \case
-              (Kernel.TypeRef.NamedType name, dimensionality, format) ->
-                case HashMap.lookup name oidCache of
-                  Just typeInfo ->
-                    ( if dimensionality == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo,
-                      format
-                    )
-                  Nothing ->
-                    (0, format)
-              (Kernel.TypeRef.KnownOid oid, _, format) ->
-                (oid, format)
-          )
-        & unzip
+    resolveOid (Kernel.TypeRef.NamedType name) dim =
+      case HashMap.lookup name oidCache of
+        Just typeInfo -> if dim == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo
+        Nothing -> 0
+    resolveOid (Kernel.TypeRef.KnownOid oid) _ = oid
 
-    valueAndFormatList =
-      serializer oidCache input
-        & toList
-        & zipWith (\format encoding -> (,format) <$> encoding) formatList
-
+-- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
+-- Fused single pass over the frozen Vector.
 compileUnpreparedStatementData ::
-  Params a ->
+  Vector ParamMeta ->
+  (HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> a -> [Maybe ByteString]) ->
   HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo ->
   a ->
   [Maybe (Word32, ByteString, Bool)]
-compileUnpreparedStatementData (Params _ _ columnsMetadata serializer _) oidCache input =
+compileUnpreparedStatementData meta serializer oidCache input =
   zipWith
-    ( \(nameOrOid, dimensionality, format) encoding ->
-        let oid = case nameOrOid of
-              Kernel.TypeRef.NamedType name -> case HashMap.lookup name oidCache of
-                Just typeInfo ->
-                  if dimensionality == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo
-                Nothing -> 0
-              Kernel.TypeRef.KnownOid oid -> oid
-         in (,,) <$> Just oid <*> encoding <*> Just format
-    )
-    (toList columnsMetadata)
-    (toList (serializer oidCache input))
+    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid typeRef dim) <*> encoding <*> Just fmt)
+    (Vector.toList meta)
+    (serializer oidCache input)
+  where
+    resolveOid (Kernel.TypeRef.NamedType name) dim =
+      case HashMap.lookup name oidCache of
+        Just typeInfo -> if dim == 0 then Kernel.TypeInfo.toBaseOid typeInfo else Kernel.TypeInfo.toArrayOid typeInfo
+        Nothing -> 0
+    resolveOid (Kernel.TypeRef.KnownOid oid) _ = oid
+
+toColumnsMetadata :: Params a -> Vector ParamMeta
+toColumnsMetadata (Params _ _ columnsMetadata _ _) = freezeColumnsMetadata columnsMetadata
+  where
+    freezeColumnsMetadata =
+      Vector.fromList . toList
 
 toUnknownTypes :: Params a -> HashSet Kernel.QualifiedTypeName
 toUnknownTypes (Params _ unknownTypes _ _ _) =
@@ -119,8 +115,8 @@ data Params a = Params
   { size :: Int,
     unknownTypes :: HashSet Kernel.QualifiedTypeName,
     -- | (Type reference, dimensionality, Text Format) for each parameter.
-    columnsMetadata :: DList (Kernel.TypeRef, Word, Bool),
-    serializer :: HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> a -> DList (Maybe ByteString),
+    columnsMetadata :: DList ParamMeta,
+    serializer :: HashMap Kernel.QualifiedTypeName Kernel.TypeInfo.TypeInfo -> a -> [Maybe ByteString],
     printer :: a -> DList Text
   }
 
@@ -177,7 +173,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               unknownTypes,
-              columnsMetadata = pure (Kernel.TypeRef.KnownOid oid, dimensionality, textFormat),
+              columnsMetadata = pure (ParamMeta (Kernel.TypeRef.KnownOid oid) dimensionality textFormat),
               serializer,
               printer
             }
@@ -185,7 +181,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               unknownTypes = HashSet.insert (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes,
-              columnsMetadata = pure (Kernel.TypeRef.NamedType (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName), dimensionality, textFormat),
+              columnsMetadata = pure (ParamMeta (Kernel.TypeRef.NamedType (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName)) dimensionality textFormat),
               serializer,
               printer
             }
@@ -201,7 +197,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               unknownTypes,
-              columnsMetadata = pure (Kernel.TypeRef.KnownOid oid, dimensionality, textFormat),
+              columnsMetadata = pure (ParamMeta (Kernel.TypeRef.KnownOid oid) dimensionality textFormat),
               serializer,
               printer
             }
@@ -209,7 +205,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               unknownTypes = HashSet.insert (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes,
-              columnsMetadata = pure (Kernel.TypeRef.NamedType (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName), dimensionality, textFormat),
+              columnsMetadata = pure (ParamMeta (Kernel.TypeRef.NamedType (Kernel.QualifiedTypeName.QualifiedTypeName schemaName typeName)) dimensionality textFormat),
               serializer,
               printer
             }

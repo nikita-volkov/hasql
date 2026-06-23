@@ -75,6 +75,11 @@ roundtrip :: SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip () SelectTypeInfo
 roundtrip params =
   Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
 
+-- | Frozen column metadata for paramsEncoder, computed once at module load.
+frozenParamsMeta :: Vector Encoders.Params.ParamMeta
+frozenParamsMeta =
+  Encoders.Params.toColumnsMetadata paramsEncoder
+
 encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
 encodeParams =
   fmap
@@ -86,7 +91,7 @@ encodeParams =
             )
         )
     )
-    . Encoders.Params.compileUnpreparedStatementData paramsEncoder mempty
+    . Encoders.Params.compileUnpreparedStatementData frozenParamsMeta (Encoders.Params.serializer paramsEncoder) mempty
 
 paramsEncoder :: Encoders.Params SelectTypeInfo
 paramsEncoder =
