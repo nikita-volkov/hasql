@@ -1,6 +1,6 @@
 module Hasql.Kernel
   ( QualifiedTypeName,
-    TypeInfo (..),
+    TypeInfo,
     TypeRef,
   )
 where
