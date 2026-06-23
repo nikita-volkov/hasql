@@ -1,4 +1,4 @@
-module Main where
+module Main (main) where
 
 import Criterion
 import Criterion.Main
@@ -27,16 +27,7 @@ main =
           sessionBench "manyLargeResults" sessionWithManyLargeResults,
           sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
           sessionBench "manySmallResults" sessionWithManySmallResults,
-          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline,
-          bgroup
-            "singleStatementOverhead"
-            [ sessionBench "1-sequential" sessionWith1SmallResult,
-              sessionBench "1-pipeline" sessionWith1SmallResultViaPipeline,
-              sessionBench "10-sequential" sessionWith10SmallResults,
-              sessionBench "10-pipeline" sessionWith10SmallResultsViaPipeline,
-              sessionBench "100-sequential" sessionWithManySmallResults,
-              sessionBench "100-pipeline" sessionWithManySmallResultsViaPipeline
-            ]
+          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline
         ]
       where
         sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
@@ -44,22 +35,6 @@ main =
           bench name (nfIO (A.use connection session >>= either (fail . show) pure))
 
 -- * Sessions
-
-sessionWith1SmallResult :: B.Session (Int32, Int32)
-sessionWith1SmallResult =
-  B.statement () statementWithSingleRow
-
-sessionWith1SmallResultViaPipeline :: B.Session (Int32, Int32)
-sessionWith1SmallResultViaPipeline =
-  B.pipeline (E.statement () statementWithSingleRow)
-
-sessionWith10SmallResults :: B.Session [(Int32, Int32)]
-sessionWith10SmallResults =
-  replicateM 10 (B.statement () statementWithSingleRow)
-
-sessionWith10SmallResultsViaPipeline :: B.Session [(Int32, Int32)]
-sessionWith10SmallResultsViaPipeline =
-  B.pipeline (replicateM 10 (E.statement () statementWithSingleRow))
 
 sessionWithSingleLargeResultInVector :: B.Session (Vector (Int32, Int32))
 sessionWithSingleLargeResultInVector =
