@@ -17,12 +17,13 @@ import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.Select
 import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 run ::
+  (Pqi.IsConnection c) =>
   Pipeline a ->
   Bool ->
-  Pq.Connection ->
+  c ->
   OidCache.OidCache ->
   StatementCache.StatementCache ->
   IO
@@ -144,7 +145,7 @@ data Pipeline a
       -- They will be used to pre-resolve type OIDs before running the pipeline providing them in OidCache.
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
-      -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
+      -- In the execution function we will be defaulting to OID 0 for unknown types as a fallback in case of bugs.
       (HashSet Vocab.QualifiedTypeName)
       -- | Function that runs the pipeline.
       --
@@ -220,9 +221,6 @@ statement stmt params =
         (oidList, valueAndFormatList) =
           Statement.compilePreparedStatementData stmt oidCache params
 
-        pqOidList =
-          fmap (Pq.Oid . fromIntegral) oidList
-
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
 
@@ -238,31 +236,31 @@ statement stmt params =
           (roundtrip, newStatementCache)
           where
             (isNew, remoteKey, newStatementCache) =
-              case StatementCache.lookup sql pqOidList statementCache of
+              case StatementCache.lookup sql oidList statementCache of
                 Just remoteKey -> (False, remoteKey, statementCache)
                 Nothing ->
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
                    in (True, remoteKey, newStatementCache)
 
             roundtrip =
               when
                 isNew
-                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql pqOidList)
-                *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pq.Binary decoder'
+                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql oidList)
+                *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pqi.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
-                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
+                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pqi.Binary Pqi.Text format)))
 
         runUnprepared statementCache =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
+              Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pqi.Binary decoder'
               where
                 encodedParams =
                   Statement.compileUnpreparedStatementData stmt oidCache params
-                    & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+                    & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pqi.Binary Pqi.Text format)))
 
         decoder' =
           RequestingOid.toBase (Statement.decoder stmt) oidCache

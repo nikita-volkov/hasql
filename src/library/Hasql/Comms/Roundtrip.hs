@@ -19,11 +19,13 @@ import Hasql.Comms.Recv qualified as Recv
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Comms.Send qualified as Send
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 data Roundtrip context a
   = Roundtrip (Send.Send context) (Recv.Recv context a)
-  deriving stock (Functor)
+
+instance Functor (Roundtrip context) where
+  fmap f (Roundtrip send recv) = Roundtrip send (fmap f recv)
 
 instance Applicative (Roundtrip context) where
   {-# INLINE pure #-}
@@ -39,7 +41,7 @@ instance Bifunctor Roundtrip where
       (fmap f send)
       (bimap f g recv)
 
-toPipelineIO :: Roundtrip context a -> context -> Pq.Connection -> IO (Either (Error context) a)
+toPipelineIO :: (Pqi.IsConnection conn) => Roundtrip context a -> context -> conn -> IO (Either (Error context) a)
 toPipelineIO sendAndRecv context connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
   case sendResult of
@@ -55,7 +57,7 @@ toPipelineIO sendAndRecv context connection = mask \restore -> do
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync context
 
-toSerialIO :: Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
+toSerialIO :: (Pqi.IsConnection conn) => Roundtrip context a -> conn -> IO (Either (Error context) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
@@ -70,7 +72,7 @@ pipelineSync context =
     (Send.pipelineSync context)
     (Recv.singleResult context ResultDecoder.pipelineSync)
 
-prepare :: context -> ByteString -> ByteString -> [Pq.Oid] -> Roundtrip context ()
+prepare :: context -> ByteString -> ByteString -> [Word32] -> Roundtrip context ()
 prepare context statementName sql oidList =
   Roundtrip
     (Send.prepare context statementName sql (Just oidList))
@@ -81,9 +83,9 @@ queryPrepared ::
   -- | Prepared statement name.
   ByteString ->
   -- | Parameters.
-  [Maybe (ByteString, Pq.Format)] ->
+  [Maybe (ByteString, Pqi.Format)] ->
   -- | Result format.
-  Pq.Format ->
+  Pqi.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
   Roundtrip context a
@@ -97,9 +99,9 @@ queryParams ::
   -- | SQL.
   ByteString ->
   -- | Parameters.
-  [Maybe (Pq.Oid, ByteString, Pq.Format)] ->
+  [Maybe (Word32, ByteString, Pqi.Format)] ->
   -- | Result format.
-  Pq.Format ->
+  Pqi.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
   Roundtrip context a

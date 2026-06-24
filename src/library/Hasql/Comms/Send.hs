@@ -1,7 +1,7 @@
 module Hasql.Comms.Send where
 
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 data Result context
   = Ok
@@ -9,8 +9,10 @@ data Result context
   deriving stock (Eq, Show, Functor)
 
 newtype Send context
-  = Send (Pq.Connection -> IO (Result context))
-  deriving stock (Functor)
+  = Send (forall conn. (Pqi.IsConnection conn) => conn -> IO (Result context))
+
+instance Functor Send where
+  fmap f (Send g) = Send $ \conn -> fmap (fmap f) (g conn)
 
 instance Semigroup (Send context) where
   {-# INLINE (<>) #-}
@@ -26,42 +28,42 @@ instance Monoid (Send context) where
   {-# INLINE mempty #-}
   mempty = Send \_ -> pure Ok
 
-toHandler :: Send context -> Pq.Connection -> IO (Result context)
+toHandler :: (Pqi.IsConnection conn) => Send context -> conn -> IO (Result context)
 toHandler (Send send) = send
 
-liftPqSend :: context -> (Pq.Connection -> IO Bool) -> Send context
-liftPqSend context pqSend = Send \connection -> do
-  success <- pqSend connection
+liftPqiSend :: context -> (forall conn. (Pqi.IsConnection conn) => conn -> IO Bool) -> Send context
+liftPqiSend context pqiSend = Send \connection -> do
+  success <- pqiSend connection
   if success
     then pure Ok
     else do
-      errorMessage <- Pq.errorMessage connection
+      errorMessage <- Pqi.errorMessage connection
       pure (Error context errorMessage)
 
-prepare :: context -> ByteString -> ByteString -> Maybe [Pq.Oid] -> Send context
+prepare :: context -> ByteString -> ByteString -> Maybe [Word32] -> Send context
 prepare context statementName sql oidList =
-  liftPqSend context \connection -> Pq.sendPrepare connection statementName sql oidList
+  liftPqiSend context \connection -> Pqi.sendPrepare connection statementName sql oidList
 
 query :: context -> ByteString -> Send context
 query context sql =
-  liftPqSend context \connection -> Pq.sendQuery connection sql
+  liftPqiSend context \connection -> Pqi.sendQuery connection sql
 
-queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send context
+queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pqi.Format)] -> Pqi.Format -> Send context
 queryPrepared context statementName params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
+  liftPqiSend context \connection -> Pqi.sendQueryPrepared connection statementName params resultFormat
 
-queryParams :: context -> ByteString -> [Maybe (Pq.Oid, ByteString, Pq.Format)] -> Pq.Format -> Send context
+queryParams :: context -> ByteString -> [Maybe (Word32, ByteString, Pqi.Format)] -> Pqi.Format -> Send context
 queryParams context sql params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryParams connection sql params resultFormat
+  liftPqiSend context \connection -> Pqi.sendQueryParams connection sql params resultFormat
 
 pipelineSync :: context -> Send context
 pipelineSync context =
-  liftPqSend context \connection -> Pq.pipelineSync connection
+  liftPqiSend context \connection -> Pqi.pipelineSync connection
 
 enterPipelineMode :: context -> Send context
 enterPipelineMode context =
-  liftPqSend context \connection -> Pq.enterPipelineMode connection
+  liftPqiSend context \connection -> Pqi.enterPipelineMode connection
 
 exitPipelineMode :: context -> Send context
 exitPipelineMode context =
-  liftPqSend context \connection -> Pq.exitPipelineMode connection
+  liftPqiSend context \connection -> Pqi.exitPipelineMode connection

@@ -13,7 +13,7 @@ import Test.Hspec
 import TextBuilder qualified
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Basic custom encoders" do
     it "encodes a custom type with runtime OID lookup" \config -> do

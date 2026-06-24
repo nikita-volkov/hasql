@@ -13,7 +13,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Basic custom decoders" do
     it "decodes a custom type with runtime OID lookup" \config -> do

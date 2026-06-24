@@ -16,8 +16,8 @@ import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 import PostgreSQL.Binary.Encoding qualified as Binary
+import Pqi qualified
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
@@ -28,7 +28,7 @@ newtype SelectTypeInfo = SelectTypeInfo
 type SelectTypeInfoResult =
   HashMap Vocab.QualifiedTypeName Vocab.TypeInfo.TypeInfo
 
-run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
+run :: (Pqi.IsConnection c) => c -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
   if HashSet.null keys
     then pure (Right HashMap.empty)
@@ -72,17 +72,17 @@ sql =
 
 roundtrip :: SelectTypeInfo -> Hasql.Comms.Roundtrip.Roundtrip () SelectTypeInfoResult
 roundtrip params =
-  Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pq.Binary decoder
+  Hasql.Comms.Roundtrip.queryParams () sql (encodeParams params) Pqi.Binary decoder
 
 -- | Encode the two text-array parameters directly.
 -- Text OID is 25; text-array OID is 1009.
-encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
+encodeParams :: SelectTypeInfo -> [Maybe (Word32, ByteString, Pqi.Format)]
 encodeParams (SelectTypeInfo keys) =
   let (schemaNames, typeNames) = unzip (fmap Vocab.QualifiedTypeName.toNameTuple (HashSet.toList keys))
       schemaArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (encodeMaybeText schemaNames)))
       typeArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (fmap (Binary.encodingArray . Binary.text_strict) typeNames)))
-   in [ Just (Pq.Oid 1009, schemaArray, Pq.Binary),
-        Just (Pq.Oid 1009, typeArray, Pq.Binary)
+   in [ Just (1009, schemaArray, Pqi.Binary),
+        Just (1009, typeArray, Pqi.Binary)
       ]
   where
     encodeTextArray elements =

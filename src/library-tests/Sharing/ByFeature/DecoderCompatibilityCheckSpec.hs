@@ -12,7 +12,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = parallel do
   byPreparedStatusAndExecutor True "Session" (Session.statement ())
   byPreparedStatusAndExecutor False "Session" (Session.statement ())
@@ -23,7 +23,7 @@ byPreparedStatusAndExecutor ::
   Bool ->
   Text ->
   (forall a. (Show a) => Statement.Statement () a -> Session.Session a) ->
-  SpecWith (Text, Word16)
+  SpecWith Scripts.ScopeParams
 byPreparedStatusAndExecutor preparable executorName executor = do
   describe (if preparable then "Preparable" else "Unpreparable") do
     describe (toList executorName) do

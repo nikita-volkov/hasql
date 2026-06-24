@@ -7,32 +7,33 @@ import Hasql.Decoders qualified as D
 import Hasql.Pipeline qualified as E
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
+import Pqi.Ffi qualified as Pqi.Ffi
+import Pqi.Native qualified as Pqi.Native
 import Prelude
 
 main :: IO ()
 main =
   do
-    connection <- acquireConnection
-    connection <- case connection of
-      Left err -> fail (show err)
-      Right connection -> pure connection
-    useConnection connection
+    ffiConn <- A.acquire (Proxy @Pqi.Ffi.Connection) mempty >>= either (fail . show) pure
+    nativeConn <- A.acquire (Proxy @Pqi.Native.Connection) mempty >>= either (fail . show) pure
+    defaultMain
+      [ bgroup "pqi-ffi" (connectionBenchmarks ffiConn),
+        bgroup "pqi-native" (connectionBenchmarks nativeConn)
+      ]
+
+connectionBenchmarks :: A.Connection -> [Benchmark]
+connectionBenchmarks connection =
+  [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
+    sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
+    sessionBench "manyLargeResults" sessionWithManyLargeResults,
+    sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
+    sessionBench "manySmallResults" sessionWithManySmallResults,
+    sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline
+  ]
   where
-    acquireConnection =
-      A.acquire mempty
-    useConnection connection =
-      defaultMain
-        [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
-          sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
-          sessionBench "manyLargeResults" sessionWithManyLargeResults,
-          sessionBench "manyLargeResultsViaPipeline" sessionWithManyLargeResultsViaPipeline,
-          sessionBench "manySmallResults" sessionWithManySmallResults,
-          sessionBench "manySmallResultsViaPipeline" sessionWithManySmallResultsViaPipeline
-        ]
-      where
-        sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
-        sessionBench name session =
-          bench name (nfIO (A.use connection session >>= either (fail . show) pure))
+    sessionBench :: (NFData a) => String -> B.Session a -> Benchmark
+    sessionBench name session =
+      bench name (nfIO (A.use connection session >>= either (fail . show) pure))
 
 -- * Sessions
 

@@ -13,11 +13,11 @@ jobs:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/generate-docs.yaml@v4
     secrets: inherit
 
-  build-with-ghc-8-10:
+  build-with-ghc-9-2:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
     secrets: inherit
     with:
-      ghc: "8.10"
+      ghc: "9.2"
       skip-doctest: true
       skip-benchmarks: true
   

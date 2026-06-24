@@ -8,9 +8,8 @@ module Hasql.Comms.RowDecoder
     -- ** Expected OIDs
     toExpectedOids,
 
-    -- ** Decoder
-    Decoder,
-    toDecoder,
+    -- ** Row reader
+    toRowReader,
 
     -- * Errors
     Error,
@@ -19,13 +18,12 @@ where
 
 import Hasql.Comms.RowReader qualified as RowReader
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 
 -- * RowDecoder
 
 data RowDecoder a
   = RowDecoder
-      [Maybe Pq.Oid]
+      [Maybe Word32]
       (RowReader.RowReader a)
   deriving stock (Functor)
 
@@ -46,7 +44,7 @@ instance Filterable RowDecoder where
 nullableColumn :: Maybe Word32 -> (ByteString -> Either Text a) -> RowDecoder (Maybe a)
 nullableColumn oid decoder =
   RowDecoder
-    [Pq.Oid . fromIntegral <$> oid]
+    [oid]
     (RowReader.nullableColumn decoder)
 
 -- |
@@ -55,24 +53,20 @@ nullableColumn oid decoder =
 nonNullableColumn :: Maybe Word32 -> (ByteString -> Either Text a) -> RowDecoder a
 nonNullableColumn oid decoder =
   RowDecoder
-    [Pq.Oid . fromIntegral <$> oid]
+    [oid]
     (RowReader.nonNullableColumn decoder)
 
 -- * Relations
 
 -- ** Expected OIDs
 
-toExpectedOids :: RowDecoder a -> [Maybe Pq.Oid]
+toExpectedOids :: RowDecoder a -> [Maybe Word32]
 toExpectedOids (RowDecoder oids _) = oids
 
--- ** Decoder
+-- ** Row reader
 
-type Decoder a = Pq.Result -> Pq.Row -> IO (Either Error a)
-
-{-# INLINE toDecoder #-}
-toDecoder :: RowDecoder a -> Decoder a
-toDecoder (RowDecoder _ dec) result row =
-  RowReader.toHandler dec result row
+toRowReader :: RowDecoder a -> RowReader.RowReader a
+toRowReader (RowDecoder _ dec) = dec
 
 -- * Errors
 

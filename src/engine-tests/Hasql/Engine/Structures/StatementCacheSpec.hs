@@ -1,9 +1,10 @@
 module Hasql.Engine.Structures.StatementCacheSpec (spec) where
 
+import Data.Function ((&))
 import Data.Maybe
-import Database.PostgreSQL.LibPQ (Oid (..))
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Test.Hspec
+import Prelude
 
 spec :: Spec
 spec = do
@@ -24,25 +25,21 @@ spec = do
       key1 `shouldNotBe` key2
 
     it "generates unique remote keys for same SQL with different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
-          (key1, cache1) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
-          (key2, _cache2) = StatementCache.insert "SELECT $1" [oid25] cache1
+      let (key1, cache1) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+          (key2, _cache2) = StatementCache.insert "SELECT $1" [25] cache1
       key1 `shouldNotBe` key2
 
     it "distinguishes statements with same SQL but different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
-          (_key1, cache1) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
-          (_key2, cache2) = StatementCache.insert "SELECT $1" [oid25] cache1
+      let (_key1, cache1) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+          (_key2, cache2) = StatementCache.insert "SELECT $1" [25] cache1
       -- Both should be findable
-      StatementCache.lookup "SELECT $1" [oid23] cache2
-        `shouldSatisfy` isJust
-      StatementCache.lookup "SELECT $1" [oid25] cache2
-        `shouldSatisfy` isJust
+      rk1 <-
+        StatementCache.lookup "SELECT $1" [23] cache2
+          & maybe (fail "Expected to find statement with OID 23") pure
+      rk2 <-
+        StatementCache.lookup "SELECT $1" [25] cache2
+          & maybe (fail "Expected to find statement with OID 25") pure
       -- And should have different remote keys
-      let rk1 = StatementCache.lookup "SELECT $1" [oid23] cache2
-          rk2 = StatementCache.lookup "SELECT $1" [oid25] cache2
       rk1 `shouldNotBe` rk2
 
     it "returns Nothing for a non-inserted SQL" do
@@ -51,10 +48,8 @@ spec = do
         `shouldBe` Nothing
 
     it "returns Nothing for matching SQL but different OIDs" do
-      let oid23 = Oid 23
-          oid25 = Oid 25
-          (_key, cache) = StatementCache.insert "SELECT $1" [oid23] StatementCache.empty
-      StatementCache.lookup "SELECT $1" [oid25] cache
+      let (_key, cache) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+      StatementCache.lookup "SELECT $1" [25] cache
         `shouldBe` Nothing
 
     it "handles empty OID list" do
@@ -63,22 +58,22 @@ spec = do
         `shouldBe` Just key
 
     it "handles multiple OIDs" do
-      let oids = [Oid 23, Oid 25, Oid 1043]
+      let oids = [23, 25, 1043]
           (key, cache) = StatementCache.insert "SELECT $1, $2, $3" oids StatementCache.empty
       StatementCache.lookup "SELECT $1, $2, $3" oids cache
         `shouldBe` Just key
 
     it "distinguishes different OID ordering" do
-      let oidsA = [Oid 23, Oid 25]
-          oidsB = [Oid 25, Oid 23]
+      let oidsA = [23, 25]
+          oidsB = [25, 23]
           (_keyA, cache1) = StatementCache.insert "SELECT $1, $2" oidsA StatementCache.empty
           (_keyB, cache2) = StatementCache.insert "SELECT $1, $2" oidsB cache1
-      StatementCache.lookup "SELECT $1, $2" oidsA cache2
-        `shouldSatisfy` isJust
-      StatementCache.lookup "SELECT $1, $2" oidsB cache2
-        `shouldSatisfy` isJust
-      let rkA = StatementCache.lookup "SELECT $1, $2" oidsA cache2
-          rkB = StatementCache.lookup "SELECT $1, $2" oidsB cache2
+      rkA <-
+        StatementCache.lookup "SELECT $1, $2" oidsA cache2
+          & maybe (fail "Expected to find statement with OIDs A") pure
+      rkB <-
+        StatementCache.lookup "SELECT $1, $2" oidsB cache2
+          & maybe (fail "Expected to find statement with OIDs B") pure
       rkA `shouldNotBe` rkB
 
   describe "reset" do

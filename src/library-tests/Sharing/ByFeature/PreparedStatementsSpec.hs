@@ -10,7 +10,7 @@ import Helpers.Statements.CountPreparedStatements qualified as CountPreparedStat
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Prepared statements" do
     it "Do get prepared when configuration allows" \config -> do

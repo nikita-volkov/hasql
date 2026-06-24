@@ -13,13 +13,13 @@ import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 -- |
 -- A sequence of operations to be executed in the context of a single database connection with exclusive access to it.
 --
 -- Construct sessions using helpers in this module such as
--- 'statement', 'pipeline' and 'script', or use 'onLibpqConnection' for a low-level
+-- 'statement', 'pipeline' and 'script', or use 'onPqiConnection' for a low-level
 -- escape hatch.
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
@@ -31,13 +31,59 @@ import Hasql.Pq qualified as Pq
 -- Note: while most session errors are returned as values, user code executed
 -- inside a session may still throw exceptions; in that case the driver will
 -- reset the connection to a clean state.
+--
+-- Internally rank-2 over the connection type, keeping the public type parameter-free.
 newtype Session a
-  = Session (ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState))
-  deriving
-    (Functor, Applicative, Monad, MonadError Errors.SessionError, MonadIO)
-    via (ExceptT Errors.SessionError (StateT ConnectionState.ConnectionState IO))
+  = Session
+      ( forall c.
+        (Pqi.IsConnection c) =>
+        ConnectionState.ConnectionState c ->
+        IO (Either Errors.SessionError a, ConnectionState.ConnectionState c)
+      )
 
-run :: Session a -> ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState)
+instance Functor Session where
+  {-# INLINE fmap #-}
+  fmap f (Session run) = Session \s -> do
+    (res, s') <- run s
+    pure (fmap f res, s')
+
+instance Applicative Session where
+  {-# INLINE pure #-}
+  pure a = Session \s -> pure (Right a, s)
+  {-# INLINE (<*>) #-}
+  Session runF <*> Session runX = Session \s -> do
+    (ef, s') <- runF s
+    case ef of
+      Left err -> pure (Left err, s')
+      Right f -> do
+        (ex, s'') <- runX s'
+        pure (fmap f ex, s'')
+
+instance Monad Session where
+  {-# INLINE (>>=) #-}
+  Session runX >>= f = Session \s -> do
+    (ex, s') <- runX s
+    case ex of
+      Left err -> pure (Left err, s')
+      Right x -> run (f x) s'
+
+instance MonadError Errors.SessionError Session where
+  {-# INLINE throwError #-}
+  throwError err = Session \s -> pure (Left err, s)
+  {-# INLINE catchError #-}
+  catchError (Session runX) handler = Session \s -> do
+    (ex, s') <- runX s
+    case ex of
+      Left err -> run (handler err) s'
+      Right x -> pure (Right x, s')
+
+instance MonadIO Session where
+  {-# INLINE liftIO #-}
+  liftIO action = Session \s -> do
+    a <- action
+    pure (Right a, s)
+
+run :: (Pqi.IsConnection c) => Session a -> ConnectionState.ConnectionState c -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState c)
 run (Session session) connectionState = session connectionState
 
 -- |
@@ -127,25 +173,24 @@ statement stmt params =
             then do
               let (oidList, valueAndFormatList) =
                     Statement.compilePreparedStatementData stmt newOidCache params
-                  pqOidList = fmap (Pq.Oid . fromIntegral) oidList
                   encodedParams =
                     valueAndFormatList
-                      & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
+                      & fmap (fmap (\(bytes, format) -> (bytes, bool Pqi.Binary Pqi.Text format)))
                   execute remoteKey =
                     Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder')
+                      (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pqi.Binary decoder')
                       connection
-              case StatementCache.lookup sql pqOidList statementCache of
+              case StatementCache.lookup sql oidList statementCache of
                 Just remoteKey -> do
                   result <- execute remoteKey
                   pure (result, statementCache)
                 Nothing -> do
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
                   -- In non-pipeline mode PARSE and EXECUTE cannot be sent
                   -- back-to-back, so prepare in a dedicated roundtrip first.
                   prepareResult <-
                     Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
+                      (Comms.Roundtrip.prepare context remoteKey sql oidList)
                       connection
                   case prepareResult of
                     -- PARSE failed: the statement is not on the server, so
@@ -161,23 +206,23 @@ statement stmt params =
             else do
               let encodedParams =
                     Statement.compileUnpreparedStatementData stmt newOidCache params
-                      & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+                      & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pqi.Binary Pqi.Text format)))
               result <-
                 Comms.Roundtrip.toSerialIO
-                  (Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder')
+                  (Comms.Roundtrip.queryParams context sql encodedParams Pqi.Binary decoder')
                   connection
               pure (result, statementCache)
 
 -- |
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
-pipeline pipeline = Session \connectionState -> do
+pipeline pipelineAction = Session \connectionState -> do
   let usePreparedStatements = ConnectionState.preparedStatements connectionState
       statementCache = ConnectionState.statementCache connectionState
       oidCache = ConnectionState.oidCache connectionState
       pqConnection = ConnectionState.connection connectionState
    in do
-        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline usePreparedStatements pqConnection oidCache statementCache
+        (result, newOidCache, newStatementCache) <- Pipeline.run pipelineAction usePreparedStatements pqConnection oidCache statementCache
         let newConnectionState =
               connectionState
                 { ConnectionState.oidCache = newOidCache,
@@ -187,21 +232,21 @@ pipeline pipeline = Session \connectionState -> do
         pure (result, newConnectionState)
 
 -- |
--- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.
+-- Execute an operation on the raw pqi connection possibly producing an error and updating the connection.
 -- This is a low-level escape hatch for custom integrations.
 --
 -- You can supply a new connection in the result to replace it in the running Hasql connection.
--- The responsibility to close the old libpq connection is on you.
+-- The responsibility to close the old connection is on you.
 -- Otherwise, just return the same connection you've received.
 --
 -- Producing a 'Left' value will cause the session to fail with the given error.
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
 -- Throwing exceptions is okay. It will lead to the connection getting reset.
-onLibpqConnection ::
-  (Pq.Connection -> IO (Either Errors.SessionError a, Pq.Connection)) ->
+onPqiConnection ::
+  (forall conn. (Pqi.IsConnection conn) => conn -> IO (Either Errors.SessionError a, conn)) ->
   Session a
-onLibpqConnection f = Session \connectionState -> do
+onPqiConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection
   let newState = ConnectionState.setConnection newConnection connectionState

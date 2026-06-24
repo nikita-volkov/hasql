@@ -11,13 +11,27 @@ where
 
 import Hasql.Comms.Roundtrip qualified as Roundtrip
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified
 
 -- | Serial execution of commands in the scope of a connection.
-newtype Session a = Session (Pq.Connection -> IO (Either Error a))
-  deriving
-    (Functor, Applicative, Monad, MonadError Error)
-    via (ExceptT Error (ReaderT Pq.Connection IO))
+newtype Session a
+  = Session (forall conn. (Pqi.IsConnection conn) => conn -> IO (Either Error a))
+
+instance Functor Session where
+  fmap f (Session g) = Session $ \c -> fmap (fmap f) (g c)
+
+instance Applicative Session where
+  pure a = Session $ \_ -> pure (Right a)
+  Session f <*> Session x = Session $ \c -> (<*>) <$> f c <*> x c
+
+instance Monad Session where
+  Session x >>= f = Session $ \c ->
+    x c >>= either (pure . Left) (\a -> let Session g = f a in g c)
+
+instance MonadError Error Session where
+  throwError e = Session $ \_ -> pure (Left e)
+  catchError (Session x) handler = Session $ \c ->
+    x c >>= either (\e -> let Session g = handler e in g c) (pure . Right)
 
 type Error = Text
 
@@ -44,38 +58,38 @@ bringTransactionStatusToIdle :: Session ()
 bringTransactionStatusToIdle = do
   transactionStatus <- getTransactionStatus
   case transactionStatus of
-    Pq.TransIdle -> pure ()
-    Pq.TransInTrans -> do
+    Pqi.TransIdle -> pure ()
+    Pqi.TransInTrans -> do
       runScript "ABORT"
-    Pq.TransActive -> do
+    Pqi.TransActive -> do
       -- A command is still in progress.
       drainResults
       -- Check status again after draining.
       transactionStatus <- getTransactionStatus
       case transactionStatus of
-        Pq.TransIdle -> pure ()
-        Pq.TransInTrans -> do
+        Pqi.TransIdle -> pure ()
+        Pqi.TransInTrans -> do
           runScript "ABORT"
-        Pq.TransActive -> do
+        Pqi.TransActive -> do
           -- If we're still active, there's not much we can do.
           -- The connection is probably in a bad state.
           throwError "Failed to bring transaction status to idle after draining results"
-        Pq.TransInError -> do
+        Pqi.TransInError -> do
           runScript "ABORT"
-        Pq.TransUnknown -> do
+        Pqi.TransUnknown -> do
           -- Unknown state (connection issue), there's not much we can do.
           throwError "Transaction status is unknown, connection is corrupted"
-    Pq.TransInError -> do
+    Pqi.TransInError -> do
       -- Transaction is in error state, we need to abort it.
       runScript "ABORT"
-    Pq.TransUnknown -> do
+    Pqi.TransUnknown -> do
       -- Unknown state (connection issue), there's not much we can do.
       throwError "Transaction status is unknown, connection is corrupted"
 
 leavePipeline :: Session ()
 leavePipeline = do
   pipelineStatus <- getPipelineStatus
-  when (pipelineStatus == Pq.PipelineOn) do
+  when (pipelineStatus == Pqi.PipelineOn) do
     -- In pipeline mode, we need to ensure the pipeline is synchronized before exiting.
     -- Send a pipeline sync marker to flush any pending operations.
     syncSuccess <- sendPipelineSync
@@ -105,10 +119,10 @@ deallocateAllPreparedStatements =
 
 cancel :: Session ()
 cancel = Session \connection -> do
-  mCancel <- Pq.getCancel connection
+  mCancel <- Pqi.getCancel connection
   case mCancel of
-    Just cancel -> do
-      result <- Pq.cancel cancel
+    Just cancelHandle -> do
+      result <- Pqi.cancel cancelHandle
       case result of
         Left errorMessage ->
           pure (Left ("Failed to cancel: " <> decodeUtf8Lenient errorMessage))
@@ -118,40 +132,40 @@ cancel = Session \connection -> do
 
 getErrorMessage :: Session (Maybe ByteString)
 getErrorMessage = Session \connection -> do
-  Right <$> Pq.errorMessage connection
+  Right <$> Pqi.errorMessage connection
 
-getTransactionStatus :: Session Pq.TransactionStatus
+getTransactionStatus :: Session Pqi.TransactionStatus
 getTransactionStatus = Session \connection -> do
-  Right <$> Pq.transactionStatus connection
+  Right <$> Pqi.transactionStatus connection
 
-getPipelineStatus :: Session Pq.PipelineStatus
+getPipelineStatus :: Session Pqi.PipelineStatus
 getPipelineStatus = Session \connection -> do
-  Right <$> Pq.pipelineStatus connection
+  Right <$> Pqi.pipelineStatus connection
 
 exitPipelineMode :: Session Bool
 exitPipelineMode = Session \connection -> do
-  Right <$> Pq.exitPipelineMode connection
+  Right <$> Pqi.exitPipelineMode connection
 
 sendPipelineSync :: Session Bool
 sendPipelineSync = Session \connection -> do
-  Right <$> Pq.pipelineSync connection
+  Right <$> Pqi.pipelineSync connection
 
 sendFlushRequest :: Session Bool
 sendFlushRequest = Session \connection -> do
-  Right <$> Pq.sendFlushRequest connection
+  Right <$> Pqi.sendFlushRequest connection
 
 -- Drain all pending results from the connection.
 drainResults :: Session ()
 drainResults = Session \connection ->
   let go = do
-        mResult <- Pq.getResult connection
+        mResult <- Pqi.getResult connection
         case mResult of
           Nothing -> pure ()
           Just _ -> go
    in go $> Right ()
 
 runScript :: ByteString -> Session ()
-runScript script = runRoundtrip (Roundtrip.query () script)
+runScript sql = runRoundtrip (Roundtrip.query () sql)
 
 runRoundtrip :: Roundtrip.Roundtrip () a -> Session a
 runRoundtrip roundtrip = Session \connection -> do
@@ -170,5 +184,5 @@ runRoundtrip roundtrip = Session \connection -> do
 
 -- * Executors
 
-toHandler :: Session a -> Pq.Connection -> IO (Either Text a)
+toHandler :: (Pqi.IsConnection conn) => Session a -> conn -> IO (Either Text a)
 toHandler (Session run) = run

@@ -12,7 +12,7 @@ import Test.QuickCheck.Instances ()
 import Test.QuickCheck.Monadic (assert, monadicIO, pre, run)
 import Prelude hiding (assert)
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Array Encoders" do
     describe "1D arrays" do

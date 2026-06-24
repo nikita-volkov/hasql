@@ -9,7 +9,7 @@ import Helpers.Scripts qualified as Scripts
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Composite field OID mismatch detection" do
     describe "Decoder field type mismatch" do

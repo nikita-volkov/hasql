@@ -13,7 +13,7 @@ import Helpers.Statements qualified as Statements
 import Test.Hspec
 import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Single-statement" do
     describe "Unprepared" do
