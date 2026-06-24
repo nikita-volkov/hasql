@@ -81,10 +81,12 @@ column processNullable valueDec = RowReader $ \r row col -> do
   decodedMaybe <- case valueMaybe of
     Nothing -> pure (Right Nothing)
     Just v -> do
-      oid <- Pqi.ftype r col
-      pure $ case {-# SCC "decode" #-} valueDec v of
-        Left err -> Left (CellError colInt oid (DecodingCellError err))
-        Right decoded -> Right (Just decoded)
+      case {-# SCC "decode" #-} valueDec v of
+        Left err -> do
+          oid <- Pqi.ftype r col
+          pure (Left (CellError colInt oid (DecodingCellError err)))
+        Right decoded ->
+          pure (Right (Just decoded))
   case decodedMaybe of
     Left err -> pure (Left err)
     Right valueMaybe' -> case processNullable valueMaybe' of
