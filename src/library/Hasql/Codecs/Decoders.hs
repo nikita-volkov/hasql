@@ -53,6 +53,7 @@ module Hasql.Codecs.Decoders
     Value.enum,
     Value.custom,
     Value.refine,
+    Value.rename,
 
     -- * Array
     Array.Array,
