@@ -1,7 +1,6 @@
 module Hasql.Statement
   ( Statement,
-    preparable,
-    unpreparable,
+    statement,
     refineResult,
     toSql,
 
@@ -17,7 +16,7 @@ module Hasql.Statement
     -- @
     -- insertMultipleLocations :: 'Statement' (Vector (UUID, Double, Double)) ()
     -- insertMultipleLocations =
-    --   'preparable' sql encoder decoder
+    --   'statement' sql encoder decoder
     --   where
     --     sql =
     --       "insert into location (id, x, y) select * from unnest ($1, $2, $3)"

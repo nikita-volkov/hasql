@@ -64,7 +64,7 @@ sessionWithManySmallResultsViaPipeline =
 
 statementWithSingleRow :: C.Statement () (Int32, Int32)
 statementWithSingleRow =
-  C.preparable template encoder decoder
+  C.statement template encoder decoder
   where
     template =
       "SELECT 1, 2"
@@ -81,7 +81,7 @@ statementWithSingleRow =
 
 statementWithManyRows :: (D.Row (Int32, Int32) -> D.Result result) -> C.Statement () result
 statementWithManyRows decoder =
-  C.preparable template encoder (decoder rowDecoder)
+  C.statement template encoder (decoder rowDecoder)
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"

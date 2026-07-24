@@ -1,11 +1,10 @@
 module Hasql.Engine.Statement
   ( Statement (..),
-    preparable,
-    unpreparable,
+    statement,
     refineResult,
     toSql,
-    compilePreparedStatementData,
-    compileUnpreparedStatementData,
+    compileStatementData,
+    inlineOids,
   )
 where
 
@@ -27,12 +26,12 @@ import Hasql.Platform.Prelude
 -- Specification of a strictly single-statement query, which can be parameterized and prepared.
 -- It encapsulates the mapping of parameters and results in association with an SQL template.
 --
--- Following is an example of a declaration of a prepared statement with its associated codecs.
+-- Following is an example of a declaration of a statement with its associated codecs.
 --
 -- @
 -- selectSum :: 'Statement' (Int64, Int64) Int64
 -- selectSum =
---   'preparable' sql encoder decoder
+--   'statement' sql encoder decoder
 --   where
 --     sql =
 --       \"select ($1 + $2)\"
@@ -59,19 +58,24 @@ data Statement params result
     -- | Union of encoder and decoder unknown types, resolved once at construction.
     unknownTypes :: HashSet Vocab.QualifiedTypeName,
     -- | Unwrapped result decoder (RequestingOid layer already peeled from Result).
-    decoder :: RequestingOid.RequestingOid (ResultDecoder.ResultDecoder result),
-    -- | Whether this statement may be prepared on the server.
-    isPrepared :: Bool
+    decoder :: RequestingOid.RequestingOid (ResultDecoder.ResultDecoder result)
   }
 
 -- |
--- Construct a preparable statement.
+-- Construct a statement.
 --
--- Use this for statements that will be executed multiple times with different parameters.
--- Preparable statements are cached by PostgreSQL, which avoids reconstructing the execution plan each time.
+-- Whether it ends up prepared on the server is not your decision to make: the
+-- driver observes how often each statement is actually executed on each
+-- connection and prepares the ones that earn it, deallocating the ones that
+-- fall out of use. See 'Hasql.Connection.Settings.statementCacheSize' and
+-- 'Hasql.Connection.Settings.prepareThreshold' for the connection-level
+-- controls over that.
 --
--- Suitable for applications with a limited amount of queries that don't generate SQL dynamically.
-preparable ::
+-- If a specific statement suffers from PostgreSQL choosing a generic plan for
+-- it, set @plan_cache_mode = force_custom_plan@ for it in the database, which
+-- is both the correct fix and finer-grained than anything this library could
+-- offer.
+statement ::
   -- | SQL template with parameters in positional notation (@$1@, @$2@, etc.)
   Text ->
   -- | Parameters encoder
@@ -79,43 +83,14 @@ preparable ::
   -- | Result decoder
   Decoders.Result result ->
   Statement params result
-preparable sqlText encoder resultDecoder =
+statement sqlText encoder resultDecoder =
   Statement
     { sql = TextEncoding.encodeUtf8 sqlText,
       columnsMetadata = Params.toColumnsMetadata encoder,
       serializer = Params.toSerializer encoder,
       printer = Params.toPrinter encoder,
       unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
-      decoder = rawDecoder,
-      isPrepared = True
-    }
-  where
-    rawDecoder = Decoders.Result.unwrap resultDecoder
-
--- |
--- Construct an unpreparable statement.
---
--- Use this for statements that are dynamically generated or executed only once.
--- Unpreparable statements are not cached by PostgreSQL.
---
--- Suitable for dynamic SQL or one-off queries.
-unpreparable ::
-  -- | SQL template with parameters in positional notation (@$1@, @$2@, etc.)
-  Text ->
-  -- | Parameters encoder
-  Encoders.Params params ->
-  -- | Result decoder
-  Decoders.Result result ->
-  Statement params result
-unpreparable sqlText encoder resultDecoder =
-  Statement
-    { sql = TextEncoding.encodeUtf8 sqlText,
-      columnsMetadata = Params.toColumnsMetadata encoder,
-      serializer = Params.toSerializer encoder,
-      printer = Params.toPrinter encoder,
-      unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
-      decoder = rawDecoder,
-      isPrepared = False
+      decoder = rawDecoder
     }
   where
     rawDecoder = Decoders.Result.unwrap resultDecoder
@@ -150,13 +125,18 @@ refineResult refiner stmt = stmt {decoder = fmap (ResultDecoder.refine refiner) 
 toSql :: Statement params result -> Text
 toSql stmt = TextEncoding.decodeUtf8Lenient (sql stmt)
 
--- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
-compilePreparedStatementData ::
+-- | Resolve the parameter OIDs and encode the parameter values.
+--
+-- Both execution paths need both halves — the prepared one to declare the
+-- parameter types at @PARSE@ time and to identify the statement in the cache,
+-- the unprepared one to inline the types into the query itself — so this is
+-- computed once per execution regardless of how the statement is executed.
+compileStatementData ::
   Statement params result ->
   Vocab.OidCache ->
   params ->
   ([Word32], [Maybe (ByteString, Bool)])
-compilePreparedStatementData stmt oidCache params =
+compileStatementData stmt oidCache params =
   unzip
     $ zipWith
       (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid typeRef dim, fmap (,fmt) encoding))
@@ -169,20 +149,9 @@ compilePreparedStatementData stmt oidCache params =
         Nothing -> 0
     resolveOid (Vocab.TypeRef.KnownOid oid) _ = oid
 
--- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
-compileUnpreparedStatementData ::
-  Statement params result ->
-  Vocab.OidCache ->
-  params ->
-  [Maybe (Word32, ByteString, Bool)]
-compileUnpreparedStatementData stmt oidCache params =
-  zipWith
-    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid typeRef dim) <*> encoding <*> Just fmt)
-    (Vector.toList (columnsMetadata stmt))
-    (serializer stmt oidCache params)
-  where
-    resolveOid (Vocab.TypeRef.NamedType name) dim =
-      case Vocab.OidCache.lookupTypeNameScalar name oidCache of
-        Just oid -> if dim == 0 then oid else fromMaybe 0 (Vocab.OidCache.lookupTypeNameArray name oidCache)
-        Nothing -> 0
-    resolveOid (Vocab.TypeRef.KnownOid oid) _ = oid
+-- | Fold the resolved OIDs into the encoded values, as the unprepared
+-- execution path needs them: it declares each parameter's type inline instead
+-- of having declared them at @PARSE@ time.
+inlineOids :: [oid] -> [Maybe (value, format)] -> [Maybe (oid, value, format)]
+inlineOids =
+  zipWith (\oid -> fmap (\(value, format) -> (oid, value, format)))

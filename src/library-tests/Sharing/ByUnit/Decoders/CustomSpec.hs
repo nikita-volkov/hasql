@@ -18,17 +18,17 @@ spec = do
   describe "Basic custom decoders" do
     it "decodes a custom type with runtime OID lookup" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"])
               mempty
               Decoders.noResult
           -- Test custom decoder with runtime OID lookup
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select 'beta' :: ", enumName])
               mempty
               ( Decoders.singleRow
@@ -53,11 +53,11 @@ spec = do
             expectationFailure ("Unexpected error: " <> show err)
 
     it "decodes a custom type with static OIDs" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Test custom decoder with static OIDs for int4 (type OID 23, array OID 1007)
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 42::int4"
               mempty
               ( Decoders.singleRow
@@ -79,23 +79,23 @@ spec = do
     it "decodes with dependent type OID requests" \config -> do
       enumName <- Scripts.generateSymname
       compositeName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('small', 'large')"])
               mempty
               Decoders.noResult
           -- Create composite type with the enum
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", compositeName, " as (size ", enumName, ", count int4)"])
               mempty
               Decoders.noResult
           -- Test custom decoder requesting OIDs of dependent types
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select ('large', 5) :: ", compositeName])
               mempty
               ( Decoders.singleRow
@@ -129,10 +129,10 @@ spec = do
 
   describe "Error handling" do
     it "detects missing types in custom decoders" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 'test'::text"
               mempty
               ( Decoders.singleRow
@@ -157,17 +157,17 @@ spec = do
 
     it "detects missing dependent types in custom decoders" \config -> do
       customTypeName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create a custom type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", customTypeName, " as (id int4)"])
               mempty
               Decoders.noResult
           -- Try to decode it but request a non-existent dependent type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select (42) :: ", customTypeName])
               mempty
               ( Decoders.singleRow
@@ -191,10 +191,10 @@ spec = do
             expectationFailure ("Unexpected result: " <> show result)
 
     it "handles decoding errors in custom decoders" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 42::int4"
               mempty
               ( Decoders.singleRow
@@ -219,17 +219,17 @@ spec = do
   describe "Roundtrip tests" do
     it "roundtrips custom encoded and decoded values" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('one', 'two', 'three')"])
               mempty
               Decoders.noResult
           -- Test roundtrip using custom encoder and decoder
           Session.statement "two"
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select $1 :: ", enumName])
               (Encoders.param (Encoders.nonNullable (Encoders.custom Nothing enumName Nothing [] (\_ val -> encodeUtf8 val) id)))
               ( Decoders.singleRow
@@ -251,23 +251,23 @@ spec = do
     it "decodes custom types from specific schemas" \config -> do
       schemaName <- Scripts.generateSymname
       typeName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create schema
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create schema ", schemaName])
               mempty
               Decoders.noResult
           -- Create enum type in that schema
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", schemaName, ".", typeName, " as enum ('x', 'y')"])
               mempty
               Decoders.noResult
           -- Test custom decoder with schema qualification
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select 'y' :: ", schemaName, ".", typeName])
               mempty
               ( Decoders.singleRow

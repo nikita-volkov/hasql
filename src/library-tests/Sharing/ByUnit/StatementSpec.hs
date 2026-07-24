@@ -14,14 +14,14 @@ spec = do
   describe "Statement Functionality" do
     describe "Prepared statements" do
       it "allows reuse of the same prepared statement on different types" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement1 =
-                Statement.preparable
+                Statement.statement
                   "select $1"
                   (Encoders.param (Encoders.nonNullable Encoders.text))
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
           let statement2 =
-                Statement.preparable
+                Statement.statement
                   "select $1"
                   (Encoders.param (Encoders.nonNullable Encoders.int8))
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -36,11 +36,11 @@ spec = do
     describe "Row counting" do
       it "counts affected rows correctly" \config -> do
         tableName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.preparable ("drop table if exists " <> tableName) mempty Decoders.noResult
-          let createTable = Statement.preparable ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
-          let insertRow = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('a')") mempty Decoders.noResult
-          let deleteRows = Statement.unpreparable ("delete from " <> tableName) mempty Decoders.rowsAffected
+        Scripts.onPreparingConnection config \connection -> do
+          let dropTable = Statement.statement ("drop table if exists " <> tableName) mempty Decoders.noResult
+          let createTable = Statement.statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
+          let insertRow = Statement.statement ("insert into " <> tableName <> " (name) values ('a')") mempty Decoders.noResult
+          let deleteRows = Statement.statement ("delete from " <> tableName) mempty Decoders.rowsAffected
 
           result <-
             Connection.use connection do
@@ -55,11 +55,11 @@ spec = do
     describe "Auto-incremented columns" do
       it "returns auto-incremented column results" \config -> do
         tableName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.preparable ("drop table if exists " <> tableName) mempty Decoders.noResult
-          let createTable = Statement.preparable ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
-          let insertRow = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('a') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-          let insertRow2 = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('b') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+        Scripts.onPreparingConnection config \connection -> do
+          let dropTable = Statement.statement ("drop table if exists " <> tableName) mempty Decoders.noResult
+          let createTable = Statement.statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
+          let insertRow = Statement.statement ("insert into " <> tableName <> " (name) values ('a') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+          let insertRow2 = Statement.statement ("insert into " <> tableName <> " (name) values ('b') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
 
           result <-
             Connection.use connection do
@@ -73,9 +73,9 @@ spec = do
 
     describe "List decoding" do
       it "decodes lists correctly" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "values (1 :: int8, 2 :: int8), (3,4), (5,6)"
                   mempty
                   (Decoders.rowList ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
@@ -84,9 +84,9 @@ spec = do
 
     describe "IN simulation" do
       it "works with arrays" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "select true where 1 = any ($1)"
                   (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                   (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
@@ -98,9 +98,9 @@ spec = do
 
     describe "NOT IN simulation" do
       it "works with arrays" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "select true where 3 <> all ($1)"
                   (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                   (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))

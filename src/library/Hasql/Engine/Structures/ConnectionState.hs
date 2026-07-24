@@ -3,8 +3,6 @@
 module Hasql.Engine.Structures.ConnectionState
   ( ConnectionState (..),
     toStatementCache,
-    fromConnection,
-    setPreparedStatements,
     setStatementCache,
     setConnection,
     setOidCache,
@@ -23,9 +21,7 @@ import Hasql.Pq qualified as Pq
 -- |
 -- The internal state of a database connection.
 data ConnectionState = ConnectionState
-  { -- | Whether prepared statements are enabled.
-    preparedStatements :: Bool,
-    -- | The statement cache for prepared statements.
+  { -- | The statement cache for prepared statements.
     statementCache :: StatementCache.StatementCache,
     -- | The OID cache for type name to OID mapping.
     oidCache :: OidCache.OidCache,
@@ -35,19 +31,6 @@ data ConnectionState = ConnectionState
 
 toStatementCache :: ConnectionState -> StatementCache.StatementCache
 toStatementCache ConnectionState {..} = statementCache
-
-fromConnection :: Pq.Connection -> ConnectionState
-fromConnection connection =
-  ConnectionState
-    { preparedStatements = False,
-      statementCache = StatementCache.empty,
-      oidCache = OidCache.empty,
-      connection = connection
-    }
-
-setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
-setPreparedStatements preparedStatements connectionState =
-  connectionState {preparedStatements = preparedStatements}
 
 setStatementCache :: StatementCache.StatementCache -> ConnectionState -> ConnectionState
 setStatementCache statementCache connectionState =
@@ -93,6 +76,9 @@ traverseStatementCache f ConnectionState {..} =
     )
     (f statementCache)
 
+-- |
+-- Bring the cache back to its initial state, for when the server side has just
+-- been cleared with a @DEALLOCATE ALL@.
 resetPreparedStatementsCache :: ConnectionState -> ConnectionState
 resetPreparedStatementsCache =
-  mapStatementCache (const StatementCache.empty)
+  mapStatementCache StatementCache.reset

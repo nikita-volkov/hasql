@@ -24,14 +24,15 @@ byPreparedStatusAndExecutor ::
   Text ->
   (forall a. (Show a) => Statement.Statement () a -> Session.Session a) ->
   SpecWith (Text, Word16)
-byPreparedStatusAndExecutor preparable executorName executor = do
-  describe (if preparable then "Preparable" else "Unpreparable") do
+byPreparedStatusAndExecutor prepared executorName executor = do
+  let onConnection = if prepared then Scripts.onPreparingConnection else Scripts.onNonPreparingConnection
+  describe (if prepared then "Prepared" else "Unprepared") do
     describe (toList executorName) do
       describe "UnexpectedColumnCount" do
         it "gets reported when result has more columns" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          onConnection config \connection -> do
             let statement =
-                  (if preparable then Statement.preparable else Statement.unpreparable)
+                  Statement.statement
                     "select 1, 2"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -46,9 +47,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
                 expectationFailure ("Not an error: " <> show result)
 
         it "gets reported when result has fewer columns" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          onConnection config \connection -> do
             let statement =
-                  (if preparable then Statement.preparable else Statement.unpreparable)
+                  Statement.statement
                     "select 1"
                     mempty
                     ( Decoders.singleRow
@@ -70,9 +71,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
       describe "DecoderTypeMismatch" do
         describe "singleRow" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onPreparableConnection config \connection -> do
+            onConnection config \connection -> do
               let statement =
-                    (if preparable then Statement.preparable else Statement.unpreparable)
+                    Statement.statement
                       "select 1::int8, 'text'::text"
                       mempty
                       ( Decoders.singleRow
@@ -94,9 +95,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
 
         describe "rowMaybe" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onPreparableConnection config \connection -> do
+            onConnection config \connection -> do
               let statement =
-                    (if preparable then Statement.preparable else Statement.unpreparable)
+                    Statement.statement
                       "select 1::int8, 'text'::text"
                       mempty
                       ( Decoders.rowMaybe
@@ -117,9 +118,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
 
         describe "rowVector" do
           it "gets reported when column type mismatches decoder" \config -> do
-            Scripts.onPreparableConnection config \connection -> do
+            onConnection config \connection -> do
               let statement =
-                    (if preparable then Statement.preparable else Statement.unpreparable)
+                    Statement.statement
                       "select int8 '1', text 'text'"
                       mempty
                       ( Decoders.rowVector
@@ -142,9 +143,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8[]" do
             describe "column:int8" do
               it "reports properly" \config -> do
-                Scripts.onPreparableConnection config \connection -> do
+                onConnection config \connection -> do
                   let statement =
-                        (if preparable then Statement.preparable else Statement.unpreparable)
+                        Statement.statement
                           "select 1::int8"
                           mempty
                           ( Decoders.singleRow
@@ -163,9 +164,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8[]" do
             describe "column:int8[]" do
               it "decodes properly" \config -> do
-                Scripts.onPreparableConnection config \connection -> do
+                onConnection config \connection -> do
                   let statement =
-                        (if preparable then Statement.preparable else Statement.unpreparable)
+                        Statement.statement
                           "select ARRAY[1::int8, 2::int8]"
                           mempty
                           ( Decoders.singleRow
@@ -177,9 +178,9 @@ byPreparedStatusAndExecutor preparable executorName executor = do
           describe "decoder:int8" do
             describe "column:int8[]" do
               it "reports properly" \config -> do
-                Scripts.onPreparableConnection config \connection -> do
+                onConnection config \connection -> do
                   let statement =
-                        (if preparable then Statement.preparable else Statement.unpreparable)
+                        Statement.statement
                           "select ARRAY[1::int8, 2::int8]"
                           mempty
                           ( Decoders.singleRow

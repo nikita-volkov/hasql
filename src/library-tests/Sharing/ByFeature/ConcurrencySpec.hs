@@ -13,10 +13,10 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   it "handles concurrent connections properly" \config -> do
-    Scripts.onPreparableConnection config \connection1 -> do
-      Scripts.onPreparableConnection config \connection2 -> do
+    Scripts.onPreparingConnection config \connection1 -> do
+      Scripts.onPreparingConnection config \connection2 -> do
         let selectSleep =
-              Statement.preparable
+              Statement.statement
                 "select pg_sleep($1)"
                 (Encoders.param (Encoders.nonNullable Encoders.float8))
                 Decoders.noResult

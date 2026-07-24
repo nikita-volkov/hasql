@@ -11,14 +11,27 @@ import Prelude
 -- Host and port of a running isolated postgres server.
 type ScopeParams = (Text, Word16)
 
-onPreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onPreparableConnection = onConnection False
+-- |
+-- Connection that prepares every statement on its first execution.
+--
+-- Most specs care about exercising the prepared path rather than about the
+-- admission policy, and the threshold would otherwise leave them executing
+-- everything unprepared.
+onPreparingConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onPreparingConnection = onConnection (Settings.prepareThreshold 1)
 
-onUnpreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onUnpreparableConnection = onConnection True
+-- |
+-- Connection that never prepares anything.
+onNonPreparingConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onNonPreparingConnection = onConnection (Settings.statementCacheSize 0)
 
-onConnection :: Bool -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onConnection unpreparable (host, port) =
+-- |
+-- Connection left on the library's defaults.
+onDefaultConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onDefaultConnection = onConnection mempty
+
+onConnection :: Settings.Settings -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
+onConnection extraSettings (host, port) =
   bracket
     ( do
         let settings =
@@ -27,7 +40,7 @@ onConnection unpreparable (host, port) =
                   Settings.user "postgres",
                   Settings.password "postgres",
                   Settings.dbname "postgres",
-                  Settings.noPreparedStatements unpreparable
+                  extraSettings
                 ]
         res <- Connection.acquire settings
         case res of

@@ -22,10 +22,10 @@ byExecutor ::
 byExecutor executorName executor = do
   describe (toList executorName) do
     it "does not hide decoder mismatches from a previously verified statement" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let sql = "select 1::int8, 'text'::text"
             correctStatement =
-              Statement.preparable
+              Statement.statement
                 sql
                 mempty
                 ( Decoders.singleRow
@@ -35,7 +35,7 @@ byExecutor executorName executor = do
                     )
                 )
             mismatchingStatement =
-              Statement.preparable
+              Statement.statement
                 sql
                 mempty
                 ( Decoders.singleRow

@@ -11,9 +11,9 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   it "decodes static value properly" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       let statement =
-            Statement.preparable
+            Statement.statement
               "select 3.14 :: float8"
               mempty
               ( Decoders.singleRow

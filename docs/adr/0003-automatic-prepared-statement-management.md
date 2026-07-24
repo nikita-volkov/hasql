@@ -4,7 +4,7 @@ Date: 2026-07-23
 
 ## Status
 
-Accepted — implementation pending. Targets version `1.11`.
+Accepted and implemented. Targets version `1.11`.
 
 Resolves [issue #310](https://github.com/nikita-volkov/hasql/issues/310).
 

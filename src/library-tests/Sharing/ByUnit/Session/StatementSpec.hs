@@ -15,14 +15,14 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Roundtrips" do
     it "handles simple values correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection (Session.statement (42 :: Int64) echoStatement)
         result `shouldBe` Right 42
 
     it "reuses a prepared statement across executions in one session" \config -> do
       -- The first execution is a cache miss (separate PARSE roundtrip),
       -- the second a cache hit (single roundtrip). Both must succeed.
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <-
           Connection.use connection do
             a <- Session.statement (1 :: Int64) echoStatement
@@ -35,22 +35,22 @@ spec = do
       -- statement is on the server under its cached name, so a later use on the
       -- same connection must hit the cache rather than re-issuing PARSE for an
       -- already-existing name ("prepared statement ... already exists").
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         failure <- Connection.use connection (Session.statement 0 divStatement)
         failure `shouldSatisfy` isLeft
         success <- Connection.use connection (Session.statement 1 divStatement)
         success `shouldBe` Right 1
 
     it "works on an unpreparable connection" \config -> do
-      Scripts.onUnpreparableConnection config \connection -> do
+      Scripts.onNonPreparingConnection config \connection -> do
         result <- Connection.use connection (Session.statement (42 :: Int64) echoStatement)
         result `shouldBe` Right 42
 
   describe "Error Handling" do
     it "captures query errors correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select true where 1 = any ($1) and $2"
                 ( mconcat
                     [ fst >$< (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8)))))),
@@ -65,7 +65,7 @@ spec = do
 
 echoStatement :: Statement.Statement Int64 Int64
 echoStatement =
-  Statement.preparable
+  Statement.statement
     "select $1"
     (Encoders.param (Encoders.nonNullable Encoders.int8))
     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -73,7 +73,7 @@ echoStatement =
 -- | Parses fine, but fails at execution time when given 0 (division by zero).
 divStatement :: Statement.Statement Int64 Int64
 divStatement =
-  Statement.preparable
+  Statement.statement
     "select 1 / $1"
     (Encoders.param (Encoders.nonNullable Encoders.int8))
     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))

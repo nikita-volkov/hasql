@@ -13,9 +13,9 @@ import Prelude
 spec :: SpecWith (Text, Word16)
 spec = do
   it "Leaves the session usable" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       let tryStatement =
-            Statement.preparable
+            Statement.statement
               "select $1 :: int8"
               (Encoders.param (Encoders.nonNullable Encoders.int8))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))

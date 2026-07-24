@@ -14,12 +14,12 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Hstore Decoders" do
     it "decodes empty hstore" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -27,19 +27,19 @@ spec = do
             (const (pure ()))
           -- Test decoding empty hstore
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select ''::hstore"
               Encoders.noParams
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))
         result `shouldBe` Right (HashMap.empty :: HashMap.HashMap Text (Maybe Text))
 
     it "decodes hstore with single key-value pair" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -47,19 +47,19 @@ spec = do
             (const (pure ()))
           -- Test decoding single key-value pair
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 'key => value'::hstore"
               Encoders.noParams
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))
         result `shouldBe` Right (HashMap.fromList [("key", Just "value")] :: HashMap.HashMap Text (Maybe Text))
 
     it "decodes hstore with multiple key-value pairs" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -67,19 +67,19 @@ spec = do
             (const (pure ()))
           -- Test decoding multiple key-value pairs
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 'a => 1, b => 2, c => 3'::hstore"
               Encoders.noParams
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))
         result `shouldBe` Right (HashMap.fromList [("a", Just "1"), ("b", Just "2"), ("c", Just "3")] :: HashMap.HashMap Text (Maybe Text))
 
     it "decodes hstore with null values" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -87,19 +87,19 @@ spec = do
             (const (pure ()))
           -- Test decoding hstore with null values
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select 'key1 => value1, key2 => NULL, key3 => value3'::hstore"
               Encoders.noParams
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))
         result `shouldBe` Right (HashMap.fromList [("key1", Just "value1"), ("key2", Nothing), ("key3", Just "value3")] :: HashMap.HashMap Text (Maybe Text))
 
     it "decodes hstore with special characters" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -107,7 +107,7 @@ spec = do
             (const (pure ()))
           -- Test decoding hstore with special characters
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               "select '\"key with spaces\" => \"value with quotes\"'::hstore"
               Encoders.noParams
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))

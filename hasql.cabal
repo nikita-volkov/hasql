@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hasql
-version: 1.10.3.5
+version: 1.11
 category: Hasql, Database, PostgreSQL
 synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
@@ -148,6 +148,7 @@ library
     Hasql.Engine.PqProcedures.SelectTypeInfo
     Hasql.Engine.Statement
     Hasql.Engine.Structures.ConnectionState
+    Hasql.Engine.Structures.ExecutionContext
     Hasql.Engine.Structures.StatementCache
     Hasql.Platform.Prelude
     Hasql.Platform.Prelude.Text
@@ -171,6 +172,7 @@ library
     postgresql-connection-string ^>=0.1,
     postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
+    psqueues >=0.2.8 && <0.3,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
     text-builder >=1 && <1.1,
@@ -294,6 +296,7 @@ test-suite engine-tests
     mtl >=2 && <3,
     postgresql-libpq >=0.10.1 && <0.12,
     profunctors >=5.1 && <6,
+    psqueues >=0.2.8 && <0.3,
     scientific >=0.3 && <0.4,
     text >=1 && <3,
     text-builder >=1 && <1.1,
@@ -312,6 +315,7 @@ test-suite library-tests
   other-modules:
     Helpers.Dsls.Execution
     Helpers.Dsls.Statement
+    Helpers.PreparedStatements
     Helpers.Scripts
     Helpers.Statements
     Helpers.Statements.BrokenSyntax
@@ -330,7 +334,8 @@ test-suite library-tests
     Sharing.ByFeature.DecoderCompatibilityCacheSpec
     Sharing.ByFeature.DecoderCompatibilityCheckSpec
     Sharing.ByFeature.PreparedStatementCacheSpec
-    Sharing.ByFeature.PreparedStatementsSpec
+    Sharing.ByFeature.StaleStatementRecoverySpec
+    Sharing.ByFeature.StatementCacheSpec
     Sharing.ByFeature.SyntaxErrorsSpec
     Sharing.ByUnit.Connection.UseSpec
     Sharing.ByUnit.Decoders.CitextSpec

@@ -16,17 +16,17 @@ spec = do
     describe "Simple composites" do
       it "decodes a simple named composite from static SQL" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select (42, true) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -47,17 +47,17 @@ spec = do
 
       it "decodes a simple named composite with different values" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (a text, b int4)"])
                 mempty
                 Decoders.noResult
             -- Test decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select ('hello', 123) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -80,23 +80,23 @@ spec = do
       it "decodes nested named composites from static SQL" \config -> do
         innerType <- Scripts.generateSymname
         outerType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create inner composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", innerType, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
             -- Create outer composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", z text)"])
                 mempty
                 Decoders.noResult
             -- Test nested decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select ((42, true), 'world') :: ", outerType])
                 mempty
                 ( Decoders.singleRow
@@ -129,29 +129,29 @@ spec = do
         type1 <- Scripts.generateSymname
         type2 <- Scripts.generateSymname
         type3 <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create level 1 composite
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", type1, " as (val int8)"])
                 mempty
                 Decoders.noResult
             -- Create level 2 composite
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", type2, " as (\"inner\" ", type1, ", flag bool)"])
                 mempty
                 Decoders.noResult
             -- Create level 3 composite
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", type3, " as (\"nested\" ", type2, ", name text)"])
                 mempty
                 Decoders.noResult
             -- Test deeply nested decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row (row (row (99), true), 'deep') :: ", type3])
                 mempty
                 ( Decoders.singleRow
@@ -190,15 +190,15 @@ spec = do
     describe "Arrays of composites" do
       it "decodes arrays of primitives" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int4[])"])
                 mempty
                 Decoders.noResult
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(array[1,2,3])", " :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -227,17 +227,17 @@ spec = do
 
       it "decodes arrays of named composites from static SQL" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
             -- Test array decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select array[(1, true), (2, false), (3, true)] :: ", typeName, "[]"])
                 mempty
                 ( Decoders.singleRow
@@ -267,17 +267,17 @@ spec = do
 
       it "decodes 2D arrays of named composites" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (val int4)"])
                 mempty
                 Decoders.noResult
             -- Test 2D array decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select array[array[row (1), row (2)], array[row (3), row (4)]] :: ", typeName, "[][]"])
                 mempty
                 ( Decoders.singleRow
@@ -309,23 +309,23 @@ spec = do
       it "decodes a composite with an enum array field" \config -> do
         enumType <- Scripts.generateSymname
         compositeType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enumType, " as enum ('red', 'green', 'blue')"])
                 mempty
                 Decoders.noResult
             -- Create composite type with enum array field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", compositeType, " as (id int8, colors ", enumType, "[])"])
                 mempty
                 Decoders.noResult
             -- Test decoding composite with enum array field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select (42, array['red', 'green', 'blue'] :: ", enumType, "[]) :: ", compositeType])
                 mempty
                 ( Decoders.singleRow
@@ -364,29 +364,29 @@ spec = do
         enum1 <- Scripts.generateSymname
         enum2 <- Scripts.generateSymname
         compositeType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create first enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enum1, " as enum ('small', 'medium', 'large')"])
                 mempty
                 Decoders.noResult
             -- Create second enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enum2, " as enum ('low', 'high')"])
                 mempty
                 Decoders.noResult
             -- Create composite type with multiple enum array fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", compositeType, " as (sizes ", enum1, "[], priorities ", enum2, "[])"])
                 mempty
                 Decoders.noResult
             -- Test decoding composite with multiple enum array fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select (array['small', 'large'] :: ", enum1, "[], array['high', 'low'] :: ", enum2, "[]) :: ", compositeType])
                 mempty
                 ( Decoders.singleRow
@@ -440,23 +440,23 @@ spec = do
       it "decodes a composite with mixed scalar and enum array fields" \config -> do
         enumType <- Scripts.generateSymname
         compositeType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enumType, " as enum ('A', 'B', 'C')"])
                 mempty
                 Decoders.noResult
             -- Create composite type with mixed fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", compositeType, " as (name text, age int4, grades ", enumType, "[])"])
                 mempty
                 Decoders.noResult
             -- Test decoding composite with mixed fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select ('Alice', 25, array['A', 'B', 'A'] :: ", enumType, "[]) :: ", compositeType])
                 mempty
                 ( Decoders.singleRow
@@ -503,29 +503,29 @@ spec = do
         enumType <- Scripts.generateSymname
         innerType <- Scripts.generateSymname
         outerType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enumType, " as enum ('x', 'y', 'z')"])
                 mempty
                 Decoders.noResult
             -- Create inner composite type with enum array field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", innerType, " as (values ", enumType, "[])"])
                 mempty
                 Decoders.noResult
             -- Create outer composite type containing the inner type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", outerType, " as (id int4, data ", innerType, ")"])
                 mempty
                 Decoders.noResult
             -- Test nested decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select (100, row(array['x', 'y', 'z'] :: ", enumType, "[]) :: ", innerType, ") :: ", outerType])
                 mempty
                 ( Decoders.singleRow
@@ -576,23 +576,23 @@ spec = do
       it "decodes a composite with 2D enum array field" \config -> do
         enumType <- Scripts.generateSymname
         compositeType <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create enum type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", enumType, " as enum ('0', '1')"])
                 mempty
                 Decoders.noResult
             -- Create composite type with 2D enum array field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", compositeType, " as (matrix ", enumType, "[][])"])
                 mempty
                 Decoders.noResult
             -- Test decoding composite with 2D enum array field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(array[array['0', '1'], array['1', '0']] :: ", enumType, "[][]) :: ", compositeType])
                 mempty
                 ( Decoders.singleRow
@@ -635,17 +635,17 @@ spec = do
     describe "OID compatibility checking" do
       it "fails when decoder expects a composite but gets a different type" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
             -- Try to decode text as the composite type (should fail during deserialization)
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 "select 'some text'::text"
                 mempty
                 ( Decoders.singleRow
@@ -674,24 +674,24 @@ spec = do
       it "fails when decoder expects one composite type but gets another" \config -> do
         type1 <- Scripts.generateSymname
         type2 <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create first composite type with two fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", type1, " as (x int8, y text)"])
                 mempty
                 Decoders.noResult
             -- Create second composite type with different structure
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", type2, " as (a bool)"])
                 mempty
                 Decoders.noResult
             -- Try to decode type2 value as type1 (should fail during deserialization)
             -- type2 has 1 field, type1 decoder expects 2 fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row (true) :: ", type2])
                 mempty
                 ( Decoders.singleRow
@@ -719,17 +719,17 @@ spec = do
 
       it "correctly validates matching composite type OIDs" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8, y bool)"])
                 mempty
                 Decoders.noResult
             -- Decode with correct type - should succeed
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row (42, true) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -749,10 +749,10 @@ spec = do
           result `shouldBe` Right (42 :: Int64, True)
 
   it "detects attempts to decode non-existent composite types" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement ()
-          $ Statement.preparable
+          $ Statement.statement
             "select row(42, text 'test')"
             mempty
             ( Decoders.singleRow

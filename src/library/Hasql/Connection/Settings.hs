@@ -10,12 +10,13 @@ module Hasql.Connection.Settings
     dbname,
     applicationName,
     other,
-    noPreparedStatements,
+    statementCacheSize,
+    prepareThreshold,
     connectionString,
   )
 where
 
-import Data.Text qualified as Text
+import Data.Text.Read qualified as TextRead
 import Hasql.Connection.Config qualified as Config
 import Hasql.Platform.Prelude
 import PostgresqlConnectionString qualified as ConnectionString
@@ -53,43 +54,64 @@ newtype Settings
 -- | This instance allows interfacing with the internal Config.Config type without affecting the public API or requiring complex module hierarchies.
 instance Config.Constructs Settings where
   construct (Settings connectionString) =
-    case ConnectionString.interceptParam "no_prepared_statements" connectionString of
-      Just (value, connectionString) ->
-        let noPreparedStatements = interpretTextAsBool value
-         in pack connectionString noPreparedStatements
-      Nothing -> pack connectionString False
+    Config.Config
+      { connectionString = encodeUtf8 (ConnectionString.toUrl remainder),
+        statementCacheSize = fromMaybe Config.defaultStatementCacheSize interceptedCacheSize,
+        prepareThreshold = fromMaybe Config.defaultPrepareThreshold interceptedThreshold
+      }
     where
-      interpretTextAsBool value = case Text.toLower value of
-        "1" -> True
-        "true" -> True
-        "t" -> True
-        "yes" -> True
-        "y" -> True
-        "on" -> True
-        _ -> False
+      (interceptedCacheSize, afterCacheSize) =
+        interceptInt statementCacheSizeParam connectionString
+      (interceptedThreshold, remainder) =
+        interceptInt prepareThresholdParam afterCacheSize
 
-      pack connectionString noPreparedStatements =
-        Config.Config
-          { connectionString =
-              let textUrl = ConnectionString.toUrl connectionString
-               in encodeUtf8 textUrl,
-            noPreparedStatements
-          }
+      -- An unparseable value is treated as absent, consistently with how an
+      -- invalid connection string is treated as empty.
+      interceptInt name string =
+        case ConnectionString.interceptParam name string of
+          Nothing -> (Nothing, string)
+          Just (value, remainder) ->
+            case TextRead.signed TextRead.decimal value of
+              Right (int, "") -> (Just int, remainder)
+              _ -> (Nothing, remainder)
+
+statementCacheSizeParam :: Text
+statementCacheSizeParam = "statement_cache_size"
+
+prepareThresholdParam :: Text
+prepareThresholdParam = "prepare_threshold"
 
 -- * Constructors
 
--- | Whether prepared statements are disabled.
+-- | Maximum amount of statements kept prepared on a connection.
 --
--- 'False' by default.
+-- @1024@ by default. Negative values are treated as @0@.
 --
--- When 'True', even the statements marked as preparable will be executed without preparation at the cost of reduced performance.
+-- The driver prepares statements on its own, based on how often they are
+-- actually executed, and deallocates the least recently used one when this
+-- limit is reached. The limit is per connection, so the worst-case amount of
+-- plans held by the server is this value multiplied by the size of your pool.
 --
--- This is useful when dealing with proxying applications like @pgbouncer@, which may be incompatible with prepared statements.
--- Consult their docs or just provide this setting to stay on the safe side.
--- It should be noted that starting from version @1.21.0@ @pgbouncer@ now does provide support for prepared statements.
-noPreparedStatements :: Bool -> Settings
-noPreparedStatements =
-  Settings . ConnectionString.param "no_prepared_statements" . bool "false" "true"
+-- @0@ disables preparation completely. Use it when talking to a proxy that
+-- cannot handle prepared statements, such as @pgbouncer@ before version
+-- @1.21.0@.
+statementCacheSize :: Int -> Settings
+statementCacheSize =
+  Settings . ConnectionString.param statementCacheSizeParam . fromString . show
+
+-- | Amount of executions of a statement on a connection after which it gets
+-- prepared.
+--
+-- @2@ by default. Values below @1@ are treated as @1@, which means preparing
+-- on first use.
+--
+-- Raising it makes the driver more conservative about spending a @PARSE@ on
+-- statements that may never be executed again, at the cost of one extra
+-- unprepared execution for the statements that are. It cannot disable
+-- preparation — use 'statementCacheSize' @0@ for that.
+prepareThreshold :: Int -> Settings
+prepareThreshold =
+  Settings . ConnectionString.param prepareThresholdParam . fromString . show
 
 -- | Host domain name or IP-address.
 --

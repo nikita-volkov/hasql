@@ -1,6 +1,5 @@
 module Sharing.ByFeature.SyntaxErrorsSpec (spec) where
 
-import Data.Either
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Errors qualified as Errors
@@ -15,15 +14,12 @@ spec :: SpecWith (Text, Word16)
 spec = do
   forM_ [False, True] \inPipeline -> do
     describe (if inPipeline then "Pipeline" else "Session") do
-      forM_ [False, True] \preparable -> do
-        describe (if preparable then "Preparable" else "Unpreparable") do
+      forM_ [(False, Scripts.onNonPreparingConnection), (True, Scripts.onPreparingConnection)] \(prepared, onConnection) -> do
+        describe (if prepared then "Prepared" else "Unprepared") do
           it "gets reported properly" \config -> do
-            Scripts.onPreparableConnection config \connection -> do
+            onConnection config \connection -> do
               result <- Connection.use connection do
-                let statement =
-                      if preparable
-                        then Statement.preparable "-" mempty Decoders.noResult
-                        else Statement.unpreparable "-" mempty Decoders.noResult
+                let statement = Statement.statement "-" mempty Decoders.noResult
                 if inPipeline
                   then Session.pipeline (Pipeline.statement () statement)
                   else Session.statement () statement
@@ -31,7 +27,7 @@ spec = do
               shouldBe
                 result
                 ( Left
-                    ( (Errors.StatementSessionError 1 0 "-" [] preparable)
+                    ( (Errors.StatementSessionError 1 0 "-" [] prepared)
                         ( Errors.ServerStatementError
                             ( Errors.ServerError
                                 "42601"

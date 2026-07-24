@@ -16,7 +16,7 @@ type SetConfigResult = ()
 
 instance StatementModule SetConfig SetConfigResult where
   statement =
-    Statement.preparable sql encoder decoder
+    Statement.statement sql encoder decoder
     where
       sql =
         "SELECT set_config($1, $2, $3)"

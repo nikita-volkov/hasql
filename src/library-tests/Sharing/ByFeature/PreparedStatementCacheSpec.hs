@@ -15,12 +15,12 @@ spec :: SpecWith (Text, Word16)
 spec = do
   describe "Session" do
     it "Failing statements don't cause misses in updates of the prepared statement cache" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         -- Run an intentionally failing prepared statement to set the condition of the bug.
         result <- Connection.use connection do
           Session.statement
             ()
-            ( Statement.preparable
+            ( Statement.statement
                 "select null"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -30,7 +30,7 @@ spec = do
         result <- Connection.use connection do
           Session.statement
             ()
-            ( Statement.preparable
+            ( Statement.statement
                 "select 1"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -43,9 +43,9 @@ spec = do
             expectationFailure ("Unexpected error: " <> show result)
 
     it "Syntax errors in prepared statements don't corrupt the cache for subsequent uses of the same statement" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let brokenStatement =
-              Statement.preparable
+              Statement.statement
                 "S"
                 mempty
                 Decoders.noResult
@@ -67,13 +67,13 @@ spec = do
 
   describe "Pipeline" do
     it "Failing pipeline statements don't cause misses in updates of the prepared statement cache" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
         result <- Connection.use connection do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.preparable
+              ( Statement.statement
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -89,7 +89,7 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.preparable
+              ( Statement.statement
                   "select 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -102,9 +102,9 @@ spec = do
             expectationFailure ("Unexpected error: " <> show result)
 
     it "Syntax errors in pipeline prepared statements don't corrupt the cache for subsequent uses of the same statement" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let brokenStatement =
-              Statement.preparable
+              Statement.statement
                 "S"
                 mempty
                 Decoders.noResult
@@ -125,9 +125,9 @@ spec = do
             expectationFailure "Second run unexpectedly succeeded"
 
     it "A pipeline with a broken statement first and a valid one after it can be retried with the same syntax error" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
-        let broken = Statement.preparable "S" mempty Decoders.noResult
-            ok = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+      Scripts.onPreparingConnection config \connection -> do
+        let broken = Statement.statement "S" mempty Decoders.noResult
+            ok = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
         result1 <- Connection.use connection do
           Session.pipeline do
             (,)
@@ -148,9 +148,9 @@ spec = do
         shouldBe error2 error1
 
     it "A valid statement after a broken pipeline statement still prepares in a later pipeline" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
-        let broken = Statement.preparable "S" mempty Decoders.noResult
-            trailing = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+      Scripts.onPreparingConnection config \connection -> do
+        let broken = Statement.statement "S" mempty Decoders.noResult
+            trailing = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
         result1 <- Connection.use connection do
           Session.pipeline do
             (,)
@@ -166,10 +166,10 @@ spec = do
           Left err -> expectationFailure ("Unexpected error on follow-up pipeline: " <> show err)
 
     it "A pipeline with successful statements followed by a broken one can be retried without 'already exists' errors" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
-        let ok1 = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-            ok2 = Statement.preparable "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-            broken = Statement.preparable "S" mempty Decoders.noResult
+      Scripts.onPreparingConnection config \connection -> do
+        let ok1 = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+            ok2 = Statement.statement "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+            broken = Statement.statement "S" mempty Decoders.noResult
         -- First run: pipeline with two OK statements and a broken one at the end.
         result1 <- Connection.use connection do
           Session.pipeline do
@@ -202,10 +202,10 @@ spec = do
           Left err -> expectationFailure ("Unexpected error on standalone statement: " <> show err)
 
     it "A pipeline with a broken statement in the middle can be retried without 'already exists' errors" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
-        let ok1 = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-            broken = Statement.preparable "S" mempty Decoders.noResult
-            ok2 = Statement.preparable "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+      Scripts.onPreparingConnection config \connection -> do
+        let ok1 = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+            broken = Statement.statement "S" mempty Decoders.noResult
+            ok2 = Statement.statement "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
         -- First run: pipeline with broken statement in the middle.
         result1 <- Connection.use connection do
           Session.pipeline do
