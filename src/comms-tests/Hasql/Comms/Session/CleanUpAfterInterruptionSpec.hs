@@ -27,7 +27,7 @@ spec = do
         status <- Pq.pipelineStatus connection
         status `shouldBe` Pq.PipelineOff
 
-    it "cleans up when pipeline mode is aborted before a sync point" \config -> do
+    it "cleans up when the pipeline is aborted with no pending transaction or sync" \config -> do
       withConnection config \connection -> do
         success <- Pq.enterPipelineMode connection
         success `shouldBe` True
@@ -59,6 +59,58 @@ spec = do
         cleanupResult `shouldBe` Right ()
         finalPipelineStatus <- Pq.pipelineStatus connection
         finalPipelineStatus `shouldBe` Pq.PipelineOff
+
+    -- Deterministic counterpart to the timing-based reproduction in
+    -- "Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec": instead of
+    -- racing an async exception into the narrow window during which libpq's
+    -- pipeline is in the aborted state, we put the connection into that state
+    -- directly and invoke the cleanup that an interruption would have
+    -- invoked. This exercises the `leavePipeline` branch that used to only
+    -- handle `PipelineOn`, leaving an aborted pipeline to fall through to
+    -- `bringTransactionStatusToIdle`, which then tried to send "ABORT" as a
+    -- serial command while still in pipeline mode.
+    it "cleans up when the pipeline is aborted" \config -> do
+      withConnection config \connection -> do
+        -- Open a transaction, so that the failing statement below leaves the
+        -- connection in the error transaction status -- the status that makes
+        -- `bringTransactionStatusToIdle` want to send "ABORT" as a serial
+        -- command, which libpq refuses while pipeline mode is still on
+        _ <- Pq.exec connection "BEGIN"
+
+        -- Enter pipeline mode
+        success <- Pq.enterPipelineMode connection
+        success `shouldBe` True
+
+        -- Queue a statement that is guaranteed to fail on the server,
+        -- followed by another one. The trailing statement matters: it makes
+        -- the abort survive the drains that `cleanUpAfterInterruption`
+        -- performs before reaching `leavePipeline`, since `drainResults`
+        -- stops at each command boundary
+        success <- Pq.sendQueryParams connection "select 1/0" [] Pq.Text
+        success `shouldBe` True
+
+        success <- Pq.sendQueryParams connection "select 1" [] Pq.Text
+        success `shouldBe` True
+
+        -- Flush the queued statements to the server
+        success <- Pq.pipelineSync connection
+        success `shouldBe` True
+
+        -- Consume results until libpq registers the error and flips the
+        -- pipeline into the aborted state, leaving the trailing sync marker
+        -- undrained -- exactly the state an interruption would leave behind
+        consumeUntilPipelineAborted connection
+
+        -- Run cleanup
+        result <- Session.toHandler Session.cleanUpAfterInterruption connection
+        result `shouldBe` Right ()
+
+        -- Verify we're out of pipeline mode and usable again
+        status <- Pq.pipelineStatus connection
+        status `shouldBe` Pq.PipelineOff
+
+        transStatus <- Pq.transactionStatus connection
+        transStatus `shouldBe` Pq.TransIdle
 
     it "cleans up when in an open transaction" \config -> do
       withConnection config \connection -> do
@@ -139,6 +191,24 @@ spec = do
           Nothing -> expectationFailure "Expected error result from exec prepared after deallocation"
 
 -- * Helpers
+
+-- | Pull results from a pipelined connection until libpq reports the pipeline
+-- as aborted, failing the example if that never happens.
+consumeUntilPipelineAborted :: Pq.Connection -> IO ()
+consumeUntilPipelineAborted connection =
+  go (10 :: Int)
+  where
+    go attemptsLeft = do
+      status <- Pq.pipelineStatus connection
+      case status of
+        Pq.PipelineAborted -> pure ()
+        _
+          | attemptsLeft <= 0 ->
+              expectationFailure
+                ("Pipeline did not reach the aborted state. Last status: " <> show status)
+          | otherwise -> do
+              _ <- Pq.getResult connection
+              go (pred attemptsLeft)
 
 withConnection :: (Text, Word16) -> (Pq.Connection -> IO a) -> IO a
 withConnection (host, port) action =
