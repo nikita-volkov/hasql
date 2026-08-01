@@ -27,6 +27,37 @@ spec = do
         status <- Pq.pipelineStatus connection
         status `shouldBe` Pq.PipelineOff
 
+    it "cleans up when pipeline mode is aborted before a sync point" \config -> do
+      withConnection config \connection -> do
+        success <- Pq.enterPipelineMode connection
+        success `shouldBe` True
+
+        sent <- Pq.sendQueryParams connection "SELECT * FROM nonexistent_table" [] Pq.Text
+        sent `shouldBe` True
+        flushRequestSent <- Pq.sendFlushRequest connection
+        flushRequestSent `shouldBe` True
+        flushStatus <- Pq.flush connection
+        flushStatus `shouldBe` Pq.FlushOk
+
+        let waitForResult = do
+              consumed <- Pq.consumeInput connection
+              consumed `shouldBe` True
+              busy <- Pq.isBusy connection
+              if busy
+                then threadDelay 1000 >> waitForResult
+                else Pq.getResult connection
+
+        result <- waitForResult
+        resultStatus <- traverse Pq.resultStatus result
+        resultStatus `shouldBe` Just Pq.FatalError
+        pipelineStatus <- Pq.pipelineStatus connection
+        pipelineStatus `shouldBe` Pq.PipelineAborted
+
+        cleanupResult <- Session.toHandler Session.cleanUpAfterInterruption connection
+        cleanupResult `shouldBe` Right ()
+        finalPipelineStatus <- Pq.pipelineStatus connection
+        finalPipelineStatus `shouldBe` Pq.PipelineOff
+
     it "cleans up when in an open transaction" \config -> do
       withConnection config \connection -> do
         -- Start a transaction
