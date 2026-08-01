@@ -8,8 +8,8 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Prelude
 import Test.Hspec
+import Prelude
 
 -- | A statement that sleeps for the given number of seconds and succeeds.
 --
