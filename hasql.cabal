@@ -326,6 +326,7 @@ test-suite library-tests
     Isolated.ByUnit.Connection.AcquireSpec
     Pure.ByUnit.ErrorsSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
+    Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec
     Sharing.ByFeature.ConcurrencySpec
     Sharing.ByFeature.DecoderCompatibilityCacheSpec
     Sharing.ByFeature.DecoderCompatibilityCheckSpec
