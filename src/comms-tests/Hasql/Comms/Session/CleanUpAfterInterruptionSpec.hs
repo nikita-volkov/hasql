@@ -39,15 +39,17 @@ spec = do
         flushStatus <- Pq.flush connection
         flushStatus `shouldBe` Pq.FlushOk
 
-        let waitForResult = do
+        let waitForResult attempts = do
+              when (attempts <= 0) do
+                expectationFailure "Timed out waiting for libpq result after flushing pipeline query"
               consumed <- Pq.consumeInput connection
               consumed `shouldBe` True
               busy <- Pq.isBusy connection
               if busy
-                then threadDelay 1000 >> waitForResult
+                then threadDelay 1000 >> waitForResult (attempts - 1)
                 else Pq.getResult connection
 
-        result <- waitForResult
+        result <- waitForResult (10000 :: Int)
         resultStatus <- traverse Pq.resultStatus result
         resultStatus `shouldBe` Just Pq.FatalError
         pipelineStatus <- Pq.pipelineStatus connection
