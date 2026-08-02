@@ -89,7 +89,9 @@ bringTransactionStatusToIdle = do
 leavePipeline :: Session ()
 leavePipeline = do
   pipelineStatus <- getPipelineStatus
-  when (pipelineStatus == Pqi.PipelineOn) do
+  -- PipelineAborted is still pipeline mode. It must reach a sync point before
+  -- libpq permits serial queries such as ABORT or DEALLOCATE ALL again.
+  when (pipelineStatus /= Pqi.PipelineOff) do
     -- In pipeline mode, we need to ensure the pipeline is synchronized before exiting.
     -- Send a pipeline sync marker to flush any pending operations.
     syncSuccess <- sendPipelineSync

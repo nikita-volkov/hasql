@@ -11,12 +11,14 @@
 !/LICENSE
 !/README.md
 !/CHANGELOG.md
+!/AGENTS.md
 !/cabal.project
 !/*.cabal
 
 # Unignore subtrees:
 !/.github/
 !/src/
+!/docs/
 
 # Ignore noise:
 .DS_Store
