@@ -123,7 +123,7 @@ refineResult refiner stmt = stmt {decoder = fmap (ResultDecoder.refine refiner) 
 
 -- | Extract the SQL template from a statement.
 toSql :: Statement params result -> Text
-toSql stmt = TextEncoding.decodeUtf8Lenient (sql stmt)
+toSql stmt = decodeUtf8Lenient (sql stmt)
 
 -- | Resolve the parameter OIDs and encode the parameter values.
 --

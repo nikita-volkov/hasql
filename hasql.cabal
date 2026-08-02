@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hasql
-version: 1.11
+version: 1.10.3.7
 category: Hasql, Database, PostgreSQL
 synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
@@ -330,6 +330,7 @@ test-suite library-tests
     Isolated.ByUnit.Connection.AcquireSpec
     Pure.ByUnit.ErrorsSpec
     Sharing.ByBug.ExceptionConnectionResetRaceSpec
+    Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec
     Sharing.ByFeature.ConcurrencySpec
     Sharing.ByFeature.DecoderCompatibilityCacheSpec
     Sharing.ByFeature.DecoderCompatibilityCheckSpec
