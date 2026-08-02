@@ -9,7 +9,7 @@ where
 
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 newtype Recv context a
   = Recv (Pq.Connection -> IO (Either (Error context) a))

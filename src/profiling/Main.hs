@@ -7,8 +7,9 @@ import Hasql.Connection.Settings qualified as Settings
 import Hasql.Decoders qualified as D
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as Statement
-import TestcontainersPostgresql qualified
+import Pqi.Ffi qualified as PqiFfi
 import Prelude
+import TestcontainersPostgresql qualified
 
 main :: IO ()
 main =
@@ -93,7 +94,7 @@ withConnection = withConnectionByTagName "postgres:18"
 
 withConnectionByTagName :: Text -> (Connection.Connection -> IO ()) -> IO ()
 withConnectionByTagName tagName action = withConnectionSettings tagName \settings -> do
-  connection <- Connection.acquire settings
+  connection <- Connection.acquire PqiFfi.adapter settings
   case connection of
     Left err -> fail ("Connection failed: " <> show err)
     Right conn -> finally (action conn) (Connection.release conn)

@@ -14,7 +14,7 @@ module Hasql.Comms.RowReader
 where
 
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 data Error
   = CellError
@@ -33,15 +33,15 @@ data CellError
   deriving stock (Eq, Show)
 
 newtype RowReader a
-  = RowReader (StateT Pq.Column (ReaderT Env (ExceptT Error IO)) a)
+  = RowReader (StateT Int32 (ReaderT Env (ExceptT Error IO)) a)
   deriving
     (Functor, Applicative)
-    via (StateT Pq.Column (ReaderT Env (ExceptT Error IO)))
+    via (StateT Int32 (ReaderT Env (ExceptT Error IO)))
 
 data Env
   = Env
       Pq.Result
-      Pq.Row
+      Int32
 
 -- * Instances
 
@@ -57,7 +57,7 @@ instance Filterable RowReader where
 -- * Functions
 
 {-# INLINE toHandler #-}
-toHandler :: RowReader a -> Pq.Result -> Pq.Row -> IO (Either Error a)
+toHandler :: RowReader a -> Pq.Result -> Int32 -> IO (Either Error a)
 toHandler (RowReader f) result row =
   let env = Env result row
    in runExceptT (runReaderT (evalStateT f 0) env)
@@ -69,7 +69,7 @@ column :: (Maybe a -> Maybe b) -> (ByteString -> Either Text a) -> RowReader b
 column processNullable valueDec = RowReader do
   col <- get
   Env result row <- ask
-  let colInt = Pq.colToInt col
+  let colInt = fromIntegral col
   put (succ col)
 
   valueMaybe <- liftIO ({-# SCC "getvalue'" #-} Pq.getvalue' result row col)
@@ -79,13 +79,13 @@ column processNullable valueDec = RowReader do
     Just v ->
       case {-# SCC "decode" #-} valueDec v of
         Left err -> do
-          oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
+          oid <- liftIO (Pq.ftype result col)
           throwError (CellError colInt oid (DecodingCellError err))
         Right decoded -> pure (Just decoded)
 
   case processNullable valueMaybe of
     Nothing -> do
-      oid <- Pq.oidToWord32 <$> liftIO (Pq.ftype result col)
+      oid <- liftIO (Pq.ftype result col)
       throwError (CellError colInt oid UnexpectedNullCellError)
     Just decoded -> pure decoded
 

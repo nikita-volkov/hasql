@@ -11,7 +11,7 @@ where
 
 import Hasql.Comms.Roundtrip qualified as Roundtrip
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 -- | Serial execution of commands in the scope of a connection.
 newtype Session a = Session (Pq.Connection -> IO (Either Error a))

@@ -17,7 +17,7 @@ import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.Select
 import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 run ::
   Pipeline a ->
@@ -144,7 +144,7 @@ data Pipeline a
       -- They will be used to pre-resolve type OIDs before running the pipeline providing them in OidCache.
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
-      -- In the execution function we will be defaulting to 'Pq.Oid 0' for unknown types as a fallback in case of bugs.
+      -- In the execution function we will be defaulting to OID 0 for unknown types as a fallback in case of bugs.
       (HashSet Vocab.QualifiedTypeName)
       -- | Function that runs the pipeline.
       --
@@ -221,7 +221,7 @@ statement stmt params =
           Statement.compilePreparedStatementData stmt oidCache params
 
         pqOidList =
-          fmap (Pq.Oid . fromIntegral) oidList
+          oidList
 
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
@@ -262,7 +262,7 @@ statement stmt params =
               where
                 encodedParams =
                   Statement.compileUnpreparedStatementData stmt oidCache params
-                    & fmap (fmap (\(oid, bytes, format) -> (Pq.Oid (fromIntegral oid), bytes, bool Pq.Binary Pq.Text format)))
+                    & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
           RequestingOid.toBase (Statement.decoder stmt) oidCache

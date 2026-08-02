@@ -2,9 +2,10 @@ module Helpers.Scripts where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
+import Pqi.Ffi qualified as PqiFfi
+import Prelude
 import System.Random.Stateful qualified as Random
 import TextBuilder qualified
-import Prelude
 
 -- |
 -- Parameters provided by the scope.
@@ -29,7 +30,7 @@ onConnection unpreparable (host, port) =
                   Settings.dbname "postgres",
                   Settings.noPreparedStatements unpreparable
                 ]
-        res <- Connection.acquire settings
+        res <- Connection.acquire PqiFfi.adapter settings
         case res of
           Left err -> fail ("Connection failed: " <> show err)
           Right conn -> pure conn

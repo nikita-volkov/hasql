@@ -16,8 +16,8 @@ import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
 import PostgreSQL.Binary.Encoding qualified as Binary
+import Pqi qualified as Pq
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
@@ -76,13 +76,13 @@ roundtrip params =
 
 -- | Encode the two text-array parameters directly.
 -- Text OID is 25; text-array OID is 1009.
-encodeParams :: SelectTypeInfo -> [Maybe (Pq.Oid, ByteString, Pq.Format)]
+encodeParams :: SelectTypeInfo -> [Maybe (Word32, ByteString, Pq.Format)]
 encodeParams (SelectTypeInfo keys) =
   let (schemaNames, typeNames) = unzip (fmap Vocab.QualifiedTypeName.toNameTuple (HashSet.toList keys))
       schemaArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (encodeMaybeText schemaNames)))
       typeArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (fmap (Binary.encodingArray . Binary.text_strict) typeNames)))
-   in [ Just (Pq.Oid 1009, schemaArray, Pq.Binary),
-        Just (Pq.Oid 1009, typeArray, Pq.Binary)
+   in [ Just (1009, schemaArray, Pq.Binary),
+        Just (1009, typeArray, Pq.Binary)
       ]
   where
     encodeTextArray elements =
