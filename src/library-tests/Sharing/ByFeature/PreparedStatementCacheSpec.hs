@@ -8,10 +8,11 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Session" do
     it "Failing statements don't cause misses in updates of the prepared statement cache" \config -> do

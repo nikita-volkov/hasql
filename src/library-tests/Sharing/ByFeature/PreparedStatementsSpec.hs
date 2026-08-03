@@ -7,10 +7,11 @@ import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.CountPreparedStatements qualified as CountPreparedStatements
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Prepared statements" do
     it "Do get prepared when configuration allows" \config -> do

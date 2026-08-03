@@ -1,18 +1,22 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
 module Sharing.SpecHook where
 
+import Helpers.Adapters qualified as Adapters
+import Pqi qualified
+import Prelude
 import Test.Hspec
 import TestcontainersPostgresql qualified
-import Prelude
 
-type HookedSpec = SpecWith (Text, Word16)
+type HookedSpec = SpecWith (Pqi.Adapter, Text, Word16)
 
 hook :: HookedSpec -> Spec
-hook hookedSpec = parallel do
-  byDistro "postgres:9"
-  byDistro "postgres:18"
+hook hookedSpec =
+  parallel
+    $ Adapters.byAdapter \adapter -> do
+      byDistro adapter "postgres:9"
+      byDistro adapter "postgres:18"
   where
-    byDistro tagName =
+    byDistro adapter tagName =
       describe (toList tagName) do
         aroundAll
           ( TestcontainersPostgresql.run
@@ -22,4 +26,4 @@ hook hookedSpec = parallel do
                   forwardLogs = False
                 }
           )
-          (parallel hookedSpec)
+          (mapSubject (\(host, port) -> (adapter, host, port)) hookedSpec)

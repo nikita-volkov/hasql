@@ -8,8 +8,9 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
 -- | A statement that sleeps for the given number of seconds and succeeds.
 --
@@ -87,7 +88,7 @@ racingPipelineSession sleepSeconds =
 -- reports the cleanup failure as an ordinary `Left (DriverSessionError _)`
 -- return value instead of rethrowing, so `timeout` observes a normal
 -- return and reports 'Just (Left _)'.
-attempt :: (Text, Word16) -> Double -> Int -> IO (Maybe Text)
+attempt :: (Pqi.Adapter, Text, Word16) -> Double -> Int -> IO (Maybe Text)
 attempt config sleepSeconds delayMicros =
   Scripts.onPreparableConnection config \connection -> do
     result <- timeout delayMicros do
@@ -104,7 +105,7 @@ attempt config sleepSeconds delayMicros =
       Just (Right ()) -> Nothing
       Nothing -> Nothing
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Interruption of a pipeline while it is in the Aborted status" do
     it "Connection.use recovers cleanly instead of reporting a driver cleanup failure" \config -> do

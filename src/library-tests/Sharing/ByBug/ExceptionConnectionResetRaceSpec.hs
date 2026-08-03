@@ -8,11 +8,12 @@ import Hasql.Session qualified as Session
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectProvidedInt8 qualified as Statements
+import Pqi qualified
+import Prelude
 import System.Timeout
 import Test.Hspec
-import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Exception during session with concurrent access" do
     it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparableConnection config \connection -> do

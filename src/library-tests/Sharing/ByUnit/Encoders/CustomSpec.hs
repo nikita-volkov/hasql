@@ -9,11 +9,12 @@ import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
+import Pqi qualified
+import Prelude
 import Test.Hspec
 import TextBuilder qualified
-import Prelude
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Basic custom encoders" do
     it "encodes a custom type with runtime OID lookup" \config -> do

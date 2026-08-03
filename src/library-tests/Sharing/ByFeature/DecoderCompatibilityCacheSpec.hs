@@ -7,10 +7,11 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = parallel do
   byExecutor "Session" (Session.statement ())
   byExecutor "Pipeline" (Session.pipeline . Pipeline.statement ())
@@ -18,7 +19,7 @@ spec = parallel do
 byExecutor ::
   Text ->
   (forall a. (Show a) => Statement.Statement () a -> Session.Session a) ->
-  SpecWith (Text, Word16)
+  SpecWith (Pqi.Adapter, Text, Word16)
 byExecutor executorName executor = do
   describe (toList executorName) do
     it "does not hide decoder mismatches from a previously verified statement" \config -> do

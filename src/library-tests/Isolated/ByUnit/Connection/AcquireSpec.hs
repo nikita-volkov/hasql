@@ -4,20 +4,20 @@ import Hasql.Connection qualified
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
 import Hasql.Errors qualified as Errors
-import Pqi.Ffi qualified as PqiFfi
+import Pqi qualified
 import Prelude
 import Test.Hspec
 import TestcontainersPostgresql qualified
 
-spec :: Spec
+spec :: SpecWith Pqi.Adapter
 spec = do
   describe "By result" do
     describe "Left" do
       describe "Networking" do
-        it "Fails on server missing" do
+        it "Fails on server missing" \adapter -> do
           let settings =
                 Settings.hostAndPort "nopostgresql.net" 5432
-          result <- Connection.acquire PqiFfi.adapter settings
+          result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -28,7 +28,7 @@ spec = do
               expectationFailure ("Expected NetworkingConnectionError, but got: " <> show err)
 
   describe "postgres:9" do
-    it "Succeeds" do
+    it "Succeeds" \adapter -> do
       TestcontainersPostgresql.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:9",
@@ -43,7 +43,7 @@ spec = do
                     Settings.password "postgres",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire PqiFfi.adapter settings
+          result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -51,7 +51,7 @@ spec = do
               expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
   describe "postgres:18" do
-    it "Succeeds" do
+    it "Succeeds" \adapter -> do
       TestcontainersPostgresql.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
@@ -66,14 +66,14 @@ spec = do
                     Settings.password "postgres",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire PqiFfi.adapter settings
+          result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
             Left err -> do
               expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
-    it "Fails with authentication error on incorrect password" do
+    it "Fails with authentication error on incorrect password" \adapter -> do
       TestcontainersPostgresql.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
@@ -88,7 +88,7 @@ spec = do
                     Settings.password "",
                     Settings.dbname "postgres1"
                   ]
-          result <- Connection.acquire PqiFfi.adapter settings
+          result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -98,7 +98,7 @@ spec = do
             Left err ->
               expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
 
-    it "Fails with authentication error on incorrect user" do
+    it "Fails with authentication error on incorrect user" \adapter -> do
       TestcontainersPostgresql.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
@@ -113,7 +113,7 @@ spec = do
                     Settings.password "",
                     Settings.dbname "postgres"
                   ]
-          result <- Connection.acquire PqiFfi.adapter settings
+          result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
@@ -129,13 +129,13 @@ spec = do
   describe "postgres:18" do
     byDistro "postgres:18"
 
-byDistro :: Text -> Spec
+byDistro :: Text -> SpecWith Pqi.Adapter
 byDistro tagName = do
-  let itConnects :: Text -> Text -> Spec
+  let itConnects :: Text -> Text -> SpecWith Pqi.Adapter
       itConnects username password =
         describe ("username: " <> toList username) do
           describe ("password: " <> toList password) do
-            it "connects" do
+            it "connects" \adapter -> do
               TestcontainersPostgresql.run
                 TestcontainersPostgresql.Config
                   { tagName,
@@ -145,7 +145,7 @@ byDistro tagName = do
                 ( \(host, port) -> do
                     result <-
                       Hasql.Connection.acquire
-                        PqiFfi.adapter
+                        adapter
                         ( mconcat
                             [ Settings.hostAndPort host port,
                               Settings.user username,
@@ -166,10 +166,10 @@ byDistro tagName = do
 
   describe "Connection errors" do
     describe "NetworkingConnectionError" do
-      it "is reported for invalid host" do
+      it "is reported for invalid host" \adapter -> do
         result <-
           Hasql.Connection.acquire
-            PqiFfi.adapter
+            adapter
             ( mconcat
                 [ Settings.hostAndPort "nonexistent.invalid.host" 5432,
                   Settings.user "postgres",
@@ -181,10 +181,10 @@ byDistro tagName = do
           Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
-      it "is reported for connection refused" do
+      it "is reported for connection refused" \adapter -> do
         result <-
           Hasql.Connection.acquire
-            PqiFfi.adapter
+            adapter
             ( mconcat
                 [ Settings.hostAndPort "127.0.0.1" 1,
                   Settings.user "postgres",
@@ -197,7 +197,7 @@ byDistro tagName = do
           Right _conn -> expectationFailure "Expected connection to fail"
 
     describe "AuthenticationConnectionError" do
-      it "is reported for invalid credentials" do
+      it "is reported for invalid credentials" \adapter -> do
         TestcontainersPostgresql.run
           TestcontainersPostgresql.Config
             { tagName,
@@ -207,7 +207,7 @@ byDistro tagName = do
           \(host, port) -> do
             result <-
               Hasql.Connection.acquire
-                PqiFfi.adapter
+                adapter
                 ( mconcat
                     [ Settings.hostAndPort host port,
                       Settings.user "incorrectuser",

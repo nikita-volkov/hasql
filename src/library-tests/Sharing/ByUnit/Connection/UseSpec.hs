@@ -11,10 +11,11 @@ import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements.SelectOne qualified as Statements.SelectOne
 import Helpers.Statements.Sleep qualified as Statements
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Transactions" do
     it "Do not cause \"in progress after error\"" \config -> do

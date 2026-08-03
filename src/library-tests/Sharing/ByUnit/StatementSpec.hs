@@ -6,10 +6,11 @@ import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Test.Hspec
+import Pqi qualified
 import Prelude
+import Test.Hspec
 
-spec :: SpecWith (Text, Word16)
+spec :: SpecWith (Pqi.Adapter, Text, Word16)
 spec = do
   describe "Statement Functionality" do
     describe "Prepared statements" do
