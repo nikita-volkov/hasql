@@ -137,13 +137,14 @@ refine :: (a -> Either Text b) -> ResultDecoder a -> ResultDecoder b
 refine refiner (ResultDecoder plan) = ResultDecoder (Refine refiner plan)
 
 -- * Interpreter
+
 --
 -- 'runPlan' and its helpers are all 'INLINABLE' so GHC can specialize them
 -- at each call site in 'Hasql.Comms.Recv', eliminating the dictionary
 -- dispatch that the old 'ReaderT'\/'ExceptT'-derived 'ResultDecoder' paid
 -- for on every accessor call.
 
-{-# INLINABLE runPlan #-}
+{-# INLINEABLE runPlan #-}
 runPlan :: Plan a -> Pq.Result -> IO (Either Error a)
 runPlan plan result = case plan of
   CheckExecStatus expected -> checkStatus expected result
@@ -204,7 +205,7 @@ runPlan plan result = case plan of
 
 -- | Check exec status and OID compatibility, then hand the row count (as an
 -- 'Int') to the continuation. Shared by every row-consuming plan variant.
-{-# INLINABLE withRows #-}
+{-# INLINEABLE withRows #-}
 withRows ::
   [Pq.ExecStatus] ->
   RowDecoder.RowDecoder a ->
@@ -223,7 +224,7 @@ withRows expectedStatus rowDec result k = do
           maxRows <- rowToInt <$> Pq.ntuples result
           k maxRows
 
-{-# INLINABLE checkStatus #-}
+{-# INLINEABLE checkStatus #-}
 checkStatus :: [Pq.ExecStatus] -> Pq.Result -> IO (Either Error ())
 checkStatus expectedList result = do
   status <- Pq.resultStatus result
@@ -242,7 +243,7 @@ checkStatus expectedList result = do
               )
           )
 
-{-# INLINABLE readServerError #-}
+{-# INLINEABLE readServerError #-}
 readServerError :: Pq.Result -> IO Error
 readServerError result = do
   code <-
@@ -264,7 +265,7 @@ readServerError result = do
           Right pos' -> Prelude.Just pos'
           _ -> Prelude.Nothing
 
-{-# INLINABLE readAffectedRows #-}
+{-# INLINEABLE readAffectedRows #-}
 readAffectedRows :: Pq.Result -> IO (Either Error Int64)
 readAffectedRows result =
   cmdTuplesReader <$> Pq.cmdTuples result
@@ -289,7 +290,7 @@ readAffectedRows result =
                 bytes
             )
 
-{-# INLINABLE readColumnOids #-}
+{-# INLINEABLE readColumnOids #-}
 readColumnOids :: Pq.Result -> IO [Pq.Oid]
 readColumnOids result = do
   columnsAmount <- Pq.nfields result
@@ -297,7 +298,7 @@ readColumnOids result = do
   forM [0 .. count - 1] \colIndex ->
     Pq.ftype result (Pq.Col colIndex)
 
-{-# INLINABLE checkCompatibility #-}
+{-# INLINEABLE checkCompatibility #-}
 checkCompatibility :: RowDecoder.RowDecoder a -> Pq.Result -> IO (Either Error ())
 checkCompatibility rowDec result =
   let oids = RowDecoder.toExpectedOids rowDec
@@ -323,7 +324,7 @@ checkCompatibility rowDec result =
              in go oids 0
           else pure (Left (UnexpectedColumnCount (length oids) (Pq.colToInt maxCols)))
 
-{-# INLINABLE decodeRow #-}
+{-# INLINEABLE decodeRow #-}
 decodeRow :: RowDecoder.RowDecoder a -> Pq.Result -> Pq.Row -> IO (Either Error a)
 decodeRow rowDec result row =
   RowDecoder.toDecoder rowDec result row
