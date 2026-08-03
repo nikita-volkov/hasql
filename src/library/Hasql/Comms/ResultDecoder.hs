@@ -41,12 +41,32 @@ import Hasql.Platform.Prelude hiding (foldl, foldr, maybe)
 import Hasql.Platform.Prelude qualified as Prelude
 import Hasql.Pq qualified as Pq
 
+-- | Defunctionalized plan for consuming a single result from the server.
+--
+-- Each higher-level decoder ('maybe', 'single', 'vector', 'foldl', 'foldr')
+-- is its own constructor rather than a value built out of smaller monadic
+-- actions, so 'runPlan' can interpret it with one direct-'IO' case analysis
+-- per result instead of running generic 'Applicative'\/'Monad' machinery at
+-- every step.
+data Plan a where
+  CheckExecStatus :: [Pq.ExecStatus] -> Plan ()
+  RowsAffected :: Plan Int64
+  ColumnOids :: Plan [Pq.Oid]
+  MaybeRow :: RowDecoder.RowDecoder a -> Plan (Prelude.Maybe a)
+  SingleRow :: RowDecoder.RowDecoder a -> Plan a
+  VectorRows :: RowDecoder.RowDecoder a -> Plan (Vector a)
+  FoldlRows :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> Plan a
+  FoldrRows :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> Plan a
+  Refine :: (a -> Either Text b) -> Plan a -> Plan b
+  Custom :: (Pq.Result -> IO (Either Error a)) -> Plan a
+
 -- | Result consumption context, for consuming a single result from a sequence of results returned by the server.
 newtype ResultDecoder a
-  = ResultDecoder (Pq.Result -> IO (Either Error a))
-  deriving
-    (Functor, Applicative, Monad, MonadError Error, MonadReader Pq.Result)
-    via (ReaderT Pq.Result (ExceptT Error IO))
+  = ResultDecoder (Plan a)
+
+instance Functor ResultDecoder where
+  {-# INLINE fmap #-}
+  fmap f (ResultDecoder plan) = ResultDecoder (Refine (Right . f) plan)
 
 instance Filterable ResultDecoder where
   {-# INLINE mapMaybe #-}
@@ -60,12 +80,11 @@ instance Filterable ResultDecoder where
 type Handler a = Pq.Result -> IO (Either Error a)
 
 toHandler :: ResultDecoder a -> Handler a
-toHandler (ResultDecoder handler) =
-  handler
+toHandler (ResultDecoder plan) = runPlan plan
 
 fromHandler :: Handler a -> ResultDecoder a
 fromHandler handler =
-  ResultDecoder handler
+  ResultDecoder (Custom handler)
 
 -- * Construction
 
@@ -77,12 +96,178 @@ ok = checkExecStatus [Pq.CommandOk, Pq.TuplesOk]
 pipelineSync :: ResultDecoder ()
 pipelineSync = checkExecStatus [Pq.PipelineSync]
 
+{-# INLINE checkExecStatus #-}
+checkExecStatus :: [Pq.ExecStatus] -> ResultDecoder ()
+checkExecStatus expected = ResultDecoder (CheckExecStatus expected)
+
 {-# INLINE rowsAffected #-}
 rowsAffected :: ResultDecoder Int64
-rowsAffected = do
-  checkExecStatus [Pq.CommandOk]
-  ResultDecoder \result -> do
-    cmdTuplesReader <$> Pq.cmdTuples result
+rowsAffected = ResultDecoder RowsAffected
+
+-- | Get the OIDs of all columns in the current result.
+{-# INLINE columnOids #-}
+columnOids :: ResultDecoder [Pq.Oid]
+columnOids = ResultDecoder ColumnOids
+
+-- * Higher-level decoders
+
+{-# INLINE maybe #-}
+maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Prelude.Maybe a)
+maybe rowDec = ResultDecoder (MaybeRow rowDec)
+
+{-# INLINE single #-}
+single :: RowDecoder.RowDecoder a -> ResultDecoder a
+single rowDec = ResultDecoder (SingleRow rowDec)
+
+{-# INLINE vector #-}
+vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
+vector rowDec = ResultDecoder (VectorRows rowDec)
+
+{-# INLINE foldl #-}
+foldl :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
+foldl step init0 rowDec = ResultDecoder (FoldlRows step init0 rowDec)
+
+{-# INLINE foldr #-}
+foldr :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
+foldr step init0 rowDec = ResultDecoder (FoldrRows step init0 rowDec)
+
+-- * Refinement
+
+refine :: (a -> Either Text b) -> ResultDecoder a -> ResultDecoder b
+refine refiner (ResultDecoder plan) = ResultDecoder (Refine refiner plan)
+
+-- * Interpreter
+--
+-- 'runPlan' and its helpers are all 'INLINABLE' so GHC can specialize them
+-- at each call site in 'Hasql.Comms.Recv', eliminating the dictionary
+-- dispatch that the old 'ReaderT'\/'ExceptT'-derived 'ResultDecoder' paid
+-- for on every accessor call.
+
+{-# INLINABLE runPlan #-}
+runPlan :: Plan a -> Pq.Result -> IO (Either Error a)
+runPlan plan result = case plan of
+  CheckExecStatus expected -> checkStatus expected result
+  RowsAffected -> do
+    statusResult <- checkStatus [Pq.CommandOk] result
+    case statusResult of
+      Left err -> pure (Left err)
+      Right () -> readAffectedRows result
+  ColumnOids -> Right <$> readColumnOids result
+  MaybeRow rowDec -> withRows [Pq.TuplesOk] rowDec result \maxRows ->
+    case maxRows of
+      0 -> pure (Right Prelude.Nothing)
+      1 -> fmap (fmap Prelude.Just) (decodeRow rowDec result (intToRow 0))
+      _ -> pure (Left (UnexpectedRowCount maxRows))
+  SingleRow rowDec -> withRows [Pq.TuplesOk] rowDec result \maxRows ->
+    case maxRows of
+      1 -> decodeRow rowDec result (intToRow 0)
+      _ -> pure (Left (UnexpectedRowCount maxRows))
+  VectorRows rowDec -> withRows [Pq.TuplesOk] rowDec result \maxRows -> do
+    mvector <- MutableVector.unsafeNew maxRows
+    failureRef <- newIORef Prelude.Nothing
+    forMFromZero_ maxRows \rowIndex -> do
+      rowResult <- decodeRow rowDec result (intToRow rowIndex)
+      case rowResult of
+        Left !err -> writeIORef failureRef (Prelude.Just err)
+        Right !x -> MutableVector.unsafeWrite mvector rowIndex x
+    readIORef failureRef >>= \case
+      Prelude.Nothing -> Right <$> Vector.unsafeFreeze mvector
+      Prelude.Just err -> pure (Left err)
+  FoldlRows step init0 rowDec -> withRows [Pq.TuplesOk] rowDec result \maxRows -> do
+    accRef <- newIORef init0
+    failureRef <- newIORef Prelude.Nothing
+    forMFromZero_ maxRows \rowIndex -> do
+      rowResult <- decodeRow rowDec result (intToRow rowIndex)
+      case rowResult of
+        Left !err -> writeIORef failureRef (Prelude.Just err)
+        Right !x -> modifyIORef' accRef (\acc -> step acc x)
+    readIORef failureRef >>= \case
+      Prelude.Nothing -> Right <$> readIORef accRef
+      Prelude.Just err -> pure (Left err)
+  FoldrRows step init0 rowDec -> withRows [Pq.TuplesOk] rowDec result \maxRows -> do
+    accRef <- newIORef init0
+    failureRef <- newIORef Prelude.Nothing
+    forMToZero_ maxRows \rowIndex -> do
+      rowResult <- decodeRow rowDec result (intToRow rowIndex)
+      case rowResult of
+        Left !err -> writeIORef failureRef (Prelude.Just err)
+        Right !x -> modifyIORef accRef (\acc -> step x acc)
+    readIORef failureRef >>= \case
+      Prelude.Nothing -> Right <$> readIORef accRef
+      Prelude.Just err -> pure (Left err)
+  Refine refiner inner -> do
+    innerResult <- runPlan inner result
+    pure case innerResult of
+      Left err -> Left err
+      Right a -> first UnexpectedResult (refiner a)
+  Custom handler -> handler result
+
+-- | Check exec status and OID compatibility, then hand the row count (as an
+-- 'Int') to the continuation. Shared by every row-consuming plan variant.
+{-# INLINABLE withRows #-}
+withRows ::
+  [Pq.ExecStatus] ->
+  RowDecoder.RowDecoder a ->
+  Pq.Result ->
+  (Int -> IO (Either Error b)) ->
+  IO (Either Error b)
+withRows expectedStatus rowDec result k = do
+  statusResult <- checkStatus expectedStatus result
+  case statusResult of
+    Left err -> pure (Left err)
+    Right () -> do
+      compatResult <- checkCompatibility rowDec result
+      case compatResult of
+        Left err -> pure (Left err)
+        Right () -> do
+          maxRows <- rowToInt <$> Pq.ntuples result
+          k maxRows
+
+{-# INLINABLE checkStatus #-}
+checkStatus :: [Pq.ExecStatus] -> Pq.Result -> IO (Either Error ())
+checkStatus expectedList result = do
+  status <- Pq.resultStatus result
+  if elem status expectedList
+    then pure (Right ())
+    else case status of
+      Pq.BadResponse -> Left <$> readServerError result
+      Pq.NonfatalError -> Left <$> readServerError result
+      Pq.FatalError -> Left <$> readServerError result
+      Pq.EmptyQuery -> pure (Right ())
+      _ ->
+        pure
+          ( Left
+              ( UnexpectedResult
+                  ("Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList))
+              )
+          )
+
+{-# INLINABLE readServerError #-}
+readServerError :: Pq.Result -> IO Error
+readServerError result = do
+  code <-
+    fold <$> Pq.resultErrorField result Pq.DiagSqlstate
+  message <-
+    fold <$> Pq.resultErrorField result Pq.DiagMessagePrimary
+  detail <-
+    Pq.resultErrorField result Pq.DiagMessageDetail
+  hint <-
+    Pq.resultErrorField result Pq.DiagMessageHint
+  position <-
+    parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
+  pure (ServerError code message detail hint position)
+  where
+    parsePosition = \case
+      Prelude.Nothing -> Prelude.Nothing
+      Prelude.Just pos ->
+        case Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) pos of
+          Right pos' -> Prelude.Just pos'
+          _ -> Prelude.Nothing
+
+{-# INLINABLE readAffectedRows #-}
+readAffectedRows :: Pq.Result -> IO (Either Error Int64)
+readAffectedRows result =
+  cmdTuplesReader <$> Pq.cmdTuples result
   where
     cmdTuplesReader =
       notNothing >=> notEmpty >=> decimal
@@ -104,68 +289,25 @@ rowsAffected = do
                 bytes
             )
 
-{-# INLINE checkExecStatus #-}
-checkExecStatus :: [Pq.ExecStatus] -> ResultDecoder ()
-checkExecStatus expectedList = do
-  status <- ResultDecoder \result -> Right <$> Pq.resultStatus result
-  unless (elem status expectedList) $ do
-    case status of
-      Pq.BadResponse -> serverError
-      Pq.NonfatalError -> serverError
-      Pq.FatalError -> serverError
-      Pq.EmptyQuery -> return ()
-      _ ->
-        throwError
-          ( UnexpectedResult
-              ("Unexpected result status: " <> fromString (show status) <> ". Expecting one of the following: " <> fromString (show expectedList))
-          )
-
-{-# INLINE serverError #-}
-serverError :: ResultDecoder ()
-serverError =
-  ResultDecoder \result -> do
-    code <-
-      fold <$> Pq.resultErrorField result Pq.DiagSqlstate
-    message <-
-      fold <$> Pq.resultErrorField result Pq.DiagMessagePrimary
-    detail <-
-      Pq.resultErrorField result Pq.DiagMessageDetail
-    hint <-
-      Pq.resultErrorField result Pq.DiagMessageHint
-    position <-
-      parsePosition <$> Pq.resultErrorField result Pq.DiagStatementPosition
-    pure $ Left $ ServerError code message detail hint position
-  where
-    parsePosition = \case
-      Nothing -> Nothing
-      Just pos ->
-        case Attoparsec.parseOnly (Attoparsec.decimal <* Attoparsec.endOfInput) pos of
-          Right pos -> Just pos
-          _ -> Nothing
-
--- | Get the OIDs of all columns in the current result.
-{-# INLINE columnOids #-}
-columnOids :: ResultDecoder [Pq.Oid]
-columnOids = ResultDecoder \result -> do
+{-# INLINABLE readColumnOids #-}
+readColumnOids :: Pq.Result -> IO [Pq.Oid]
+readColumnOids result = do
   columnsAmount <- Pq.nfields result
   let Pq.Col count = columnsAmount
-  oids <- forM [0 .. count - 1] $ \colIndex ->
+  forM [0 .. count - 1] \colIndex ->
     Pq.ftype result (Pq.Col colIndex)
-  pure (Right oids)
 
--- * Higher-level decoders
-
-{-# INLINE checkCompatibility #-}
-checkCompatibility :: RowDecoder.RowDecoder a -> ResultDecoder ()
-checkCompatibility rowDec =
+{-# INLINABLE checkCompatibility #-}
+checkCompatibility :: RowDecoder.RowDecoder a -> Pq.Result -> IO (Either Error ())
+checkCompatibility rowDec result =
   let oids = RowDecoder.toExpectedOids rowDec
-   in ResultDecoder \result -> do
+   in do
         maxCols <- Pq.nfields result
         if length oids == Pq.colToInt maxCols
           then
             let go [] _ = pure (Right ())
-                go (Nothing : rest) colIndex = go rest (succ colIndex)
-                go (Just expectedOid : rest) colIndex = do
+                go (Prelude.Nothing : rest) colIndex = go rest (succ colIndex)
+                go (Prelude.Just expectedOid : rest) colIndex = do
                   actualOid <- Pq.ftype result (Pq.toColumn colIndex)
                   if actualOid == expectedOid
                     then go rest (succ colIndex)
@@ -181,131 +323,19 @@ checkCompatibility rowDec =
              in go oids 0
           else pure (Left (UnexpectedColumnCount (length oids) (Pq.colToInt maxCols)))
 
-{-# INLINE maybe #-}
-maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
-maybe rowDec =
-  do
-    checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
-    ResultDecoder
-      $ \result -> do
-        maxRows <- Pq.ntuples result
-        case maxRows of
-          0 -> return (Right Nothing)
-          1 -> do
-            result <-
-              RowDecoder.toDecoder rowDec result 0
-                <&> first (RowError 0)
-            pure (fmap Just result)
-          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
+{-# INLINABLE decodeRow #-}
+decodeRow :: RowDecoder.RowDecoder a -> Pq.Result -> Pq.Row -> IO (Either Error a)
+decodeRow rowDec result row =
+  RowDecoder.toDecoder rowDec result row
+    <&> first (RowError (rowToInt row))
 
-{-# INLINE single #-}
-single :: RowDecoder.RowDecoder a -> ResultDecoder a
-single rowDec =
-  do
-    checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
-    ResultDecoder
-      $ \result -> do
-        maxRows <- Pq.ntuples result
-        case maxRows of
-          1 -> do
-            RowDecoder.toDecoder rowDec result 0
-              <&> first (RowError 0)
-          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
+{-# INLINE rowToInt #-}
+rowToInt :: Pq.Row -> Int
+rowToInt (Pq.Row n) = fromIntegral n
 
-{-# INLINE vector #-}
-vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
-vector rowDec =
-  do
-    checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
-    ResultDecoder
-      $ \result -> do
-        maxRows <- Pq.ntuples result
-        mvector <- MutableVector.unsafeNew (rowToInt maxRows)
-        failureRef <- newIORef Nothing
-        forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
-          case rowResult of
-            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-            Right !x -> MutableVector.unsafeWrite mvector rowIndex x
-        readIORef failureRef >>= \case
-          Nothing -> Right <$> Vector.unsafeFreeze mvector
-          Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
-
-{-# INLINE foldl #-}
-foldl :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
-foldl step init rowDec =
-  {-# SCC "foldl" #-}
-  do
-    checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
-    ResultDecoder
-      $ \result ->
-        {-# SCC "traversal" #-}
-        do
-          maxRows <- Pq.ntuples result
-          accRef <- newIORef init
-          failureRef <- newIORef Nothing
-          forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-            rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
-            case rowResult of
-              Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-              Right !x -> modifyIORef' accRef (\acc -> step acc x)
-          readIORef failureRef >>= \case
-            Nothing -> Right <$> readIORef accRef
-            Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
-
-{-# INLINE foldr #-}
-foldr :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
-foldr step init rowDec =
-  {-# SCC "foldr" #-}
-  do
-    checkExecStatus [Pq.TuplesOk]
-    checkCompatibility rowDec
-    ResultDecoder
-      $ \result -> do
-        maxRows <- Pq.ntuples result
-        accRef <- newIORef init
-        failureRef <- newIORef Nothing
-        forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
-          case rowResult of
-            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-            Right !x -> modifyIORef accRef (\acc -> step x acc)
-        readIORef failureRef >>= \case
-          Nothing -> Right <$> readIORef accRef
-          Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
-
--- * Refinement
-
-refine :: (a -> Either Text b) -> ResultDecoder a -> ResultDecoder b
-refine refiner (ResultDecoder reader) = ResultDecoder
-  $ \result -> do
-    resultEither <- reader result
-    return $ resultEither >>= first UnexpectedResult . refiner
+{-# INLINE intToRow #-}
+intToRow :: Int -> Pq.Row
+intToRow = Pq.Row . fromIntegral
 
 -- * Errors
 

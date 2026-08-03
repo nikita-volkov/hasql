@@ -11,7 +11,7 @@ import Hasql.Platform.Prelude
 newtype Result a
   = Result (RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a))
   deriving
-    (Functor, Applicative, Filterable)
+    (Functor, Filterable)
     via (Compose RequestingOid.RequestingOid ResultDecoder.ResultDecoder)
 
 unwrap :: Result a -> RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a)
