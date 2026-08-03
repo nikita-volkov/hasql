@@ -19,7 +19,7 @@ import Hasql.Comms.Recv qualified as Recv
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Comms.Send qualified as Send
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 data Roundtrip context a
   = Roundtrip (Send.Send context) (Recv.Recv context a)
@@ -70,7 +70,7 @@ pipelineSync context =
     (Send.pipelineSync context)
     (Recv.singleResult context ResultDecoder.pipelineSync)
 
-prepare :: context -> ByteString -> ByteString -> [Pq.Oid] -> Roundtrip context ()
+prepare :: context -> ByteString -> ByteString -> [Word32] -> Roundtrip context ()
 prepare context statementName sql oidList =
   Roundtrip
     (Send.prepare context statementName sql (Just oidList))
@@ -97,7 +97,7 @@ queryParams ::
   -- | SQL.
   ByteString ->
   -- | Parameters.
-  [Maybe (Pq.Oid, ByteString, Pq.Format)] ->
+  [Maybe (Word32, ByteString, Pq.Format)] ->
   -- | Result format.
   Pq.Format ->
   -- | Result decoder.

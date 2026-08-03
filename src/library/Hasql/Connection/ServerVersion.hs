@@ -10,7 +10,7 @@ module Hasql.Connection.ServerVersion
 where
 
 import Hasql.Platform.Prelude hiding (minimum)
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 import TextBuilder qualified
 
 data ServerVersion = ServerVersion Int Int Int

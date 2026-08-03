@@ -1,7 +1,7 @@
 module Hasql.Comms.Send where
 
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 data Result context
   = Ok
@@ -38,7 +38,7 @@ liftPqSend context pqSend = Send \connection -> do
       errorMessage <- Pq.errorMessage connection
       pure (Error context errorMessage)
 
-prepare :: context -> ByteString -> ByteString -> Maybe [Pq.Oid] -> Send context
+prepare :: context -> ByteString -> ByteString -> Maybe [Word32] -> Send context
 prepare context statementName sql oidList =
   liftPqSend context \connection -> Pq.sendPrepare connection statementName sql oidList
 
@@ -50,7 +50,7 @@ queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.
 queryPrepared context statementName params resultFormat =
   liftPqSend context \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
 
-queryParams :: context -> ByteString -> [Maybe (Pq.Oid, ByteString, Pq.Format)] -> Pq.Format -> Send context
+queryParams :: context -> ByteString -> [Maybe (Word32, ByteString, Pq.Format)] -> Pq.Format -> Send context
 queryParams context sql params resultFormat =
   liftPqSend context \connection -> Pq.sendQueryParams connection sql params resultFormat
 

@@ -18,7 +18,7 @@ where
 import Hasql.Codecs.Vocab.OidCache qualified as OidCache
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 -- |
 -- The internal state of a database connection.

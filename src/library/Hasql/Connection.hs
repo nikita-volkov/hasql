@@ -18,7 +18,8 @@ import Hasql.Engine.Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi (Adapter)
+import Pqi qualified as Pq
 
 -- |
 -- A single connection to the database.
@@ -28,15 +29,16 @@ newtype Connection
 -- |
 -- Establish a connection according to the provided settings.
 acquire ::
+  Adapter ->
   Settings.Settings ->
   IO (Either ConnectionError Connection)
-acquire settings =
+acquire adapter settings =
   {-# SCC "acquire" #-}
   runExceptT do
     let config = Config.construct settings
 
     -- Connect:
-    pqConnection <- lift (Pq.connectdb (Config.connectionString config))
+    pqConnection <- lift (Pq.connectdb adapter (Config.connectionString config))
 
     -- Check status:
     status <- lift (Pq.status pqConnection)

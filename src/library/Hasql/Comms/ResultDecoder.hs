@@ -39,7 +39,7 @@ import Data.Vector.Mutable qualified as MutableVector
 import Hasql.Comms.RowDecoder qualified as RowDecoder
 import Hasql.Platform.Prelude hiding (foldl, foldr, maybe)
 import Hasql.Platform.Prelude qualified as Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
 
 -- | Result consumption context, for consuming a single result from a sequence of results returned by the server.
 newtype ResultDecoder a
@@ -145,12 +145,11 @@ serverError =
 
 -- | Get the OIDs of all columns in the current result.
 {-# INLINE columnOids #-}
-columnOids :: ResultDecoder [Pq.Oid]
+columnOids :: ResultDecoder [Word32]
 columnOids = ResultDecoder \result -> do
-  columnsAmount <- Pq.nfields result
-  let Pq.Col count = columnsAmount
+  count <- Pq.nfields result
   oids <- forM [0 .. count - 1] $ \colIndex ->
-    Pq.ftype result (Pq.Col colIndex)
+    Pq.ftype result colIndex
   pure (Right oids)
 
 -- * Higher-level decoders
@@ -161,12 +160,12 @@ checkCompatibility rowDec =
   let oids = RowDecoder.toExpectedOids rowDec
    in ResultDecoder \result -> do
         maxCols <- Pq.nfields result
-        if length oids == Pq.colToInt maxCols
+        if length oids == fromIntegral maxCols
           then
             let go [] _ = pure (Right ())
                 go (Nothing : rest) colIndex = go rest (succ colIndex)
                 go (Just expectedOid : rest) colIndex = do
-                  actualOid <- Pq.ftype result (Pq.toColumn colIndex)
+                  actualOid <- Pq.ftype result (fromIntegral colIndex)
                   if actualOid == expectedOid
                     then go rest (succ colIndex)
                     else
@@ -174,12 +173,12 @@ checkCompatibility rowDec =
                         ( Left
                             ( DecoderTypeMismatch
                                 colIndex
-                                (Pq.oidToWord32 expectedOid)
-                                (Pq.oidToWord32 actualOid)
+                                expectedOid
+                                actualOid
                             )
                         )
              in go oids 0
-          else pure (Left (UnexpectedColumnCount (length oids) (Pq.colToInt maxCols)))
+          else pure (Left (UnexpectedColumnCount (length oids) (fromIntegral maxCols)))
 
 {-# INLINE maybe #-}
 maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
@@ -197,10 +196,7 @@ maybe rowDec =
               RowDecoder.toDecoder rowDec result 0
                 <&> first (RowError 0)
             pure (fmap Just result)
-          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
+          _ -> return (Left (UnexpectedRowCount (fromIntegral maxRows)))
 
 {-# INLINE single #-}
 single :: RowDecoder.RowDecoder a -> ResultDecoder a
@@ -215,10 +211,7 @@ single rowDec =
           1 -> do
             RowDecoder.toDecoder rowDec result 0
               <&> first (RowError 0)
-          _ -> return (Left (UnexpectedRowCount (rowToInt maxRows)))
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
+          _ -> return (Left (UnexpectedRowCount (fromIntegral maxRows)))
 
 {-# INLINE vector #-}
 vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
@@ -229,21 +222,16 @@ vector rowDec =
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
-        mvector <- MutableVector.unsafeNew (rowToInt maxRows)
+        mvector <- MutableVector.unsafeNew (fromIntegral maxRows)
         failureRef <- newIORef Nothing
-        forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
+        forMFromZero_ (fromIntegral maxRows) $ \rowIndex -> do
+          rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
           case rowResult of
             Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> MutableVector.unsafeWrite mvector rowIndex x
         readIORef failureRef >>= \case
           Nothing -> Right <$> Vector.unsafeFreeze mvector
           Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
 
 {-# INLINE foldl #-}
 foldl :: (a -> b -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
@@ -259,19 +247,14 @@ foldl step init rowDec =
           maxRows <- Pq.ntuples result
           accRef <- newIORef init
           failureRef <- newIORef Nothing
-          forMFromZero_ (rowToInt maxRows) $ \rowIndex -> do
-            rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
+          forMFromZero_ (fromIntegral maxRows) $ \rowIndex -> do
+            rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
             case rowResult of
               Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
               Right !x -> modifyIORef' accRef (\acc -> step acc x)
           readIORef failureRef >>= \case
             Nothing -> Right <$> readIORef accRef
             Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
 
 {-# INLINE foldr #-}
 foldr :: (b -> a -> a) -> a -> RowDecoder.RowDecoder b -> ResultDecoder a
@@ -285,19 +268,14 @@ foldr step init rowDec =
         maxRows <- Pq.ntuples result
         accRef <- newIORef init
         failureRef <- newIORef Nothing
-        forMToZero_ (rowToInt maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (intToRow rowIndex)
+        forMToZero_ (fromIntegral maxRows) $ \rowIndex -> do
+          rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
           case rowResult of
             Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
             Right !x -> modifyIORef accRef (\acc -> step x acc)
         readIORef failureRef >>= \case
           Nothing -> Right <$> readIORef accRef
           Just x -> pure (Left x)
-  where
-    rowToInt (Pq.Row n) =
-      fromIntegral n
-    intToRow =
-      Pq.Row . fromIntegral
 
 -- * Refinement
 
