@@ -3,8 +3,8 @@ module Hasql.Engine.Structures.OidCacheSpec (spec) where
 import Data.HashSet qualified as HashSet
 import Hasql.Codecs.Vocab.OidCache qualified as OidCache
 import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
-import Test.Hspec
 import Prelude
+import Test.Hspec
 
 spec :: Spec
 spec = do

@@ -89,6 +89,7 @@ import GHC.IO.Exception as Exports
 import GHC.OverloadedLabels as Exports
 import Hasql.Platform.Prelude.Text as Exports
 import Numeric as Exports
+import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, fail, filter, foldl, foldl1, foldr, foldr1, id, mapM, mapM_, maximum, minimum, notElem, or, product, sequence, sequence_, sum, (.))
 import System.Environment as Exports
 import System.Exit as Exports
 import System.IO as Exports (Handle, hClose)
@@ -103,7 +104,6 @@ import Text.Printf as Exports (hPrintf, printf)
 import TextBuilder as Exports (TextBuilder)
 import Unsafe.Coerce as Exports
 import Witherable as Exports
-import Prelude as Exports hiding (Read, all, and, any, concat, concatMap, elem, fail, filter, foldl, foldl1, foldr, foldr1, id, mapM, mapM_, maximum, minimum, notElem, or, product, sequence, sequence_, sum, (.))
 
 type LazyByteString =
   Data.ByteString.Lazy.ByteString

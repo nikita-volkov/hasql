@@ -2,8 +2,8 @@ module Pure.ByUnit.ErrorsSpec (spec) where
 
 import Data.HashSet qualified as HashSet
 import Hasql.Errors qualified as Errors
-import Test.Hspec
 import Prelude
+import Test.Hspec
 
 spec :: Spec
 spec = do
