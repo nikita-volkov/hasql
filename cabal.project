@@ -2,13 +2,3 @@ packages: .
 allow-newer:
   , *:base
   , *:template-haskell
-
-source-repository-package
-  type: git
-  location: https://github.com/nikita-volkov/pqi
-  tag: b038f13027fcd3611aaece07e9b5d3ebd5d5ef67
-
-source-repository-package
-  type: git
-  location: https://github.com/nikita-volkov/pqi-ffi
-  tag: 5f7ee685de750db66c978621f099b246b2e60447
