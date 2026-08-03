@@ -5,11 +5,10 @@ import Hasql.Connection qualified as Connection
 import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "returns ServerSessionError on syntax errors" \config -> do
     Scripts.onPreparableConnection config \connection -> do

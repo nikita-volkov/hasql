@@ -8,11 +8,10 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   forM_ [False, True] \inPipeline -> do
     describe (if inPipeline then "Pipeline" else "Session") do

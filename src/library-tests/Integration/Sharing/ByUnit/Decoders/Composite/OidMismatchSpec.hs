@@ -6,11 +6,10 @@ import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Composite field OID mismatch detection" do
     describe "Decoder field type mismatch" do

@@ -6,14 +6,13 @@ import Hasql.Encoders qualified as Encoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude hiding (assert)
 import Test.Hspec
 import Test.QuickCheck
 import Test.QuickCheck.Instances ()
 import Test.QuickCheck.Monadic (assert, monadicIO, pre, run)
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Array Encoders" do
     describe "1D arrays" do

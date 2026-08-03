@@ -1,12 +1,13 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
 module Integration.Sharing.SpecHook where
 
+import Helpers.Scripts qualified as Scripts
 import Pqi qualified
 import Prelude
 import Test.Hspec
 import TestcontainersPostgresql qualified
 
-type HookedSpec = SpecWith (Pqi.Adapter, Text, Word16)
+type HookedSpec = SpecWith Scripts.ScopeParams
 
 hook :: HookedSpec -> SpecWith Pqi.Adapter
 hook hookedSpec =

@@ -5,11 +5,10 @@ import Hasql.Decoders qualified as Decoders
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "decodes static value properly" \config -> do
     Scripts.onPreparableConnection config \connection -> do

@@ -9,11 +9,10 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = parallel do
   byPreparedStatusAndExecutor True "Session" (Session.statement ())
   byPreparedStatusAndExecutor False "Session" (Session.statement ())
@@ -24,7 +23,7 @@ byPreparedStatusAndExecutor ::
   Bool ->
   Text ->
   (forall a. (Show a) => Statement.Statement () a -> Session.Session a) ->
-  SpecWith (Pqi.Adapter, Text, Word16)
+  SpecWith Scripts.ScopeParams
 byPreparedStatusAndExecutor preparable executorName executor = do
   describe (if preparable then "Preparable" else "Unpreparable") do
     describe (toList executorName) do

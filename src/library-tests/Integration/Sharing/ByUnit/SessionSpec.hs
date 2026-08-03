@@ -5,11 +5,10 @@ import Hasql.Connection qualified as Connection
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements qualified as Statements
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "Does not lose the server-side session state on timeout" \config -> do
     Scripts.onPreparableConnection config \connection -> do

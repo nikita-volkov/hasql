@@ -127,7 +127,6 @@ statement stmt params =
             then do
               let (oidList, valueAndFormatList) =
                     Statement.compilePreparedStatementData stmt newOidCache params
-                  pqOidList = oidList
                   encodedParams =
                     valueAndFormatList
                       & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
@@ -135,17 +134,17 @@ statement stmt params =
                     Comms.Roundtrip.toSerialIO
                       (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder')
                       connection
-              case StatementCache.lookup sql pqOidList statementCache of
+              case StatementCache.lookup sql oidList statementCache of
                 Just remoteKey -> do
                   result <- execute remoteKey
                   pure (result, statementCache)
                 Nothing -> do
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
                   -- In non-pipeline mode PARSE and EXECUTE cannot be sent
                   -- back-to-back, so prepare in a dedicated roundtrip first.
                   prepareResult <-
                     Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.prepare context remoteKey sql pqOidList)
+                      (Comms.Roundtrip.prepare context remoteKey sql oidList)
                       connection
                   case prepareResult of
                     -- PARSE failed: the statement is not on the server, so

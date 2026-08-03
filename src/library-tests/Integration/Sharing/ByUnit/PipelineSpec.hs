@@ -10,11 +10,10 @@ import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements qualified as Statements
-import Pqi qualified
 import Prelude
 import Test.Hspec
 
-spec :: SpecWith (Pqi.Adapter, Text, Word16)
+spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Single-statement" do
     describe "Unprepared" do

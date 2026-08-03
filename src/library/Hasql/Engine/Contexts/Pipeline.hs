@@ -220,9 +220,6 @@ statement stmt params =
         (oidList, valueAndFormatList) =
           Statement.compilePreparedStatementData stmt oidCache params
 
-        pqOidList =
-          oidList
-
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
 
@@ -238,16 +235,16 @@ statement stmt params =
           (roundtrip, newStatementCache)
           where
             (isNew, remoteKey, newStatementCache) =
-              case StatementCache.lookup sql pqOidList statementCache of
+              case StatementCache.lookup sql oidList statementCache of
                 Just remoteKey -> (False, remoteKey, statementCache)
                 Nothing ->
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql pqOidList statementCache
+                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
                    in (True, remoteKey, newStatementCache)
 
             roundtrip =
               when
                 isNew
-                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql pqOidList)
+                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql oidList)
                 *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
