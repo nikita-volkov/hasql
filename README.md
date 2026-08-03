@@ -13,6 +13,21 @@ PostgreSQL driver for Haskell, that prioritizes:
 
 Hasql is production-ready, actively maintained and the API is moderately stable. It's used by many companies and most notably by the [Postgrest](https://github.com/PostgREST/postgrest) project.
 
+# A New Era: Pluggable Transport
+
+Hasql's transport is now pluggable via [`pqi`](https://github.com/nikita-volkov/pqi). `Hasql.Connection.acquire` takes an adapter explicitly:
+
+```haskell
+import Pqi.Ffi qualified    -- the existing C-backed libpq transport
+import Pqi.Native qualified -- alpha: pure-Haskell, no C dependency
+
+connection <- Hasql.Connection.acquire Pqi.Ffi.adapter settings
+-- or
+connection <- Hasql.Connection.acquire Pqi.Native.adapter settings
+```
+
+[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is the goal of this new era: a from-scratch, pure-Haskell implementation of the Postgres wire protocol, verified byte-for-byte against `libpq` via [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance). It's alpha and not yet proven at production scale, but early adopters can use it today by depending on `pqi-native` and passing its adapter — no other code changes needed. Feedback welcome on [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions).
+
 # Ecosystem
 
 Hasql is not just a single library, it is a granular ecosystem of composable libraries, each isolated to perform its own task and stay simple.
@@ -92,10 +107,11 @@ import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
 import qualified Hasql.Statement as Statement
+import qualified Pqi.Ffi -- from "pqi-ffi"; swap for "Pqi.Native" from "pqi-native" to try the alpha native backend
 
 main :: IO ()
 main = do
-  Right connection <- Connection.acquire connectionSettings
+  Right connection <- Connection.acquire Pqi.Ffi.adapter connectionSettings
   result <- Connection.use connection (sumAndDivModSession 3 8 3)
   print result
   where
