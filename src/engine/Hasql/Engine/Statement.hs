@@ -11,6 +11,7 @@ where
 
 import Data.Text.Encoding qualified as TextEncoding
 import Data.Vector qualified as Vector
+import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.RequestingOid qualified as RequestingOid
 import Hasql.Codecs.Vocab qualified as Vocab
@@ -18,8 +19,7 @@ import Hasql.Codecs.Vocab.OidCache qualified as Vocab.OidCache
 import Hasql.Codecs.Vocab.ParamMeta (ParamMeta (..))
 import Hasql.Codecs.Vocab.TypeRef qualified as Vocab.TypeRef
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
-import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
+import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Platform.Prelude
 

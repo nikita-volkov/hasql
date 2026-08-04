@@ -112,6 +112,52 @@ library
     Hasql.Statement
 
   other-modules:
+    Hasql.Connection.Config
+    Hasql.Connection.ServerVersion
+
+  build-depends:
+    hasql:codecs,
+    hasql:comms,
+    hasql:engine,
+    hasql:platform,
+    postgresql-connection-string ^>=0.1,
+    pqi ^>=0.1,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
+
+library platform
+  import: base
+  hs-source-dirs: src/platform
+  exposed-modules:
+    Hasql.Platform.Prelude
+
+  other-modules:
+    Hasql.Platform.Prelude.Text
+
+  build-depends:
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    comonad ^>=5,
+    contravariant >=1.3 && <2,
+    dlist >=0.8 && <0.9 || >=1 && <2,
+    hashable >=1.2 && <2,
+    mtl >=2 && <3,
+    profunctors >=5.1 && <6,
+    scientific >=0.3 && <0.4,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+    time >=1.9 && <2,
+    transformers >=0.5 && <0.7,
+    unordered-containers >=0.2 && <0.3,
+    uuid >=1.3 && <2,
+    vector >=0.10 && <0.14,
+    witherable >=0.5 && <0.6,
+
+library codecs
+  import: base
+  hs-source-dirs: src/codecs
+  exposed-modules:
     Hasql.Codecs.Decoders
     Hasql.Codecs.Decoders.Array
     Hasql.Codecs.Decoders.Composite
@@ -131,6 +177,23 @@ library
     Hasql.Codecs.Vocab.QualifiedTypeName
     Hasql.Codecs.Vocab.TypeInfo
     Hasql.Codecs.Vocab.TypeRef
+
+  build-depends:
+    aeson >=2 && <3,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
+    hasql:platform,
+    iproute >=1.7 && <1.8,
+    postgresql-binary ^>=0.15,
+    text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
+    vector >=0.10 && <0.14,
+
+library comms
+  import: base
+  hs-source-dirs: src/comms
+  exposed-modules:
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -138,8 +201,18 @@ library
     Hasql.Comms.RowReader
     Hasql.Comms.Send
     Hasql.Comms.Session
-    Hasql.Connection.Config
-    Hasql.Connection.ServerVersion
+
+  build-depends:
+    attoparsec >=0.10 && <0.15,
+    bytestring >=0.10 && <0.13,
+    hasql:platform,
+    pqi ^>=0.1,
+    vector >=0.10 && <0.14,
+
+library engine
+  import: base
+  hs-source-dirs: src/engine
+  exposed-modules:
     Hasql.Engine.Contexts.Pipeline
     Hasql.Engine.Contexts.Session
     Hasql.Engine.Decoders.Result
@@ -149,34 +222,17 @@ library
     Hasql.Engine.Statement
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.StatementCache
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
 
   build-depends:
-    aeson >=2 && <3,
-    attoparsec >=0.10 && <0.15,
-    base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    bytestring-strict-builder >=0.4.5.4 && <0.5,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
-    iproute >=1.7 && <1.8,
-    mtl >=2 && <3,
+    hasql:codecs,
+    hasql:comms,
+    hasql:platform,
     postgresql-binary ^>=0.15,
-    postgresql-connection-string ^>=0.1,
     pqi ^>=0.1,
-    profunctors >=5.1 && <6,
-    scientific >=0.3 && <0.4,
     text >=1 && <3,
     text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
     unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 benchmark benchmarks
   import: executable
@@ -209,94 +265,42 @@ test-suite profiling
 test-suite comms-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs:
-    src/comms-tests
-    src/library
-
+  hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Comms.Recv
-    Hasql.Comms.ResultDecoder
-    Hasql.Comms.Roundtrip
-    Hasql.Comms.RowDecoder
-    Hasql.Comms.RowReader
-    Hasql.Comms.Send
-    Hasql.Comms.Session
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
-    attoparsec >=0.10 && <0.15,
-    base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
+    hasql:comms,
+    hasql:platform,
     hspec ^>=2.11.12,
-    mtl >=2 && <3,
     pqi ^>=0.1,
     pqi-ffi ^>=0.1,
-    profunctors >=5.1 && <6,
-    scientific >=0.3 && <0.4,
     testcontainers-postgresql ^>=0.2,
-    text >=1 && <3,
     text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
-    unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
-    vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 test-suite engine-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs:
-    src/engine-tests
-    src/library
-
+  hs-source-dirs: src/engine-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Codecs.Vocab
-    Hasql.Codecs.Vocab.OidCache
-    Hasql.Codecs.Vocab.ParamMeta
-    Hasql.Codecs.Vocab.QualifiedTypeName
-    Hasql.Codecs.Vocab.TypeInfo
-    Hasql.Codecs.Vocab.TypeRef
     Hasql.Engine.Structures.OidCacheSpec
-    Hasql.Engine.Structures.StatementCache
     Hasql.Engine.Structures.StatementCacheSpec
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
     base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
+    hasql:codecs,
+    hasql:engine,
     hspec ^>=2.11.12,
-    mtl >=2 && <3,
-    profunctors >=5.1 && <6,
-    scientific >=0.3 && <0.4,
-    text >=1 && <3,
-    text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
     unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
-    vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 test-suite library-tests
   import: test
