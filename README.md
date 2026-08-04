@@ -19,14 +19,14 @@ Hasql's transport is now pluggable via [`pqi`](https://github.com/nikita-volkov/
 
 ```haskell
 import Pqi.Ffi qualified    -- the existing C-backed libpq transport
-import Pqi.Native qualified -- alpha: pure-Haskell, no C dependency
+import Pqi.Native qualified -- alpha: pure-Haskell, no C dependency, interchangeable with Pqi.Ffi
 
 connection <- Hasql.Connection.acquire Pqi.Ffi.adapter settings
 -- or
 connection <- Hasql.Connection.acquire Pqi.Native.adapter settings
 ```
 
-[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is the goal of this new era: a from-scratch, pure-Haskell implementation of the Postgres wire protocol, verified byte-for-byte against `libpq` via [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance). It's alpha and not yet proven at production scale, but early adopters can use it today by depending on `pqi-native` and passing its adapter — no other code changes needed. Feedback welcome on [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions).
+[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is the goal of this new era: a from-scratch, pure-Haskell implementation of the Postgres wire protocol, verified byte-for-byte against `libpq` via [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance). **It's alpha** — not yet proven at production scale — while [`pqi-ffi`](https://github.com/nikita-volkov/pqi-ffi) remains the stable, production-proven default. The two adapters are fully interchangeable: swapping between them is a one-line change (a different `Adapter` value, nothing else), so early adopters can try `pqi-native` today with no lock-in and no rewrite to fall back if needed. Feedback welcome on [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions).
 
 # Ecosystem
 
@@ -107,7 +107,7 @@ import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
 import qualified Hasql.Statement as Statement
-import qualified Pqi.Ffi -- from "pqi-ffi"; swap for "Pqi.Native" from "pqi-native" to try the alpha native backend
+import qualified Pqi.Ffi -- from "pqi-ffi" (stable); swap for "Pqi.Native" from "pqi-native" (alpha, fully interchangeable) to try the pure-Haskell backend
 
 main :: IO ()
 main = do
