@@ -187,6 +187,7 @@ benchmark benchmarks
     criterion >=1.6 && <2,
     hasql,
     pqi-ffi ^>=0.1,
+    pqi-native ^>=0.1,
     rerebase <2,
 
 test-suite profiling
