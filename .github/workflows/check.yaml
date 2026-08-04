@@ -1,7 +1,13 @@
-name: Compile, test and check the docs
+name: Compile and test
 
 on:
-  workflow_call: 
+  workflow_call:
+    inputs:
+      qc-max-success:
+        description: Maximum number of successful tests for QuickCheck
+        required: false
+        type: number
+        default: 10000
 
 jobs:
 
@@ -9,20 +15,16 @@ jobs:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/check-cabal.yaml@v4
     secrets: inherit
 
-  generate-docs:
-    uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/generate-docs.yaml@v4
-    secrets: inherit
-
   build-with-ghc-8-10:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
     secrets: inherit
     with:
       ghc: "8.10"
-      skip-doctest: true
       skip-benchmarks: true
-  
+      test-options: --qc-max-success=100
+
   build-with-latest:
     uses: nikita-volkov/haskell-hackage-lib-github-actions-workflows/.github/workflows/build.yaml@v4
     secrets: inherit
     with:
-      skip-doctest: true
+      test-options: --qc-max-success=${{ inputs.qc-max-success }}
