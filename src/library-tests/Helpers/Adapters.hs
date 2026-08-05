@@ -1,6 +1,7 @@
 module Helpers.Adapters
   ( adapters,
     byAdapter,
+    hook,
   )
 where
 
@@ -22,3 +23,8 @@ byAdapter :: (Pqi.Adapter -> Spec) -> Spec
 byAdapter f =
   for_ adapters \adapter ->
     describe (toList (Pqi.name adapter)) (f adapter)
+
+hook :: SpecWith Pqi.Adapter -> Spec
+hook hookedSpec =
+  byAdapter \adapter ->
+    mapSubject (const adapter) hookedSpec
