@@ -62,7 +62,7 @@ spec = do
         finalPipelineStatus `shouldBe` Pq.PipelineOff
 
     -- Deterministic counterpart to the timing-based reproduction in
-    -- "Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec": instead of
+    -- "Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec": instead of
     -- racing an async exception into the narrow window during which libpq's
     -- pipeline is in the aborted state, we put the connection into that state
     -- directly and invoke the cleanup that an interruption would have

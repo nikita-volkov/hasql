@@ -101,7 +101,7 @@ Prefer `do` notation with `ApplicativeDo` for clarity in applicative contexts.
 
 `Integration/SpecHook.hs` sits above both integration categories and iterates the pqi adapters once, so every integration spec runs against `pqi-ffi` and `pqi-native` alike. `Pure/` is outside that hook, since it needs no adapter.
 
-Within each category, modularize by the unit under test — one spec module per function, named after it. Tests for `Hasql.Session.script` belong in `Integration.Sharing.ByUnit.Session.ScriptSpec` or `Integration.Isolated.ByUnit.Session.ScriptSpec`. `ByFeature/` holds cross-cutting behaviour that no single function owns, and `ByBug/` holds regression reproductions.
+Within each category, modularize by the unit under test — see `src/library-tests/README.md` for the full policy on `[Module]Spec.hs` vs `[Module]/[Definition]Spec.hs` vs `[Module]/[Definition]/[Case]Spec.hs`. There is no `ByFeature/` or `ByBug/`; every test, including regression reproductions, is filed under the module/definition it exercises.
 
 Other components: `comms-tests` and `engine-tests` cover the internal layers directly; `benchmarks` and `profiling` are separate executables.
 
