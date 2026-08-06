@@ -1,10 +1,10 @@
-# v2.0.0.0-rc
+# v2.0.0.0
 
 New era: the transport layer is now pluggable via [`pqi`](https://github.com/nikita-volkov/pqi), and an alpha pure-Haskell backend, [`pqi-native`](https://github.com/nikita-volkov/pqi-native), is available for early adopters. Goal: a reliable, performant, no-C-dependency replacement for libpq.
 
 ## Breaking
 
-- `Hasql.Connection.acquire` now takes an explicit adapter as its first argument, ahead of `Settings`. To keep prior behaviour, depend on [`pqi-ffi`](https://github.com/nikita-volkov/pqi-ffi) and pass `Pqi.Ffi.adapter`. To try the native backend, depend on `pqi-native` and pass `Pqi.Native.adapter`.
+- `Hasql.Connection.acquire` now takes an explicit adapter as its first argument, ahead of `Settings`. To keep prior behaviour, depend on [`pqi-ffi`](https://hackage.haskell.org/package/pqi-ffi) and pass `Pqi.Ffi.adapter`. To try the native backend, depend on [`pqi-native`](https://hackage.haskell.org/package/pqi-native) and pass `Pqi.Native.adapter`.
 
 # 1.10
 
