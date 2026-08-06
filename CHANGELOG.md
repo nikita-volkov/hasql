@@ -1,3 +1,7 @@
+# v2.0.0.1
+
+Support for `pqi-1.1`.
+
 # v2.0.0.0
 
 New era: the transport layer is now pluggable via [`pqi`](https://github.com/nikita-volkov/pqi), and an alpha pure-Haskell backend, [`pqi-native`](https://github.com/nikita-volkov/pqi-native), is available for early adopters. Goal: a reliable, performant, no-C-dependency replacement for libpq.
