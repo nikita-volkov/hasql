@@ -29,15 +29,12 @@ newtype Connection
 -- |
 -- Establish a connection according to the provided settings.
 --
--- The first argument is a 'Pqi.Adapter', which defines the backend
+-- The first argument is an 'Pqi.Adapter', which defines the backend
 -- implementation used to talk to PostgreSQL (for example, libpq via the
 -- <https://hackage.haskell.org/package/pqi-ffi pqi-ffi> package, or a pure
 -- Haskell implementation via the
 -- <https://hackage.haskell.org/package/pqi-native pqi-native> package).
---
 -- This is the only place in the library where users choose the adapter.
---
--- Typical usage is to pass the application's default adapter.
 --
 -- This function:
 --
