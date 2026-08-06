@@ -5,9 +5,9 @@
 
 PostgreSQL driver for Haskell, that prioritizes:
 
-- Performance
 - Reliability
 - Flexibility
+- Performance
 
 # Status
 
