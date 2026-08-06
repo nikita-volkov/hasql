@@ -26,7 +26,7 @@ connection <- Hasql.Connection.acquire Pqi.Ffi.adapter settings
 connection <- Hasql.Connection.acquire Pqi.Native.adapter settings
 ```
 
-[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is the goal of this new era: a from-scratch, pure-Haskell implementation of the Postgres wire protocol, verified byte-for-byte against `libpq` via [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance). **It's alpha** — not yet proven at production scale — while [`pqi-ffi`](https://github.com/nikita-volkov/pqi-ffi) remains the stable, production-proven default. The two adapters are fully interchangeable: swapping between them is a one-line change (a different `Adapter` value, nothing else), so early adopters can try `pqi-native` today with no lock-in and no rewrite to fall back if needed. Feedback welcome on [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions).
+[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is the goal of this new era: a from-scratch, pure-Haskell implementation of the Postgres wire protocol, verified byte-for-byte against `libpq` via [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance). **It's alpha** - not yet proven at production scale - while [`pqi-ffi`](https://github.com/nikita-volkov/pqi-ffi) remains the stable, production-proven default. The two adapters are fully interchangeable: swapping between them is a one-line change (a different `Adapter` value, nothing else), so early adopters can try `pqi-native` today with no lock-in and no rewrite to fall back if needed. Feedback welcome on [GitHub Discussions](https://github.com/nikita-volkov/hasql/discussions).
 
 # Ecosystem
 
