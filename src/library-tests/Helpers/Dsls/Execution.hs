@@ -12,9 +12,9 @@ import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session (Session)
 import Hasql.Session qualified as Session
 import Helpers.Dsls.Statement qualified as StatementDsl
+import Prelude
 import System.Random.Stateful qualified as Random
 import TextBuilder qualified
-import Prelude
 
 sessionByParams ::
   (StatementDsl.StatementModule params result) =>

@@ -1,0 +1,36 @@
+module Integration.Sharing.Decoders.UuidSpec (spec) where
+
+import Data.UUID qualified as UUID
+import Hasql.Connection qualified as Connection
+import Hasql.Decoders qualified as Decoders
+import Hasql.Encoders qualified as Encoders
+import Hasql.Session qualified as Session
+import Hasql.Statement qualified as Statement
+import Helpers.Scripts qualified as Scripts
+import Prelude
+import Test.Hspec
+
+spec :: SpecWith Scripts.ScopeParams
+spec = do
+  describe "UUID Decoders" do
+    it "decodes UUID from static value" \config -> do
+      Scripts.onPreparingConnection config \connection -> do
+        let statement =
+              Statement.statement
+                "select '550e8400-e29b-41d4-a716-446655440000'::uuid"
+                Encoders.noParams
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
+        result <- Connection.use connection (Session.statement () statement)
+        case UUID.fromString "550e8400-e29b-41d4-a716-446655440000" of
+          Just expectedUuid -> result `shouldBe` Right expectedUuid
+          Nothing -> expectationFailure "Failed to parse expected UUID"
+
+    it "decodes nil UUID" \config -> do
+      Scripts.onPreparingConnection config \connection -> do
+        let statement =
+              Statement.statement
+                "select '00000000-0000-0000-0000-000000000000'::uuid"
+                Encoders.noParams
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
+        result <- Connection.use connection (Session.statement () statement)
+        result `shouldBe` Right UUID.nil

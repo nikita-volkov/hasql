@@ -1,0 +1,157 @@
+module Hasql.Comms.Roundtrip
+  ( Roundtrip,
+    toPipelineIO,
+    toSerialIO,
+
+    -- * Constructors
+    prepare,
+    deallocate,
+    queryPrepared,
+    queryParams,
+    query,
+    script,
+
+    -- * Errors
+    Error (..),
+  )
+where
+
+import Hasql.Comms.Recv qualified as Recv
+import Hasql.Comms.ResultDecoder qualified as ResultDecoder
+import Hasql.Comms.Send qualified as Send
+import Hasql.Platform.Prelude
+import Pqi qualified as Pq
+
+data Roundtrip context a
+  = Roundtrip (Send.Send context) (Recv.Recv context a)
+  deriving stock (Functor)
+
+instance Applicative (Roundtrip context) where
+  {-# INLINE pure #-}
+  pure x = Roundtrip mempty (pure x)
+  {-# INLINE (<*>) #-}
+  Roundtrip send1 recv1 <*> Roundtrip send2 recv2 =
+    Roundtrip (send1 <> send2) (recv1 <*> recv2)
+
+instance Bifunctor Roundtrip where
+  {-# INLINE bimap #-}
+  bimap f g (Roundtrip send recv) =
+    Roundtrip
+      (fmap f send)
+      (bimap f g recv)
+
+toPipelineIO :: Roundtrip context a -> context -> Pq.Connection -> IO (Either (Error context) a)
+toPipelineIO sendAndRecv context connection = mask \restore -> do
+  sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
+  case sendResult of
+    Send.Error context details -> pure (Left (ClientError context details))
+    Send.Ok -> do
+      recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
+      exitResult <- do
+        result <- Send.toHandler (Send.exitPipelineMode context) connection
+        case result of
+          Send.Error context details -> pure (Left (ClientError context details))
+          Send.Ok -> pure (Right ())
+      pure (recvResult <* exitResult)
+  where
+    Roundtrip send recv = sendAndRecv <* pipelineSync context
+
+toSerialIO :: Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
+toSerialIO (Roundtrip send recv) connection = do
+  sendResult <- Send.toHandler send connection
+  case sendResult of
+    Send.Error context details -> pure (Left (ClientError context details))
+    Send.Ok -> do
+      recvResult <- Recv.toHandler recv connection
+      pure (first ServerError recvResult)
+
+pipelineSync :: context -> Roundtrip context ()
+pipelineSync context =
+  Roundtrip
+    (Send.pipelineSync context)
+    (Recv.singleResult context ResultDecoder.pipelineSync)
+
+prepare :: context -> ByteString -> ByteString -> [Word32] -> Roundtrip context ()
+prepare context statementName sql oidList =
+  Roundtrip
+    (Send.prepare context statementName sql (Just oidList))
+    (Recv.singleResult context ResultDecoder.ok)
+
+-- | Release a statement prepared under the given name.
+--
+-- Issued through the extended query protocol rather than @PQsendClosePrepared@,
+-- because that requires libpq 17 and has no binding in @postgresql-libpq@,
+-- and because the extended protocol is legal inside pipeline mode and works
+-- all the way back to PostgreSQL 9.
+deallocate :: context -> ByteString -> Roundtrip context ()
+deallocate context statementName =
+  Roundtrip
+    (Send.queryParams context sql [] Pq.Binary)
+    (Recv.singleResult context ResultDecoder.ok)
+  where
+    -- Quoting is required: remote keys are numeric and would otherwise not
+    -- parse as identifiers.
+    sql = "DEALLOCATE \"" <> statementName <> "\""
+
+queryPrepared ::
+  context ->
+  -- | Prepared statement name.
+  ByteString ->
+  -- | Parameters.
+  [Maybe (ByteString, Pq.Format)] ->
+  -- | Result format.
+  Pq.Format ->
+  -- | Result decoder.
+  ResultDecoder.ResultDecoder a ->
+  Roundtrip context a
+queryPrepared context statementName params resultFormat resultDecoder =
+  Roundtrip
+    (Send.queryPrepared context statementName params resultFormat)
+    (Recv.singleResult context resultDecoder)
+
+queryParams ::
+  context ->
+  -- | SQL.
+  ByteString ->
+  -- | Parameters.
+  [Maybe (Word32, ByteString, Pq.Format)] ->
+  -- | Result format.
+  Pq.Format ->
+  -- | Result decoder.
+  ResultDecoder.ResultDecoder a ->
+  Roundtrip context a
+queryParams context sql params resultFormat resultDecoder =
+  Roundtrip
+    (Send.queryParams context sql params resultFormat)
+    (Recv.singleResult context resultDecoder)
+
+query :: context -> ByteString -> Roundtrip context ()
+query context sql =
+  Roundtrip
+    (Send.query context sql)
+    (Recv.singleResult context ResultDecoder.ok)
+
+-- | Execute a script (multi-statement SQL).
+-- Unlike 'query', this consumes all results from the execution,
+-- which is necessary for scripts containing multiple statements.
+script :: context -> ByteString -> Roundtrip context ()
+script context sql =
+  Roundtrip
+    (Send.query context sql)
+    (Recv.allResults context ResultDecoder.ok)
+
+data Error context
+  = ClientError context (Maybe ByteString)
+  | ServerError (Recv.Error context)
+  deriving stock (Show, Eq, Functor)
+
+instance Comonad Error where
+  {-# INLINE extract #-}
+  extract = \case
+    ClientError context _ -> context
+    ServerError recvError -> extract recvError
+
+  {-# INLINE duplicate #-}
+  duplicate = \case
+    clientError@(ClientError _ details) -> ClientError clientError details
+    ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))

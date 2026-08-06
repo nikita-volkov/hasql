@@ -18,7 +18,8 @@ import Hasql.Engine.Errors
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi (Adapter)
+import Pqi qualified as Pq
 
 -- |
 -- A single connection to the database.
@@ -27,16 +28,34 @@ newtype Connection
 
 -- |
 -- Establish a connection according to the provided settings.
+--
+-- The first argument is an 'Pqi.Adapter', which defines the backend
+-- implementation used to talk to PostgreSQL (for example, libpq via the
+-- <https://hackage.haskell.org/package/pqi-ffi pqi-ffi> package, or a pure
+-- Haskell implementation via the
+-- <https://hackage.haskell.org/package/pqi-native pqi-native> package).
+-- This is the only place in the library where users choose the adapter.
+--
+-- This function:
+--
+-- - Opens a PostgreSQL connection using the constructed connection string.
+-- - Validates that the connection is healthy.
+-- - Checks the server version for compatibility.
+-- - Initializes session-level settings (encoding and message verbosity).
+--
+-- On success, returns a 'Connection' wrapped in 'Right'.
+-- On failure, returns a classified 'ConnectionError' in 'Left'.
 acquire ::
+  Adapter ->
   Settings.Settings ->
   IO (Either ConnectionError Connection)
-acquire settings =
+acquire adapter settings =
   {-# SCC "acquire" #-}
   runExceptT do
     let config = Config.construct settings
 
     -- Connect:
-    pqConnection <- lift (Pq.connectdb (Config.connectionString config))
+    pqConnection <- lift (Pq.connectdb adapter (Config.connectionString config))
 
     -- Check status:
     status <- lift (Pq.status pqConnection)

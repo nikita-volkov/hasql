@@ -3,11 +3,10 @@ module Hasql.Engine.Structures.StatementCacheSpec (spec) where
 import Data.ByteString (ByteString)
 import Data.List qualified as List
 import Data.String (fromString)
-import Database.PostgreSQL.LibPQ (Oid (..))
 import Hasql.Engine.Structures.StatementCache (Decision (..))
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
-import Test.Hspec
 import Prelude
+import Test.Hspec
 
 -- | Cache with room for everything that prepares on first use.
 eagerCache :: StatementCache.StatementCache
@@ -66,19 +65,19 @@ spec = do
       decisions `shouldBe` [AdmitDecision "0" Nothing, AdmitDecision "1" Nothing]
 
     it "distinguishes the same SQL under different parameter OIDs" do
-      let (first, cache) = StatementCache.decide (StatementCache.localKey "select $1" [Oid 23]) eagerCache
-          (second, _) = StatementCache.decide (StatementCache.localKey "select $1" [Oid 25]) cache
+      let (first, cache) = StatementCache.decide (StatementCache.localKey "select $1" [23]) eagerCache
+          (second, _) = StatementCache.decide (StatementCache.localKey "select $1" [25]) cache
       first `shouldBe` AdmitDecision "0" Nothing
       second `shouldBe` AdmitDecision "1" Nothing
 
     it "distinguishes different parameter OID ordering" do
-      let (first, cache) = StatementCache.decide (StatementCache.localKey "select $1, $2" [Oid 23, Oid 25]) eagerCache
-          (second, _) = StatementCache.decide (StatementCache.localKey "select $1, $2" [Oid 25, Oid 23]) cache
+      let (first, cache) = StatementCache.decide (StatementCache.localKey "select $1, $2" [23, 25]) eagerCache
+          (second, _) = StatementCache.decide (StatementCache.localKey "select $1, $2" [25, 23]) cache
       first `shouldBe` AdmitDecision "0" Nothing
       second `shouldBe` AdmitDecision "1" Nothing
 
     it "recognises the same SQL under the same parameter OIDs" do
-      let sameKey = StatementCache.localKey "select $1, $2, $3" [Oid 23, Oid 25, Oid 1043]
+      let sameKey = StatementCache.localKey "select $1, $2, $3" [23, 25, 1043]
           (_, cache) = StatementCache.decide sameKey eagerCache
           (second, _) = StatementCache.decide sameKey cache
       second `shouldBe` HitDecision "0"

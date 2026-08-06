@@ -1,8 +1,0 @@
-on:
-  pull_request:
-
-jobs:
-
-  check:
-    uses: ./.github/workflows/check.yaml
-    secrets: inherit

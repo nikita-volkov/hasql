@@ -2,14 +2,15 @@ module Helpers.Scripts where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
+import Pqi qualified
+import Prelude
 import System.Random.Stateful qualified as Random
 import TextBuilder qualified
-import Prelude
 
 -- |
 -- Parameters provided by the scope.
--- Host and port of a running isolated postgres server.
-type ScopeParams = (Text, Word16)
+-- Adapter, host and port of a running isolated postgres server.
+type ScopeParams = (Pqi.Adapter, Text, Word16)
 
 -- |
 -- Connection that prepares every statement on its first execution.
@@ -31,7 +32,7 @@ onDefaultConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO a
 onDefaultConnection = onConnection mempty
 
 onConnection :: Settings.Settings -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onConnection extraSettings (host, port) =
+onConnection extraSettings (adapter, host, port) =
   bracket
     ( do
         let settings =
@@ -42,7 +43,7 @@ onConnection extraSettings (host, port) =
                   Settings.dbname "postgres",
                   extraSettings
                 ]
-        res <- Connection.acquire settings
+        res <- Connection.acquire adapter settings
         case res of
           Left err -> fail ("Connection failed: " <> show err)
           Right conn -> pure conn

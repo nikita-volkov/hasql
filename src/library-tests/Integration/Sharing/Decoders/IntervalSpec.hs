@@ -1,0 +1,23 @@
+module Integration.Sharing.Decoders.IntervalSpec (spec) where
+
+import Hasql.Connection qualified as Connection
+import Hasql.Decoders qualified as Decoders
+import Hasql.Encoders qualified as Encoders
+import Hasql.Session qualified as Session
+import Hasql.Statement qualified as Statement
+import Helpers.Scripts qualified as Scripts
+import Prelude
+import Test.Hspec
+
+spec :: SpecWith Scripts.ScopeParams
+spec = do
+  describe "Interval Decoders" do
+    it "decodes intervals correctly" \config -> do
+      Scripts.onPreparingConnection config \connection -> do
+        let statement =
+              Statement.statement
+                "select interval '10 seconds'"
+                Encoders.noParams
+                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.interval)))
+        result <- Connection.use connection (Session.statement () statement)
+        result `shouldBe` Right (10 :: DiffTime)

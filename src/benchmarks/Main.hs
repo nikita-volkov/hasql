@@ -7,21 +7,26 @@ import Hasql.Decoders qualified as D
 import Hasql.Pipeline qualified as E
 import Hasql.Session qualified as B
 import Hasql.Statement qualified as C
+import Pqi.Ffi qualified
+import Pqi.Native qualified
 import Prelude
 
 main :: IO ()
 main =
   do
-    connection <- acquireConnection
-    connection <- case connection of
-      Left err -> fail (show err)
-      Right connection -> pure connection
-    useConnection connection
+    ffiConnection <- acquireConnection Pqi.Ffi.adapter
+    nativeConnection <- acquireConnection Pqi.Native.adapter
+    defaultMain
+      [ adapterGroup "ffi" ffiConnection,
+        adapterGroup "native" nativeConnection
+      ]
   where
-    acquireConnection =
-      A.acquire mempty
-    useConnection connection =
-      defaultMain
+    acquireConnection adapter =
+      A.acquire adapter mempty >>= either (fail . show) pure
+    adapterGroup :: String -> A.Connection -> Benchmark
+    adapterGroup groupName connection =
+      bgroup
+        groupName
         [ sessionBench "largeResultInVector" sessionWithSingleLargeResultInVector,
           sessionBench "largeResultInList" sessionWithSingleLargeResultInList,
           sessionBench "manyLargeResults" sessionWithManyLargeResults,

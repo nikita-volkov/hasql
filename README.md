@@ -5,13 +5,38 @@
 
 PostgreSQL driver for Haskell, that prioritizes:
 
-- Performance
-- Typesafety
+- Reliability
 - Flexibility
+- Performance
 
 # Status
 
 Hasql is production-ready, actively maintained and the API is moderately stable. It's used by many companies and most notably by the [Postgrest](https://github.com/PostgREST/postgrest) project.
+
+# Pluggable Transport
+
+Hasql's transport is pluggable via [`pqi`](https://github.com/nikita-volkov/pqi). Hasql itself carries no C dependency. It programs against the `pqi` interface, and you pick the adapter that implements it. That means you depend on two packages, not one:
+
+```cabal
+build-depends:
+  hasql,
+  pqi-ffi,  -- or pqi-native
+```
+
+`Hasql.Connection.acquire` then takes the adapter explicitly, as its first argument:
+
+```haskell
+import Pqi.Ffi qualified    -- the C-backed libpq transport
+import Pqi.Native qualified -- alpha: pure-Haskell, no C dependency, interchangeable with Pqi.Ffi
+
+connection <- Hasql.Connection.acquire Pqi.Ffi.adapter settings
+-- or
+connection <- Hasql.Connection.acquire Pqi.Native.adapter settings
+```
+
+[`pqi-ffi`](https://github.com/nikita-volkov/pqi-ffi) is the stable, production-proven default. It binds the C `libpq` library, so it requires `libpq` of at least version 14 to be installed to compile - which typically just means having a recent PostgreSQL distro installed. Through it Hasql is tested against a wide range of PostgreSQL servers, starting from version 9.
+
+[`pqi-native`](https://github.com/nikita-volkov/pqi-native) is a from-scratch, pure-Haskell implementation of the Postgres wire protocol, with no C dependency at all. It is thoroughly tested: [`pqi-conformance`](https://github.com/nikita-volkov/pqi-conformance) runs it side by side with `libpq` on the same inputs and checks that the results agree, and the test-suites of `hasql`, [`hasql-pool`](https://github.com/nikita-volkov/hasql-pool) and [`hasql-transaction`](https://github.com/nikita-volkov/hasql-transaction) now run against both adapters, so the whole stack above the transport is exercised on `pqi-native` too. **It's still labelled alpha** - not yet proven at production scale. The two adapters are fully interchangeable: swapping between them is a one-line change (a different `Adapter` value, nothing else), so you can try `pqi-native` today with no lock-in and no rewrite to fall back if needed.
 
 # Ecosystem
 
@@ -44,6 +69,16 @@ Hasql is not just a single library, it is a granular ecosystem of composable lib
 - ["hasql-interpolate"](https://github.com/awkward-squad/hasql-interpolate) - a QuasiQuoter that supports interpolating Haskell expressions into Hasql queries.
 
 <sup>Want to list your package or correct something here? Make a PR.</sup>
+
+## Transport adapters
+
+Unlike the extension libraries above, which are optional, a transport adapter is mandatory: Hasql needs one to talk to the server at all. See [Pluggable Transport](#pluggable-transport) for how to pick one.
+
+- ["pqi"](https://github.com/nikita-volkov/pqi) - the driver-agnostic interface that Hasql programs against. Pulled in automatically. You don't depend on it directly.
+
+- ["pqi-ffi"](https://github.com/nikita-volkov/pqi-ffi) - the stable adapter, backed by the C `libpq` library.
+
+- ["pqi-native"](https://github.com/nikita-volkov/pqi-native) - an alpha pure-Haskell adapter speaking the PostgreSQL wire protocol directly, with no C dependency.
 
 ## Why make it an ecosystem?
 
@@ -92,10 +127,11 @@ import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.Session as Session
 import qualified Hasql.Statement as Statement
+import qualified Pqi.Ffi -- from "pqi-ffi" (stable). Swap for "Pqi.Native" from "pqi-native" (alpha, fully interchangeable) to try the pure-Haskell backend
 
 main :: IO ()
 main = do
-  Right connection <- Connection.acquire connectionSettings
+  Right connection <- Connection.acquire Pqi.Ffi.adapter connectionSettings
   result <- Connection.use connection (sumAndDivModSession 3 8 3)
   print result
   where

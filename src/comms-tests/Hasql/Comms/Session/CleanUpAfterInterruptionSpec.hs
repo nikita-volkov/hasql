@@ -2,7 +2,8 @@ module Hasql.Comms.Session.CleanUpAfterInterruptionSpec (spec) where
 
 import Hasql.Comms.Session qualified as Session
 import Hasql.Platform.Prelude
-import Hasql.Pq qualified as Pq
+import Pqi qualified as Pq
+import Pqi.Ffi qualified
 import Test.Hspec
 import TextBuilder qualified
 
@@ -61,7 +62,7 @@ spec = do
         finalPipelineStatus `shouldBe` Pq.PipelineOff
 
     -- Deterministic counterpart to the timing-based reproduction in
-    -- "Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec": instead of
+    -- "Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec": instead of
     -- racing an async exception into the narrow window during which libpq's
     -- pipeline is in the aborted state, we put the connection into that state
     -- directly and invoke the cleanup that an interruption would have
@@ -223,7 +224,7 @@ withConnection (host, port) action =
             " dbname=postgres"
           ]
    in bracket
-        (Pq.connectdb connectionString)
+        (Pq.connectdb Pqi.Ffi.adapter connectionString)
         ( \connection -> do
             Pq.finish connection
         )

@@ -1,0 +1,259 @@
+module Hasql.Engine.Contexts.Pipeline
+  ( Pipeline,
+    run,
+    statement,
+  )
+where
+
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
+import Hasql.Codecs.RequestingOid qualified as RequestingOid
+import Hasql.Codecs.Vocab qualified as Vocab
+import Hasql.Codecs.Vocab.OidCache qualified as OidCache
+import Hasql.Codecs.Vocab.QualifiedTypeName qualified as Vocab.QualifiedTypeName
+import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
+import Hasql.Engine.Errors qualified as Errors
+import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
+import Hasql.Engine.Statement qualified as Statement
+import Hasql.Engine.Structures.ExecutionContext (ExecutionContext (ExecutionContext))
+import Hasql.Engine.Structures.ExecutionContext qualified as ExecutionContext
+import Hasql.Engine.Structures.StatementCache qualified as StatementCache
+import Hasql.Platform.Prelude
+import Pqi qualified as Pq
+
+run ::
+  Pipeline a ->
+  Pq.Connection ->
+  OidCache.OidCache ->
+  StatementCache.StatementCache ->
+  IO
+    ( Either Errors.SessionError a,
+      OidCache.OidCache,
+      StatementCache.StatementCache
+    )
+run (Pipeline totalStatements unknownTypes runPipeline) connection oidCache statementCache = do
+  let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
+  resolvedOidCache <-
+    if HashSet.null missingTypes
+      then pure (Right oidCache)
+      else do
+        oidCacheUpdates <-
+          PqProcedures.SelectTypeInfo.run connection (PqProcedures.SelectTypeInfo.SelectTypeInfo missingTypes)
+        pure $ case oidCacheUpdates of
+          Left err -> Left err
+          Right oidCacheUpdates ->
+            let foundTypes = HashMap.keysSet oidCacheUpdates
+                notFoundTypes = HashSet.difference missingTypes foundTypes
+             in if not (HashSet.null notFoundTypes)
+                  then Left (Errors.MissingTypesSessionError (HashSet.map Vocab.QualifiedTypeName.toNameTuple notFoundTypes))
+                  else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
+  case resolvedOidCache of
+    Left err -> pure (Left err, oidCache, statementCache)
+    Right newOidCache -> do
+      let (roundtrip, newStatementCache) =
+            runPipeline 0 newOidCache statementCache
+          contextualRoundtrip = first Just roundtrip
+
+      executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
+
+      let result =
+            first
+              ( \case
+                  Comms.Roundtrip.ClientError _context details ->
+                    Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+                  Comms.Roundtrip.ServerError recvError ->
+                    Errors.fromRecvError (fmap (fmap (ExecutionContext.toStatementLocation totalStatements)) recvError)
+              )
+              executionResult
+          finalStatementCache =
+            case executionResult of
+              Right _ -> newStatementCache
+              -- A pipeline never retries: the statements preceding the failure
+              -- have already executed, and re-running the batch would double
+              -- their effects. Only the cache is brought back in line.
+              Left executionError ->
+                ExecutionContext.recoverStatementCache True statementCache executionError
+
+      pure (result, newOidCache, finalStatementCache)
+
+-- |
+-- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
+--
+-- It allows you to issue multiple queries to the server in much fewer network transactions.
+-- If the amounts of sent and received data do not surpass the buffer sizes in the driver and on the server it will be just a single roundtrip.
+-- Typically the buffer size is 8KB.
+--
+-- This execution mode is much more efficient than running queries directly from 'Hasql.Session.Session', because in session every statement execution involves a dedicated network roundtrip.
+--
+-- An obvious question rises then: why not execute all queries like that?
+-- In situations where the parameters depend on the result of another query it is impossible to execute them in parallel, because the client needs to receive the results of one query before sending the request to execute the next.
+-- This reasoning is essentially the same as the one for the difference between 'Applicative' and 'Monad'.
+-- That's why 'Pipeline' does not have the 'Monad' instance.
+--
+-- To execute 'Pipeline' lift it into 'Hasql.Session.Session' via 'Hasql.Session.pipeline'.
+--
+-- == Examples
+--
+-- === Insert-Many or Batch-Insert
+--
+-- You can use pipeline to turn a single-row insert query into an efficient multi-row insertion session.
+-- In effect this should be comparable in performance to issuing a single multi-row insert statement.
+--
+-- Given the following definition in a Statements module:
+--
+-- @
+-- insertOrder :: 'Hasql.Statement.Statement' OrderDetails OrderId
+-- @
+--
+-- You can lift it into the following session
+--
+-- @
+-- insertOrders :: [OrderDetails] -> 'Hasql.Session.Session' [OrderId]
+-- insertOrders orders =
+--   'Hasql.Session.pipeline' $
+--     for orders $ \order ->
+--       'Hasql.Pipeline.statement' order Statements.insertOrder
+-- @
+--
+-- === Combining Queries
+--
+-- Given the following definitions in a Statements module:
+--
+-- @
+-- selectOrderDetails :: 'Hasql.Statement.Statement' OrderId (Maybe OrderDetails)
+-- selectOrderProducts :: 'Hasql.Statement.Statement' OrderId [OrderProduct]
+-- selectOrderFinancialTransactions :: 'Hasql.Statement.Statement' OrderId [FinancialTransaction]
+-- @
+--
+-- You can combine them into a session using the `ApplicativeDo` extension as follows:
+--
+-- @
+-- selectEverythingAboutOrder :: OrderId -> 'Hasql.Session.Session' (Maybe OrderDetails, [OrderProduct], [FinancialTransaction])
+-- selectEverythingAboutOrder orderId =
+--   'Hasql.Session.pipeline' $ do
+--     details <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderDetails
+--     products <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderProducts
+--     transactions <- 'Hasql.Pipeline.statement' orderId Statements.selectOrderFinancialTransactions
+--     pure (details, products, transactions)
+-- @
+data Pipeline a
+  = Pipeline
+      -- | Amount of statements in this pipeline.
+      Int
+      -- | Names of types that are used in this pipeline.
+      --
+      -- They will be used to pre-resolve type OIDs before running the pipeline providing them in OidCache.
+      -- It can be assumed in the execution function that these types are always present in the cache.
+      -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
+      -- In the execution function we will be defaulting to OID 0 for unknown types as a fallback in case of bugs.
+      (HashSet Vocab.QualifiedTypeName)
+      -- | Function that runs the pipeline.
+      --
+      -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
+      --
+      -- OidCache is provided in which the names of types used in this pipeline are already resolved.
+      --
+      -- The function takes the current statement cache and returns a tuple of:
+      -- 1. The actual roundtrip action to be executed in the pipeline.
+      -- 2. The updated statement cache after composing this part of the pipeline.
+      --
+      -- The resulting cache is optimistic: on failure we recover the last known
+      -- committed cache from statement contexts carried by roundtrip errors.
+      ( Int ->
+        OidCache.OidCache ->
+        StatementCache.StatementCache ->
+        (Comms.Roundtrip.Roundtrip ExecutionContext a, StatementCache.StatementCache)
+      )
+
+-- * Instances
+
+instance Functor Pipeline where
+  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset oidCache cache ->
+    let (roundtrip, newStatementCache) = run offset oidCache cache
+     in (fmap f roundtrip, newStatementCache)
+
+instance Applicative Pipeline where
+  pure a =
+    Pipeline 0 mempty (\_ _ cache -> (pure a, cache))
+
+  Pipeline lCount leftUnknownTypes lRun <*> Pipeline rCount rightUnknownTypes rRun =
+    let unknownTypes = leftUnknownTypes <> rightUnknownTypes
+     in Pipeline (lCount + rCount) unknownTypes \offset oidCache statementCache ->
+          let (lRoundtrip, statementCache1) = lRun offset oidCache statementCache
+              offset1 = offset + lCount
+              (rRoundtrip, statementCache2) = rRun offset1 oidCache statementCache1
+           in (lRoundtrip <*> rRoundtrip, statementCache2)
+
+-- * Construction
+
+-- |
+-- Execute a statement in pipelining mode.
+statement ::
+  Statement.Statement params result ->
+  params ->
+  Pipeline result
+statement stmt params =
+  Pipeline 1 (Statement.unknownTypes stmt) run
+  where
+    sql = Statement.sql stmt
+
+    run offset oidCache statementCache =
+      case decision of
+        StatementCache.HitDecision remoteKey ->
+          (executePrepared preparedContext remoteKey, newStatementCache)
+        StatementCache.MissDecision ->
+          ( Comms.Roundtrip.queryParams
+              (context False Nothing newStatementCache)
+              sql
+              (Statement.inlineOids pqOidList pqEncodedParams)
+              Pq.Binary
+              decoder,
+            newStatementCache
+          )
+        StatementCache.AdmitDecision remoteKey victim ->
+          -- The deallocation, the parse and the execution go into the
+          -- pipeline in that order, and each carries the cache as it stands
+          -- if it is the one to fail. Mid-pipeline eviction needs no special
+          -- handling beyond that: a statement evicted at one position and
+          -- used again at a later one simply misses and is re-parsed under a
+          -- new key.
+          ( maybe
+              (pure ())
+              (Comms.Roundtrip.deallocate (context True (Just localKey) statementCache))
+              victim
+              *> Comms.Roundtrip.prepare
+                (context True (Just localKey) (StatementCache.withdraw localKey newStatementCache))
+                remoteKey
+                sql
+                pqOidList
+              *> executePrepared preparedContext remoteKey,
+            newStatementCache
+          )
+      where
+        (oidList, encodedParams) = Statement.compileStatementData stmt oidCache params
+
+        pqOidList = oidList
+
+        pqEncodedParams =
+          fmap (fmap (second (bool Pq.Binary Pq.Text))) encodedParams
+
+        localKey = StatementCache.localKey sql pqOidList
+
+        (decision, newStatementCache) = StatementCache.decide localKey statementCache
+
+        preparedContext = context True (Just localKey) newStatementCache
+
+        context isPrepared localKey statementCache =
+          ExecutionContext
+            { statementIndex = offset,
+              sql = sql,
+              params = Statement.printer stmt params,
+              isPrepared = isPrepared,
+              localKey = localKey,
+              statementCache = statementCache
+            }
+
+        executePrepared context remoteKey =
+          Comms.Roundtrip.queryPrepared context remoteKey pqEncodedParams Pq.Binary decoder
+
+        decoder = RequestingOid.toBase (Statement.decoder stmt) oidCache

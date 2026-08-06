@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: hasql
-version: 1.10.3.7
+version: 2.0.0.2
 category: Hasql, Database, PostgreSQL
 synopsis: Fast PostgreSQL driver with a flexible mapping API
 description:
@@ -9,15 +9,34 @@ description:
   Extended functionality such as pooling, transactions and compile-time checking of SQL is provided by extension libraries.
   For more details and tutorials see <https://github.com/nikita-volkov/hasql the readme>.
 
-  The API comes free from all kinds of exceptions.
-  All error-reporting is explicit and is presented using the 'Either' type.
+  All error-reporting is explicit:
+  database, protocol and connection failures are reported via the 'Either' type
+  instead of being thrown as exceptions.
 
-  \"hasql\" requires you to have the \"libpq\" C-library of at least version 14 installed to compile.
-  \"libpq\" comes distributed with PostgreSQL,
-  so typically all you need is just to install the latest PostgreSQL distro.
+  The transport layer is pluggable via <https://hackage.haskell.org/package/pqi pqi>,
+  so \"hasql\" itself carries no C dependency.
+  To compile an application you need to depend on \"hasql\" together with one adapter package
+  and pass that adapter to @Hasql.Connection.acquire@ as its first argument.
+  Two adapters are available:
 
-  Despite the mentioned requirements for \"libpq\" \"hasql\" is thoroughly tested to be compatible
-  with a wide range of PostgreSQL servers starting from version 9.
+  * <https://hackage.haskell.org/package/pqi-ffi pqi-ffi> -
+    the stable, production-proven adapter, backed by the C \"libpq\" library.
+    It requires \"libpq\" of at least version 14 to be installed to compile.
+    \"libpq\" comes distributed with PostgreSQL,
+    so typically all you need is just to install the latest PostgreSQL distro.
+    Via this adapter \"hasql\" is thoroughly tested to be compatible
+    with a wide range of PostgreSQL servers starting from version 9.
+
+  * <https://hackage.haskell.org/package/pqi-native pqi-native> -
+    a pure-Haskell adapter, which speaks the PostgreSQL wire protocol directly
+    and thus requires no C dependency at all.
+    It is thoroughly tested:
+    <https://github.com/nikita-volkov/pqi-conformance pqi-conformance> runs it
+    side by side with \"libpq\" on the same inputs and checks that the results agree,
+    and the test-suites of \"hasql\", \"hasql-pool\" and \"hasql-transaction\"
+    run against both adapters.
+    It is still labelled __alpha__, but is fully interchangeable with \"pqi-ffi\":
+    switching between the two is a one-line change.
 
 homepage: https://github.com/nikita-volkov/hasql
 bug-reports: https://github.com/nikita-volkov/hasql/issues
@@ -112,6 +131,52 @@ library
     Hasql.Statement
 
   other-modules:
+    Hasql.Connection.Config
+    Hasql.Connection.ServerVersion
+
+  build-depends:
+    hasql:codecs,
+    hasql:comms,
+    hasql:engine,
+    hasql:platform,
+    postgresql-connection-string ^>=0.1,
+    pqi >=1.0 && <1.2,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
+
+library platform
+  import: base
+  hs-source-dirs: src/platform
+  exposed-modules:
+    Hasql.Platform.Prelude
+
+  other-modules:
+    Hasql.Platform.Prelude.Text
+
+  build-depends:
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    comonad ^>=5,
+    contravariant >=1.3 && <2,
+    dlist >=0.8 && <0.9 || >=1 && <2,
+    hashable >=1.2 && <2,
+    mtl >=2 && <3,
+    profunctors >=5.1 && <6,
+    scientific >=0.3 && <0.4,
+    text >=1 && <3,
+    text-builder >=1 && <1.1,
+    time >=1.9 && <2,
+    transformers >=0.5 && <0.7,
+    unordered-containers >=0.2 && <0.3,
+    uuid >=1.3 && <2,
+    vector >=0.10 && <0.14,
+    witherable >=0.5 && <0.6,
+
+library codecs
+  import: base
+  hs-source-dirs: src/codecs
+  exposed-modules:
     Hasql.Codecs.Decoders
     Hasql.Codecs.Decoders.Array
     Hasql.Codecs.Decoders.Composite
@@ -131,6 +196,23 @@ library
     Hasql.Codecs.Vocab.QualifiedTypeName
     Hasql.Codecs.Vocab.TypeInfo
     Hasql.Codecs.Vocab.TypeRef
+
+  build-depends:
+    aeson >=2 && <3,
+    base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
+    hasql:platform,
+    iproute >=1.7 && <1.8,
+    postgresql-binary ^>=0.15,
+    text-builder >=1 && <1.1,
+    unordered-containers >=0.2 && <0.3,
+    vector >=0.10 && <0.14,
+
+library comms
+  import: base
+  hs-source-dirs: src/comms
+  exposed-modules:
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -138,8 +220,18 @@ library
     Hasql.Comms.RowReader
     Hasql.Comms.Send
     Hasql.Comms.Session
-    Hasql.Connection.Config
-    Hasql.Connection.ServerVersion
+
+  build-depends:
+    attoparsec >=0.10 && <0.15,
+    bytestring >=0.10 && <0.13,
+    hasql:platform,
+    pqi >=1.0 && <1.2,
+    vector >=0.10 && <0.14,
+
+library engine
+  import: base
+  hs-source-dirs: src/engine
+  exposed-modules:
     Hasql.Engine.Contexts.Pipeline
     Hasql.Engine.Contexts.Session
     Hasql.Engine.Decoders.Result
@@ -150,38 +242,18 @@ library
     Hasql.Engine.Structures.ConnectionState
     Hasql.Engine.Structures.ExecutionContext
     Hasql.Engine.Structures.StatementCache
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-depends:
-    aeson >=2 && <3,
-    attoparsec >=0.10 && <0.15,
-    base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    bytestring-strict-builder >=0.4.5.4 && <0.5,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
-    iproute >=1.7 && <1.8,
-    mtl >=2 && <3,
+    hasql:codecs,
+    hasql:comms,
+    hasql:platform,
     postgresql-binary ^>=0.15,
-    postgresql-connection-string ^>=0.1,
-    postgresql-libpq >=0.10.1 && <0.12,
-    profunctors >=5.1 && <6,
+    pqi >=1.0 && <1.2,
     psqueues >=0.2.8 && <0.3,
-    scientific >=0.3 && <0.4,
     text >=1 && <3,
     text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
     unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
     vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 benchmark benchmarks
   import: executable
@@ -191,6 +263,8 @@ benchmark benchmarks
   build-depends:
     criterion >=1.6 && <2,
     hasql,
+    pqi-ffi ^>=1.0,
+    pqi-native ^>=1.0,
     rerebase <2,
 
 test-suite profiling
@@ -205,82 +279,39 @@ test-suite profiling
 
   build-depends:
     hasql,
+    pqi-ffi ^>=1.0,
     rerebase >=1 && <2,
     testcontainers-postgresql ^>=0.2,
 
 test-suite comms-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs:
-    src/comms-tests
-    src/library
-
+  hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Comms.Recv
-    Hasql.Comms.ResultDecoder
-    Hasql.Comms.Roundtrip
-    Hasql.Comms.RowDecoder
-    Hasql.Comms.RowReader
-    Hasql.Comms.Send
-    Hasql.Comms.Session
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
-    attoparsec >=0.10 && <0.15,
-    base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
+    hasql:comms,
+    hasql:platform,
     hspec ^>=2.11.12,
-    mtl >=2 && <3,
-    postgresql-libpq >=0.10.1 && <0.12,
-    profunctors >=5.1 && <6,
-    scientific >=0.3 && <0.4,
+    pqi >=1.0 && <1.2,
+    pqi-ffi ^>=1.0,
     testcontainers-postgresql ^>=0.2,
-    text >=1 && <3,
     text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
-    unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
-    vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 test-suite engine-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs:
-    src/engine-tests
-    src/library
-
+  hs-source-dirs: src/engine-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Codecs.Vocab
-    Hasql.Codecs.Vocab.OidCache
-    Hasql.Codecs.Vocab.ParamMeta
-    Hasql.Codecs.Vocab.QualifiedTypeName
-    Hasql.Codecs.Vocab.TypeInfo
-    Hasql.Codecs.Vocab.TypeRef
     Hasql.Engine.Structures.OidCacheSpec
-    Hasql.Engine.Structures.StatementCache
     Hasql.Engine.Structures.StatementCacheSpec
-    Hasql.Platform.Prelude
-    Hasql.Platform.Prelude.Text
-    Hasql.Pq
-    Hasql.Pq.Ffi
-    Hasql.Pq.Mappings
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
@@ -288,24 +319,10 @@ test-suite engine-tests
   build-depends:
     base >=4.14 && <5,
     bytestring >=0.10 && <0.13,
-    comonad ^>=5,
-    contravariant >=1.3 && <2,
-    dlist >=0.8 && <0.9 || >=1 && <2,
-    hashable >=1.2 && <2,
+    hasql:codecs,
+    hasql:engine,
     hspec ^>=2.11.12,
-    mtl >=2 && <3,
-    postgresql-libpq >=0.10.1 && <0.12,
-    profunctors >=5.1 && <6,
-    psqueues >=0.2.8 && <0.3,
-    scientific >=0.3 && <0.4,
-    text >=1 && <3,
-    text-builder >=1 && <1.1,
-    time >=1.9 && <2,
-    transformers >=0.5 && <0.7,
     unordered-containers >=0.2 && <0.3,
-    uuid >=1.3 && <2,
-    vector >=0.10 && <0.14,
-    witherable >=0.5 && <0.6,
 
 test-suite library-tests
   import: test
@@ -313,6 +330,7 @@ test-suite library-tests
   hs-source-dirs: src/library-tests
   main-is: Main.hs
   other-modules:
+    Helpers.Adapters
     Helpers.Dsls.Execution
     Helpers.Dsls.Statement
     Helpers.PreparedStatements
@@ -327,51 +345,47 @@ test-suite library-tests
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
     Helpers.Statements.WrongDecoder
-    Isolated.ByUnit.Connection.AcquireSpec
-    Pure.ByUnit.ErrorsSpec
-    Sharing.ByBug.ExceptionConnectionResetRaceSpec
-    Sharing.ByBug.PipelineAbortedInterruptionCleanupSpec
-    Sharing.ByFeature.ConcurrencySpec
-    Sharing.ByFeature.DecoderCompatibilityCacheSpec
-    Sharing.ByFeature.DecoderCompatibilityCheckSpec
-    Sharing.ByFeature.PreparedStatementCacheSpec
-    Sharing.ByFeature.StaleStatementRecoverySpec
-    Sharing.ByFeature.StatementCacheSpec
-    Sharing.ByFeature.SyntaxErrorsSpec
-    Sharing.ByUnit.Connection.UseSpec
-    Sharing.ByUnit.Decoders.CitextSpec
-    Sharing.ByUnit.Decoders.Composite.OidMismatchSpec
-    Sharing.ByUnit.Decoders.CompositeSpec
-    Sharing.ByUnit.Decoders.CustomSpec
-    Sharing.ByUnit.Decoders.DomainSpec
-    Sharing.ByUnit.Decoders.EnumSpec
-    Sharing.ByUnit.Decoders.Float8Spec
-    Sharing.ByUnit.Decoders.HstoreSpec
-    Sharing.ByUnit.Decoders.InetSpec
-    Sharing.ByUnit.Decoders.IntervalSpec
-    Sharing.ByUnit.Decoders.JsonSpec
-    Sharing.ByUnit.Decoders.RecordSpec
-    Sharing.ByUnit.Decoders.UuidSpec
-    Sharing.ByUnit.Encoders.ArraySpec
-    Sharing.ByUnit.Encoders.CitextSpec
-    Sharing.ByUnit.Encoders.Composite.OidMismatchSpec
-    Sharing.ByUnit.Encoders.CompositeSpec
-    Sharing.ByUnit.Encoders.CustomSpec
-    Sharing.ByUnit.Encoders.DomainSpec
-    Sharing.ByUnit.Encoders.EnumSpec
-    Sharing.ByUnit.Encoders.HstoreSpec
-    Sharing.ByUnit.Encoders.InetSpec
-    Sharing.ByUnit.Encoders.IntervalSpec
-    Sharing.ByUnit.Encoders.JsonSpec
-    Sharing.ByUnit.Encoders.UnknownSpec
-    Sharing.ByUnit.Encoders.UuidSpec
-    Sharing.ByUnit.PipelineSpec
-    Sharing.ByUnit.Session.CatchErrorSpec
-    Sharing.ByUnit.Session.ScriptSpec
-    Sharing.ByUnit.Session.StatementSpec
-    Sharing.ByUnit.SessionSpec
-    Sharing.ByUnit.StatementSpec
-    Sharing.SpecHook
+    Integration.Isolated.Connection.AcquireSpec
+    Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
+    Integration.Sharing.Connection.UseSpec
+    Integration.Sharing.Decoders.CitextSpec
+    Integration.Sharing.Decoders.Composite.OidMismatchSpec
+    Integration.Sharing.Decoders.CompositeSpec
+    Integration.Sharing.Decoders.CustomSpec
+    Integration.Sharing.Decoders.DomainSpec
+    Integration.Sharing.Decoders.EnumSpec
+    Integration.Sharing.Decoders.Float8Spec
+    Integration.Sharing.Decoders.HstoreSpec
+    Integration.Sharing.Decoders.InetSpec
+    Integration.Sharing.Decoders.IntervalSpec
+    Integration.Sharing.Decoders.JsonSpec
+    Integration.Sharing.Decoders.RecordSpec
+    Integration.Sharing.Decoders.UuidSpec
+    Integration.Sharing.Encoders.ArraySpec
+    Integration.Sharing.Encoders.CitextSpec
+    Integration.Sharing.Encoders.Composite.OidMismatchSpec
+    Integration.Sharing.Encoders.CompositeSpec
+    Integration.Sharing.Encoders.CustomSpec
+    Integration.Sharing.Encoders.DomainSpec
+    Integration.Sharing.Encoders.EnumSpec
+    Integration.Sharing.Encoders.HstoreSpec
+    Integration.Sharing.Encoders.InetSpec
+    Integration.Sharing.Encoders.IntervalSpec
+    Integration.Sharing.Encoders.JsonSpec
+    Integration.Sharing.Encoders.UnknownSpec
+    Integration.Sharing.Encoders.UuidSpec
+    Integration.Sharing.ErrorsSpec
+    Integration.Sharing.PipelineSpec
+    Integration.Sharing.Session.CatchErrorSpec
+    Integration.Sharing.Session.ScriptSpec
+    Integration.Sharing.Session.StatementSpec
+    Integration.Sharing.SessionSpec
+    Integration.Sharing.SpecHook
+    Integration.Sharing.StaleStatementRecoverySpec
+    Integration.Sharing.StatementCacheSpec
+    Integration.Sharing.StatementSpec
+    Integration.SpecHook
+    Pure.ErrorsSpec
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
@@ -381,6 +395,9 @@ test-suite library-tests
     hasql,
     hspec ^>=2.11.12,
     iproute,
+    pqi >=1.0 && <1.2,
+    pqi-ffi ^>=1.0,
+    pqi-native ^>=1.0,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,

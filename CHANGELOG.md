@@ -16,6 +16,22 @@
 
 - A stale cached plan (Postgres errors `0A000`/`26000`, e.g. after a concurrent schema migration) now triggers a single unprepared retry and evicts just the affected statement, instead of failing the whole session.
 
+# v2.0.0.2
+
+Work around the bugs in Cabal/Haddock that cause missing documentation for two-hop reexported internal modules.
+
+# v2.0.0.1
+
+Support for `pqi-1.1`.
+
+# v2.0.0.0
+
+New era: the transport layer is now pluggable via [`pqi`](https://github.com/nikita-volkov/pqi), and an alpha pure-Haskell backend, [`pqi-native`](https://github.com/nikita-volkov/pqi-native), is available for early adopters. Goal: a reliable, performant, no-C-dependency replacement for libpq.
+
+## Breaking
+
+- `Hasql.Connection.acquire` now takes an explicit adapter as its first argument, ahead of `Settings`. To keep prior behaviour, depend on [`pqi-ffi`](https://hackage.haskell.org/package/pqi-ffi) and pass `Pqi.Ffi.adapter`. To try the native backend, depend on [`pqi-native`](https://hackage.haskell.org/package/pqi-native) and pass `Pqi.Native.adapter`.
+
 # 1.10
 
 Major revision happened.
