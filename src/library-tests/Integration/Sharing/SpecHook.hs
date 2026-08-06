@@ -10,10 +10,9 @@ import TestcontainersPostgresql qualified
 type HookedSpec = SpecWith Scripts.ScopeParams
 
 hook :: HookedSpec -> SpecWith Pqi.Adapter
-hook hookedSpec =
-  parallel do
-    byDistro "postgres:9"
-    byDistro "postgres:18"
+hook hookedSpec = do
+  byDistro "postgres:9"
+  byDistro "postgres:18"
   where
     byDistro tagName =
       describe (toList tagName)
@@ -27,4 +26,4 @@ hook hookedSpec =
                   }
                 (\(host, port) -> action (adapter, host, port))
           )
-          hookedSpec
+          (parallel hookedSpec)
