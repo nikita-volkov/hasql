@@ -9,15 +9,34 @@ description:
   Extended functionality such as pooling, transactions and compile-time checking of SQL is provided by extension libraries.
   For more details and tutorials see <https://github.com/nikita-volkov/hasql the readme>.
 
-  The API comes free from all kinds of exceptions.
-  All error-reporting is explicit and is presented using the 'Either' type.
+  All error-reporting is explicit:
+  database, protocol and connection failures are reported via the 'Either' type
+  instead of being thrown as exceptions.
 
-  \"hasql\" requires you to have the \"libpq\" C-library of at least version 14 installed to compile.
-  \"libpq\" comes distributed with PostgreSQL,
-  so typically all you need is just to install the latest PostgreSQL distro.
+  The transport layer is pluggable via <https://hackage.haskell.org/package/pqi pqi>,
+  so \"hasql\" itself carries no C dependency.
+  To compile an application you need to depend on \"hasql\" together with one adapter package
+  and pass that adapter to @Hasql.Connection.acquire@ as its first argument.
+  Two adapters are available:
 
-  Despite the mentioned requirements for \"libpq\" \"hasql\" is thoroughly tested to be compatible
-  with a wide range of PostgreSQL servers starting from version 9.
+  * <https://hackage.haskell.org/package/pqi-ffi pqi-ffi> -
+    the stable, production-proven adapter, backed by the C \"libpq\" library.
+    It requires \"libpq\" of at least version 14 to be installed to compile.
+    \"libpq\" comes distributed with PostgreSQL,
+    so typically all you need is just to install the latest PostgreSQL distro.
+    Via this adapter \"hasql\" is thoroughly tested to be compatible
+    with a wide range of PostgreSQL servers starting from version 9.
+
+  * <https://hackage.haskell.org/package/pqi-native pqi-native> -
+    a pure-Haskell adapter, which speaks the PostgreSQL wire protocol directly
+    and thus requires no C dependency at all.
+    It is thoroughly tested:
+    <https://github.com/nikita-volkov/pqi-conformance pqi-conformance> runs it
+    side by side with \"libpq\" on the same inputs and checks that the results agree,
+    and the test-suites of \"hasql\", \"hasql-pool\" and \"hasql-transaction\"
+    run against both adapters.
+    It is still labelled __alpha__, but is fully interchangeable with \"pqi-ffi\":
+    switching between the two is a one-line change.
 
 homepage: https://github.com/nikita-volkov/hasql
 bug-reports: https://github.com/nikita-volkov/hasql/issues
