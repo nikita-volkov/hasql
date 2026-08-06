@@ -11,7 +11,7 @@ type CountPreparedStatementsResult = Int32
 
 instance StatementModule CountPreparedStatements CountPreparedStatementsResult where
   statement =
-    Statement.unpreparable
+    Statement.statement
       "select count(*)::int4 from pg_prepared_statements"
       mempty
       (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))

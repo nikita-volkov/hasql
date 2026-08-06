@@ -5,6 +5,7 @@ module Hasql.Comms.Roundtrip
 
     -- * Constructors
     prepare,
+    deallocate,
     queryPrepared,
     queryParams,
     query,
@@ -75,6 +76,22 @@ prepare context statementName sql oidList =
   Roundtrip
     (Send.prepare context statementName sql (Just oidList))
     (Recv.singleResult context ResultDecoder.ok)
+
+-- | Release a statement prepared under the given name.
+--
+-- Issued through the extended query protocol rather than @PQsendClosePrepared@,
+-- because that requires libpq 17 and has no binding in @postgresql-libpq@,
+-- and because the extended protocol is legal inside pipeline mode and works
+-- all the way back to PostgreSQL 9.
+deallocate :: context -> ByteString -> Roundtrip context ()
+deallocate context statementName =
+  Roundtrip
+    (Send.queryParams context sql [] Pq.Binary)
+    (Recv.singleResult context ResultDecoder.ok)
+  where
+    -- Quoting is required: remote keys are numeric and would otherwise not
+    -- parse as identifiers.
+    sql = "DEALLOCATE \"" <> statementName <> "\""
 
 queryPrepared ::
   context ->

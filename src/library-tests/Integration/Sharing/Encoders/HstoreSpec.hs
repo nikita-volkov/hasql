@@ -14,12 +14,12 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Hstore Encoders" do
     it "encodes empty hstore" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -28,19 +28,19 @@ spec = do
           -- Test encoding empty hstore
           Session.statement
             ([] :: [(Text, Maybe Text)])
-            $ Statement.preparable
+            $ Statement.statement
               "select $1::hstore = ''::hstore"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
 
     it "encodes hstore with single key-value pair" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -49,19 +49,19 @@ spec = do
           -- Test encoding single key-value pair
           Session.statement
             [("key", Just "value")]
-            $ Statement.preparable
+            $ Statement.statement
               "select $1::hstore = 'key => value'::hstore"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
 
     it "encodes hstore with multiple key-value pairs" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -70,19 +70,19 @@ spec = do
           -- Test encoding multiple key-value pairs
           Session.statement
             [("a", Just "1"), ("b", Just "2"), ("c", Just "3")]
-            $ Statement.preparable
+            $ Statement.statement
               "select $1::hstore @> 'a => 1'::hstore AND $1::hstore @> 'b => 2'::hstore AND $1::hstore @> 'c => 3'::hstore"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
 
     it "encodes hstore with null values" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -91,20 +91,20 @@ spec = do
           -- Test encoding hstore with null values
           Session.statement
             [("key1", Just "value1"), ("key2", Nothing), ("key3", Just "value3")]
-            $ Statement.preparable
+            $ Statement.statement
               "select $1::hstore = 'key1 => value1, key2 => NULL, key3 => value3'::hstore"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
         result `shouldBe` Right True
 
     it "roundtrips hstore correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let testData = HashMap.fromList [("key1", Just "value1"), ("key2", Nothing), ("key3", Just "value3")]
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -113,19 +113,19 @@ spec = do
           -- Test roundtrip
           Session.statement
             (HashMap.toList testData)
-            $ Statement.preparable
+            $ Statement.statement
               "select $1"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.hstore (\n f -> replicateM n f >>= pure . HashMap.fromList)))))
         result `shouldBe` Right testData
 
     it "encodes hstore with special characters" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Enable hstore extension (unprepared), ignore if already exists
           catchError
             ( Session.statement ()
-                $ Statement.unpreparable
+                $ Statement.statement
                   "CREATE EXTENSION IF NOT EXISTS hstore"
                   Encoders.noParams
                   Decoders.noResult
@@ -134,7 +134,7 @@ spec = do
           -- Test encoding hstore with special characters
           Session.statement
             [("key with spaces", Just "value with quotes")]
-            $ Statement.preparable
+            $ Statement.statement
               "select $1::hstore = '\"key with spaces\" => \"value with quotes\"'::hstore"
               (Encoders.param (Encoders.nonNullable Encoders.hstore))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))

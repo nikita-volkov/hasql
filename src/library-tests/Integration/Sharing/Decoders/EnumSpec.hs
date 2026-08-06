@@ -15,17 +15,17 @@ spec = do
   describe "Simple enums" do
     it "decodes a simple named enum from static SQL" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('sad', 'ok', 'happy')"])
               mempty
               Decoders.noResult
           -- Test decoding from static value
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select 'happy' :: ", enumName])
               mempty
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
@@ -33,24 +33,24 @@ spec = do
 
     it "decodes different enum values" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('alpha', 'beta', 'gamma')"])
               mempty
               Decoders.noResult
           -- Test decoding multiple values
           r1 <-
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select 'alpha' :: ", enumName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
           r2 <-
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select 'gamma' :: ", enumName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing enumName (Just . id)))))
@@ -61,23 +61,23 @@ spec = do
     it "decodes enums nested in named composites from static SQL" \config -> do
       enumName <- Scripts.generateSymname
       compositeName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('red', 'green', 'blue')"])
               mempty
               Decoders.noResult
           -- Create composite type with enum
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", compositeName, " as (id int8, color ", enumName, ")"])
               mempty
               Decoders.noResult
           -- Test decoding
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select (42, 'green') :: ", compositeName])
               mempty
               ( Decoders.singleRow
@@ -100,29 +100,29 @@ spec = do
       enumName <- Scripts.generateSymname
       innerType <- Scripts.generateSymname
       outerType <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('small', 'medium', 'large')"])
               mempty
               Decoders.noResult
           -- Create inner composite with enum
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", innerType, " as (size ", enumName, ", count int4)"])
               mempty
               Decoders.noResult
           -- Create outer composite
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", outerType, " as (\"inner\" ", innerType, ", name text)"])
               mempty
               Decoders.noResult
           -- Test decoding
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select (('large', 5), 'test') :: ", outerType])
               mempty
               ( Decoders.singleRow
@@ -154,17 +154,17 @@ spec = do
   describe "Arrays of enums" do
     it "decodes arrays of named enums from static SQL" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('first', 'second', 'third')"])
               mempty
               Decoders.noResult
           -- Test array decoding
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select array['first', 'third', 'second'] :: ", enumName, "[]"])
               mempty
               ( Decoders.singleRow
@@ -183,17 +183,17 @@ spec = do
 
     it "decodes 2D arrays of named enums" \config -> do
       enumName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('a', 'b', 'c')"])
               mempty
               Decoders.noResult
           -- Test 2D array decoding
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select array[array['a', 'b'], array['c', 'a']] :: ", enumName, "[][]"])
               mempty
               ( Decoders.singleRow
@@ -216,23 +216,23 @@ spec = do
     it "decodes arrays of composites containing enums" \config -> do
       enumName <- Scripts.generateSymname
       compositeName <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- Create enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", enumName, " as enum ('low', 'high')"])
               mempty
               Decoders.noResult
           -- Create composite type with enum
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", compositeName, " as (priority ", enumName, ", id int4)"])
               mempty
               Decoders.noResult
           -- Test decoding array of composites with enums
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select array[('high', 1), ('low', 2)] :: ", compositeName, "[]"])
               mempty
               ( Decoders.singleRow
@@ -261,10 +261,10 @@ spec = do
         result `shouldBe` Right [("high", 1 :: Int32), ("low", 2)]
 
   it "detects attempts to decode non-existent enum types" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement ()
-          $ Statement.preparable
+          $ Statement.statement
             "select 'value'::text"
             mempty
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_enum_type" (Just . id)))))
@@ -276,10 +276,10 @@ spec = do
           expectationFailure ("Unexpected result: " <> show result)
 
   it "detects attempts to decode arrays of non-existent enum types" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       result <- Connection.use connection do
         Session.statement ()
-          $ Statement.preparable
+          $ Statement.statement
             "select array['a', 'b']::text[]"
             mempty
             ( Decoders.singleRow

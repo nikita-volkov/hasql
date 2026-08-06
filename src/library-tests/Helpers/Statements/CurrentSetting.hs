@@ -15,7 +15,7 @@ type CurrentSettingResult = Maybe Text
 
 instance StatementModule CurrentSetting CurrentSettingResult where
   statement =
-    Statement.preparable sql encoder decoder
+    Statement.statement sql encoder decoder
     where
       sql =
         "SELECT current_setting($1, $2)"

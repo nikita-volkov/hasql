@@ -19,7 +19,7 @@ import Test.Hspec
 -- the moment the *next* statement in the same pipeline fails.
 sleepStatement :: Statement.Statement Double ()
 sleepStatement =
-  Statement.preparable
+  Statement.statement
     "select pg_sleep($1)"
     (Encoders.param (Encoders.nonNullable Encoders.float8))
     Decoders.noResult
@@ -27,7 +27,7 @@ sleepStatement =
 -- | A statement that is guaranteed to fail on the server.
 failingStatement :: Statement.Statement () ()
 failingStatement =
-  Statement.preparable
+  Statement.statement
     "select 1/0"
     Encoders.noParams
     Decoders.noResult
@@ -89,7 +89,7 @@ racingPipelineSession sleepSeconds =
 -- return and reports 'Just (Left _)'.
 attempt :: Scripts.ScopeParams -> Double -> Int -> IO (Maybe Text)
 attempt config sleepSeconds delayMicros =
-  Scripts.onPreparableConnection config \connection -> do
+  Scripts.onPreparingConnection config \connection -> do
     result <- timeout delayMicros do
       Connection.use connection (racingPipelineSession sleepSeconds)
     pure case result of

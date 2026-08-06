@@ -14,9 +14,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "UUID Decoders" do
     it "decodes UUID from static value" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '550e8400-e29b-41d4-a716-446655440000'::uuid"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
@@ -26,9 +26,9 @@ spec = do
           Nothing -> expectationFailure "Failed to parse expected UUID"
 
     it "decodes nil UUID" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '00000000-0000-0000-0000-000000000000'::uuid"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))

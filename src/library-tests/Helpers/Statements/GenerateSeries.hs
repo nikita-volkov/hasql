@@ -16,7 +16,7 @@ type GenerateSeriesResult = [Int64]
 
 instance StatementModule GenerateSeries GenerateSeriesResult where
   statement =
-    Statement.preparable
+    Statement.statement
       "SELECT generate_series($1, $2)"
       ( (contramap start (Encoders.param (Encoders.nonNullable Encoders.int8)))
           <> (contramap end (Encoders.param (Encoders.nonNullable Encoders.int8)))

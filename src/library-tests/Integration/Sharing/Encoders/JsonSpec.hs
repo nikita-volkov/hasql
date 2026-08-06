@@ -14,9 +14,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "JSON Encoders" do
     it "encodes JSON object correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1::json"
                 (Encoders.param (Encoders.nonNullable Encoders.json))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.json)))
@@ -25,9 +25,9 @@ spec = do
         result `shouldBe` Right testValue
 
     it "roundtrips JSON array" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.json))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.json)))
@@ -37,9 +37,9 @@ spec = do
 
   describe "JSONB Encoders" do
     it "encodes JSONB object correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1::jsonb"
                 (Encoders.param (Encoders.nonNullable Encoders.jsonb))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.jsonb)))
@@ -48,9 +48,9 @@ spec = do
         result `shouldBe` Right testValue
 
     it "roundtrips JSONB with nested structure" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.jsonb))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.jsonb)))

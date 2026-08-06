@@ -141,9 +141,10 @@ main = do
           Settings.user "postgres",
           Settings.password "postgres",
           Settings.dbname "postgres"
-          -- Prepared statements are enabled by default.
-          -- To disable them (e.g., for pgbouncer compatibility):
-          -- Settings.noPreparedStatements True
+          -- Statement caching (automatic prepared-statement management) is
+          -- enabled by default. To disable it (e.g., for pgbouncer
+          -- compatibility):
+          -- Settings.statementCacheSize 0
         ]
 
 -- * Sessions
@@ -168,7 +169,7 @@ sumAndDivModSession a b c = do
 
 -- | A statement with two integer parameters and an integer result.
 sumStatement :: Statement.Statement (Int64, Int64) Int64
-sumStatement = Statement.preparable sql encoder decoder
+sumStatement = Statement.statement sql encoder decoder
   where
     -- The SQL of the statement, with $1, $2, ... placeholders for parameters.
     sql =
@@ -192,7 +193,7 @@ sumStatement = Statement.preparable sql encoder decoder
         (Decoders.column (Decoders.nonNullable Decoders.int8))
 
 divModStatement :: Statement.Statement (Int64, Int64) (Int64, Int64)
-divModStatement = Statement.preparable sql encoder decoder
+divModStatement = Statement.statement sql encoder decoder
   where
     sql =
       "select $1 / $2, $1 % $2"

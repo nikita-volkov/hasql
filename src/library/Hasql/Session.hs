@@ -4,11 +4,16 @@ module Hasql.Session
     script,
     statement,
     Session.onLibpqConnection,
+
+    -- * Prepared statement cache
+    Session.statementCacheStats,
+    StatementCache.StatementCacheStats (..),
   )
 where
 
 import Hasql.Engine.Contexts.Session qualified as Session
 import Hasql.Engine.Statement qualified as Statement
+import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 
 -- |

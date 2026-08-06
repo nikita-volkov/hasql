@@ -1,3 +1,21 @@
+# Upcoming
+
+## Breaking
+
+- `Statement.preparable` and `Statement.unpreparable` are replaced by a single `Statement.statement` — whether a statement gets prepared is no longer a per-statement choice, it's a connection-level policy (see below).
+- `Settings.noPreparedStatements` is replaced by `Settings.statementCacheSize` and `Settings.prepareThreshold`, also settable via the `statement_cache_size` / `prepare_threshold` connection-string parameters. Use `statementCacheSize 0` to disable preparation entirely.
+- `Pipeline.run` no longer takes a `usePreparedStatements` flag.
+
+## Non-breaking
+
+- Automatic prepared-statement management via a bounded LRU cache, per [ADR 0003](docs/adr/0003-automatic-prepared-statement-management.md). Statements are now admitted into the server-side prepared set once they've been executed `prepareThreshold` times on a connection, and evicted on an LRU basis once the cache reaches `statementCacheSize`.
+- `Session.statementCacheStats` reports the cache's current size, admissions, hits, misses and evictions; `Session.resyncStatementCache` forces a resync.
+- New dependency on `psqueues` for the cache's priority-search-queue structures.
+
+## Fixes
+
+- A stale cached plan (Postgres errors `0A000`/`26000`, e.g. after a concurrent schema migration) now triggers a single unprepared retry and evicts just the affected statement, instead of failing the whole session.
+
 # v2.0.0.2
 
 Work around the bugs in Cabal/Haddock that cause missing documentation for two-hop reexported internal modules.

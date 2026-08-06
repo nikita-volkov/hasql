@@ -13,9 +13,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Interval Decoders" do
     it "decodes intervals correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select interval '10 seconds'"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.interval)))

@@ -16,7 +16,7 @@ type BrokenSyntaxResult = [Int64]
 
 instance StatementModule BrokenSyntax BrokenSyntaxResult where
   statement =
-    Statement.preparable
+    Statement.statement
       "S"
       ( mconcat
           [ start >$< Encoders.param (Encoders.nonNullable Encoders.int8),

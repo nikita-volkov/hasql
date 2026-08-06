@@ -18,7 +18,7 @@ spec = do
   describe "Single-statement" do
     describe "Unprepared" do
       it "Collects results and sends params" \config -> do
-        Scripts.onUnpreparableConnection config \connection -> do
+        Scripts.onNonPreparingConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
@@ -26,7 +26,7 @@ spec = do
 
     describe "Prepared" do
       it "Collects results and sends params" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
@@ -35,7 +35,7 @@ spec = do
   describe "Multi-statement" do
     describe "On unprepared statements" do
       it "Collects results and sends params" \config -> do
-        Scripts.onUnpreparableConnection config \connection -> do
+        Scripts.onNonPreparingConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ replicateM 2
@@ -44,7 +44,7 @@ spec = do
 
     describe "On prepared statements" do
       it "Collects results and sends params" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <-
             (Connection.use connection . Session.pipeline)
               $ replicateM 2
@@ -54,7 +54,7 @@ spec = do
     describe "When a part in the middle fails" do
       describe "With query error" do
         it "Captures the error" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             result <-
               (Connection.use connection . Session.pipeline)
                 $ (,,)
@@ -66,7 +66,7 @@ spec = do
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             result <-
               Connection.use connection do
                 _ <-
@@ -85,7 +85,7 @@ spec = do
 
       describe "With decoding error" do
         it "Captures the error" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             result <-
               (Connection.use connection . Session.pipeline)
                 $ (,,)
@@ -97,7 +97,7 @@ spec = do
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             result <-
               Connection.use connection do
                 _ <-
@@ -116,13 +116,13 @@ spec = do
 
   describe "Failing pipeline" do
     it "Does not cause errors in the next pipeline" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
         result <- Connection.use connection do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.preparable
+              ( Statement.statement
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -138,7 +138,7 @@ spec = do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.preparable
+              ( Statement.statement
                   "select 1"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -151,20 +151,20 @@ spec = do
             expectationFailure ("Unexpected error: " <> show result)
 
     it "Handles failures within the same pipeline gracefully" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
         result <- Connection.use connection do
           Session.pipeline do
             Pipeline.statement
               ()
-              ( Statement.preparable
+              ( Statement.statement
                   "select null :: int4"
                   mempty
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
               )
               <* Pipeline.statement
                 ()
-                ( Statement.preparable
+                ( Statement.statement
                     "select 1"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))

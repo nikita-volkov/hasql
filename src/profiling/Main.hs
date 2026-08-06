@@ -50,7 +50,7 @@ statementWithManyParameters =
 
 statementWithSingleRow :: Statement.Statement () (Int64, Int64)
 statementWithSingleRow =
-  Statement.preparable template encoder decoder
+  Statement.statement template encoder decoder
   where
     template =
       "SELECT 1 :: int8, 2 :: int8"
@@ -67,7 +67,7 @@ statementWithSingleRow =
 
 statementWithManyRows :: (D.Row (Int64, Int64) -> D.Result result) -> Statement.Statement () result
 statementWithManyRows decoder =
-  Statement.preparable template encoder (decoder rowDecoder)
+  Statement.statement template encoder (decoder rowDecoder)
   where
     template =
       "SELECT generate_series(0,1000) as a, generate_series(1000,2000) as b"

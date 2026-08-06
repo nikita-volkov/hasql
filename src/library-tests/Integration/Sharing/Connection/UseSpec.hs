@@ -22,9 +22,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Transactions" do
     it "Do not cause \"in progress after error\"" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let sumStatement =
-              Statement.preparable
+              Statement.statement
                 "select ($1 + $2)"
                 ( mconcat
                     [ fst >$< Encoders.param (Encoders.nonNullable Encoders.int8),
@@ -50,9 +50,9 @@ spec = do
 
   describe "Pipeline Mode" do
     it "Leaves the connection usable after timeout in pipeline" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let selectStatement =
-              Statement.preparable
+              Statement.statement
                 "select $1::int"
                 (Encoders.param (Encoders.nonNullable Encoders.int4))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -79,7 +79,7 @@ spec = do
 
   describe "Timing out" do
     describe "On a statement" do
-      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
+      it "Leaves the connection usable" \config -> Scripts.onPreparingConnection config \connection -> do
         result <-
           timeout 50_000 do
             Connection.use connection do
@@ -94,7 +94,7 @@ spec = do
         result `shouldBe` Right 1
 
     describe "On a transaction" do
-      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
+      it "Leaves the connection usable" \config -> Scripts.onPreparingConnection config \connection -> do
         -- Start a transaction and timeout during it
         result <-
           timeout 50_000 do
@@ -114,11 +114,11 @@ spec = do
 
       it "Lets us start another transaction" do
         let checkTransactionStatus =
-              Statement.preparable
+              Statement.statement
                 "select case when pg_advisory_lock(1) is null then 0 else 1 end"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-         in \config -> Scripts.onPreparableConnection config \connection -> do
+         in \config -> Scripts.onPreparingConnection config \connection -> do
               -- Timeout during a transaction
               result <-
                 timeout 50_000 do
@@ -140,11 +140,11 @@ spec = do
 
       it "Does not corrupt the prepared statement registry" do
         let returnIntStatement =
-              Statement.preparable
+              Statement.statement
                 "select $1::int"
                 (Encoders.param (Encoders.nonNullable Encoders.int4))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-         in \config -> Scripts.onPreparableConnection config \connection -> do
+         in \config -> Scripts.onPreparingConnection config \connection -> do
               -- Use a prepared statement first
               result <-
                 Connection.use connection do
@@ -171,10 +171,10 @@ spec = do
 
   describe "Concurrency" do
     it "handles concurrent connections properly" \config -> do
-      Scripts.onPreparableConnection config \connection1 -> do
-        Scripts.onPreparableConnection config \connection2 -> do
+      Scripts.onPreparingConnection config \connection1 -> do
+        Scripts.onPreparingConnection config \connection2 -> do
           let selectSleep =
-                Statement.preparable
+                Statement.statement
                   "select pg_sleep($1)"
                   (Encoders.param (Encoders.nonNullable Encoders.float8))
                   Decoders.noResult
@@ -196,7 +196,7 @@ spec = do
           result <- takeMVar finishVar
           result `shouldBe` True
 
-    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparableConnection config \connection -> do
+    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparingConnection config \connection -> do
       -- This test reproduces the bug fixed in commit 62ebef2.
       -- The bug was that when an exception occurred during a session,
       -- the connection state was put back into the MVar BEFORE resetting the connection.

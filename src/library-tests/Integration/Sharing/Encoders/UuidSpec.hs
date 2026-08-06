@@ -14,9 +14,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "UUID Encoders" do
     it "encodes UUID correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1 = '550e8400-e29b-41d4-a716-446655440000'::uuid"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
@@ -27,9 +27,9 @@ spec = do
           Nothing -> expectationFailure "Failed to parse test UUID"
 
     it "roundtrips UUID correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))
@@ -40,9 +40,9 @@ spec = do
           Nothing -> expectationFailure "Failed to parse test UUID"
 
     it "encodes nil UUID correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.uuid))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.uuid)))

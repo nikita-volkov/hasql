@@ -14,7 +14,7 @@ type SelectProvidedInt8Result = Int64
 
 instance StatementModule SelectProvidedInt8 SelectProvidedInt8Result where
   statement =
-    Statement.preparable
+    Statement.statement
       "select $1"
       (value >$< Encoders.param (Encoders.nonNullable Encoders.int8))
       (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))

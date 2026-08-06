@@ -15,9 +15,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "INET Encoders" do
     it "encodes IPv4 address correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1 = '192.168.1.1/32'::inet"
                 (Encoders.param (Encoders.nonNullable Encoders.inet))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
@@ -27,9 +27,9 @@ spec = do
         result `shouldBe` Right True
 
     it "roundtrips IPv4 CIDR" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.inet))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.inet)))
@@ -39,9 +39,9 @@ spec = do
         result `shouldBe` Right (IP.IPv4Range testRange)
 
     it "roundtrips IPv6 address" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.inet))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.inet)))
@@ -52,9 +52,9 @@ spec = do
 
   describe "MACADDR Encoders" do
     it "encodes MAC address correctly" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1 = '08:00:2b:01:02:03'::macaddr"
                 (Encoders.param (Encoders.nonNullable Encoders.macaddr))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
@@ -63,9 +63,9 @@ spec = do
         result `shouldBe` Right True
 
     it "roundtrips MAC address" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select $1"
                 (Encoders.param (Encoders.nonNullable Encoders.macaddr))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.macaddr)))

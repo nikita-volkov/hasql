@@ -15,17 +15,17 @@ spec = do
     describe "Simple scalar domains" do
       it "decodes a domain based on int8 using int8 codec" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select 42 :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -33,17 +33,17 @@ spec = do
 
       it "decodes a domain based on text using text codec" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as text"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select 'hello' :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
@@ -51,17 +51,17 @@ spec = do
 
       it "decodes a domain based on bool using bool codec" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as bool"])
                 mempty
                 Decoders.noResult
             -- Test decoding from static value
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select true :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))
@@ -69,17 +69,17 @@ spec = do
 
       it "roundtrips a domain based on numeric" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as numeric"])
                 mempty
                 Decoders.noResult
             -- Test roundtrip
             Session.statement (123.456 :: Scientific)
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select $1 :: ", domainName])
                 (Encoders.param (Encoders.nonNullable Encoders.numeric))
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.numeric)))
@@ -88,17 +88,17 @@ spec = do
     describe "Domain with constraints" do
       it "decodes domain values that satisfy constraints" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type with constraint
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as int8 check (value > 0)"])
                 mempty
                 Decoders.noResult
             -- Decode value that satisfies constraint
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select 42 :: ", domainName])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -108,23 +108,23 @@ spec = do
       it "decodes domain value cast to base type from composite field" \config -> do
         domainName <- Scripts.generateSymname
         compositeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Create composite type with domain field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", compositeName, " as (x ", domainName, ", y bool)"])
                 mempty
                 Decoders.noResult
             -- Extract and cast domain field to base type for decoding
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select ((42 :: ", domainName, ") :: int8)"])
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -133,17 +133,17 @@ spec = do
     describe "Domain type cast compatibility for array usage" do
       it "decodes array cast from domain array to base type array" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Decode base type array
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 "select ARRAY[1,2,3] :: int8[]"
                 mempty
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.listArray (Decoders.nonNullable Decoders.int8)))))
@@ -151,17 +151,17 @@ spec = do
 
       it "roundtrips array using base type codec" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as text"])
                 mempty
                 Decoders.noResult
             -- Test roundtrip using base type codec
             Session.statement (["a", "b", "c"] :: [Text])
-              $ Statement.preparable
+              $ Statement.statement
                 "select $1 :: text[]"
                 ( Encoders.param
                     ( Encoders.nonNullable
@@ -173,17 +173,17 @@ spec = do
 
       it "decodes base type array that can work with domain arrays via cast" \config -> do
         domainName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create domain type
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create domain ", domainName, " as int8"])
                 mempty
                 Decoders.noResult
             -- Demonstrate that base codec works for arrays
             Session.statement ([10, 20, 30] :: [Int64])
-              $ Statement.preparable
+              $ Statement.statement
                 "select $1 :: int8[]"
                 ( Encoders.param
                     ( Encoders.nonNullable

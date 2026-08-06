@@ -11,6 +11,8 @@ import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Statement qualified as Statement
 import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
+import Hasql.Engine.Structures.ExecutionContext (ExecutionContext (ExecutionContext))
+import Hasql.Engine.Structures.ExecutionContext qualified as ExecutionContext
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
@@ -68,12 +70,48 @@ script sql =
           )
 
 -- |
+-- Statistics of the connection's prepared statement cache.
+--
+-- Exposed as a session action rather than an operation on the connection so
+-- that it reads the state while the connection is already held, instead of
+-- blocking behind a running session.
+statementCacheStats :: Session StatementCache.StatementCacheStats
+statementCacheStats =
+  Session \connectionState ->
+    pure
+      ( Right (StatementCache.toStats (ConnectionState.statementCache connectionState)),
+        connectionState
+      )
+
+-- |
+-- Restore exact agreement with the server about which statements are prepared,
+-- when a client-side failure left that in doubt.
+--
+-- A no-op unless the cache was marked desynced, in which case it costs one
+-- roundtrip on a connection that is already in trouble.
+resyncStatementCache :: Session ()
+resyncStatementCache =
+  Session \connectionState ->
+    if StatementCache.isDesynced (ConnectionState.statementCache connectionState)
+      then do
+        result <-
+          Comms.Roundtrip.toSerialIO
+            (Comms.Roundtrip.query () "DEALLOCATE ALL")
+            (ConnectionState.connection connectionState)
+        pure case result of
+          Left err -> (Left (Errors.fromRoundtripError err), connectionState)
+          -- Only now, with the server-side set demonstrably empty, is it safe
+          -- to reuse remote key names.
+          Right () -> (Right (), ConnectionState.resetPreparedStatementsCache connectionState)
+      else pure (Right (), connectionState)
+
+-- |
 -- Execute a single statement by providing parameters to it,
 -- running it directly in serial mode.
 --
--- Each execution is a dedicated network roundtrip. The first execution of a
--- preparable statement costs an extra roundtrip (a separate @PARSE@), after
--- which steady-state execution is a single roundtrip.
+-- Each execution is a dedicated network roundtrip. The execution that first
+-- gets the statement prepared additionally carries the @PARSE@ and the
+-- deallocation of whatever it displaced, all in that same roundtrip.
 --
 -- To batch multiple statements into fewer roundtrips, use 'pipeline' instead.
 statement ::
@@ -82,8 +120,7 @@ statement ::
   Session result
 statement stmt params =
   Session \connectionState -> do
-    let usePreparedStatements = ConnectionState.preparedStatements connectionState
-        statementCache = ConnectionState.statementCache connectionState
+    let statementCache = ConnectionState.statementCache connectionState
         oidCache = ConnectionState.oidCache connectionState
         connection = ConnectionState.connection connectionState
         sql = Statement.sql stmt
@@ -105,16 +142,53 @@ statement stmt params =
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)
       Right newOidCache -> do
-        let decoder' = RequestingOid.toBase (Statement.decoder stmt) newOidCache
-            prepared = usePreparedStatements && Statement.isPrepared stmt
-            -- Single-statement context for error reporting:
-            -- total statements 1, index 0.
-            context = Just (1, 0, sql, Statement.printer stmt params, prepared)
+        let decoder = RequestingOid.toBase (Statement.decoder stmt) newOidCache
+
+            (oidList, encodedParams) = Statement.compileStatementData stmt newOidCache params
+
+            pqOidList = oidList
+
+            pqEncodedParams =
+              fmap (fmap (second (bool Pq.Binary Pq.Text))) encodedParams
+
+            localKey = StatementCache.localKey sql pqOidList
+
+            (decision, decidedCache) = StatementCache.decide localKey statementCache
+
+            -- Executed alone, so the statement is the only one of one.
+            context isPrepared localKey statementCache =
+              Just
+                ExecutionContext
+                  { statementIndex = 0,
+                    sql = sql,
+                    params = Statement.printer stmt params,
+                    isPrepared = isPrepared,
+                    localKey = localKey,
+                    statementCache = statementCache
+                  }
+
+            executePrepared cache remoteKey =
+              Comms.Roundtrip.queryPrepared
+                (context True (Just localKey) cache)
+                remoteKey
+                pqEncodedParams
+                Pq.Binary
+                decoder
+
+            executeUnprepared cache =
+              Comms.Roundtrip.queryParams
+                (context False Nothing cache)
+                sql
+                (Statement.inlineOids pqOidList pqEncodedParams)
+                Pq.Binary
+                decoder
+
             mapError = \case
               Comms.Roundtrip.ClientError _ details ->
                 Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
               Comms.Roundtrip.ServerError recvError ->
-                Errors.fromRecvError recvError
+                Errors.fromRecvError (fmap (fmap (ExecutionContext.toStatementLocation 1)) recvError)
+
             withState (result, newStatementCache) =
               ( first mapError result,
                 connectionState
@@ -122,61 +196,66 @@ statement stmt params =
                     ConnectionState.statementCache = newStatementCache
                   }
               )
-        fmap withState
-          $ if prepared
-            then do
-              let (oidList, valueAndFormatList) =
-                    Statement.compilePreparedStatementData stmt newOidCache params
-                  encodedParams =
-                    valueAndFormatList
-                      & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
-                  execute remoteKey =
-                    Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder')
-                      connection
-              case StatementCache.lookup sql oidList statementCache of
-                Just remoteKey -> do
-                  result <- execute remoteKey
-                  pure (result, statementCache)
-                Nothing -> do
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
-                  -- In non-pipeline mode PARSE and EXECUTE cannot be sent
-                  -- back-to-back, so prepare in a dedicated roundtrip first.
-                  prepareResult <-
-                    Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.prepare context remoteKey sql oidList)
-                      connection
-                  case prepareResult of
-                    -- PARSE failed: the statement is not on the server, so
-                    -- keep the old cache (no entry committed).
-                    Left err -> pure (Left err, statementCache)
-                    Right () -> do
-                      -- PARSE succeeded, so the statement is on the server
-                      -- under remoteKey regardless of whether EXECUTE then
-                      -- fails. Commit the cache so a later use hits it instead
-                      -- of re-issuing PARSE for an already-existing name.
-                      result <- execute remoteKey
-                      pure (result, newStatementCache)
-            else do
-              let encodedParams =
-                    Statement.compileUnpreparedStatementData stmt newOidCache params
-                      & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
-              result <-
-                Comms.Roundtrip.toSerialIO
-                  (Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder')
-                  connection
-              pure (result, statementCache)
+
+            -- Both conditions we recover from are raised before the statement
+            -- does anything, so retrying is semantically safe. The retry goes
+            -- through the unprepared path, which is structurally immune to a
+            -- stale cached plan and spends no PARSE on a statement whose plan
+            -- just proved unstable. Inside an open transaction block, though,
+            -- any error has already poisoned it, so a retry is guaranteed to
+            -- fail with 25P02.
+            recover isPipelined okCache failure = do
+              let repaired = ExecutionContext.recoverStatementCache isPipelined okCache failure
+              case Errors.toSqlState failure of
+                Just sqlState | sqlState == "0A000" || sqlState == "26000" -> do
+                  transactionStatus <- Pq.transactionStatus connection
+                  if transactionStatus == Pq.TransIdle
+                    then do
+                      retryResult <- Comms.Roundtrip.toSerialIO (executeUnprepared repaired) connection
+                      pure (retryResult, repaired)
+                    else pure (Left failure, repaired)
+                _ -> pure (Left failure, repaired)
+
+        fmap withState case decision of
+          StatementCache.HitDecision remoteKey -> do
+            result <- Comms.Roundtrip.toSerialIO (executePrepared decidedCache remoteKey) connection
+            case result of
+              Right _ -> pure (result, decidedCache)
+              Left failure -> recover False decidedCache failure
+          StatementCache.MissDecision -> do
+            -- Nothing here depends on the cache, so nothing here can be
+            -- invalidated by it.
+            result <- Comms.Roundtrip.toSerialIO (executeUnprepared decidedCache) connection
+            pure (result, decidedCache)
+          StatementCache.AdmitDecision remoteKey victim -> do
+            -- Pipeline mode, because libpq forbids sending PARSE and EXECUTE
+            -- back to back outside of it. That makes the admission cost one
+            -- roundtrip where a serial first-prepare would cost two.
+            let roundtrip =
+                  maybe
+                    (pure ())
+                    (Comms.Roundtrip.deallocate (context True (Just localKey) statementCache))
+                    victim
+                    *> Comms.Roundtrip.prepare
+                      (context True (Just localKey) (StatementCache.withdraw localKey decidedCache))
+                      remoteKey
+                      sql
+                      pqOidList
+                    *> executePrepared decidedCache remoteKey
+            result <- Comms.Roundtrip.toPipelineIO roundtrip Nothing connection
+            case result of
+              Right _ -> pure (result, decidedCache)
+              Left failure -> recover True decidedCache failure
 
 -- |
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
 pipeline pipeline = Session \connectionState -> do
-  let usePreparedStatements = ConnectionState.preparedStatements connectionState
-      statementCache = ConnectionState.statementCache connectionState
+  let statementCache = ConnectionState.statementCache connectionState
       oidCache = ConnectionState.oidCache connectionState
       pqConnection = ConnectionState.connection connectionState
    in do
-        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline usePreparedStatements pqConnection oidCache statementCache
+        (result, newOidCache, newStatementCache) <- Pipeline.run pipeline pqConnection oidCache statementCache
         let newConnectionState =
               connectionState
                 { ConnectionState.oidCache = newOidCache,

@@ -15,9 +15,9 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "INET Decoders" do
     it "decodes IPv4 address" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '192.168.1.1/32'::inet"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.inet)))
@@ -27,9 +27,9 @@ spec = do
         result `shouldBe` Right (IP.IPv4Range expectedRange)
 
     it "decodes IPv4 CIDR" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '10.0.0.0/8'::inet"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.inet)))
@@ -39,9 +39,9 @@ spec = do
         result `shouldBe` Right (IP.IPv4Range expectedRange)
 
     it "decodes IPv6 address" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '::1/128'::inet"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.inet)))
@@ -52,9 +52,9 @@ spec = do
 
   describe "MACADDR Decoders" do
     it "decodes MAC address" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select '08:00:2b:01:02:03'::macaddr"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.macaddr)))
@@ -62,9 +62,9 @@ spec = do
         result `shouldBe` Right (0x08, 0x00, 0x2b, 0x01, 0x02, 0x03)
 
     it "decodes another MAC address format" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let statement =
-              Statement.preparable
+              Statement.statement
                 "select 'ff:ff:ff:ff:ff:ff'::macaddr"
                 Encoders.noParams
                 (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.macaddr)))

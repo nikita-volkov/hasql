@@ -308,6 +308,21 @@ data CellError
       Text
   deriving stock (Show, Eq)
 
+-- |
+-- SQLSTATE the server reported, when the failure came from the server at all.
+--
+-- Lets the driver recognise the conditions it is expected to recover from
+-- (a stale cached plan, a vanished prepared statement) without decoding the
+-- error into its public form first.
+toSqlState :: Hasql.Comms.Roundtrip.Error context -> Maybe ByteString
+toSqlState = \case
+  Hasql.Comms.Roundtrip.ClientError _context _details -> Nothing
+  Hasql.Comms.Roundtrip.ServerError recvError -> case recvError of
+    Hasql.Comms.Recv.ResultError _location _resultOffset resultError -> case resultError of
+      Hasql.Comms.ResultDecoder.ServerError code _message _detail _hint _position -> Just code
+      _ -> Nothing
+    _ -> Nothing
+
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error context -> SessionError
 fromRoundtripError = \case
   Hasql.Comms.Roundtrip.ClientError _context details ->

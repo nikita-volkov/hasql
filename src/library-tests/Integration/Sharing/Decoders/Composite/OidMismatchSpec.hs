@@ -15,17 +15,17 @@ spec = do
     describe "Decoder field type mismatch" do
       it "detects when decoder expects int4 but actual field is int8" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8)"])
                 mempty
                 Decoders.noResult
             -- Try to decode with int4 decoder
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -52,17 +52,17 @@ spec = do
 
       it "detects when decoder expects int8 but actual field is int4" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type with int4 field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int4)"])
                 mempty
                 Decoders.noResult
             -- Try to decode with int8 decoder
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -89,17 +89,17 @@ spec = do
 
       it "detects when decoder expects text but actual field is int8" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type with int8 field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (x int8)"])
                 mempty
                 Decoders.noResult
             -- Try to decode with text decoder
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(42) :: ", typeName])
                 mempty
                 ( Decoders.singleRow
@@ -127,17 +127,17 @@ spec = do
     describe "Multiple fields with mismatches" do
       it "detects mismatch in second field" \config -> do
         typeName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           result <- Connection.use connection do
             -- Create composite type with int8, int4 fields
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["create type ", typeName, " as (a int8, b int4)"])
                 mempty
                 Decoders.noResult
             -- Try to decode with correct first field but wrong second field
             Session.statement ()
-              $ Statement.preparable
+              $ Statement.statement
                 (mconcat ["select row(1, 2) :: ", typeName])
                 mempty
                 ( Decoders.singleRow

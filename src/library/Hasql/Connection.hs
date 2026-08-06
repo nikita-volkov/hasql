@@ -78,8 +78,10 @@ acquire adapter settings =
 
     let connectionState =
           ConnectionState.ConnectionState
-            { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
-              ConnectionState.statementCache = StatementCache.empty,
+            { ConnectionState.statementCache =
+                StatementCache.empty
+                  (Config.statementCacheSize config)
+                  (Config.prepareThreshold config),
               ConnectionState.oidCache = mempty,
               ConnectionState.connection = pqConnection
             }
@@ -132,7 +134,9 @@ use :: Connection -> Session.Session a -> IO (Either SessionError a)
 use (Connection var) session =
   mask \restore -> do
     connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
-    result <- try @SomeException (restore (Session.run session connectionState))
+    -- Any doubt about which statements the server still holds is settled
+    -- before the user's session gets to rely on the cache.
+    result <- try @SomeException (restore (Session.run (Session.resyncStatementCache *> session) connectionState))
     case result of
       Left exception -> do
         -- If an exception happened, we need to bring the connection back to idle

@@ -16,17 +16,17 @@ spec = do
   describe "Unknown Type Encoders" do
     it "handles unknown type encoding" \config -> do
       name <- Scripts.generateSymname
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         result <- Connection.use connection do
           -- First create the enum type
           Session.statement ()
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["create type ", name, " as enum ('sad', 'ok', 'happy')"])
               mempty
               Decoders.noResult
           -- Then test encoding
           Session.statement "ok"
-            $ Statement.preparable
+            $ Statement.statement
               (mconcat ["select $1 = ('ok' :: ", name, ")"])
               (Encoders.param (Encoders.nonNullable Encoders.unknown))
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.bool)))

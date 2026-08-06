@@ -15,13 +15,14 @@ import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
 import Hasql.Engine.Statement qualified as Statement
+import Hasql.Engine.Structures.ExecutionContext (ExecutionContext (ExecutionContext))
+import Hasql.Engine.Structures.ExecutionContext qualified as ExecutionContext
 import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
 
 run ::
   Pipeline a ->
-  Bool ->
   Pq.Connection ->
   OidCache.OidCache ->
   StatementCache.StatementCache ->
@@ -30,7 +31,7 @@ run ::
       OidCache.OidCache,
       StatementCache.StatementCache
     )
-run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements connection oidCache statementCache = do
+run (Pipeline totalStatements unknownTypes runPipeline) connection oidCache statementCache = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
   resolvedOidCache <-
     if HashSet.null missingTypes
@@ -50,7 +51,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
     Left err -> pure (Left err, oidCache, statementCache)
     Right newOidCache -> do
       let (roundtrip, newStatementCache) =
-            runPipeline 0 usePreparedStatements newOidCache statementCache
+            runPipeline 0 newOidCache statementCache
           contextualRoundtrip = first Just roundtrip
 
       executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
@@ -61,17 +62,17 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
                   Comms.Roundtrip.ClientError _context details ->
                     Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
                   Comms.Roundtrip.ServerError recvError ->
-                    Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
+                    Errors.fromRecvError (fmap (fmap (ExecutionContext.toStatementLocation totalStatements)) recvError)
               )
               executionResult
           finalStatementCache =
             case executionResult of
               Right _ -> newStatementCache
+              -- A pipeline never retries: the statements preceding the failure
+              -- have already executed, and re-running the batch would double
+              -- their effects. Only the cache is brought back in line.
               Left executionError ->
-                maybe
-                  statementCache
-                  (\(Context _ _ _ _ statementCache) -> statementCache)
-                  (extract executionError)
+                ExecutionContext.recoverStatementCache True statementCache executionError
 
       pure (result, newOidCache, finalStatementCache)
 
@@ -150,8 +151,6 @@ data Pipeline a
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).
       --
-      -- The boolean parameter indicates whether preparable statements should be prepared.
-      --
       -- OidCache is provided in which the names of types used in this pipeline are already resolved.
       --
       -- The function takes the current statement cache and returns a tuple of:
@@ -161,43 +160,28 @@ data Pipeline a
       -- The resulting cache is optimistic: on failure we recover the last known
       -- committed cache from statement contexts carried by roundtrip errors.
       ( Int ->
-        Bool ->
         OidCache.OidCache ->
         StatementCache.StatementCache ->
-        (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
+        (Comms.Roundtrip.Roundtrip ExecutionContext a, StatementCache.StatementCache)
       )
-
-data Context
-  = Context
-      -- | Offset of the statement in the pipeline (0-based).
-      Int
-      -- | SQL.
-      ByteString
-      -- | Parameters in a human-readable form.
-      [Text]
-      -- | Whether the statement is prepared.
-      Bool
-      -- | The so far successfully updated statement cache.
-      StatementCache.StatementCache
-  deriving stock (Show, Eq)
 
 -- * Instances
 
 instance Functor Pipeline where
-  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset usePreparedStatements oidCache cache ->
-    let (roundtrip, newStatementCache) = run offset usePreparedStatements oidCache cache
+  fmap f (Pipeline count unknownTypes run) = Pipeline count unknownTypes \offset oidCache cache ->
+    let (roundtrip, newStatementCache) = run offset oidCache cache
      in (fmap f roundtrip, newStatementCache)
 
 instance Applicative Pipeline where
   pure a =
-    Pipeline 0 mempty (\_ _ _ cache -> (pure a, cache))
+    Pipeline 0 mempty (\_ _ cache -> (pure a, cache))
 
   Pipeline lCount leftUnknownTypes lRun <*> Pipeline rCount rightUnknownTypes rRun =
     let unknownTypes = leftUnknownTypes <> rightUnknownTypes
-     in Pipeline (lCount + rCount) unknownTypes \offset usePreparedStatements oidCache statementCache ->
-          let (lRoundtrip, statementCache1) = lRun offset usePreparedStatements oidCache statementCache
+     in Pipeline (lCount + rCount) unknownTypes \offset oidCache statementCache ->
+          let (lRoundtrip, statementCache1) = lRun offset oidCache statementCache
               offset1 = offset + lCount
-              (rRoundtrip, statementCache2) = rRun offset1 usePreparedStatements oidCache statementCache1
+              (rRoundtrip, statementCache2) = rRun offset1 oidCache statementCache1
            in (lRoundtrip <*> rRoundtrip, statementCache2)
 
 -- * Construction
@@ -212,54 +196,64 @@ statement stmt params =
   Pipeline 1 (Statement.unknownTypes stmt) run
   where
     sql = Statement.sql stmt
-    run offset usePreparedStatements oidCache =
-      if prepare
-        then runPrepared
-        else runUnprepared
+
+    run offset oidCache statementCache =
+      case decision of
+        StatementCache.HitDecision remoteKey ->
+          (executePrepared preparedContext remoteKey, newStatementCache)
+        StatementCache.MissDecision ->
+          ( Comms.Roundtrip.queryParams
+              (context False Nothing newStatementCache)
+              sql
+              (Statement.inlineOids pqOidList pqEncodedParams)
+              Pq.Binary
+              decoder,
+            newStatementCache
+          )
+        StatementCache.AdmitDecision remoteKey victim ->
+          -- The deallocation, the parse and the execution go into the
+          -- pipeline in that order, and each carries the cache as it stands
+          -- if it is the one to fail. Mid-pipeline eviction needs no special
+          -- handling beyond that: a statement evicted at one position and
+          -- used again at a later one simply misses and is re-parsed under a
+          -- new key.
+          ( maybe
+              (pure ())
+              (Comms.Roundtrip.deallocate (context True (Just localKey) statementCache))
+              victim
+              *> Comms.Roundtrip.prepare
+                (context True (Just localKey) (StatementCache.withdraw localKey newStatementCache))
+                remoteKey
+                sql
+                pqOidList
+              *> executePrepared preparedContext remoteKey,
+            newStatementCache
+          )
       where
-        (oidList, valueAndFormatList) =
-          Statement.compilePreparedStatementData stmt oidCache params
+        (oidList, encodedParams) = Statement.compileStatementData stmt oidCache params
 
-        prepare =
-          usePreparedStatements && Statement.isPrepared stmt
+        pqOidList = oidList
 
-        context soFarStatementCache =
-          Context
-            offset
-            sql
-            (Statement.printer stmt params)
-            prepare
-            soFarStatementCache
+        pqEncodedParams =
+          fmap (fmap (second (bool Pq.Binary Pq.Text))) encodedParams
 
-        runPrepared statementCache =
-          (roundtrip, newStatementCache)
-          where
-            (isNew, remoteKey, newStatementCache) =
-              case StatementCache.lookup sql oidList statementCache of
-                Just remoteKey -> (False, remoteKey, statementCache)
-                Nothing ->
-                  let (remoteKey, newStatementCache) = StatementCache.insert sql oidList statementCache
-                   in (True, remoteKey, newStatementCache)
+        localKey = StatementCache.localKey sql pqOidList
 
-            roundtrip =
-              when
-                isNew
-                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql oidList)
-                *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pq.Binary decoder'
-              where
-                encodedParams =
-                  valueAndFormatList
-                    & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
+        (decision, newStatementCache) = StatementCache.decide localKey statementCache
 
-        runUnprepared statementCache =
-          (roundtrip, statementCache)
-          where
-            roundtrip =
-              Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
-              where
-                encodedParams =
-                  Statement.compileUnpreparedStatementData stmt oidCache params
-                    & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
+        preparedContext = context True (Just localKey) newStatementCache
 
-        decoder' =
-          RequestingOid.toBase (Statement.decoder stmt) oidCache
+        context isPrepared localKey statementCache =
+          ExecutionContext
+            { statementIndex = offset,
+              sql = sql,
+              params = Statement.printer stmt params,
+              isPrepared = isPrepared,
+              localKey = localKey,
+              statementCache = statementCache
+            }
+
+        executePrepared context remoteKey =
+          Comms.Roundtrip.queryPrepared context remoteKey pqEncodedParams Pq.Binary decoder
+
+        decoder = RequestingOid.toBase (Statement.decoder stmt) oidCache

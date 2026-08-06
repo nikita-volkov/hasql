@@ -19,14 +19,14 @@ spec = do
   describe "Statement Functionality" do
     describe "Prepared statements" do
       it "allows reuse of the same prepared statement on different types" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement1 =
-                Statement.preparable
+                Statement.statement
                   "select $1"
                   (Encoders.param (Encoders.nonNullable Encoders.text))
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
           let statement2 =
-                Statement.preparable
+                Statement.statement
                   "select $1"
                   (Encoders.param (Encoders.nonNullable Encoders.int8))
                   (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
@@ -41,11 +41,11 @@ spec = do
     describe "Row counting" do
       it "counts affected rows correctly" \config -> do
         tableName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.preparable ("drop table if exists " <> tableName) mempty Decoders.noResult
-          let createTable = Statement.preparable ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
-          let insertRow = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('a')") mempty Decoders.noResult
-          let deleteRows = Statement.unpreparable ("delete from " <> tableName) mempty Decoders.rowsAffected
+        Scripts.onPreparingConnection config \connection -> do
+          let dropTable = Statement.statement ("drop table if exists " <> tableName) mempty Decoders.noResult
+          let createTable = Statement.statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
+          let insertRow = Statement.statement ("insert into " <> tableName <> " (name) values ('a')") mempty Decoders.noResult
+          let deleteRows = Statement.statement ("delete from " <> tableName) mempty Decoders.rowsAffected
 
           result <-
             Connection.use connection do
@@ -60,11 +60,11 @@ spec = do
     describe "Auto-incremented columns" do
       it "returns auto-incremented column results" \config -> do
         tableName <- Scripts.generateSymname
-        Scripts.onPreparableConnection config \connection -> do
-          let dropTable = Statement.preparable ("drop table if exists " <> tableName) mempty Decoders.noResult
-          let createTable = Statement.preparable ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
-          let insertRow = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('a') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
-          let insertRow2 = Statement.unpreparable ("insert into " <> tableName <> " (name) values ('b') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+        Scripts.onPreparingConnection config \connection -> do
+          let dropTable = Statement.statement ("drop table if exists " <> tableName) mempty Decoders.noResult
+          let createTable = Statement.statement ("create table " <> tableName <> " (id bigserial not null, name varchar not null, primary key (id))") mempty Decoders.noResult
+          let insertRow = Statement.statement ("insert into " <> tableName <> " (name) values ('a') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+          let insertRow2 = Statement.statement ("insert into " <> tableName <> " (name) values ('b') returning id") mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
 
           result <-
             Connection.use connection do
@@ -78,9 +78,9 @@ spec = do
 
     describe "List decoding" do
       it "decodes lists correctly" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "values (1 :: int8, 2 :: int8), (3,4), (5,6)"
                   mempty
                   (Decoders.rowList ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
@@ -89,9 +89,9 @@ spec = do
 
     describe "IN simulation" do
       it "works with arrays" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "select true where 1 = any ($1)"
                   (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                   (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
@@ -103,9 +103,9 @@ spec = do
 
     describe "NOT IN simulation" do
       it "works with arrays" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           let statement =
-                Statement.preparable
+                Statement.statement
                   "select true where 3 <> all ($1)"
                   (Encoders.param (Encoders.nonNullable (Encoders.array (Encoders.dimension foldl' (Encoders.element (Encoders.nonNullable Encoders.int8))))))
                   (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
@@ -117,13 +117,13 @@ spec = do
 
     describe "Preparation" do
       it "Do get prepared when configuration allows" \config -> do
-        Scripts.onPreparableConnection config \connection -> do
+        Scripts.onPreparingConnection config \connection -> do
           -- Execute a preparable statement
           result <-
             Connection.use connection do
               Session.statement
                 ()
-                ( Statement.preparable
+                ( Statement.statement
                     "select 1 + 1"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -140,13 +140,13 @@ spec = do
             Left _ -> False
 
       it "Do not get prepared when configuration forbids it" \config -> do
-        Scripts.onUnpreparableConnection config \connection -> do
+        Scripts.onNonPreparingConnection config \connection -> do
           -- Execute a statement marked as preparable
           result <-
             Connection.use connection do
               Session.statement
                 ()
-                ( Statement.preparable
+                ( Statement.statement
                     "select 2 + 2"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -163,12 +163,12 @@ spec = do
     describe "Cache resilience after a failing prepared statement" do
       describe "Session" do
         it "Failing statements don't cause misses in updates of the prepared statement cache" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             -- Run an intentionally failing prepared statement to set the condition of the bug.
             result <- Connection.use connection do
               Session.statement
                 ()
-                ( Statement.preparable
+                ( Statement.statement
                     "select null"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -178,7 +178,7 @@ spec = do
             result <- Connection.use connection do
               Session.statement
                 ()
-                ( Statement.preparable
+                ( Statement.statement
                     "select 1"
                     mempty
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -191,9 +191,9 @@ spec = do
                 expectationFailure ("Unexpected error: " <> show result)
 
         it "Syntax errors in prepared statements don't corrupt the cache for subsequent uses of the same statement" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             let brokenStatement =
-                  Statement.preparable
+                  Statement.statement
                     "S"
                     mempty
                     Decoders.noResult
@@ -215,13 +215,13 @@ spec = do
 
       describe "Pipeline" do
         it "Failing pipeline statements don't cause misses in updates of the prepared statement cache" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             -- Run an intentionally failing prepared statement in a pipeline to set the condition of the bug.
             result <- Connection.use connection do
               Session.pipeline do
                 Pipeline.statement
                   ()
-                  ( Statement.preparable
+                  ( Statement.statement
                       "select null :: int4"
                       mempty
                       (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -237,7 +237,7 @@ spec = do
               Session.pipeline do
                 Pipeline.statement
                   ()
-                  ( Statement.preparable
+                  ( Statement.statement
                       "select 1"
                       mempty
                       (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
@@ -250,9 +250,9 @@ spec = do
                 expectationFailure ("Unexpected error: " <> show result)
 
         it "Syntax errors in pipeline prepared statements don't corrupt the cache for subsequent uses of the same statement" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
+          Scripts.onPreparingConnection config \connection -> do
             let brokenStatement =
-                  Statement.preparable
+                  Statement.statement
                     "S"
                     mempty
                     Decoders.noResult
@@ -273,9 +273,9 @@ spec = do
                 expectationFailure "Second run unexpectedly succeeded"
 
         it "A pipeline with a broken statement first and a valid one after it can be retried with the same syntax error" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
-            let broken = Statement.preparable "S" mempty Decoders.noResult
-                ok = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+          Scripts.onPreparingConnection config \connection -> do
+            let broken = Statement.statement "S" mempty Decoders.noResult
+                ok = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
             result1 <- Connection.use connection do
               Session.pipeline do
                 (,)
@@ -296,9 +296,9 @@ spec = do
             shouldBe error2 error1
 
         it "A valid statement after a broken pipeline statement still prepares in a later pipeline" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
-            let broken = Statement.preparable "S" mempty Decoders.noResult
-                trailing = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+          Scripts.onPreparingConnection config \connection -> do
+            let broken = Statement.statement "S" mempty Decoders.noResult
+                trailing = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
             result1 <- Connection.use connection do
               Session.pipeline do
                 (,)
@@ -314,10 +314,10 @@ spec = do
               Left err -> expectationFailure ("Unexpected error on follow-up pipeline: " <> show err)
 
         it "A pipeline with successful statements followed by a broken one can be retried without 'already exists' errors" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
-            let ok1 = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                ok2 = Statement.preparable "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                broken = Statement.preparable "S" mempty Decoders.noResult
+          Scripts.onPreparingConnection config \connection -> do
+            let ok1 = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                ok2 = Statement.statement "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                broken = Statement.statement "S" mempty Decoders.noResult
             -- First run: pipeline with two OK statements and a broken one at the end.
             result1 <- Connection.use connection do
               Session.pipeline do
@@ -350,10 +350,10 @@ spec = do
               Left err -> expectationFailure ("Unexpected error on standalone statement: " <> show err)
 
         it "A pipeline with a broken statement in the middle can be retried without 'already exists' errors" \config -> do
-          Scripts.onPreparableConnection config \connection -> do
-            let ok1 = Statement.preparable "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-                broken = Statement.preparable "S" mempty Decoders.noResult
-                ok2 = Statement.preparable "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+          Scripts.onPreparingConnection config \connection -> do
+            let ok1 = Statement.statement "select 1" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+                broken = Statement.statement "S" mempty Decoders.noResult
+                ok2 = Statement.statement "select 2" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
             -- First run: pipeline with broken statement in the middle.
             result1 <- Connection.use connection do
               Session.pipeline do
@@ -401,10 +401,10 @@ decoderCompatibilityCacheByExecutor ::
 decoderCompatibilityCacheByExecutor executorName executor = do
   describe (toList executorName) do
     it "does not hide decoder mismatches from a previously verified statement" \config -> do
-      Scripts.onPreparableConnection config \connection -> do
+      Scripts.onPreparingConnection config \connection -> do
         let sql = "select 1::int8, 'text'::text"
             correctStatement =
-              Statement.preparable
+              Statement.statement
                 sql
                 mempty
                 ( Decoders.singleRow
@@ -414,7 +414,7 @@ decoderCompatibilityCacheByExecutor executorName executor = do
                     )
                 )
             mismatchingStatement =
-              Statement.preparable
+              Statement.statement
                 sql
                 mempty
                 ( Decoders.singleRow

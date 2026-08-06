@@ -11,14 +11,14 @@ import Test.Hspec
 spec :: SpecWith Scripts.ScopeParams
 spec = do
   it "returns ServerSessionError on syntax errors" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
       case result of
         Left (Errors.ScriptSessionError _ _) -> pure ()
         _ -> expectationFailure $ "Expected ScriptSessionError with ExecutionScriptError, got: " <> show result
 
   it "handles multi-statement DDL scripts with comments" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
+    Scripts.onPreparingConnection config \connection -> do
       tableName <- Scripts.generateSymname
       let sql =
             (mconcat . map (<> "\n"))
