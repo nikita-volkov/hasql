@@ -1,3 +1,7 @@
+# v2.0.0.2
+
+Work around the bugs in Cabal/Haddock that cause missing documentation for two-hop reexported internal modules.
+
 # v2.0.0.1
 
 Support for `pqi-1.1`.
