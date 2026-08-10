@@ -15,10 +15,10 @@ import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
--- | Violates the Hasql.Codecs.* dependency rule (depends on connection-state); tracked in #316.
-import Hasql.ConnectionState.OidCache qualified as CodecsCore.OidCache
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
+-- Violates the Hasql.Codecs.* dependency rule (depends on connection-state); tracked in #316.
+import Hasql.ConnectionState.OidCache qualified as CodecsCore.OidCache
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
