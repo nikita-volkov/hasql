@@ -13,10 +13,10 @@ import Data.Text.Encoding qualified as TextEncoding
 import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
-import Hasql.CodecVocab qualified as CodecVocab
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
-import Hasql.CodecVocab.TypeRef qualified as CodecVocab.TypeRef
-import Hasql.CodecVocab.TypeShape (TypeShape (..))
+import Hasql.CodecsVocab qualified as CodecsVocab
+import Hasql.CodecsVocab.TypeInfo qualified as CodecsVocab.TypeInfo
+import Hasql.CodecsVocab.TypeRef qualified as CodecsVocab.TypeRef
+import Hasql.CodecsVocab.TypeShape (TypeShape (..))
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
@@ -52,13 +52,13 @@ data Statement params result
     -- Produced once at construction from the Params DList and reused across executions.
     columnsMetadata :: Vector TypeShape,
     -- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
-    serializer :: (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) -> params -> [Maybe ByteString],
+    serializer :: (CodecsVocab.QualifiedTypeName -> CodecsVocab.TypeInfo) -> params -> [Maybe ByteString],
     -- | Render params in human-readable form (for error reporting).
     printer :: params -> [Text],
     -- | Union of encoder and decoder unknown types, resolved once at construction.
-    unknownTypes :: HashSet CodecVocab.QualifiedTypeName,
+    unknownTypes :: HashSet CodecsVocab.QualifiedTypeName,
     -- | Result decoder, given a resolver of type names to their OIDs.
-    decoder :: (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) -> ResultDecoder.ResultDecoder result,
+    decoder :: (CodecsVocab.QualifiedTypeName -> CodecsVocab.TypeInfo) -> ResultDecoder.ResultDecoder result,
     -- | Whether this statement may be prepared on the server.
     isPrepared :: Bool
   }
@@ -148,7 +148,7 @@ toSql stmt = decodeUtf8Lenient (sql stmt)
 -- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
 compilePreparedStatementData ::
   Statement params result ->
-  (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) ->
+  (CodecsVocab.QualifiedTypeName -> CodecsVocab.TypeInfo) ->
   params ->
   ([Word32], [Maybe (ByteString, Bool)])
 compilePreparedStatementData stmt resolve params =
@@ -161,7 +161,7 @@ compilePreparedStatementData stmt resolve params =
 -- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
 compileUnpreparedStatementData ::
   Statement params result ->
-  (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) ->
+  (CodecsVocab.QualifiedTypeName -> CodecsVocab.TypeInfo) ->
   params ->
   [Maybe (Word32, ByteString, Bool)]
 compileUnpreparedStatementData stmt resolve params =
@@ -171,7 +171,7 @@ compileUnpreparedStatementData stmt resolve params =
     (serializer stmt resolve params)
 
 -- | Resolve a param's wire OID given the dictionary of resolved type names.
-resolveOid :: (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) -> CodecVocab.TypeRef.TypeRef -> Word -> Word32
-resolveOid resolve (CodecVocab.TypeRef.NamedType name) dim =
-  (if dim == 0 then CodecVocab.TypeInfo.toBaseOid else CodecVocab.TypeInfo.toArrayOid) (resolve name)
-resolveOid _ (CodecVocab.TypeRef.KnownOid oid) _ = oid
+resolveOid :: (CodecsVocab.QualifiedTypeName -> CodecsVocab.TypeInfo) -> CodecsVocab.TypeRef.TypeRef -> Word -> Word32
+resolveOid resolve (CodecsVocab.TypeRef.NamedType name) dim =
+  (if dim == 0 then CodecsVocab.TypeInfo.toBaseOid else CodecsVocab.TypeInfo.toArrayOid) (resolve name)
+resolveOid _ (CodecsVocab.TypeRef.KnownOid oid) _ = oid

@@ -7,9 +7,9 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecVocab qualified as CodecVocab
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Hasql.CodecsVocab qualified as CodecsVocab
+import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
+import Hasql.CodecsVocab.TypeInfo qualified as CodecsVocab.TypeInfo
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified
@@ -21,12 +21,12 @@ import Pqi qualified as Pq
 
 newtype SelectTypeInfo = SelectTypeInfo
   { -- | Set of (schema name, type name) pairs to look up.
-    keys :: HashSet CodecVocab.QualifiedTypeName
+    keys :: HashSet CodecsVocab.QualifiedTypeName
   }
 
 -- | Result maps (schema name, type name) pairs to TypeInfo (scalar OID, array OID).
 type SelectTypeInfoResult =
-  HashMap CodecVocab.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo
+  HashMap CodecsVocab.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo
 
 run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
@@ -78,7 +78,7 @@ roundtrip params =
 -- Text OID is 25; text-array OID is 1009.
 encodeParams :: SelectTypeInfo -> [Maybe (Word32, ByteString, Pq.Format)]
 encodeParams (SelectTypeInfo keys) =
-  let (schemaNames, typeNames) = unzip (fmap CodecVocab.QualifiedTypeName.toNameTuple (HashSet.toList keys))
+  let (schemaNames, typeNames) = unzip (fmap CodecsVocab.QualifiedTypeName.toNameTuple (HashSet.toList keys))
       schemaArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (encodeMaybeText schemaNames)))
       typeArray = Binary.encodingBytes (Binary.array 25 (encodeTextArray (fmap (Binary.encodingArray . Binary.text_strict) typeNames)))
    in [ Just (1009, schemaArray, Pq.Binary),
@@ -97,7 +97,7 @@ decoder =
   Hasql.Comms.ResultDecoder.foldl step HashMap.empty rowDecoder
   where
     step acc (schemaName, typeName, typeOid, arrayOid) =
-      HashMap.insert (CodecVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) (CodecVocab.TypeInfo.TypeInfo typeOid arrayOid) acc
+      HashMap.insert (CodecsVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName) (CodecsVocab.TypeInfo.TypeInfo typeOid arrayOid) acc
 
 -- | These four columns have permanently fixed, well-known Postgres OIDs
 -- (text = 25, int4 = 23), so they're decoded directly against

@@ -2,7 +2,7 @@ module Hasql.Engine.Contexts.Session where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
@@ -99,7 +99,7 @@ statement stmt params =
               let foundTypes = HashMap.keysSet oidCacheUpdates
                   notFoundTypes = HashSet.difference missingTypes foundTypes
                in if not (HashSet.null notFoundTypes)
-                    then Left (Errors.MissingTypesSessionError (HashSet.map CodecVocab.QualifiedTypeName.toNameTuple notFoundTypes))
+                    then Left (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes))
                     else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)

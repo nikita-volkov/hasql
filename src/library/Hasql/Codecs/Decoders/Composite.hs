@@ -2,8 +2,8 @@ module Hasql.Codecs.Decoders.Composite where
 
 import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Decoders.Value qualified as Value
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
+import Hasql.CodecsVocab.TypeInfo qualified as CodecsVocab.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary
@@ -11,12 +11,12 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- |
 -- Composable decoder of composite values (rows, records).
 newtype Composite a
-  = Composite (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Composite a))
+  = Composite (ToBeResolved.ToBeResolved CodecsVocab.QualifiedTypeName.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo (Binary.Composite a))
   deriving
     (Functor, Applicative)
-    via (Compose (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo) Binary.Composite)
+    via (Compose (ToBeResolved.ToBeResolved CodecsVocab.QualifiedTypeName.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo) Binary.Composite)
 
-toValueDecoder :: Composite a -> ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Value a)
+toValueDecoder :: Composite a -> ToBeResolved.ToBeResolved CodecsVocab.QualifiedTypeName.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo (Binary.Value a)
 toValueDecoder (Composite imp) =
   fmap Binary.composite imp
 
@@ -32,8 +32,8 @@ field = \case
             Composite (fmap (Binary.typedValueComposite oid) (Value.toDecoder imp))
           Nothing ->
             Composite
-              ( (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then CodecVocab.TypeInfo.toBaseOid typeInfo else CodecVocab.TypeInfo.toArrayOid typeInfo) decoder)
-                  <$> ToBeResolved.lookup (CodecVocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+              ( (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then CodecsVocab.TypeInfo.toBaseOid typeInfo else CodecsVocab.TypeInfo.toArrayOid typeInfo) decoder)
+                  <$> ToBeResolved.lookup (CodecsVocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
                   <*> Value.toDecoder imp
               )
   NullableOrNot.Nullable imp ->
@@ -44,7 +44,7 @@ field = \case
             Composite (fmap (Binary.typedNullableValueComposite oid) (Value.toDecoder imp))
           Nothing ->
             Composite
-              ( (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then CodecVocab.TypeInfo.toBaseOid typeInfo else CodecVocab.TypeInfo.toArrayOid typeInfo) decoder)
-                  <$> ToBeResolved.lookup (CodecVocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+              ( (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then CodecsVocab.TypeInfo.toBaseOid typeInfo else CodecsVocab.TypeInfo.toArrayOid typeInfo) decoder)
+                  <$> ToBeResolved.lookup (CodecsVocab.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
                   <*> Value.toDecoder imp
               )

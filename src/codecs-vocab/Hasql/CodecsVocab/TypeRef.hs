@@ -1,9 +1,9 @@
-module Hasql.CodecVocab.TypeRef
+module Hasql.CodecsVocab.TypeRef
   ( TypeRef (..),
   )
 where
 
-import Hasql.CodecVocab.QualifiedTypeName (QualifiedTypeName)
+import Hasql.CodecsVocab.QualifiedTypeName (QualifiedTypeName)
 import Hasql.Platform.Prelude
 
 -- |
