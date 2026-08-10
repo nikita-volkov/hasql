@@ -7,8 +7,8 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecVocab qualified as CodecVocab
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import CodecVocab qualified as CodecVocab
+import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache

@@ -211,11 +211,11 @@ library codec-vocab
   import: base
   hs-source-dirs: src/codec-vocab
   exposed-modules:
-    Hasql.CodecVocab
-    Hasql.CodecVocab.QualifiedTypeName
-    Hasql.CodecVocab.TypeInfo
-    Hasql.CodecVocab.TypeRef
-    Hasql.CodecVocab.TypeShape
+    CodecVocab
+    CodecVocab.QualifiedTypeName
+    CodecVocab.TypeInfo
+    CodecVocab.TypeRef
+    CodecVocab.TypeShape
 
   build-depends:
     hasql:platform

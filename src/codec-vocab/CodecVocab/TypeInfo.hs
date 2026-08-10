@@ -1,4 +1,4 @@
-module Hasql.CodecVocab.TypeInfo where
+module CodecVocab.TypeInfo where
 
 import Hasql.Platform.Prelude hiding (bool)
 

@@ -7,9 +7,9 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecVocab qualified as CodecVocab
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import CodecVocab qualified as CodecVocab
+import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowDecoder qualified

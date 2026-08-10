@@ -4,9 +4,9 @@ import ByteString.StrictBuilder qualified
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IP qualified as Iproute
-import Hasql.CodecVocab qualified as CodecVocab
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import CodecVocab qualified as CodecVocab
+import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary

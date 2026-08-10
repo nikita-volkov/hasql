@@ -2,7 +2,7 @@ module Hasql.Engine.Contexts.Session where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache

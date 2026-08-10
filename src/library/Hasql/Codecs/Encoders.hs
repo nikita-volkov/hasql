@@ -82,8 +82,8 @@ import Hasql.Codecs.Encoders.Composite qualified as Composite
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
