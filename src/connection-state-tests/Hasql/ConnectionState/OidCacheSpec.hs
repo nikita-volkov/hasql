@@ -1,8 +1,8 @@
-module Hasql.CodecsCore.OidCacheSpec (spec) where
+module Hasql.ConnectionState.OidCacheSpec (spec) where
 
 import Data.HashSet qualified as HashSet
-import Hasql.CodecsCore.OidCache qualified as OidCache
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.ConnectionState.OidCache qualified as OidCache
 import Prelude
 import Test.Hspec
 

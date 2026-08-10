@@ -296,29 +296,13 @@ test-suite comms-tests
     testcontainers-postgresql ^>=0.2,
     text-builder >=1 && <1.1,
 
-test-suite codecs-core-tests
-  import: test
-  type: exitcode-stdio-1.0
-  hs-source-dirs: src/codecs-core-tests
-  main-is: Main.hs
-  other-modules:
-    Hasql.CodecsCore.OidCacheSpec
-
-  build-tool-depends:
-    hspec-discover:hspec-discover ^>=2.11.12
-
-  build-depends:
-    base >=4.14 && <5,
-    hasql:codecs-core,
-    hspec ^>=2.11.12,
-    unordered-containers >=0.2 && <0.3,
-
 test-suite connection-state-tests
   import: test
   type: exitcode-stdio-1.0
   hs-source-dirs: src/connection-state-tests
   main-is: Main.hs
   other-modules:
+    Hasql.ConnectionState.OidCacheSpec
     Hasql.ConnectionState.StatementCacheSpec
 
   build-tool-depends:
@@ -326,8 +310,10 @@ test-suite connection-state-tests
 
   build-depends:
     base >=4.14 && <5,
+    hasql:codecs-core,
     hasql:connection-state,
     hspec ^>=2.11.12,
+    unordered-containers >=0.2 && <0.3,
 
 test-suite library-tests
   import: test
