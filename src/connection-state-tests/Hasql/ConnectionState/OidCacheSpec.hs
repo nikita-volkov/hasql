@@ -1,116 +1,114 @@
 module Hasql.ConnectionState.OidCacheSpec (spec) where
 
+import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Prelude
 import Test.Hspec
 
+int4Key :: CodecsCore.QualifiedTypeName.QualifiedTypeName
+int4Key = CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int4"
+
+int8Key :: CodecsCore.QualifiedTypeName.QualifiedTypeName
+int8Key = CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int8"
+
 spec :: Spec
 spec = do
   describe "empty" do
-    it "returns Nothing on scalar lookup" do
-      OidCache.lookupScalar Nothing "int4" OidCache.empty
+    it "returns Nothing on lookup" do
+      OidCache.lookupTypeInfo int4Key OidCache.empty
         `shouldBe` Nothing
 
-    it "returns Nothing on array lookup" do
-      OidCache.lookupArray Nothing "int4" OidCache.empty
-        `shouldBe` Nothing
-
-  describe "insertScalar and lookup" do
-    it "can insert and lookup a scalar OID" do
-      let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-      OidCache.lookupScalar Nothing "int4" cache
-        `shouldBe` Just 23
-
-    it "can insert and lookup an array OID" do
-      let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-      OidCache.lookupArray Nothing "int4" cache
-        `shouldBe` Just 1007
+  describe "fromHashMap and lookupTypeInfo" do
+    it "can look up an inserted type" do
+      let cache = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+      OidCache.lookupTypeInfo int4Key cache
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 23 1007)
 
     it "returns Nothing for a non-inserted type" do
-      let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-      OidCache.lookupScalar Nothing "int8" cache
+      let cache = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+      OidCache.lookupTypeInfo int8Key cache
         `shouldBe` Nothing
 
     it "handles schema-qualified names" do
-      let cache = OidCache.insertScalar (Just "public") "my_type" 100 200 OidCache.empty
-      OidCache.lookupScalar (Just "public") "my_type" cache
-        `shouldBe` Just 100
-      OidCache.lookupScalar Nothing "my_type" cache
+      let key = CodecsCore.QualifiedTypeName.QualifiedTypeName (Just "public") "my_type"
+          cache = OidCache.fromHashMap (HashMap.singleton key (CodecsCore.TypeInfo.TypeInfo 100 200))
+      OidCache.lookupTypeInfo key cache
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 100 200)
+      OidCache.lookupTypeInfo (CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "my_type") cache
         `shouldBe` Nothing
 
     it "distinguishes same type name in different schemas" do
-      let cache =
-            OidCache.insertScalar
-              (Just "schema_a")
-              "my_type"
-              100
-              200
-              (OidCache.insertScalar (Just "schema_b") "my_type" 300 400 OidCache.empty)
-      OidCache.lookupScalar (Just "schema_a") "my_type" cache
-        `shouldBe` Just 100
-      OidCache.lookupScalar (Just "schema_b") "my_type" cache
-        `shouldBe` Just 300
+      let keyA = CodecsCore.QualifiedTypeName.QualifiedTypeName (Just "schema_a") "my_type"
+          keyB = CodecsCore.QualifiedTypeName.QualifiedTypeName (Just "schema_b") "my_type"
+          cache = OidCache.fromHashMap (HashMap.fromList [(keyA, CodecsCore.TypeInfo.TypeInfo 100 200), (keyB, CodecsCore.TypeInfo.TypeInfo 300 400)])
+      OidCache.lookupTypeInfo keyA cache
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 100 200)
+      OidCache.lookupTypeInfo keyB cache
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 300 400)
 
   describe "selectUnknownNames" do
     it "returns all names when cache is empty" do
-      let names = HashSet.fromList [CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int4", CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
+      let names = HashSet.fromList [int4Key, int8Key]
       OidCache.selectUnknownNames names OidCache.empty
         `shouldBe` names
 
     it "returns empty when all names are known" do
-      let cache =
-            OidCache.insertScalar
-              Nothing
-              "int4"
-              23
-              1007
-              (OidCache.insertScalar Nothing "int8" 20 1016 OidCache.empty)
-          names = HashSet.fromList [CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int4", CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
+      let cache = OidCache.fromHashMap (HashMap.fromList [(int4Key, CodecsCore.TypeInfo.TypeInfo 23 1007), (int8Key, CodecsCore.TypeInfo.TypeInfo 20 1016)])
+          names = HashSet.fromList [int4Key, int8Key]
       OidCache.selectUnknownNames names cache
         `shouldBe` HashSet.empty
 
     it "returns only unknown names" do
-      let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-          names = HashSet.fromList [CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int4", CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
+      let cache = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+          names = HashSet.fromList [int4Key, int8Key]
       OidCache.selectUnknownNames names cache
-        `shouldBe` HashSet.fromList [CodecsCore.QualifiedTypeName.QualifiedTypeName Nothing "int8"]
+        `shouldBe` HashSet.fromList [int8Key]
+
+  describe "toResolver" do
+    it "resolves a known type" do
+      let cache = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+      OidCache.toResolver cache int4Key
+        `shouldBe` CodecsCore.TypeInfo.TypeInfo 23 1007
+
+    it "falls back to invalid for an unknown type" do
+      OidCache.toResolver OidCache.empty int4Key
+        `shouldBe` CodecsCore.TypeInfo.invalid
 
   describe "Semigroup" do
     it "right operand takes precedence for duplicate keys" do
-      let cacheA = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-          cacheB = OidCache.insertScalar Nothing "int4" 99 999 OidCache.empty
+      let cacheA = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+          cacheB = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 99 999))
           merged = cacheA <> cacheB
-      OidCache.lookupScalar Nothing "int4" merged
-        `shouldBe` Just 99
-      OidCache.lookupArray Nothing "int4" merged
-        `shouldBe` Just 999
+      OidCache.lookupTypeInfo int4Key merged
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 99 999)
 
     it "preserves entries from both sides when no conflict" do
-      let cacheA = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-          cacheB = OidCache.insertScalar Nothing "int8" 20 1016 OidCache.empty
+      let cacheA = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+          cacheB = OidCache.fromHashMap (HashMap.singleton int8Key (CodecsCore.TypeInfo.TypeInfo 20 1016))
           merged = cacheA <> cacheB
-      OidCache.lookupScalar Nothing "int4" merged
-        `shouldBe` Just 23
-      OidCache.lookupScalar Nothing "int8" merged
-        `shouldBe` Just 20
+      OidCache.lookupTypeInfo int4Key merged
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 23 1007)
+      OidCache.lookupTypeInfo int8Key merged
+        `shouldBe` Just (CodecsCore.TypeInfo.TypeInfo 20 1016)
 
     it "is associative" do
-      let a = OidCache.insertScalar Nothing "t1" 1 2 OidCache.empty
-          b = OidCache.insertScalar Nothing "t1" 3 4 (OidCache.insertScalar Nothing "t2" 5 6 OidCache.empty)
-          c = OidCache.insertScalar Nothing "t2" 7 8 (OidCache.insertScalar Nothing "t3" 9 10 OidCache.empty)
-      OidCache.toHashMap ((a <> b) <> c)
-        `shouldBe` OidCache.toHashMap (a <> (b <> c))
+      let a = OidCache.fromHashMap (HashMap.singleton "t1" (CodecsCore.TypeInfo.TypeInfo 1 2))
+          b = OidCache.fromHashMap (HashMap.fromList [("t1", CodecsCore.TypeInfo.TypeInfo 3 4), ("t2", CodecsCore.TypeInfo.TypeInfo 5 6)])
+          c = OidCache.fromHashMap (HashMap.fromList [("t2", CodecsCore.TypeInfo.TypeInfo 7 8), ("t3", CodecsCore.TypeInfo.TypeInfo 9 10)])
+      (a <> b) <> c
+        `shouldBe` a <> (b <> c)
 
   describe "Monoid" do
     it "mempty is identity for Semigroup" do
-      let cache = OidCache.insertScalar Nothing "int4" 23 1007 OidCache.empty
-      OidCache.toHashMap (cache <> mempty)
-        `shouldBe` OidCache.toHashMap cache
-      OidCache.toHashMap (mempty <> cache)
-        `shouldBe` OidCache.toHashMap cache
+      let cache = OidCache.fromHashMap (HashMap.singleton int4Key (CodecsCore.TypeInfo.TypeInfo 23 1007))
+      cache <> mempty
+        `shouldBe` cache
+      mempty <> cache
+        `shouldBe` cache
 
     it "empty equals mempty" do
-      OidCache.toHashMap OidCache.empty
-        `shouldBe` OidCache.toHashMap mempty
+      OidCache.empty
+        `shouldBe` mempty

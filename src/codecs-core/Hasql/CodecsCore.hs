@@ -1,12 +1,12 @@
 module Hasql.CodecsCore
-  ( QualifiedTypeName,
-    TypeInfo,
-    TypeRef,
-    ParamMeta,
+  ( QualifiedTypeName (QualifiedTypeName),
+    TypeInfo (TypeInfo),
+    TypeRef (..),
+    ParamMeta (ParamMeta),
   )
 where
 
-import Hasql.CodecsCore.ParamMeta (ParamMeta)
-import Hasql.CodecsCore.QualifiedTypeName (QualifiedTypeName)
-import Hasql.CodecsCore.TypeInfo (TypeInfo)
-import Hasql.CodecsCore.TypeRef (TypeRef)
+import Hasql.CodecsCore.ParamMeta
+import Hasql.CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.TypeInfo
+import Hasql.CodecsCore.TypeRef

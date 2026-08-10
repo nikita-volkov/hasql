@@ -77,13 +77,13 @@ module Hasql.Codecs.Encoders
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
 import Hasql.Codecs.Encoders.Array qualified as Array
 import Hasql.Codecs.Encoders.Composite qualified as Composite
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -116,19 +116,16 @@ foldableArray = array . Array.dimension foldl' . Array.element
 -- |
 -- Lift an array encoder into a value encoder.
 array :: Array.Array a -> Value.Value a
-array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidIfKnown arrayOidIfKnown unknownTypes arrayEncoder renderer) =
-  let encoder oidCache input =
-        let resolvedOid =
-              asum
-                [ scalarOidIfKnown,
-                  oidCache
-                    & HashMap.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
-                    & fmap CodecsCore.TypeInfo.toBaseOid
-                ]
-                -- Should only happen on a bug.
-                & fromMaybe (CodecsCore.TypeInfo.toBaseOid CodecsCore.TypeInfo.unknown)
-         in Binary.array resolvedOid (arrayEncoder oidCache input)
-   in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False unknownTypes encoder renderer
+array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidIfKnown arrayOidIfKnown arrayEncoder renderer) =
+  let toEncoder baseOid encode = \input -> Binary.array baseOid (encode input)
+      encoder = case scalarOidIfKnown of
+        Just oid -> RequestingOid.hoist (toEncoder oid) arrayEncoder
+        Nothing ->
+          RequestingOid.hoistLookingUp
+            (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
+            (\typeInfo -> toEncoder (CodecsCore.TypeInfo.toBaseOid typeInfo))
+            arrayEncoder
+   in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False encoder renderer
 
 -- |
 -- Lift a composite encoder into a value encoder for named composite types.
@@ -143,10 +140,9 @@ composite ::
   Text ->
   Composite.Composite a ->
   Value.Value a
-composite schema name (Composite.Composite unknownTypes encode print) =
-  Value.Value schema name Nothing Nothing 0 False unknownTypes encodeValue printValue
+composite schema name (Composite.Composite request print) =
+  Value.Value schema name Nothing Nothing 0 False encoder printValue
   where
-    encodeValue oidCache val =
-      Binary.composite (encode oidCache val)
+    encoder = RequestingOid.hoist (Binary.composite .) request
     printValue val =
       "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"

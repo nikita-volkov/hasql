@@ -15,10 +15,9 @@ import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
+import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
-import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Platform.Prelude
@@ -52,14 +51,14 @@ data Statement params result
     -- | Frozen per-parameter metadata: type reference, dimensionality, text-format flag.
     -- Produced once at construction from the Params DList and reused across executions.
     columnsMetadata :: Vector ParamMeta,
-    -- | Serialise params to encoded wire values given a resolved OID cache.
-    serializer :: OidCache.OidCache -> params -> [Maybe ByteString],
+    -- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
+    serializer :: (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> params -> [Maybe ByteString],
     -- | Render params in human-readable form (for error reporting).
     printer :: params -> [Text],
     -- | Union of encoder and decoder unknown types, resolved once at construction.
     unknownTypes :: HashSet CodecsCore.QualifiedTypeName,
-    -- | Unwrapped result decoder (RequestingOid layer already peeled from Result).
-    decoder :: RequestingOid.RequestingOid (ResultDecoder.ResultDecoder result),
+    -- | Result decoder, given a resolver of type names to their OIDs.
+    decoder :: (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> ResultDecoder.ResultDecoder result,
     -- | Whether this statement may be prepared on the server.
     isPrepared :: Bool
   }
@@ -85,12 +84,10 @@ preparable sqlText encoder resultDecoder =
       columnsMetadata = Params.toColumnsMetadata encoder,
       serializer = Params.toSerializer encoder,
       printer = Params.toPrinter encoder,
-      unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
-      decoder = rawDecoder,
+      unknownTypes = Params.toUnknownTypes encoder <> Decoders.Result.toUnknownTypes resultDecoder,
+      decoder = Decoders.Result.toBase resultDecoder,
       isPrepared = True
     }
-  where
-    rawDecoder = Decoders.Result.unwrap resultDecoder
 
 -- |
 -- Construct an unpreparable statement.
@@ -113,12 +110,10 @@ unpreparable sqlText encoder resultDecoder =
       columnsMetadata = Params.toColumnsMetadata encoder,
       serializer = Params.toSerializer encoder,
       printer = Params.toPrinter encoder,
-      unknownTypes = Params.toUnknownTypes encoder <> RequestingOid.toUnknownTypes rawDecoder,
-      decoder = rawDecoder,
+      unknownTypes = Params.toUnknownTypes encoder <> Decoders.Result.toUnknownTypes resultDecoder,
+      decoder = Decoders.Result.toBase resultDecoder,
       isPrepared = False
     }
-  where
-    rawDecoder = Decoders.Result.unwrap resultDecoder
 
 instance Functor (Statement params) where
   {-# INLINE fmap #-}
@@ -132,7 +127,7 @@ instance Profunctor Statement where
   {-# INLINE dimap #-}
   dimap f1 f2 stmt =
     stmt
-      { serializer = \oidCache -> serializer stmt oidCache . f1,
+      { serializer = \resolve -> serializer stmt resolve . f1,
         printer = printer stmt . f1,
         decoder = fmap (fmap f2) (decoder stmt)
       }
@@ -153,36 +148,30 @@ toSql stmt = decodeUtf8Lenient (sql stmt)
 -- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
 compilePreparedStatementData ::
   Statement params result ->
-  OidCache.OidCache ->
+  (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) ->
   params ->
   ([Word32], [Maybe (ByteString, Bool)])
-compilePreparedStatementData stmt oidCache params =
+compilePreparedStatementData stmt resolve params =
   unzip
     $ zipWith
-      (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid typeRef dim, fmap (,fmt) encoding))
+      (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid resolve typeRef dim, fmap (,fmt) encoding))
       (Vector.toList (columnsMetadata stmt))
-      (serializer stmt oidCache params)
-  where
-    resolveOid (CodecsCore.TypeRef.NamedType name) dim =
-      case OidCache.lookupTypeNameScalar name oidCache of
-        Just oid -> if dim == 0 then oid else fromMaybe 0 (OidCache.lookupTypeNameArray name oidCache)
-        Nothing -> 0
-    resolveOid (CodecsCore.TypeRef.KnownOid oid) _ = oid
+      (serializer stmt resolve params)
 
 -- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
 compileUnpreparedStatementData ::
   Statement params result ->
-  OidCache.OidCache ->
+  (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) ->
   params ->
   [Maybe (Word32, ByteString, Bool)]
-compileUnpreparedStatementData stmt oidCache params =
+compileUnpreparedStatementData stmt resolve params =
   zipWith
-    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid typeRef dim) <*> encoding <*> Just fmt)
+    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid resolve typeRef dim) <*> encoding <*> Just fmt)
     (Vector.toList (columnsMetadata stmt))
-    (serializer stmt oidCache params)
-  where
-    resolveOid (CodecsCore.TypeRef.NamedType name) dim =
-      case OidCache.lookupTypeNameScalar name oidCache of
-        Just oid -> if dim == 0 then oid else fromMaybe 0 (OidCache.lookupTypeNameArray name oidCache)
-        Nothing -> 0
-    resolveOid (CodecsCore.TypeRef.KnownOid oid) _ = oid
+    (serializer stmt resolve params)
+
+-- | Resolve a param's wire OID given the dictionary of resolved type names.
+resolveOid :: (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> CodecsCore.TypeRef.TypeRef -> Word -> Word32
+resolveOid resolve (CodecsCore.TypeRef.NamedType name) dim =
+  (if dim == 0 then CodecsCore.TypeInfo.toBaseOid else CodecsCore.TypeInfo.toArrayOid) (resolve name)
+resolveOid _ (CodecsCore.TypeRef.KnownOid oid) _ = oid

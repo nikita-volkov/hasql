@@ -42,8 +42,6 @@ The codebase is layered along two axes: cabal components, and namespaces inside 
 
 `codecs-core`, `comms`, `connection-state` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
 
-**Known exception**: `Hasql.Codecs.Encoders.Params` depends on `connection-state` (for `OidCache`), which the table above forbids. Affordable today because `library` already depends on `connection-state` as a whole - a convention violation, not a build cycle. Tracked in [#316](https://github.com/nikita-volkov/hasql/issues/316).
-
 Cabal components:
 
 ```mermaid

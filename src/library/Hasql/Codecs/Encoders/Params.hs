@@ -9,38 +9,36 @@ module Hasql.Codecs.Encoders.Params
   )
 where
 
-import Data.HashSet qualified as HashSet
 import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
--- Violates the Hasql.Codecs.* dependency rule (depends on connection-state); tracked in #316.
-import Hasql.ConnectionState.OidCache qualified as CodecsCore.OidCache
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
 -- | Frozen per-parameter metadata: type reference, dimensionality, text-format flag.
 toColumnsMetadata :: Params a -> Vector ParamMeta
-toColumnsMetadata (Params _ _ columnsMetadata _ _) = freezeColumnsMetadata columnsMetadata
+toColumnsMetadata (Params _ _ columnsMetadata _) = freezeColumnsMetadata columnsMetadata
   where
     freezeColumnsMetadata =
       Vector.fromList . toList
 
 toUnknownTypes :: Params a -> HashSet CodecsCore.QualifiedTypeName
-toUnknownTypes (Params _ unknownTypes _ _ _) =
-  unknownTypes
+toUnknownTypes (Params _ request _ _) =
+  RequestingOid.toUnknownTypes request
 
--- | Serialise params to encoded wire values given a resolved OID cache.
-toSerializer :: Params a -> CodecsCore.OidCache.OidCache -> a -> [Maybe ByteString]
-toSerializer (Params _ _ _ serializer _) = serializer
+-- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
+toSerializer :: Params a -> (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> a -> [Maybe ByteString]
+toSerializer (Params _ request _ _) resolve = RequestingOid.toBase request resolve
 
 -- | Render params in human-readable form (for error reporting).
 toPrinter :: Params a -> a -> [Text]
-toPrinter (Params _ _ _ _ printer) = toList . printer
+toPrinter (Params _ _ _ printer) = toList . printer
 
 -- |
 -- Encoder of some representation of a parameters product.
@@ -88,49 +86,49 @@ toPrinter (Params _ _ _ _ printer) = toList . printer
 -- @
 data Params a = Params
   { size :: Int,
-    unknownTypes :: HashSet CodecsCore.QualifiedTypeName,
+    -- | Serialization function, deferring the names of types that must be looked up at runtime.
+    request :: RequestingOid.RequestingOid (a -> [Maybe ByteString]),
     -- | (Type reference, dimensionality, Text Format) for each parameter.
     columnsMetadata :: DList ParamMeta,
-    serializer :: CodecsCore.OidCache.OidCache -> a -> [Maybe ByteString],
     printer :: a -> DList Text
   }
 
 instance Contravariant Params where
-  contramap fn (Params size unknownTypes columnsMetadata oldSerializer oldPrinter) = Params {..}
-    where
-      serializer oidCache = oldSerializer oidCache . fn
-      printer = oldPrinter . fn
+  contramap fn (Params size request columnsMetadata printer) =
+    Params size (RequestingOid.hoist (. fn) request) columnsMetadata (printer . fn)
 
 instance Divisible Params where
   divide
     divisor
-    (Params leftSize leftUnknownTypes leftColumnsMetadata leftSerializer leftPrinter)
-    (Params rightSize rightUnknownTypes rightColumnsMetadata rightSerializer rightPrinter) =
+    (Params leftSize leftRequest leftColumnsMetadata leftPrinter)
+    (Params rightSize rightRequest rightColumnsMetadata rightPrinter) =
       Params
         { size = leftSize + rightSize,
-          unknownTypes = leftUnknownTypes <> rightUnknownTypes,
+          request =
+            liftA2
+              ( \leftSerializer rightSerializer input -> case divisor input of
+                  (leftInput, rightInput) -> leftSerializer leftInput <> rightSerializer rightInput
+              )
+              leftRequest
+              rightRequest,
           columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-          serializer = \oidCache input -> case divisor input of
-            (leftInput, rightInput) -> leftSerializer oidCache leftInput <> rightSerializer oidCache rightInput,
           printer = \input -> case divisor input of
             (leftInput, rightInput) -> leftPrinter leftInput <> rightPrinter rightInput
         }
   conquer =
     Params
       { size = 0,
-        unknownTypes = mempty,
+        request = pure mempty,
         columnsMetadata = mempty,
-        serializer = mempty,
         printer = mempty
       }
 
 instance Semigroup (Params a) where
-  Params leftSize leftUnknownTypes leftColumnsMetadata leftSerializer leftPrinter <> Params rightSize rightUnknownTypes rightColumnsMetadata rightSerializer rightPrinter =
+  Params leftSize leftRequest leftColumnsMetadata leftPrinter <> Params rightSize rightRequest rightColumnsMetadata rightPrinter =
     Params
       { size = leftSize + rightSize,
-        unknownTypes = leftUnknownTypes <> rightUnknownTypes,
+        request = liftA2 (\leftSerializer rightSerializer input -> leftSerializer input <> rightSerializer input) leftRequest rightRequest,
         columnsMetadata = leftColumnsMetadata <> rightColumnsMetadata,
-        serializer = \oidCache input -> leftSerializer oidCache input <> rightSerializer oidCache input,
         printer = \input -> leftPrinter input <> rightPrinter input
       }
 
@@ -138,52 +136,50 @@ instance Monoid (Params a) where
   mempty = conquer
 
 value :: Value.Value a -> Params a
-value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
+value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
-      serializer oidCache = pure . Just . Binary.encodingBytes . serialize (CodecsCore.OidCache.toHashMap oidCache)
+      toRequest = RequestingOid.hoist (\encode -> pure . Just . Binary.encodingBytes . encode)
       printer = pure . TextBuilder.toText . print
       size = 1
    in case staticOid of
         Just oid ->
           Params
             { size,
-              unknownTypes,
+              request = toRequest serialize,
               columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
-              serializer,
               printer
             }
         Nothing ->
-          Params
-            { size,
-              unknownTypes = HashSet.insert (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes,
-              columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)) dimensionality textFormat),
-              serializer,
-              printer
-            }
+          let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
+           in Params
+                { size,
+                  request = toRequest (RequestingOid.lookup key *> serialize),
+                  columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  printer
+                }
 
 nullableValue :: Value.Value a -> Params (Maybe a)
-nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) =
+nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
-      serializer oidCache = pure . fmap (Binary.encodingBytes . serialize (CodecsCore.OidCache.toHashMap oidCache))
+      toRequest = RequestingOid.hoist (\encode -> pure . fmap (Binary.encodingBytes . encode))
       printer = pure . maybe "null" (TextBuilder.toText . print)
       size = 1
    in case staticOid of
         Just oid ->
           Params
             { size,
-              unknownTypes,
+              request = toRequest serialize,
               columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
-              serializer,
               printer
             }
         Nothing ->
-          Params
-            { size,
-              unknownTypes = HashSet.insert (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName) unknownTypes,
-              columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)) dimensionality textFormat),
-              serializer,
-              printer
-            }
+          let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
+           in Params
+                { size,
+                  request = toRequest (RequestingOid.lookup key *> serialize),
+                  columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  printer
+                }
 
 -- |
 -- No parameters. Same as `mempty` and `conquered`.

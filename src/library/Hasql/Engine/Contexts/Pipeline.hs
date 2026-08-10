@@ -9,7 +9,6 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
@@ -217,8 +216,10 @@ statement stmt params =
         then runPrepared
         else runUnprepared
       where
+        resolve = OidCache.toResolver oidCache
+
         (oidList, valueAndFormatList) =
-          Statement.compilePreparedStatementData stmt oidCache params
+          Statement.compilePreparedStatementData stmt resolve params
 
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
@@ -258,8 +259,8 @@ statement stmt params =
               Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
-                  Statement.compileUnpreparedStatementData stmt oidCache params
+                  Statement.compileUnpreparedStatementData stmt resolve params
                     & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
-          RequestingOid.toBase (Statement.decoder stmt) (OidCache.toResolver oidCache)
+          Statement.decoder stmt resolve

@@ -212,7 +212,6 @@ library codecs-core
   build-depends:
     base >=4.14 && <5,
     hasql:platform,
-    unordered-containers >=0.2 && <0.3,
 
 library connection-state
   import: base

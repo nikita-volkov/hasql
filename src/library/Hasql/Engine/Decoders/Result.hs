@@ -1,6 +1,8 @@
 module Hasql.Engine.Decoders.Result where
 
+import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
+import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Engine.Decoders.Row (Row (..))
 import Hasql.Engine.Decoders.Row qualified as Row
@@ -14,8 +16,13 @@ newtype Result a
     (Functor, Applicative, Filterable)
     via (Compose RequestingOid.RequestingOid ResultDecoder.ResultDecoder)
 
-unwrap :: Result a -> RequestingOid.RequestingOid (ResultDecoder.ResultDecoder a)
-unwrap (Result decoder) = decoder
+-- | Names of types that must be looked up at runtime before the decoder can run.
+toUnknownTypes :: Result a -> HashSet CodecsCore.QualifiedTypeName.QualifiedTypeName
+toUnknownTypes (Result decoder) = RequestingOid.toUnknownTypes decoder
+
+-- | Resolve the decoder given a resolver of type names to their OIDs.
+toBase :: Result a -> (CodecsCore.QualifiedTypeName.QualifiedTypeName -> CodecsCore.TypeInfo.TypeInfo) -> ResultDecoder.ResultDecoder a
+toBase (Result decoder) = RequestingOid.toBase decoder
 
 -- * Construction
 

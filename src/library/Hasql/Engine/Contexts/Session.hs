@@ -3,7 +3,6 @@ module Hasql.Engine.Contexts.Session where
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
@@ -105,7 +104,8 @@ statement stmt params =
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)
       Right newOidCache -> do
-        let decoder' = RequestingOid.toBase (Statement.decoder stmt) (OidCache.toResolver newOidCache)
+        let resolve = OidCache.toResolver newOidCache
+            decoder' = Statement.decoder stmt resolve
             prepared = usePreparedStatements && Statement.isPrepared stmt
             -- Single-statement context for error reporting:
             -- total statements 1, index 0.
@@ -126,7 +126,7 @@ statement stmt params =
           $ if prepared
             then do
               let (oidList, valueAndFormatList) =
-                    Statement.compilePreparedStatementData stmt newOidCache params
+                    Statement.compilePreparedStatementData stmt resolve params
                   encodedParams =
                     valueAndFormatList
                       & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
@@ -159,7 +159,7 @@ statement stmt params =
                       pure (result, newStatementCache)
             else do
               let encodedParams =
-                    Statement.compileUnpreparedStatementData stmt newOidCache params
+                    Statement.compileUnpreparedStatementData stmt resolve params
                       & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
               result <-
                 Comms.Roundtrip.toSerialIO

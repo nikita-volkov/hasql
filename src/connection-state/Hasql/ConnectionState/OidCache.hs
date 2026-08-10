@@ -2,11 +2,6 @@ module Hasql.ConnectionState.OidCache
   ( OidCache,
 
     -- * Accessors
-    toHashMap,
-    lookupScalar,
-    lookupArray,
-    lookupTypeNameScalar,
-    lookupTypeNameArray,
     lookupTypeInfo,
     toResolver,
 
@@ -14,7 +9,6 @@ module Hasql.ConnectionState.OidCache
     fromHashMap,
     empty,
     selectUnknownNames,
-    insertScalar,
   )
 where
 
@@ -52,44 +46,16 @@ selectUnknownNames :: HashSet QualifiedTypeName -> OidCache -> HashSet Qualified
 selectUnknownNames keys (OidCache byName) =
   HashSet.filter (\key -> not (HashMap.member key byName)) keys
 
-insertScalar :: Maybe Text -> Text -> Word32 -> Word32 -> OidCache -> OidCache
-insertScalar schema name scalar array (OidCache byName) =
-  OidCache (HashMap.insert (QualifiedTypeName.QualifiedTypeName schema name) (TypeInfo.TypeInfo scalar array) byName)
-
 {-# INLINE fromHashMap #-}
 fromHashMap :: HashMap QualifiedTypeName TypeInfo.TypeInfo -> OidCache
 fromHashMap byName = OidCache byName
 
 -- * Accessors
 
-{-# INLINE lookupScalar #-}
-lookupScalar :: Maybe Text -> Text -> OidCache -> Maybe Word32
-lookupScalar schema name (OidCache byName) =
-  HashMap.lookup (QualifiedTypeName.QualifiedTypeName schema name) byName <&> \info -> TypeInfo.toBaseOid info
-
-{-# INLINE lookupArray #-}
-lookupArray :: Maybe Text -> Text -> OidCache -> Maybe Word32
-lookupArray schema name (OidCache byName) =
-  HashMap.lookup (QualifiedTypeName.QualifiedTypeName schema name) byName <&> \info -> TypeInfo.toArrayOid info
-
-{-# INLINE lookupTypeNameScalar #-}
-lookupTypeNameScalar :: QualifiedTypeName -> OidCache -> Maybe Word32
-lookupTypeNameScalar name (OidCache byName) =
-  HashMap.lookup name byName <&> TypeInfo.toBaseOid
-
-{-# INLINE lookupTypeNameArray #-}
-lookupTypeNameArray :: QualifiedTypeName -> OidCache -> Maybe Word32
-lookupTypeNameArray name (OidCache byName) =
-  HashMap.lookup name byName <&> TypeInfo.toArrayOid
-
 {-# INLINE lookupTypeInfo #-}
 lookupTypeInfo :: QualifiedTypeName -> OidCache -> Maybe TypeInfo.TypeInfo
 lookupTypeInfo name (OidCache byName) =
   HashMap.lookup name byName
-
-{-# INLINE toHashMap #-}
-toHashMap :: OidCache -> HashMap QualifiedTypeName TypeInfo.TypeInfo
-toHashMap (OidCache byName) = byName
 
 -- | Resolution function for a name against the cache, falling back to 'TypeInfo.invalid' on a miss.
 {-# INLINE toResolver #-}

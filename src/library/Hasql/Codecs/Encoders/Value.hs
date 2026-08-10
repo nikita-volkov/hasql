@@ -3,11 +3,10 @@ module Hasql.Codecs.Encoders.Value where
 import ByteString.StrictBuilder qualified
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LazyByteString
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import Data.IP qualified as Iproute
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -33,20 +32,18 @@ data Value a
       Word
       -- | Text format?
       Bool
-      -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet CodecsCore.QualifiedTypeName)
-      -- | Serialization function on the resolved OIDs.
-      (HashMap CodecsCore.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo -> a -> Binary.Encoding)
+      -- | Serialization function, deferring the names of types that must be looked up at runtime.
+      (RequestingOid.RequestingOid (a -> Binary.Encoding))
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
-  contramap f (Value schemaName typeName valueOid arrayOid dimensionality textFormat unknownTypes encode render) =
-    Value schemaName typeName valueOid arrayOid dimensionality textFormat unknownTypes (\hashMap -> encode hashMap . f) (render . f)
+  contramap f (Value schemaName typeName valueOid arrayOid dimensionality textFormat serialize render) =
+    Value schemaName typeName valueOid arrayOid dimensionality textFormat (RequestingOid.hoist (\encode -> encode . f) serialize) (render . f)
 
 {-# INLINE primitive #-}
-primitive :: Text -> Bool -> CodecsCore.TypeInfo.TypeInfo -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
+primitive :: Text -> Bool -> CodecsCore.TypeInfo -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
 primitive typeName isText typeInfo encode render =
   Value
     Nothing
@@ -55,8 +52,7 @@ primitive typeName isText typeInfo encode render =
     (Just (CodecsCore.TypeInfo.toArrayOid typeInfo))
     0
     isText
-    HashSet.empty
-    (const encode)
+    (RequestingOid.lift encode)
     render
 
 -- |
@@ -327,8 +323,7 @@ citext =
     Nothing
     0
     False
-    HashSet.empty
-    (const Binary.text_strict)
+    (RequestingOid.lift Binary.text_strict)
     (TextBuilder.string . show)
 
 -- |
@@ -351,8 +346,7 @@ enum schemaName typeName mapping =
     Nothing
     0
     False
-    (HashSet.singleton (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName))
-    (const (Binary.text_strict . mapping))
+    (RequestingOid.lookingUp (CodecsCore.QualifiedTypeName schemaName typeName) (\_typeInfo -> Binary.text_strict . mapping))
     (TextBuilder.text . mapping)
 
 -- |
@@ -408,15 +402,16 @@ custom schemaName typeName staticOids requiredTypes encode render =
     (fmap snd staticOids)
     0
     False
-    (HashSet.fromList (fmap CodecsCore.QualifiedTypeName.fromNameTuple requiredTypes))
-    ( \hashMap ->
-        ByteString.StrictBuilder.bytes
-          . encode
-            ( \name ->
-                fromMaybe (0, 0)
-                  $ HashMap.lookup (CodecsCore.QualifiedTypeName.fromNameTuple name) hashMap
-                  <&> \typeInfo -> (CodecsCore.TypeInfo.toBaseOid typeInfo, CodecsCore.TypeInfo.toArrayOid typeInfo)
-            )
+    ( RequestingOid.requestAndHandle
+        (fmap CodecsCore.QualifiedTypeName.fromNameTuple requiredTypes)
+        ( \resolve ->
+            ByteString.StrictBuilder.bytes
+              . encode
+                ( \name ->
+                    let typeInfo = resolve (CodecsCore.QualifiedTypeName.fromNameTuple name)
+                     in (CodecsCore.TypeInfo.toBaseOid typeInfo, CodecsCore.TypeInfo.toArrayOid typeInfo)
+                )
+        )
     )
     (TextBuilder.text . render)
 
@@ -434,8 +429,7 @@ hstore =
     Nothing
     0
     False
-    HashSet.empty
-    (const Binary.hStore_foldable)
+    (RequestingOid.lift Binary.hStore_foldable)
     renderHstore
   where
     renderHstore items =

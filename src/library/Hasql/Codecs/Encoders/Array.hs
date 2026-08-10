@@ -2,7 +2,7 @@ module Hasql.Codecs.Encoders.Array where
 
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore qualified as CodecsCore
+import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified as TextBuilder
@@ -33,22 +33,20 @@ data Array a
       (Maybe Word32)
       -- | OID of the array type.
       (Maybe Word32)
-      -- | Names of types that are not known statically and must be looked up at runtime collected from the nested composite and array encoders.
-      (HashSet CodecsCore.QualifiedTypeName)
-      -- | Serialization function given the dictionary of resolved OIDs.
-      (HashMap CodecsCore.QualifiedTypeName CodecsCore.TypeInfo -> a -> Binary.Array)
+      -- | Serialization function, deferring the names of types that must be looked up at runtime.
+      (RequestingOid.RequestingOid (a -> Binary.Array))
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Array where
-  contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
-    Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes (\oidCache -> elEncoder oidCache . fn) (elRenderer . fn)
+  contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid elEncoder elRenderer) =
+    Array schemaName typeName textFormat dimensionality valueOid arrayOid (RequestingOid.hoist (\encode -> encode . fn) elEncoder) (elRenderer . fn)
 
 -- |
 -- Lifts a 'Value.Value' encoder into an 'Array' encoder.
 element :: NullableOrNot.NullableOrNot Value.Value a -> Array a
 element = \case
-  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
+  NullableOrNot.NonNullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) ->
     Array
       schemaName
       typeName
@@ -56,12 +54,11 @@ element = \case
       dimensionality
       scalarOid
       arrayOid
-      unknownTypes
-      (\oidCache -> Binary.encodingArray . serialize oidCache)
+      (RequestingOid.hoist (Binary.encodingArray .) serialize)
       print
-  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat unknownTypes serialize print) ->
-    let maybeSerialize oidCache =
-          maybe Binary.nullArray (Binary.encodingArray . serialize oidCache)
+  NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) ->
+    let maybeSerialize encode =
+          maybe Binary.nullArray (Binary.encodingArray . encode)
         maybePrint =
           maybe (TextBuilder.string "null") print
      in Array
@@ -71,8 +68,7 @@ element = \case
           dimensionality
           scalarOid
           arrayOid
-          unknownTypes
-          maybeSerialize
+          (RequestingOid.hoist maybeSerialize serialize)
           maybePrint
 
 -- |
@@ -88,9 +84,9 @@ element = \case
 -- * A component encoder, which can be either another 'dimension' or 'element'.
 {-# INLINE dimension #-}
 dimension :: (forall a. (a -> b -> a) -> a -> c -> a) -> Array b -> Array c
-dimension fold (Array schemaName typeName textFormat dimensionality valueOid arrayOid unknownTypes elEncoder elRenderer) =
-  let encoder oidCache =
-        Binary.dimensionArray fold (elEncoder oidCache)
+dimension fold (Array schemaName typeName textFormat dimensionality valueOid arrayOid elEncoder elRenderer) =
+  let encoder =
+        Binary.dimensionArray fold
       renderer els =
         let folded =
               let step builder el =
@@ -101,4 +97,4 @@ dimension fold (Array schemaName typeName textFormat dimensionality valueOid arr
          in if TextBuilder.isEmpty folded
               then TextBuilder.string "[]"
               else folded <> TextBuilder.char ']'
-   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid unknownTypes encoder renderer
+   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid (RequestingOid.hoist encoder elEncoder) renderer
