@@ -202,7 +202,6 @@ library codecs-core
   hs-source-dirs: src/codecs-core
   exposed-modules:
     Hasql.CodecsCore
-    Hasql.CodecsCore.OidCache
     Hasql.CodecsCore.ParamMeta
     Hasql.CodecsCore.QualifiedTypeName
     Hasql.CodecsCore.RequestingOid
@@ -220,6 +219,7 @@ library connection-state
   hs-source-dirs: src/connection-state
   exposed-modules:
     Hasql.ConnectionState
+    Hasql.ConnectionState.OidCache
     Hasql.ConnectionState.StatementCache
 
   build-depends:

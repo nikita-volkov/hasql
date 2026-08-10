@@ -2,11 +2,11 @@ module Hasql.Engine.Contexts.Session where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecsCore.OidCache qualified as OidCache
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState qualified as ConnectionState
+import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
 import Hasql.Engine.Contexts.Pipeline qualified as Pipeline
 import Hasql.Engine.Errors qualified as Errors

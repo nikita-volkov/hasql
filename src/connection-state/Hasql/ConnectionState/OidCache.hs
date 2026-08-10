@@ -1,4 +1,4 @@
-module Hasql.CodecsCore.OidCache
+module Hasql.ConnectionState.OidCache
   ( OidCache,
 
     -- * Accessors
