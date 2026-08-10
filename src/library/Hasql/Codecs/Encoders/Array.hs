@@ -1,9 +1,9 @@
 module Hasql.Codecs.Encoders.Array where
 
-import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
-import Hasql.Codecs.Encoders.Value qualified as Value
 import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
+import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary

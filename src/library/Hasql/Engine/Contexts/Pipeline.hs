@@ -5,10 +5,10 @@ module Hasql.Engine.Contexts.Pipeline
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import CodecVocab qualified as CodecVocab
 import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache

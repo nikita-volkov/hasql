@@ -12,10 +12,10 @@ module Hasql.Codecs.Decoders.Array
   )
 where
 
-import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
-import Hasql.Codecs.Decoders.Value qualified as Value
 import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
+import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary

@@ -9,13 +9,13 @@ module Hasql.Codecs.Encoders.Params
   )
 where
 
-import Data.Vector qualified as Vector
-import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
-import Hasql.Codecs.Encoders.Value qualified as Value
 import CodecVocab qualified as CodecVocab
 import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import CodecVocab.TypeRef qualified as CodecVocab.TypeRef
 import CodecVocab.TypeShape (TypeShape (..))
+import Data.Vector qualified as Vector
+import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
+import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary

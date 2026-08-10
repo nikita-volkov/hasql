@@ -12,10 +12,10 @@ module Hasql.ConnectionState.OidCache
   )
 where
 
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import CodecVocab qualified as CodecVocab
 import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hasql.Platform.Prelude hiding (empty, insert, lookup, reset)
 
 -- | Pure registry state containing the hash map and counter

@@ -1,9 +1,9 @@
 module Hasql.ConnectionState.OidCacheSpec (spec) where
 
-import Data.HashMap.Strict qualified as HashMap
-import Data.HashSet qualified as HashSet
 import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Data.HashMap.Strict qualified as HashMap
+import Data.HashSet qualified as HashSet
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Prelude
 import Test.Hspec
