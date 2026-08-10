@@ -49,15 +49,12 @@ module Hasql.Codecs.Decoders.Value
     toOid,
     toBaseOid,
     toArrayOid,
-    toHandler,
-    toByteStringParser,
     isArray,
   )
 where
 
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
-import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
@@ -448,14 +445,6 @@ toArrayOid (Value _ _ _ oid _ _) = oid
 
 toDecoder :: Value a -> RequestingOid.RequestingOid (Binary.Value a)
 toDecoder (Value _ _ _ _ _ decoder) = decoder
-
-{-# INLINE toHandler #-}
-toHandler :: Value a -> CodecsCore.OidCache -> Binary.Value a
-toHandler (Value _ _ _ _ _ decoder) = RequestingOid.toBase decoder
-
-{-# INLINE toByteStringParser #-}
-toByteStringParser :: Value a -> (CodecsCore.OidCache -> ByteString -> Either Text a)
-toByteStringParser (Value _ _ _ _ _ decoder) oidCache = Binary.valueParser (RequestingOid.toBase decoder oidCache)
 
 isArray :: Value a -> Bool
 isArray (Value _ _ _ _ dimensionality _) = dimensionality > 0
