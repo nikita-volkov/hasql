@@ -29,12 +29,53 @@ Hasql is a fast PostgreSQL driver with a flexible mapping API. It is the root of
 
 ### Layers
 
-`src/library/Hasql` is layered; see [design/layers-v2.mmd](design/layers-v2.mmd) for the diagram.
+The codebase is layered along two axes: cabal components, and namespaces inside the `library` component. Allowed dependency edges:
+
+| Layer | May depend on |
+|---|---|
+| `platform` | — |
+| `codecs-core` | `platform` |
+| `comms` | `platform` |
+| `connection-state` | `codecs-core`, `platform` |
+| `Hasql.Codecs.*` | `codecs-core`, `platform` |
+| `Hasql.Engine.*` | `Hasql.Codecs.*`, `codecs-core`, `comms`, `connection-state`, `platform` |
+
+`codecs-core`, `comms`, `connection-state` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
+
+**Known exception**: `Hasql.Codecs.Encoders.Params` depends on `connection-state` (for `OidCache`), which the table above forbids. Affordable today because `library` already depends on `connection-state` as a whole - a convention violation, not a build cycle. Tracked in [#316](https://github.com/nikita-volkov/hasql/issues/316).
+
+Cabal components:
+
+```mermaid
+flowchart BT
+  platform
+  codecs-core --> platform
+  comms --> platform
+  connection-state --> codecs-core
+  connection-state --> platform
+  library --> codecs-core
+  library --> comms
+  library --> connection-state
+  library --> platform
+```
+
+`Hasql.*` namespaces within the `library` component:
+
+```mermaid
+flowchart BT
+  Codecs --> codecs-core
+  Codecs --> platform
+  Engine --> Codecs
+  Engine --> codecs-core
+  Engine --> comms
+  Engine --> connection-state
+  Engine --> platform
+```
 
 - `Platform/` - the custom prelude and shared primitives.
 - `Codecs/` - encoder and decoder DSLs.
 - `Comms/` - protocol round trips and result decoding, on top of the libpq binding.
-- `Engine/` - connection state, contexts (Session, Pipeline) and the caches.
+- `Engine/` - statement compilation, result/row decoding, and contexts (Session, Pipeline) that drive `connection-state`.
 - Top-level modules (`Hasql.Connection`, `Hasql.Session`, …) are the public API.
 
 Postgres itself is reached through the external [pqi](https://github.com/nikita-volkov/pqi) library, which abstracts over interchangeable adapters (`pqi-ffi`, `pqi-native`). Hasql does not carry its own libpq bindings - do not reintroduce any.

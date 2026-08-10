@@ -14,11 +14,11 @@ import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.OidCache qualified as CodecsCore.OidCache
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
+import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
 import Hasql.Platform.Prelude
@@ -53,7 +53,7 @@ data Statement params result
     -- Produced once at construction from the Params DList and reused across executions.
     columnsMetadata :: Vector ParamMeta,
     -- | Serialise params to encoded wire values given a resolved OID cache.
-    serializer :: CodecsCore.OidCache -> params -> [Maybe ByteString],
+    serializer :: OidCache.OidCache -> params -> [Maybe ByteString],
     -- | Render params in human-readable form (for error reporting).
     printer :: params -> [Text],
     -- | Union of encoder and decoder unknown types, resolved once at construction.
@@ -153,7 +153,7 @@ toSql stmt = decodeUtf8Lenient (sql stmt)
 -- | Compile prepared-statement data: resolve OIDs and pair encoded values with their format flags.
 compilePreparedStatementData ::
   Statement params result ->
-  CodecsCore.OidCache ->
+  OidCache.OidCache ->
   params ->
   ([Word32], [Maybe (ByteString, Bool)])
 compilePreparedStatementData stmt oidCache params =
@@ -164,15 +164,15 @@ compilePreparedStatementData stmt oidCache params =
       (serializer stmt oidCache params)
   where
     resolveOid (CodecsCore.TypeRef.NamedType name) dim =
-      case CodecsCore.OidCache.lookupTypeNameScalar name oidCache of
-        Just oid -> if dim == 0 then oid else fromMaybe 0 (CodecsCore.OidCache.lookupTypeNameArray name oidCache)
+      case OidCache.lookupTypeNameScalar name oidCache of
+        Just oid -> if dim == 0 then oid else fromMaybe 0 (OidCache.lookupTypeNameArray name oidCache)
         Nothing -> 0
     resolveOid (CodecsCore.TypeRef.KnownOid oid) _ = oid
 
 -- | Compile unprepared-statement data: resolve OIDs inline with encoded values.
 compileUnpreparedStatementData ::
   Statement params result ->
-  CodecsCore.OidCache ->
+  OidCache.OidCache ->
   params ->
   [Maybe (Word32, ByteString, Bool)]
 compileUnpreparedStatementData stmt oidCache params =
@@ -182,7 +182,7 @@ compileUnpreparedStatementData stmt oidCache params =
     (serializer stmt oidCache params)
   where
     resolveOid (CodecsCore.TypeRef.NamedType name) dim =
-      case CodecsCore.OidCache.lookupTypeNameScalar name oidCache of
-        Just oid -> if dim == 0 then oid else fromMaybe 0 (CodecsCore.OidCache.lookupTypeNameArray name oidCache)
+      case OidCache.lookupTypeNameScalar name oidCache of
+        Just oid -> if dim == 0 then oid else fromMaybe 0 (OidCache.lookupTypeNameArray name oidCache)
         Nothing -> 0
     resolveOid (CodecsCore.TypeRef.KnownOid oid) _ = oid

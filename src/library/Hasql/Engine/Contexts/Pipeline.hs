@@ -8,10 +8,10 @@ where
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.OidCache qualified as OidCache
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
+import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
 import Hasql.Engine.Errors qualified as Errors
 import Hasql.Engine.PqProcedures.SelectTypeInfo qualified as PqProcedures.SelectTypeInfo
@@ -262,4 +262,4 @@ statement stmt params =
                     & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
-          RequestingOid.toBase (Statement.decoder stmt) oidCache
+          RequestingOid.toBase (Statement.decoder stmt) (OidCache.toResolver oidCache)

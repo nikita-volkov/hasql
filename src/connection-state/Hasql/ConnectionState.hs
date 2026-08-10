@@ -15,7 +15,7 @@ module Hasql.ConnectionState
   )
 where
 
-import Hasql.CodecsCore.OidCache qualified as OidCache
+import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq

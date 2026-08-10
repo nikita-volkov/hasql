@@ -12,7 +12,6 @@ module Hasql.CodecsCore.RequestingOid
 where
 
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.OidCache qualified as CodecsCore.OidCache
 import Hasql.CodecsCore.RequestingOid.LookingUp qualified as LookingUp
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude hiding (lift, lookup)
@@ -32,12 +31,10 @@ toUnknownTypes (LookingUp.LookingUp unknownTypes _) =
 {-# INLINE toBase #-}
 toBase ::
   RequestingOid a ->
-  CodecsCore.OidCache ->
+  (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo.TypeInfo) ->
   a
-toBase (LookingUp.LookingUp _unknownTypes decoder) oidCache =
-  decoder \key ->
-    CodecsCore.OidCache.lookupTypeInfo key oidCache
-      & fromMaybe (CodecsCore.TypeInfo.TypeInfo 0 0)
+toBase (LookingUp.LookingUp _unknownTypes decoder) resolve =
+  decoder resolve
 
 {-# INLINE requestAndHandle #-}
 requestAndHandle ::

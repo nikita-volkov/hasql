@@ -14,10 +14,11 @@ import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.OidCache qualified as CodecsCore.OidCache
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
+-- Violates the Hasql.Codecs.* dependency rule (depends on connection-state); tracked in #316.
+import Hasql.ConnectionState.OidCache qualified as CodecsCore.OidCache
 import Hasql.Platform.Prelude
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
@@ -34,7 +35,7 @@ toUnknownTypes (Params _ unknownTypes _ _ _) =
   unknownTypes
 
 -- | Serialise params to encoded wire values given a resolved OID cache.
-toSerializer :: Params a -> CodecsCore.OidCache -> a -> [Maybe ByteString]
+toSerializer :: Params a -> CodecsCore.OidCache.OidCache -> a -> [Maybe ByteString]
 toSerializer (Params _ _ _ serializer _) = serializer
 
 -- | Render params in human-readable form (for error reporting).
@@ -90,7 +91,7 @@ data Params a = Params
     unknownTypes :: HashSet CodecsCore.QualifiedTypeName,
     -- | (Type reference, dimensionality, Text Format) for each parameter.
     columnsMetadata :: DList ParamMeta,
-    serializer :: CodecsCore.OidCache -> a -> [Maybe ByteString],
+    serializer :: CodecsCore.OidCache.OidCache -> a -> [Maybe ByteString],
     printer :: a -> DList Text
   }
 
