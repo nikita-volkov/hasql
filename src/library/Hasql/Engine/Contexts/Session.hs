@@ -105,7 +105,7 @@ statement stmt params =
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)
       Right newOidCache -> do
-        let decoder' = RequestingOid.toBase (Statement.decoder stmt) newOidCache
+        let decoder' = RequestingOid.toBase (Statement.decoder stmt) (OidCache.toResolver newOidCache)
             prepared = usePreparedStatements && Statement.isPrepared stmt
             -- Single-statement context for error reporting:
             -- total statements 1, index 0.

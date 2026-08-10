@@ -8,6 +8,7 @@ module Hasql.CodecsCore.OidCache
     lookupTypeNameScalar,
     lookupTypeNameArray,
     lookupTypeInfo,
+    toResolver,
 
     -- * Constructors
     fromHashMap,
@@ -89,3 +90,9 @@ lookupTypeInfo name (OidCache byName) =
 {-# INLINE toHashMap #-}
 toHashMap :: OidCache -> HashMap QualifiedTypeName TypeInfo.TypeInfo
 toHashMap (OidCache byName) = byName
+
+-- | Resolution function for a name against the cache, falling back to 'TypeInfo.invalid' on a miss.
+{-# INLINE toResolver #-}
+toResolver :: OidCache -> QualifiedTypeName -> TypeInfo.TypeInfo
+toResolver oidCache name =
+  lookupTypeInfo name oidCache & fromMaybe TypeInfo.invalid

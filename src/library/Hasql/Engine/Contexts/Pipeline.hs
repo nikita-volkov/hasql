@@ -262,4 +262,4 @@ statement stmt params =
                     & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
 
         decoder' =
-          RequestingOid.toBase (Statement.decoder stmt) oidCache
+          RequestingOid.toBase (Statement.decoder stmt) (OidCache.toResolver oidCache)
