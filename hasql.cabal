@@ -212,10 +212,10 @@ library codecs-core
   hs-source-dirs: src/codecs-core
   exposed-modules:
     Hasql.CodecsCore
-    Hasql.CodecsCore.ParamMeta
     Hasql.CodecsCore.QualifiedTypeName
     Hasql.CodecsCore.TypeInfo
     Hasql.CodecsCore.TypeRef
+    Hasql.CodecsCore.TypeShape
 
   build-depends:
     hasql:platform

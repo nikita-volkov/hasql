@@ -14,9 +14,9 @@ import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
+import Hasql.CodecsCore.TypeShape (TypeShape (..))
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result
@@ -48,9 +48,9 @@ data Statement params result
   = Statement
   { -- | SQL template pre-encoded as UTF-8 for execution.
     sql :: ByteString,
-    -- | Frozen per-parameter metadata: type reference, dimensionality, text-format flag.
+    -- | Frozen per-parameter type shapes.
     -- Produced once at construction from the Params DList and reused across executions.
-    columnsMetadata :: Vector ParamMeta,
+    columnsMetadata :: Vector TypeShape,
     -- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
     serializer :: (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> params -> [Maybe ByteString],
     -- | Render params in human-readable form (for error reporting).
@@ -154,7 +154,7 @@ compilePreparedStatementData ::
 compilePreparedStatementData stmt resolve params =
   unzip
     $ zipWith
-      (\(ParamMeta typeRef dim fmt) encoding -> (resolveOid resolve typeRef dim, fmap (,fmt) encoding))
+      (\(TypeShape typeRef dim fmt) encoding -> (resolveOid resolve typeRef dim, fmap (,fmt) encoding))
       (Vector.toList (columnsMetadata stmt))
       (serializer stmt resolve params)
 
@@ -166,7 +166,7 @@ compileUnpreparedStatementData ::
   [Maybe (Word32, ByteString, Bool)]
 compileUnpreparedStatementData stmt resolve params =
   zipWith
-    (\(ParamMeta typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid resolve typeRef dim) <*> encoding <*> Just fmt)
+    (\(TypeShape typeRef dim fmt) encoding -> (,,) <$> Just (resolveOid resolve typeRef dim) <*> encoding <*> Just fmt)
     (Vector.toList (columnsMetadata stmt))
     (serializer stmt resolve params)
 

@@ -13,16 +13,16 @@ import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
+import Hasql.CodecsCore.TypeShape (TypeShape (..))
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
--- | Frozen per-parameter metadata: type reference, dimensionality, text-format flag.
-toColumnsMetadata :: Params a -> Vector ParamMeta
+-- | Frozen per-parameter type shapes: type reference, dimensionality, text-format flag.
+toColumnsMetadata :: Params a -> Vector TypeShape
 toColumnsMetadata (Params _ _ columnsMetadata _) = freezeColumnsMetadata columnsMetadata
   where
     freezeColumnsMetadata =
@@ -88,8 +88,8 @@ data Params a = Params
   { size :: Int,
     -- | Serialization function, deferring the names of types that must be looked up at runtime.
     request :: ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName CodecsCore.TypeInfo (a -> [Maybe ByteString]),
-    -- | (Type reference, dimensionality, Text Format) for each parameter.
-    columnsMetadata :: DList ParamMeta,
+    -- | Type shape for each parameter.
+    columnsMetadata :: DList TypeShape,
     printer :: a -> DList Text
   }
 
@@ -146,7 +146,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               request = toRequest serialize,
-              columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
+              columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
               printer
             }
         Nothing ->
@@ -154,7 +154,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
            in Params
                 { size,
                   request = toRequest (ToBeResolved.lookup key *> serialize),
-                  columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }
 
@@ -169,7 +169,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               request = toRequest serialize,
-              columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
+              columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
               printer
             }
         Nothing ->
@@ -177,7 +177,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
            in Params
                 { size,
                   request = toRequest (ToBeResolved.lookup key *> serialize),
-                  columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }
 
