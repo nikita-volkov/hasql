@@ -211,8 +211,13 @@ tsvector = TypeInfo 3614 3643
 txid_snapshot :: TypeInfo
 txid_snapshot = TypeInfo 2970 2949
 
+-- | Postgres's actual @unknown@ type, assigned to untyped literals. Not to be confused with 'invalid'.
 unknown :: TypeInfo
 unknown = TypeInfo 705 705
+
+-- | Sentinel for a type name that failed to resolve to a real OID. Not to be confused with 'unknown', which is a real Postgres type.
+invalid :: TypeInfo
+invalid = TypeInfo 0 0
 
 uuid :: TypeInfo
 uuid = TypeInfo 2950 2951
