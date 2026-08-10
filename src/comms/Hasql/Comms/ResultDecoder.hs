@@ -158,9 +158,10 @@ columnOids = ResultDecoder \result -> do
 checkCompatibility :: RowDecoder.RowDecoder a -> ResultDecoder ()
 checkCompatibility rowDec =
   let oids = RowDecoder.toExpectedOids rowDec
+      oidsLength = length oids
    in ResultDecoder \result -> do
         maxCols <- Pq.nfields result
-        if length oids == fromIntegral maxCols
+        if oidsLength == fromIntegral maxCols
           then
             let go [] _ = pure (Right ())
                 go (Nothing : rest) colIndex = go rest (succ colIndex)
@@ -178,7 +179,7 @@ checkCompatibility rowDec =
                             )
                         )
              in go oids 0
-          else pure (Left (UnexpectedColumnCount (length oids) (fromIntegral maxCols)))
+          else pure (Left (UnexpectedColumnCount oidsLength (fromIntegral maxCols)))
 
 {-# INLINE maybe #-}
 maybe :: RowDecoder.RowDecoder a -> ResultDecoder (Maybe a)
