@@ -218,8 +218,7 @@ library codecs-core
     Hasql.CodecsCore.TypeRef
 
   build-depends:
-    hasql:platform,
-    hasql:to-be-resolved,
+    hasql:platform
 
 library connection-state
   import: base
