@@ -1,7 +1,6 @@
 module Hasql.ToBeResolved
   ( ToBeResolved (..),
     lookup,
-    toBeResolvedBy,
     augmentedBy,
   )
 where
@@ -40,11 +39,6 @@ instance Applicative (ToBeResolved k v) where
 lookup :: k -> ToBeResolved k v v
 lookup key =
   ToBeResolved [key] (\lookupFn -> lookupFn key)
-
-{-# INLINE toBeResolvedBy #-}
-toBeResolvedBy :: k -> (v -> a) -> ToBeResolved k v a
-toBeResolvedBy key cont =
-  ToBeResolved [key] (\lookupFn -> cont (lookupFn key))
 
 {-# INLINE augmentedBy #-}
 augmentedBy :: k -> (v -> a -> b) -> ToBeResolved k v a -> ToBeResolved k v b

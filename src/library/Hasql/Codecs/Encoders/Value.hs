@@ -346,7 +346,7 @@ enum schemaName typeName mapping =
     Nothing
     0
     False
-    (ToBeResolved.toBeResolvedBy (CodecsCore.QualifiedTypeName schemaName typeName) (\_typeInfo -> Binary.text_strict . mapping))
+    (fmap (\_typeInfo -> Binary.text_strict . mapping) (ToBeResolved.lookup (CodecsCore.QualifiedTypeName schemaName typeName)))
     (TextBuilder.text . mapping)
 
 -- |
