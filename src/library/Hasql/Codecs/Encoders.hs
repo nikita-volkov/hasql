@@ -82,8 +82,8 @@ import Hasql.Codecs.Encoders.Composite qualified as Composite
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -121,8 +121,8 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
       encoder = case scalarOidIfKnown of
         Just oid -> fmap (toEncoder oid) arrayEncoder
         Nothing ->
-          (\typeInfo -> toEncoder (CodecsCore.TypeInfo.toBaseOid typeInfo))
-            <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
+          (\typeInfo -> toEncoder (CodecVocab.TypeInfo.toBaseOid typeInfo))
+            <$> ToBeResolved.lookup (CodecVocab.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
             <*> arrayEncoder
    in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False encoder renderer
 

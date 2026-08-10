@@ -12,10 +12,10 @@ where
 import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
-import Hasql.CodecsCore.TypeShape (TypeShape (..))
+import Hasql.CodecVocab qualified as CodecVocab
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeRef qualified as CodecVocab.TypeRef
+import Hasql.CodecVocab.TypeShape (TypeShape (..))
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -28,12 +28,12 @@ toColumnsMetadata (Params _ _ columnsMetadata _) = freezeColumnsMetadata columns
     freezeColumnsMetadata =
       Vector.fromList . toList
 
-toUnknownTypes :: Params a -> HashSet CodecsCore.QualifiedTypeName
+toUnknownTypes :: Params a -> HashSet CodecVocab.QualifiedTypeName
 toUnknownTypes (Params _ (ToBeResolved.ToBeResolved unknownTypes _) _ _) =
   fromList unknownTypes
 
 -- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
-toSerializer :: Params a -> (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> a -> [Maybe ByteString]
+toSerializer :: Params a -> (CodecVocab.QualifiedTypeName -> CodecVocab.TypeInfo) -> a -> [Maybe ByteString]
 toSerializer (Params _ (ToBeResolved.ToBeResolved _ serializer) _ _) resolve = serializer resolve
 
 -- | Render params in human-readable form (for error reporting).
@@ -87,7 +87,7 @@ toPrinter (Params _ _ _ printer) = toList . printer
 data Params a = Params
   { size :: Int,
     -- | Serialization function, deferring the names of types that must be looked up at runtime.
-    request :: ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName CodecsCore.TypeInfo (a -> [Maybe ByteString]),
+    request :: ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName CodecVocab.TypeInfo (a -> [Maybe ByteString]),
     -- | Type shape for each parameter.
     columnsMetadata :: DList TypeShape,
     printer :: a -> DList Text
@@ -146,15 +146,15 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           Params
             { size,
               request = toRequest serialize,
-              columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
+              columnsMetadata = pure (TypeShape (CodecVocab.TypeRef.KnownOid oid) dimensionality textFormat),
               printer
             }
         Nothing ->
-          let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
+          let key = CodecVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName
            in Params
                 { size,
                   request = toRequest (ToBeResolved.lookup key *> serialize),
-                  columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  columnsMetadata = pure (TypeShape (CodecVocab.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }
 
@@ -169,15 +169,15 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           Params
             { size,
               request = toRequest serialize,
-              columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.KnownOid oid) dimensionality textFormat),
+              columnsMetadata = pure (TypeShape (CodecVocab.TypeRef.KnownOid oid) dimensionality textFormat),
               printer
             }
         Nothing ->
-          let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
+          let key = CodecVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName
            in Params
                 { size,
                   request = toRequest (ToBeResolved.lookup key *> serialize),
-                  columnsMetadata = pure (TypeShape (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
+                  columnsMetadata = pure (TypeShape (CodecVocab.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }
 

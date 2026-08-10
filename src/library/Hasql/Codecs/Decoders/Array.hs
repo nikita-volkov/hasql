@@ -14,8 +14,8 @@ where
 
 import Hasql.Codecs.Decoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Decoders.Value qualified as Value
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary
@@ -43,11 +43,11 @@ data Array a
       -- | Number of dimensions.
       Word
       -- | Decoding function
-      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Array a))
+      (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Array a))
   deriving (Functor)
 
 {-# INLINE toValueDecoder #-}
-toValueDecoder :: Array a -> ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Value a)
+toValueDecoder :: Array a -> ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Value a)
 toValueDecoder (Array _ _ _ _ _ decoder) =
   fmap Binary.array decoder
 

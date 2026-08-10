@@ -2,8 +2,8 @@ module Hasql.Codecs.Encoders.Composite where
 
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -14,7 +14,7 @@ import TextBuilder qualified
 data Composite a
   = Composite
       -- | Serialization function, deferring the names of types that must be looked up at runtime.
-      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (a -> Binary.Composite))
+      (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (a -> Binary.Composite))
       -- | Render function for error messages.
       (a -> [TextBuilder.TextBuilder])
 
@@ -53,8 +53,8 @@ field = \case
             Composite (fmap (toField oid) serialize) (\val -> [print val])
           Nothing ->
             Composite
-              ( (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
-                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
+              ( (\typeInfo -> toField (if dimensionality == 0 then CodecVocab.TypeInfo.toBaseOid typeInfo else CodecVocab.TypeInfo.toArrayOid typeInfo))
+                  <$> ToBeResolved.lookup (CodecVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName)
                   <*> serialize
               )
               (\val -> [print val])
@@ -66,8 +66,8 @@ field = \case
             Composite (fmap (toField oid) serialize) (maybe ["NULL"] (\val -> [print val]))
           Nothing ->
             Composite
-              ( (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
-                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
+              ( (\typeInfo -> toField (if dimensionality == 0 then CodecVocab.TypeInfo.toBaseOid typeInfo else CodecVocab.TypeInfo.toArrayOid typeInfo))
+                  <$> ToBeResolved.lookup (CodecVocab.QualifiedTypeName.QualifiedTypeName schemaName typeName)
                   <*> serialize
               )
               (maybe ["NULL"] (\val -> [print val]))

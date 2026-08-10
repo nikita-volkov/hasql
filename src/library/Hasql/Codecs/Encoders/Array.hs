@@ -2,8 +2,8 @@ module Hasql.Codecs.Encoders.Array where
 
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
@@ -36,7 +36,7 @@ data Array a
       -- | OID of the array type.
       (Maybe Word32)
       -- | Serialization function, deferring the names of types that must be looked up at runtime.
-      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (a -> Binary.Array))
+      (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (a -> Binary.Array))
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 

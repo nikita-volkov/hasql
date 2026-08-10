@@ -7,8 +7,8 @@ where
 
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
-import Hasql.CodecsCore qualified as CodecsCore
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecVocab qualified as CodecVocab
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
@@ -43,7 +43,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
             let foundTypes = HashMap.keysSet oidCacheUpdates
                 notFoundTypes = HashSet.difference missingTypes foundTypes
              in if not (HashSet.null notFoundTypes)
-                  then Left (Errors.MissingTypesSessionError (HashSet.map CodecsCore.QualifiedTypeName.toNameTuple notFoundTypes))
+                  then Left (Errors.MissingTypesSessionError (HashSet.map CodecVocab.QualifiedTypeName.toNameTuple notFoundTypes))
                   else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
   case resolvedOidCache of
     Left err -> pure (Left err, oidCache, statementCache)
@@ -144,7 +144,7 @@ data Pipeline a
       -- It can be assumed in the execution function that these types are always present in the cache.
       -- To achieve that property we will be validating the presence of all requested types in the database or failing before running the pipeline.
       -- In the execution function we will be defaulting to OID 0 for unknown types as a fallback in case of bugs.
-      (HashSet CodecsCore.QualifiedTypeName)
+      (HashSet CodecVocab.QualifiedTypeName)
       -- | Function that runs the pipeline.
       --
       -- The integer parameter indicates the current offset of the statement in the pipeline (0-based).

@@ -55,8 +55,8 @@ where
 
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary
@@ -77,7 +77,7 @@ data Value a
       -- | Dimensionality. If 0 then it is a scalar value, otherwise it is an array with that many dimensions.
       Word
       -- | Decoding function on a registry of OIDs by type name.
-      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Value a))
+      (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Value a))
   deriving (Functor)
 
 type role Value representational
@@ -90,9 +90,9 @@ instance Filterable Value where
 -- |
 -- Create a decoder from TypeInfo metadata and a decoding function.
 {-# INLINE primitive #-}
-primitive :: Text -> CodecsCore.TypeInfo.TypeInfo -> Binary.Value a -> Value a
+primitive :: Text -> CodecVocab.TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName (Just (CodecsCore.TypeInfo.toBaseOid pti)) (Just (CodecsCore.TypeInfo.toArrayOid pti)) 0 (pure decoder)
+  Value Nothing typeName (Just (CodecVocab.TypeInfo.toBaseOid pti)) (Just (CodecVocab.TypeInfo.toArrayOid pti)) 0 (pure decoder)
 
 -- * Static types
 
@@ -100,19 +100,19 @@ primitive typeName pti decoder =
 -- Decoder of the @BOOL@ values.
 {-# INLINEABLE bool #-}
 bool :: Value Bool
-bool = primitive "bool" CodecsCore.TypeInfo.bool Binary.bool
+bool = primitive "bool" CodecVocab.TypeInfo.bool Binary.bool
 
 -- |
 -- Decoder of the @INT2@ values.
 {-# INLINEABLE int2 #-}
 int2 :: Value Int16
-int2 = primitive "int2" CodecsCore.TypeInfo.int2 Binary.int
+int2 = primitive "int2" CodecVocab.TypeInfo.int2 Binary.int
 
 -- |
 -- Decoder of the @INT4@ values.
 {-# INLINEABLE int4 #-}
 int4 :: Value Int32
-int4 = primitive "int4" CodecsCore.TypeInfo.int4 Binary.int
+int4 = primitive "int4" CodecVocab.TypeInfo.int4 Binary.int
 
 -- |
 -- Decoder of the @INT8@ values.
@@ -120,68 +120,68 @@ int4 = primitive "int4" CodecsCore.TypeInfo.int4 Binary.int
 int8 :: Value Int64
 int8 =
   {-# SCC "int8" #-}
-  primitive "int8" CodecsCore.TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
+  primitive "int8" CodecVocab.TypeInfo.int8 ({-# SCC "int8.int" #-} Binary.int)
 
 -- |
 -- Decoder of the @FLOAT4@ values.
 {-# INLINEABLE float4 #-}
 float4 :: Value Float
-float4 = primitive "float4" CodecsCore.TypeInfo.float4 Binary.float4
+float4 = primitive "float4" CodecVocab.TypeInfo.float4 Binary.float4
 
 -- |
 -- Decoder of the @FLOAT8@ values.
 {-# INLINEABLE float8 #-}
 float8 :: Value Double
-float8 = primitive "float8" CodecsCore.TypeInfo.float8 Binary.float8
+float8 = primitive "float8" CodecVocab.TypeInfo.float8 Binary.float8
 
 -- |
 -- Decoder of the @NUMERIC@ values.
 {-# INLINEABLE numeric #-}
 numeric :: Value Scientific
-numeric = primitive "numeric" CodecsCore.TypeInfo.numeric Binary.numeric
+numeric = primitive "numeric" CodecVocab.TypeInfo.numeric Binary.numeric
 
 -- |
 -- Decoder of the @CHAR@ values.
 -- Note that it supports Unicode values.
 {-# INLINEABLE char #-}
 char :: Value Char
-char = primitive "char" CodecsCore.TypeInfo.char Binary.char
+char = primitive "char" CodecVocab.TypeInfo.char Binary.char
 
 -- |
 -- Decoder of the @TEXT@ values.
 {-# INLINEABLE text #-}
 text :: Value Text
-text = primitive "text" CodecsCore.TypeInfo.text Binary.text_strict
+text = primitive "text" CodecVocab.TypeInfo.text Binary.text_strict
 
 -- |
 -- Decoder of the @VARCHAR@ values.
 {-# INLINEABLE varchar #-}
 varchar :: Value Text
-varchar = primitive "varchar" CodecsCore.TypeInfo.varchar Binary.text_strict
+varchar = primitive "varchar" CodecVocab.TypeInfo.varchar Binary.text_strict
 
 -- |
 -- Decoder of @BPCHAR@ or @CHAR(n)@, @CHARACTER(n)@ values.
 {-# INLINEABLE bpchar #-}
 bpchar :: Value Text
-bpchar = primitive "bpchar" CodecsCore.TypeInfo.bpchar Binary.text_strict
+bpchar = primitive "bpchar" CodecVocab.TypeInfo.bpchar Binary.text_strict
 
 -- |
 -- Decoder of the @BYTEA@ values.
 {-# INLINEABLE bytea #-}
 bytea :: Value ByteString
-bytea = primitive "bytea" CodecsCore.TypeInfo.bytea Binary.bytea_strict
+bytea = primitive "bytea" CodecVocab.TypeInfo.bytea Binary.bytea_strict
 
 -- |
 -- Decoder of the @DATE@ values.
 {-# INLINEABLE date #-}
 date :: Value Day
-date = primitive "date" CodecsCore.TypeInfo.date Binary.date
+date = primitive "date" CodecVocab.TypeInfo.date Binary.date
 
 -- |
 -- Decoder of the @TIMESTAMP@ values.
 {-# INLINEABLE timestamp #-}
 timestamp :: Value LocalTime
-timestamp = primitive "timestamp" CodecsCore.TypeInfo.timestamp Binary.timestamp_int
+timestamp = primitive "timestamp" CodecVocab.TypeInfo.timestamp Binary.timestamp_int
 
 -- |
 -- Decoder of the @TIMESTAMPTZ@ values.
@@ -195,13 +195,13 @@ timestamp = primitive "timestamp" CodecsCore.TypeInfo.timestamp Binary.timestamp
 -- and communicates with Postgres using the UTC values directly.
 {-# INLINEABLE timestamptz #-}
 timestamptz :: Value UTCTime
-timestamptz = primitive "timestamptz" CodecsCore.TypeInfo.timestamptz Binary.timestamptz_int
+timestamptz = primitive "timestamptz" CodecVocab.TypeInfo.timestamptz Binary.timestamptz_int
 
 -- |
 -- Decoder of the @TIME@ values.
 {-# INLINEABLE time #-}
 time :: Value TimeOfDay
-time = primitive "time" CodecsCore.TypeInfo.time Binary.time_int
+time = primitive "time" CodecVocab.TypeInfo.time Binary.time_int
 
 -- |
 -- Decoder of the @TIMETZ@ values.
@@ -213,25 +213,25 @@ time = primitive "time" CodecsCore.TypeInfo.time Binary.time_int
 -- to represent a value on the Haskell's side.
 {-# INLINEABLE timetz #-}
 timetz :: Value (TimeOfDay, TimeZone)
-timetz = primitive "timetz" CodecsCore.TypeInfo.timetz Binary.timetz_int
+timetz = primitive "timetz" CodecVocab.TypeInfo.timetz Binary.timetz_int
 
 -- |
 -- Decoder of the @INTERVAL@ values.
 {-# INLINEABLE interval #-}
 interval :: Value DiffTime
-interval = primitive "interval" CodecsCore.TypeInfo.interval Binary.interval_int
+interval = primitive "interval" CodecVocab.TypeInfo.interval Binary.interval_int
 
 -- |
 -- Decoder of the @UUID@ values.
 {-# INLINEABLE uuid #-}
 uuid :: Value UUID
-uuid = primitive "uuid" CodecsCore.TypeInfo.uuid Binary.uuid
+uuid = primitive "uuid" CodecVocab.TypeInfo.uuid Binary.uuid
 
 -- |
 -- Decoder of the @INET@ values.
 {-# INLINEABLE inet #-}
 inet :: Value Iproute.IPRange
-inet = primitive "inet" CodecsCore.TypeInfo.inet Binary.inet
+inet = primitive "inet" CodecVocab.TypeInfo.inet Binary.inet
 
 -- |
 -- Decoder of the @MACADDR@ values.
@@ -242,103 +242,103 @@ inet = primitive "inet" CodecsCore.TypeInfo.inet Binary.inet
 -- > (\(a,b,c,d,e,f) -> fromOctets a b c d e f) <$> macaddr
 {-# INLINEABLE macaddr #-}
 macaddr :: Value (Word8, Word8, Word8, Word8, Word8, Word8)
-macaddr = primitive "macaddr" CodecsCore.TypeInfo.macaddr Binary.macaddr
+macaddr = primitive "macaddr" CodecVocab.TypeInfo.macaddr Binary.macaddr
 
 -- |
 -- Decoder of the @JSON@ values into a JSON AST.
 {-# INLINEABLE json #-}
 json :: Value Aeson.Value
-json = primitive "json" CodecsCore.TypeInfo.json Binary.json_ast
+json = primitive "json" CodecVocab.TypeInfo.json Binary.json_ast
 
 -- |
 -- Decoder of the @JSON@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonBytes #-}
 jsonBytes :: (ByteString -> Either Text a) -> Value a
-jsonBytes fn = primitive "json" CodecsCore.TypeInfo.json (Binary.json_bytes fn)
+jsonBytes fn = primitive "json" CodecVocab.TypeInfo.json (Binary.json_bytes fn)
 
 -- |
 -- Decoder of the @JSONB@ values into a JSON AST.
 {-# INLINEABLE jsonb #-}
 jsonb :: Value Aeson.Value
-jsonb = primitive "jsonb" CodecsCore.TypeInfo.jsonb Binary.jsonb_ast
+jsonb = primitive "jsonb" CodecVocab.TypeInfo.jsonb Binary.jsonb_ast
 
 -- |
 -- Decoder of the @JSONB@ values into a raw JSON 'ByteString'.
 {-# INLINEABLE jsonbBytes #-}
 jsonbBytes :: (ByteString -> Either Text a) -> Value a
-jsonbBytes fn = primitive "jsonb" CodecsCore.TypeInfo.jsonb (Binary.jsonb_bytes fn)
+jsonbBytes fn = primitive "jsonb" CodecVocab.TypeInfo.jsonb (Binary.jsonb_bytes fn)
 
 -- |
 -- Decoder of the @INT4RANGE@ values.
 {-# INLINEABLE int4range #-}
 int4range :: Value (R.Range Int32)
-int4range = primitive "int4range" CodecsCore.TypeInfo.int4range Binary.int4range
+int4range = primitive "int4range" CodecVocab.TypeInfo.int4range Binary.int4range
 
 -- |
 -- Decoder of the @INT8RANGE@ values.
 {-# INLINEABLE int8range #-}
 int8range :: Value (R.Range Int64)
-int8range = primitive "int8range" CodecsCore.TypeInfo.int8range Binary.int8range
+int8range = primitive "int8range" CodecVocab.TypeInfo.int8range Binary.int8range
 
 -- |
 -- Decoder of the @NUMRANGE@ values.
 {-# INLINEABLE numrange #-}
 numrange :: Value (R.Range Scientific)
-numrange = primitive "numrange" CodecsCore.TypeInfo.numrange Binary.numrange
+numrange = primitive "numrange" CodecVocab.TypeInfo.numrange Binary.numrange
 
 -- |
 -- Decoder of the @TSRANGE@ values.
 {-# INLINEABLE tsrange #-}
 tsrange :: Value (R.Range LocalTime)
-tsrange = primitive "tsrange" CodecsCore.TypeInfo.tsrange Binary.tsrange_int
+tsrange = primitive "tsrange" CodecVocab.TypeInfo.tsrange Binary.tsrange_int
 
 -- |
 -- Decoder of the @TSTZRANGE@ values.
 {-# INLINEABLE tstzrange #-}
 tstzrange :: Value (R.Range UTCTime)
-tstzrange = primitive "tstzrange" CodecsCore.TypeInfo.tstzrange Binary.tstzrange_int
+tstzrange = primitive "tstzrange" CodecVocab.TypeInfo.tstzrange Binary.tstzrange_int
 
 -- |
 -- Decoder of the @DATERANGE@ values.
 {-# INLINEABLE daterange #-}
 daterange :: Value (R.Range Day)
-daterange = primitive "daterange" CodecsCore.TypeInfo.daterange Binary.daterange
+daterange = primitive "daterange" CodecVocab.TypeInfo.daterange Binary.daterange
 
 -- |
 -- Decoder of the @INT4MULTIRANGE@ values.
 {-# INLINEABLE int4multirange #-}
 int4multirange :: Value (R.Multirange Int32)
-int4multirange = primitive "int4multirange" CodecsCore.TypeInfo.int4multirange Binary.int4multirange
+int4multirange = primitive "int4multirange" CodecVocab.TypeInfo.int4multirange Binary.int4multirange
 
 -- |
 -- Decoder of the @INT8MULTIRANGE@ values.
 {-# INLINEABLE int8multirange #-}
 int8multirange :: Value (R.Multirange Int64)
-int8multirange = primitive "int8multirange" CodecsCore.TypeInfo.int8multirange Binary.int8multirange
+int8multirange = primitive "int8multirange" CodecVocab.TypeInfo.int8multirange Binary.int8multirange
 
 -- |
 -- Decoder of the @NUMMULTIRANGE@ values.
 {-# INLINEABLE nummultirange #-}
 nummultirange :: Value (R.Multirange Scientific)
-nummultirange = primitive "nummultirange" CodecsCore.TypeInfo.nummultirange Binary.nummultirange
+nummultirange = primitive "nummultirange" CodecVocab.TypeInfo.nummultirange Binary.nummultirange
 
 -- |
 -- Decoder of the @TSMULTIRANGE@ values.
 {-# INLINEABLE tsmultirange #-}
 tsmultirange :: Value (R.Multirange LocalTime)
-tsmultirange = primitive "tsmultirange" CodecsCore.TypeInfo.tsmultirange Binary.tsmultirange_int
+tsmultirange = primitive "tsmultirange" CodecVocab.TypeInfo.tsmultirange Binary.tsmultirange_int
 
 -- |
 -- Decoder of the @TSTZMULTIRANGE@ values.
 {-# INLINEABLE tstzmultirange #-}
 tstzmultirange :: Value (R.Multirange UTCTime)
-tstzmultirange = primitive "tstzmultirange" CodecsCore.TypeInfo.tstzmultirange Binary.tstzmultirange_int
+tstzmultirange = primitive "tstzmultirange" CodecVocab.TypeInfo.tstzmultirange Binary.tstzmultirange_int
 
 -- |
 -- Decoder of the @DATEMULTIRANGE@ values.
 {-# INLINEABLE datemultirange #-}
 datemultirange :: Value (R.Multirange Day)
-datemultirange = primitive "datemultirange" CodecsCore.TypeInfo.datemultirange Binary.datemultirange
+datemultirange = primitive "datemultirange" CodecVocab.TypeInfo.datemultirange Binary.datemultirange
 
 -- |
 -- Decoder of the @CITEXT@ values.
@@ -382,9 +382,9 @@ custom schema typeName staticOids requestedTypes fn =
     (fmap fst staticOids)
     (fmap snd staticOids)
     0
-    (ToBeResolved.ToBeResolved (fmap CodecsCore.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (toTuple . lookup . CodecsCore.QualifiedTypeName.fromNameTuple))))
+    (ToBeResolved.ToBeResolved (fmap CodecVocab.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (toTuple . lookup . CodecVocab.QualifiedTypeName.fromNameTuple))))
   where
-    toTuple typeInfo = (CodecsCore.TypeInfo.toBaseOid typeInfo, CodecsCore.TypeInfo.toArrayOid typeInfo)
+    toTuple typeInfo = (CodecVocab.TypeInfo.toBaseOid typeInfo, CodecVocab.TypeInfo.toArrayOid typeInfo)
 
 -- |
 -- Refine a value decoder, lifting the possible error to the session level.
@@ -443,7 +443,7 @@ toBaseOid (Value _ _ baseOid _ _ _) = baseOid
 toArrayOid :: Value a -> Maybe Word32
 toArrayOid (Value _ _ _ oid _ _) = oid
 
-toDecoder :: Value a -> ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Value a)
+toDecoder :: Value a -> ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (Binary.Value a)
 toDecoder (Value _ _ _ _ _ decoder) = decoder
 
 isArray :: Value a -> Bool

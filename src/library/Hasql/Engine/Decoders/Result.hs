@@ -1,7 +1,7 @@
 module Hasql.Engine.Decoders.Result where
 
-import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Engine.Decoders.Row (Row (..))
 import Hasql.Engine.Decoders.Row qualified as Row
@@ -11,17 +11,17 @@ import Hasql.ToBeResolved qualified as ToBeResolved
 -- |
 -- Decoder of a query result.
 newtype Result a
-  = Result (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (ResultDecoder.ResultDecoder a))
+  = Result (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo (ResultDecoder.ResultDecoder a))
   deriving
     (Functor, Applicative, Filterable)
-    via (Compose (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo) ResultDecoder.ResultDecoder)
+    via (Compose (ToBeResolved.ToBeResolved CodecVocab.QualifiedTypeName.QualifiedTypeName CodecVocab.TypeInfo.TypeInfo) ResultDecoder.ResultDecoder)
 
 -- | Names of types that must be looked up at runtime before the decoder can run.
-toUnknownTypes :: Result a -> HashSet CodecsCore.QualifiedTypeName.QualifiedTypeName
+toUnknownTypes :: Result a -> HashSet CodecVocab.QualifiedTypeName.QualifiedTypeName
 toUnknownTypes (Result (ToBeResolved.ToBeResolved unknownTypes _)) = fromList unknownTypes
 
 -- | Resolve the decoder given a resolver of type names to their OIDs.
-toBase :: Result a -> (CodecsCore.QualifiedTypeName.QualifiedTypeName -> CodecsCore.TypeInfo.TypeInfo) -> ResultDecoder.ResultDecoder a
+toBase :: Result a -> (CodecVocab.QualifiedTypeName.QualifiedTypeName -> CodecVocab.TypeInfo.TypeInfo) -> ResultDecoder.ResultDecoder a
 toBase (Result (ToBeResolved.ToBeResolved _ decoder)) = decoder
 
 -- * Construction
