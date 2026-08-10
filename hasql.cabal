@@ -131,19 +131,43 @@ library
     Hasql.Statement
 
   other-modules:
+    Hasql.Codecs.Decoders
+    Hasql.Codecs.Decoders.Array
+    Hasql.Codecs.Decoders.Composite
+    Hasql.Codecs.Decoders.NullableOrNot
+    Hasql.Codecs.Decoders.Value
+    Hasql.Codecs.Encoders
+    Hasql.Codecs.Encoders.Array
+    Hasql.Codecs.Encoders.Composite
+    Hasql.Codecs.Encoders.NullableOrNot
+    Hasql.Codecs.Encoders.Params
+    Hasql.Codecs.Encoders.Value
     Hasql.Connection.Config
     Hasql.Connection.ServerVersion
+    Hasql.Engine.Contexts.Pipeline
+    Hasql.Engine.Contexts.Session
+    Hasql.Engine.Decoders.Result
+    Hasql.Engine.Decoders.Row
+    Hasql.Engine.Errors
+    Hasql.Engine.PqProcedures.SelectTypeInfo
+    Hasql.Engine.Statement
 
   build-depends:
-    hasql:codecs,
+    aeson >=2 && <3,
+    bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
+    hasql:codecs-core,
     hasql:comms,
-    hasql:engine,
+    hasql:connection-state,
     hasql:platform,
+    iproute >=1.7 && <1.8,
+    postgresql-binary ^>=0.15,
     postgresql-connection-string ^>=0.1,
     pqi >=1.0 && <1.2,
     text >=1 && <3,
     text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
+    vector >=0.10 && <0.14,
 
 library platform
   import: base
@@ -173,41 +197,36 @@ library platform
     vector >=0.10 && <0.14,
     witherable >=0.5 && <0.6,
 
-library codecs
+library codecs-core
   import: base
-  hs-source-dirs: src/codecs
+  hs-source-dirs: src/codecs-core
   exposed-modules:
-    Hasql.Codecs.Decoders
-    Hasql.Codecs.Decoders.Array
-    Hasql.Codecs.Decoders.Composite
-    Hasql.Codecs.Decoders.NullableOrNot
-    Hasql.Codecs.Decoders.Value
-    Hasql.Codecs.Encoders
-    Hasql.Codecs.Encoders.Array
-    Hasql.Codecs.Encoders.Composite
-    Hasql.Codecs.Encoders.NullableOrNot
-    Hasql.Codecs.Encoders.Params
-    Hasql.Codecs.Encoders.Value
-    Hasql.Codecs.RequestingOid
-    Hasql.Codecs.RequestingOid.LookingUp
-    Hasql.Codecs.Vocab
-    Hasql.Codecs.Vocab.OidCache
-    Hasql.Codecs.Vocab.ParamMeta
-    Hasql.Codecs.Vocab.QualifiedTypeName
-    Hasql.Codecs.Vocab.TypeInfo
-    Hasql.Codecs.Vocab.TypeRef
+    Hasql.CodecsCore
+    Hasql.CodecsCore.OidCache
+    Hasql.CodecsCore.ParamMeta
+    Hasql.CodecsCore.QualifiedTypeName
+    Hasql.CodecsCore.RequestingOid
+    Hasql.CodecsCore.RequestingOid.LookingUp
+    Hasql.CodecsCore.TypeInfo
+    Hasql.CodecsCore.TypeRef
 
   build-depends:
-    aeson >=2 && <3,
     base >=4.14 && <5,
-    bytestring >=0.10 && <0.13,
-    bytestring-strict-builder >=0.4.5.4 && <0.5,
     hasql:platform,
-    iproute >=1.7 && <1.8,
-    postgresql-binary ^>=0.15,
-    text-builder >=1 && <1.1,
     unordered-containers >=0.2 && <0.3,
-    vector >=0.10 && <0.14,
+
+library connection-state
+  import: base
+  hs-source-dirs: src/connection-state
+  exposed-modules:
+    Hasql.ConnectionState
+    Hasql.ConnectionState.StatementCache
+
+  build-depends:
+    hasql:codecs-core,
+    hasql:platform,
+    pqi >=1.0 && <1.2,
+    unordered-containers >=0.2 && <0.3,
 
 library comms
   import: base
@@ -226,31 +245,6 @@ library comms
     bytestring >=0.10 && <0.13,
     hasql:platform,
     pqi >=1.0 && <1.2,
-    vector >=0.10 && <0.14,
-
-library engine
-  import: base
-  hs-source-dirs: src/engine
-  exposed-modules:
-    Hasql.Engine.Contexts.Pipeline
-    Hasql.Engine.Contexts.Session
-    Hasql.Engine.Decoders.Result
-    Hasql.Engine.Decoders.Row
-    Hasql.Engine.Errors
-    Hasql.Engine.PqProcedures.SelectTypeInfo
-    Hasql.Engine.Statement
-    Hasql.Engine.Structures.ConnectionState
-    Hasql.Engine.Structures.StatementCache
-
-  build-depends:
-    hasql:codecs,
-    hasql:comms,
-    hasql:platform,
-    postgresql-binary ^>=0.15,
-    pqi >=1.0 && <1.2,
-    text >=1 && <3,
-    text-builder >=1 && <1.1,
-    unordered-containers >=0.2 && <0.3,
     vector >=0.10 && <0.14,
 
 benchmark benchmarks
@@ -302,24 +296,38 @@ test-suite comms-tests
     testcontainers-postgresql ^>=0.2,
     text-builder >=1 && <1.1,
 
-test-suite engine-tests
+test-suite codecs-core-tests
   import: test
   type: exitcode-stdio-1.0
-  hs-source-dirs: src/engine-tests
+  hs-source-dirs: src/codecs-core-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Engine.Structures.OidCacheSpec
-    Hasql.Engine.Structures.StatementCacheSpec
+    Hasql.CodecsCore.OidCacheSpec
 
   build-tool-depends:
     hspec-discover:hspec-discover ^>=2.11.12
 
   build-depends:
     base >=4.14 && <5,
-    hasql:codecs,
-    hasql:engine,
+    hasql:codecs-core,
     hspec ^>=2.11.12,
     unordered-containers >=0.2 && <0.3,
+
+test-suite connection-state-tests
+  import: test
+  type: exitcode-stdio-1.0
+  hs-source-dirs: src/connection-state-tests
+  main-is: Main.hs
+  other-modules:
+    Hasql.ConnectionState.StatementCacheSpec
+
+  build-tool-depends:
+    hspec-discover:hspec-discover ^>=2.11.12
+
+  build-depends:
+    base >=4.14 && <5,
+    hasql:connection-state,
+    hspec ^>=2.11.12,
 
 test-suite library-tests
   import: test

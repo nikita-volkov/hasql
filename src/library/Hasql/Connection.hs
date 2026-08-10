@@ -13,10 +13,10 @@ import Hasql.Comms.Session qualified as Comms.Session
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
+import Hasql.ConnectionState qualified as ConnectionState
+import Hasql.ConnectionState.StatementCache qualified as StatementCache
 import Hasql.Engine.Contexts.Session qualified as Session
 import Hasql.Engine.Errors
-import Hasql.Engine.Structures.ConnectionState qualified as ConnectionState
-import Hasql.Engine.Structures.StatementCache qualified as StatementCache
 import Hasql.Platform.Prelude
 import Pqi (Adapter)
 import Pqi qualified as Pq
