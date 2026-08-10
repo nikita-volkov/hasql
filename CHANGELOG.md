@@ -1,3 +1,9 @@
+# v2.0.0.3
+
+## Fixes
+
+- Work around the bug in Cabal due to which documentation does not get generated for definitions reexported from sublibs.
+
 # v2.0.0.2
 
 Work around the bugs in Cabal/Haddock that cause missing documentation for two-hop reexported internal modules.
