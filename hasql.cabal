@@ -160,6 +160,7 @@ library
     hasql:comms,
     hasql:connection-state,
     hasql:platform,
+    hasql:to-be-resolved,
     iproute >=1.7 && <1.8,
     postgresql-binary ^>=0.15,
     postgresql-connection-string ^>=0.1,
@@ -197,6 +198,15 @@ library platform
     vector >=0.10 && <0.14,
     witherable >=0.5 && <0.6,
 
+library to-be-resolved
+  import: base
+  hs-source-dirs: src/to-be-resolved
+  exposed-modules:
+    Hasql.ToBeResolved
+
+  build-depends:
+    base >=4.14 && <5
+
 library codecs-core
   import: base
   hs-source-dirs: src/codecs-core
@@ -204,14 +214,12 @@ library codecs-core
     Hasql.CodecsCore
     Hasql.CodecsCore.ParamMeta
     Hasql.CodecsCore.QualifiedTypeName
-    Hasql.CodecsCore.RequestingOid
-    Hasql.CodecsCore.RequestingOid.LookingUp
     Hasql.CodecsCore.TypeInfo
     Hasql.CodecsCore.TypeRef
 
   build-depends:
-    base >=4.14 && <5,
     hasql:platform,
+    hasql:to-be-resolved,
 
 library connection-state
   import: base

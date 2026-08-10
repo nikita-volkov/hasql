@@ -3,10 +3,10 @@ module Hasql.Engine.Decoders.Row where
 import Hasql.Codecs.Decoders
 import Hasql.Codecs.Decoders.Value qualified as Value
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Platform.Prelude
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary
 
 -- |
@@ -19,14 +19,14 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- x = (,,) '<$>' ('column' . 'nullable') 'int8' '<*>' ('column' . 'nonNullable') 'text' '<*>' ('column' . 'nonNullable') 'time'
 -- @
 newtype Row a
-  = Row (RequestingOid.RequestingOid (Hasql.Comms.RowDecoder.RowDecoder a))
+  = Row (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Hasql.Comms.RowDecoder.RowDecoder a))
   deriving
     (Functor, Applicative, Filterable)
-    via (Compose RequestingOid.RequestingOid Hasql.Comms.RowDecoder.RowDecoder)
+    via (Compose (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo) Hasql.Comms.RowDecoder.RowDecoder)
 
 toDecoder ::
   Row a ->
-  RequestingOid.RequestingOid (Hasql.Comms.RowDecoder.RowDecoder a)
+  ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Hasql.Comms.RowDecoder.RowDecoder a)
 toDecoder (Row f) = f
 
 -- |
@@ -41,7 +41,7 @@ column = \case
           (Hasql.Comms.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
-        RequestingOid.hoistLookingUp
+        ToBeResolved.augmentedBy
           (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           ( \lookupResult decoder ->
               Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
@@ -54,7 +54,7 @@ column = \case
           (Hasql.Comms.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
       Nothing -> do
-        RequestingOid.hoistLookingUp
+        ToBeResolved.augmentedBy
           (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
           (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
           (Value.toDecoder valueDecoder)

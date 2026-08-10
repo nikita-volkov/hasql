@@ -56,9 +56,9 @@ where
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as R
 
@@ -77,7 +77,7 @@ data Value a
       -- | Dimensionality. If 0 then it is a scalar value, otherwise it is an array with that many dimensions.
       Word
       -- | Decoding function on a registry of OIDs by type name.
-      (RequestingOid.RequestingOid (Binary.Value a))
+      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Value a))
   deriving (Functor)
 
 type role Value representational
@@ -92,7 +92,7 @@ instance Filterable Value where
 {-# INLINE primitive #-}
 primitive :: Text -> CodecsCore.TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName (Just (CodecsCore.TypeInfo.toBaseOid pti)) (Just (CodecsCore.TypeInfo.toArrayOid pti)) 0 (RequestingOid.lift decoder)
+  Value Nothing typeName (Just (CodecsCore.TypeInfo.toBaseOid pti)) (Just (CodecsCore.TypeInfo.toArrayOid pti)) 0 (ToBeResolved.lift decoder)
 
 -- * Static types
 
@@ -346,7 +346,7 @@ datemultirange = primitive "datemultirange" CodecsCore.TypeInfo.datemultirange B
 -- Requires the @citext@ extension to be installed in the database.
 {-# INLINEABLE citext #-}
 citext :: Value Text
-citext = Value Nothing "citext" Nothing Nothing 0 (RequestingOid.lift Binary.text_strict)
+citext = Value Nothing "citext" Nothing Nothing 0 (ToBeResolved.lift Binary.text_strict)
 
 -- |
 -- Low level API for defining custom value decoders.
@@ -382,7 +382,7 @@ custom schema typeName staticOids requestedTypes fn =
     (fmap fst staticOids)
     (fmap snd staticOids)
     0
-    (RequestingOid.requestAndHandle (fmap CodecsCore.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (toTuple . lookup . CodecsCore.QualifiedTypeName.fromNameTuple))))
+    (ToBeResolved.ToBeResolved (fmap CodecsCore.QualifiedTypeName.fromNameTuple requestedTypes) (\lookup -> Binary.fn (fn (toTuple . lookup . CodecsCore.QualifiedTypeName.fromNameTuple))))
   where
     toTuple typeInfo = (CodecsCore.TypeInfo.toBaseOid typeInfo, CodecsCore.TypeInfo.toArrayOid typeInfo)
 
@@ -405,7 +405,7 @@ refine fn (Value schema typeName typeOid arrayOid dimensionality decoder) =
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
-  Value Nothing "hstore" Nothing Nothing 0 (RequestingOid.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
+  Value Nothing "hstore" Nothing Nothing 0 (ToBeResolved.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
 
 -- |
 -- Given a partial mapping from text to value, produces a decoder of that value for a named enum type.
@@ -418,7 +418,7 @@ enum ::
   (Text -> Maybe a) ->
   Value a
 enum schema typeName mapping =
-  Value schema typeName Nothing Nothing 0 (RequestingOid.lift (Binary.enum mapping))
+  Value schema typeName Nothing Nothing 0 (ToBeResolved.lift (Binary.enum mapping))
 
 -- * Relations
 
@@ -443,7 +443,7 @@ toBaseOid (Value _ _ baseOid _ _ _) = baseOid
 toArrayOid :: Value a -> Maybe Word32
 toArrayOid (Value _ _ _ oid _ _) = oid
 
-toDecoder :: Value a -> RequestingOid.RequestingOid (Binary.Value a)
+toDecoder :: Value a -> ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (Binary.Value a)
 toDecoder (Value _ _ _ _ _ decoder) = decoder
 
 isArray :: Value a -> Bool

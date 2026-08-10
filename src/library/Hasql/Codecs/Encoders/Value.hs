@@ -6,9 +6,9 @@ import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IP qualified as Iproute
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import PostgreSQL.Binary.Range qualified as Range
 import TextBuilder qualified as TextBuilder
@@ -33,14 +33,14 @@ data Value a
       -- | Text format?
       Bool
       -- | Serialization function, deferring the names of types that must be looked up at runtime.
-      (RequestingOid.RequestingOid (a -> Binary.Encoding))
+      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName CodecsCore.TypeInfo (a -> Binary.Encoding))
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Value where
   {-# INLINE contramap #-}
   contramap f (Value schemaName typeName valueOid arrayOid dimensionality textFormat serialize render) =
-    Value schemaName typeName valueOid arrayOid dimensionality textFormat (RequestingOid.hoist (\encode -> encode . f) serialize) (render . f)
+    Value schemaName typeName valueOid arrayOid dimensionality textFormat (fmap (\encode -> encode . f) serialize) (render . f)
 
 {-# INLINE primitive #-}
 primitive :: Text -> Bool -> CodecsCore.TypeInfo -> (a -> Binary.Encoding) -> (a -> TextBuilder.TextBuilder) -> Value a
@@ -52,7 +52,7 @@ primitive typeName isText typeInfo encode render =
     (Just (CodecsCore.TypeInfo.toArrayOid typeInfo))
     0
     isText
-    (RequestingOid.lift encode)
+    (ToBeResolved.lift encode)
     render
 
 -- |
@@ -323,7 +323,7 @@ citext =
     Nothing
     0
     False
-    (RequestingOid.lift Binary.text_strict)
+    (ToBeResolved.lift Binary.text_strict)
     (TextBuilder.string . show)
 
 -- |
@@ -346,7 +346,7 @@ enum schemaName typeName mapping =
     Nothing
     0
     False
-    (RequestingOid.lookingUp (CodecsCore.QualifiedTypeName schemaName typeName) (\_typeInfo -> Binary.text_strict . mapping))
+    (ToBeResolved.toBeResolvedBy (CodecsCore.QualifiedTypeName schemaName typeName) (\_typeInfo -> Binary.text_strict . mapping))
     (TextBuilder.text . mapping)
 
 -- |
@@ -402,7 +402,7 @@ custom schemaName typeName staticOids requiredTypes encode render =
     (fmap snd staticOids)
     0
     False
-    ( RequestingOid.requestAndHandle
+    ( ToBeResolved.ToBeResolved
         (fmap CodecsCore.QualifiedTypeName.fromNameTuple requiredTypes)
         ( \resolve ->
             ByteString.StrictBuilder.bytes
@@ -429,7 +429,7 @@ hstore =
     Nothing
     0
     False
-    (RequestingOid.lift Binary.hStore_foldable)
+    (ToBeResolved.lift Binary.hStore_foldable)
     renderHstore
   where
     renderHstore items =

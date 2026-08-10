@@ -15,9 +15,9 @@ import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore qualified as CodecsCore
 import Hasql.CodecsCore.ParamMeta (ParamMeta (..))
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeRef qualified as CodecsCore.TypeRef
 import Hasql.Platform.Prelude
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
@@ -29,12 +29,12 @@ toColumnsMetadata (Params _ _ columnsMetadata _) = freezeColumnsMetadata columns
       Vector.fromList . toList
 
 toUnknownTypes :: Params a -> HashSet CodecsCore.QualifiedTypeName
-toUnknownTypes (Params _ request _ _) =
-  RequestingOid.toUnknownTypes request
+toUnknownTypes (Params _ (ToBeResolved.ToBeResolved unknownTypes _) _ _) =
+  fromList unknownTypes
 
 -- | Serialise params to encoded wire values given a resolver of type names to their OIDs.
 toSerializer :: Params a -> (CodecsCore.QualifiedTypeName -> CodecsCore.TypeInfo) -> a -> [Maybe ByteString]
-toSerializer (Params _ request _ _) resolve = RequestingOid.toBase request resolve
+toSerializer (Params _ (ToBeResolved.ToBeResolved _ serializer) _ _) resolve = serializer resolve
 
 -- | Render params in human-readable form (for error reporting).
 toPrinter :: Params a -> a -> [Text]
@@ -87,7 +87,7 @@ toPrinter (Params _ _ _ printer) = toList . printer
 data Params a = Params
   { size :: Int,
     -- | Serialization function, deferring the names of types that must be looked up at runtime.
-    request :: RequestingOid.RequestingOid (a -> [Maybe ByteString]),
+    request :: ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName CodecsCore.TypeInfo (a -> [Maybe ByteString]),
     -- | (Type reference, dimensionality, Text Format) for each parameter.
     columnsMetadata :: DList ParamMeta,
     printer :: a -> DList Text
@@ -95,7 +95,7 @@ data Params a = Params
 
 instance Contravariant Params where
   contramap fn (Params size request columnsMetadata printer) =
-    Params size (RequestingOid.hoist (. fn) request) columnsMetadata (printer . fn)
+    Params size (fmap (. fn) request) columnsMetadata (printer . fn)
 
 instance Divisible Params where
   divide
@@ -138,7 +138,7 @@ instance Monoid (Params a) where
 value :: Value.Value a -> Params a
 value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
-      toRequest = RequestingOid.hoist (\encode -> pure . Just . Binary.encodingBytes . encode)
+      toRequest = fmap (\encode -> pure . Just . Binary.encodingBytes . encode)
       printer = pure . TextBuilder.toText . print
       size = 1
    in case staticOid of
@@ -153,7 +153,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
           let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
            in Params
                 { size,
-                  request = toRequest (RequestingOid.lookup key *> serialize),
+                  request = toRequest (ToBeResolved.lookup key *> serialize),
                   columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }
@@ -161,7 +161,7 @@ value (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFor
 nullableValue :: Value.Value a -> Params (Maybe a)
 nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) =
   let staticOid = if dimensionality == 0 then scalarOid else arrayOid
-      toRequest = RequestingOid.hoist (\encode -> pure . fmap (Binary.encodingBytes . encode))
+      toRequest = fmap (\encode -> pure . fmap (Binary.encodingBytes . encode))
       printer = pure . maybe "null" (TextBuilder.toText . print)
       size = 1
    in case staticOid of
@@ -176,7 +176,7 @@ nullableValue (Value.Value schemaName typeName scalarOid arrayOid dimensionality
           let key = CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName
            in Params
                 { size,
-                  request = toRequest (RequestingOid.lookup key *> serialize),
+                  request = toRequest (ToBeResolved.lookup key *> serialize),
                   columnsMetadata = pure (ParamMeta (CodecsCore.TypeRef.NamedType key) dimensionality textFormat),
                   printer
                 }

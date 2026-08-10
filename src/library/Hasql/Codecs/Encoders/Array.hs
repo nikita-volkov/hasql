@@ -2,8 +2,10 @@ module Hasql.Codecs.Encoders.Array where
 
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
+import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
+import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified as TextBuilder
 
@@ -34,13 +36,13 @@ data Array a
       -- | OID of the array type.
       (Maybe Word32)
       -- | Serialization function, deferring the names of types that must be looked up at runtime.
-      (RequestingOid.RequestingOid (a -> Binary.Array))
+      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (a -> Binary.Array))
       -- | Render function for error messages.
       (a -> TextBuilder.TextBuilder)
 
 instance Contravariant Array where
   contramap fn (Array schemaName typeName textFormat dimensionality valueOid arrayOid elEncoder elRenderer) =
-    Array schemaName typeName textFormat dimensionality valueOid arrayOid (RequestingOid.hoist (\encode -> encode . fn) elEncoder) (elRenderer . fn)
+    Array schemaName typeName textFormat dimensionality valueOid arrayOid (fmap (\encode -> encode . fn) elEncoder) (elRenderer . fn)
 
 -- |
 -- Lifts a 'Value.Value' encoder into an 'Array' encoder.
@@ -54,7 +56,7 @@ element = \case
       dimensionality
       scalarOid
       arrayOid
-      (RequestingOid.hoist (Binary.encodingArray .) serialize)
+      (fmap (Binary.encodingArray .) serialize)
       print
   NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality textFormat serialize print) ->
     let maybeSerialize encode =
@@ -68,7 +70,7 @@ element = \case
           dimensionality
           scalarOid
           arrayOid
-          (RequestingOid.hoist maybeSerialize serialize)
+          (fmap maybeSerialize serialize)
           maybePrint
 
 -- |
@@ -97,4 +99,4 @@ dimension fold (Array schemaName typeName textFormat dimensionality valueOid arr
          in if TextBuilder.isEmpty folded
               then TextBuilder.string "[]"
               else folded <> TextBuilder.char ']'
-   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid (RequestingOid.hoist encoder elEncoder) renderer
+   in Array schemaName typeName textFormat (succ dimensionality) valueOid arrayOid (fmap encoder elEncoder) renderer

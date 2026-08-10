@@ -34,20 +34,23 @@ The codebase is layered along two axes: cabal components, and namespaces inside 
 | Layer | May depend on |
 |---|---|
 | `platform` | — |
-| `codecs-core` | `platform` |
+| `to-be-resolved` | — |
+| `codecs-core` | `platform`, `to-be-resolved` |
 | `comms` | `platform` |
 | `connection-state` | `codecs-core`, `platform` |
-| `Hasql.Codecs.*` | `codecs-core`, `platform` |
-| `Hasql.Engine.*` | `Hasql.Codecs.*`, `codecs-core`, `comms`, `connection-state`, `platform` |
+| `Hasql.Codecs.*` | `codecs-core`, `platform`, `to-be-resolved` |
+| `Hasql.Engine.*` | `Hasql.Codecs.*`, `codecs-core`, `comms`, `connection-state`, `platform`, `to-be-resolved` |
 
-`codecs-core`, `comms`, `connection-state` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
+`codecs-core`, `comms`, `connection-state`, `to-be-resolved` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
 
 Cabal components:
 
 ```mermaid
 flowchart BT
   platform
+  to-be-resolved
   codecs-core --> platform
+  codecs-core --> to-be-resolved
   comms --> platform
   connection-state --> codecs-core
   connection-state --> platform
@@ -55,6 +58,7 @@ flowchart BT
   library --> comms
   library --> connection-state
   library --> platform
+  library --> to-be-resolved
 ```
 
 `Hasql.*` namespaces within the `library` component:
@@ -63,11 +67,13 @@ flowchart BT
 flowchart BT
   Codecs --> codecs-core
   Codecs --> platform
+  Codecs --> to-be-resolved
   Engine --> Codecs
   Engine --> codecs-core
   Engine --> comms
   Engine --> connection-state
   Engine --> platform
+  Engine --> to-be-resolved
 ```
 
 - `Platform/` - the custom prelude and shared primitives.

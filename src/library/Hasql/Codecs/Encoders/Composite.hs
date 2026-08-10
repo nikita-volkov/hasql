@@ -3,9 +3,9 @@ module Hasql.Codecs.Encoders.Composite where
 import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
@@ -14,13 +14,13 @@ import TextBuilder qualified
 data Composite a
   = Composite
       -- | Serialization function, deferring the names of types that must be looked up at runtime.
-      (RequestingOid.RequestingOid (a -> Binary.Composite))
+      (ToBeResolved.ToBeResolved CodecsCore.QualifiedTypeName.QualifiedTypeName CodecsCore.TypeInfo.TypeInfo (a -> Binary.Composite))
       -- | Render function for error messages.
       (a -> [TextBuilder.TextBuilder])
 
 instance Contravariant Composite where
   contramap f (Composite request print) =
-    Composite (RequestingOid.hoist (. f) request) (print . f)
+    Composite (fmap (. f) request) (print . f)
 
 instance Divisible Composite where
   divide f (Composite requestL printL) (Composite requestR printR) =
@@ -50,10 +50,10 @@ field = \case
         toField oid encode = \val -> Binary.field oid (encode val)
      in case staticOid of
           Just oid ->
-            Composite (RequestingOid.hoist (toField oid) serialize) (\val -> [print val])
+            Composite (fmap (toField oid) serialize) (\val -> [print val])
           Nothing ->
             Composite
-              ( RequestingOid.hoistLookingUp
+              ( ToBeResolved.augmentedBy
                   (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
                   (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
                   serialize
@@ -64,10 +64,10 @@ field = \case
         toField oid encode = maybe (Binary.nullField oid) (Binary.field oid . encode)
      in case staticOid of
           Just oid ->
-            Composite (RequestingOid.hoist (toField oid) serialize) (maybe ["NULL"] (\val -> [print val]))
+            Composite (fmap (toField oid) serialize) (maybe ["NULL"] (\val -> [print val]))
           Nothing ->
             Composite
-              ( RequestingOid.hoistLookingUp
+              ( ToBeResolved.augmentedBy
                   (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
                   (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
                   serialize

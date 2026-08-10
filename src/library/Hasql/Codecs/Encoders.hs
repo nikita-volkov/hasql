@@ -83,9 +83,9 @@ import Hasql.Codecs.Encoders.NullableOrNot qualified as NullableOrNot
 import Hasql.Codecs.Encoders.Params qualified as Params
 import Hasql.Codecs.Encoders.Value qualified as Value
 import Hasql.CodecsCore.QualifiedTypeName qualified as CodecsCore.QualifiedTypeName
-import Hasql.CodecsCore.RequestingOid qualified as RequestingOid
 import Hasql.CodecsCore.TypeInfo qualified as CodecsCore.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
+import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Encoding qualified as Binary
 import TextBuilder qualified
 
@@ -119,9 +119,9 @@ array :: Array.Array a -> Value.Value a
 array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidIfKnown arrayOidIfKnown arrayEncoder renderer) =
   let toEncoder baseOid encode = \input -> Binary.array baseOid (encode input)
       encoder = case scalarOidIfKnown of
-        Just oid -> RequestingOid.hoist (toEncoder oid) arrayEncoder
+        Just oid -> fmap (toEncoder oid) arrayEncoder
         Nothing ->
-          RequestingOid.hoistLookingUp
+          ToBeResolved.augmentedBy
             (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
             (\typeInfo -> toEncoder (CodecsCore.TypeInfo.toBaseOid typeInfo))
             arrayEncoder
@@ -143,6 +143,6 @@ composite ::
 composite schema name (Composite.Composite request print) =
   Value.Value schema name Nothing Nothing 0 False encoder printValue
   where
-    encoder = RequestingOid.hoist (Binary.composite .) request
+    encoder = fmap (Binary.composite .) request
     printValue val =
       "ROW (" <> TextBuilder.intercalate ", " (print val) <> ")"
