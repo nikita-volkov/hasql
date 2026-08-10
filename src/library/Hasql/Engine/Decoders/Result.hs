@@ -33,7 +33,7 @@ toBase (Result (ToBeResolved.ToBeResolved _ decoder)) = decoder
 {-# INLINE noResult #-}
 noResult :: Result ()
 noResult =
-  Result (ToBeResolved.lift ResultDecoder.ok)
+  Result (pure ResultDecoder.ok)
 
 -- |
 -- Get the amount of rows affected by such statements as
@@ -41,7 +41,7 @@ noResult =
 {-# INLINE rowsAffected #-}
 rowsAffected :: Result Int64
 rowsAffected =
-  Result (ToBeResolved.lift ResultDecoder.rowsAffected)
+  Result (pure ResultDecoder.rowsAffected)
 
 -- |
 -- Exactly one row.

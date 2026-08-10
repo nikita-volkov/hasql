@@ -92,7 +92,7 @@ instance Filterable Value where
 {-# INLINE primitive #-}
 primitive :: Text -> CodecsCore.TypeInfo.TypeInfo -> Binary.Value a -> Value a
 primitive typeName pti decoder =
-  Value Nothing typeName (Just (CodecsCore.TypeInfo.toBaseOid pti)) (Just (CodecsCore.TypeInfo.toArrayOid pti)) 0 (ToBeResolved.lift decoder)
+  Value Nothing typeName (Just (CodecsCore.TypeInfo.toBaseOid pti)) (Just (CodecsCore.TypeInfo.toArrayOid pti)) 0 (pure decoder)
 
 -- * Static types
 
@@ -346,7 +346,7 @@ datemultirange = primitive "datemultirange" CodecsCore.TypeInfo.datemultirange B
 -- Requires the @citext@ extension to be installed in the database.
 {-# INLINEABLE citext #-}
 citext :: Value Text
-citext = Value Nothing "citext" Nothing Nothing 0 (ToBeResolved.lift Binary.text_strict)
+citext = Value Nothing "citext" Nothing Nothing 0 (pure Binary.text_strict)
 
 -- |
 -- Low level API for defining custom value decoders.
@@ -405,7 +405,7 @@ refine fn (Value schema typeName typeOid arrayOid dimensionality decoder) =
 {-# INLINEABLE hstore #-}
 hstore :: (forall m. (Monad m) => Int -> m (Text, Maybe Text) -> m a) -> Value a
 hstore replicateM =
-  Value Nothing "hstore" Nothing Nothing 0 (ToBeResolved.lift (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
+  Value Nothing "hstore" Nothing Nothing 0 (pure (Binary.hstore replicateM Binary.text_strict Binary.text_strict))
 
 -- |
 -- Given a partial mapping from text to value, produces a decoder of that value for a named enum type.
@@ -418,7 +418,7 @@ enum ::
   (Text -> Maybe a) ->
   Value a
 enum schema typeName mapping =
-  Value schema typeName Nothing Nothing 0 (ToBeResolved.lift (Binary.enum mapping))
+  Value schema typeName Nothing Nothing 0 (pure (Binary.enum mapping))
 
 -- * Relations
 

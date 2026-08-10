@@ -52,7 +52,7 @@ primitive typeName isText typeInfo encode render =
     (Just (CodecsCore.TypeInfo.toArrayOid typeInfo))
     0
     isText
-    (ToBeResolved.lift encode)
+    (pure encode)
     render
 
 -- |
@@ -323,7 +323,7 @@ citext =
     Nothing
     0
     False
-    (ToBeResolved.lift Binary.text_strict)
+    (pure Binary.text_strict)
     (TextBuilder.string . show)
 
 -- |
@@ -429,7 +429,7 @@ hstore =
     Nothing
     0
     False
-    (ToBeResolved.lift Binary.hStore_foldable)
+    (pure Binary.hStore_foldable)
     renderHstore
   where
     renderHstore items =
