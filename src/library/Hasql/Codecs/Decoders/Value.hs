@@ -53,10 +53,10 @@ module Hasql.Codecs.Decoders.Value
   )
 where
 
-import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Data.Aeson qualified as Aeson
 import Data.IP qualified as Iproute
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Platform.Prelude hiding (bool)
 import Hasql.ToBeResolved qualified as ToBeResolved
 import PostgreSQL.Binary.Decoding qualified as Binary

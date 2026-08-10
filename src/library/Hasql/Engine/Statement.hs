@@ -9,14 +9,14 @@ module Hasql.Engine.Statement
   )
 where
 
-import CodecVocab qualified as CodecVocab
-import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
-import CodecVocab.TypeRef qualified as CodecVocab.TypeRef
-import CodecVocab.TypeShape (TypeShape (..))
 import Data.Text.Encoding qualified as TextEncoding
 import Data.Vector qualified as Vector
 import Hasql.Codecs.Encoders qualified as Encoders
 import Hasql.Codecs.Encoders.Params qualified as Params
+import Hasql.CodecVocab qualified as CodecVocab
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
+import Hasql.CodecVocab.TypeRef qualified as CodecVocab.TypeRef
+import Hasql.CodecVocab.TypeShape (TypeShape (..))
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Engine.Decoders.Result qualified as Decoders
 import Hasql.Engine.Decoders.Result qualified as Decoders.Result

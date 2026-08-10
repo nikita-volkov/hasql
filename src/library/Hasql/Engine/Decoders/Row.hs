@@ -1,9 +1,9 @@
 module Hasql.Engine.Decoders.Row where
 
-import CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
-import CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Codecs.Decoders
 import Hasql.Codecs.Decoders.Value qualified as Value
+import Hasql.CodecVocab.QualifiedTypeName qualified as CodecVocab.QualifiedTypeName
+import Hasql.CodecVocab.TypeInfo qualified as CodecVocab.TypeInfo
 import Hasql.Comms.RowDecoder qualified
 import Hasql.Platform.Prelude
 import Hasql.ToBeResolved qualified as ToBeResolved

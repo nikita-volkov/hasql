@@ -1,9 +1,9 @@
-module CodecVocab.TypeShape
+module Hasql.CodecVocab.TypeShape
   ( TypeShape (..),
   )
 where
 
-import CodecVocab.TypeRef (TypeRef)
+import Hasql.CodecVocab.TypeRef (TypeRef)
 import Hasql.Platform.Prelude
 
 -- | A value's type shape: type reference, array dimensionality, text-format flag.
