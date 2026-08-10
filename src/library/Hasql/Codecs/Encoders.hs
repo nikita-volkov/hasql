@@ -121,10 +121,9 @@ array (Array.Array baseTypeSchema baseTypeName _isText dimensionality scalarOidI
       encoder = case scalarOidIfKnown of
         Just oid -> fmap (toEncoder oid) arrayEncoder
         Nothing ->
-          ToBeResolved.augmentedBy
-            (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
-            (\typeInfo -> toEncoder (CodecsCore.TypeInfo.toBaseOid typeInfo))
-            arrayEncoder
+          (\typeInfo -> toEncoder (CodecsCore.TypeInfo.toBaseOid typeInfo))
+            <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName baseTypeSchema baseTypeName)
+            <*> arrayEncoder
    in Value.Value baseTypeSchema baseTypeName scalarOidIfKnown arrayOidIfKnown dimensionality False encoder renderer
 
 -- |

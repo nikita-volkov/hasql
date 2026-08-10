@@ -53,10 +53,9 @@ field = \case
             Composite (fmap (toField oid) serialize) (\val -> [print val])
           Nothing ->
             Composite
-              ( ToBeResolved.augmentedBy
-                  (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
-                  (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
-                  serialize
+              ( (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
+                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
+                  <*> serialize
               )
               (\val -> [print val])
   NullableOrNot.Nullable (Value.Value schemaName typeName scalarOid arrayOid dimensionality _ serialize print) ->
@@ -67,9 +66,8 @@ field = \case
             Composite (fmap (toField oid) serialize) (maybe ["NULL"] (\val -> [print val]))
           Nothing ->
             Composite
-              ( ToBeResolved.augmentedBy
-                  (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
-                  (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
-                  serialize
+              ( (\typeInfo -> toField (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo))
+                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName schemaName typeName)
+                  <*> serialize
               )
               (maybe ["NULL"] (\val -> [print val]))

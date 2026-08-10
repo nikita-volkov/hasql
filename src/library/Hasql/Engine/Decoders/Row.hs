@@ -40,24 +40,22 @@ column = \case
         fmap
           (Hasql.Comms.RowDecoder.nullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
-      Nothing -> do
-        ToBeResolved.augmentedBy
-          (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
-          ( \lookupResult decoder ->
-              Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
-          )
-          (Value.toDecoder valueDecoder)
+      Nothing ->
+        ( \lookupResult decoder ->
+            Hasql.Comms.RowDecoder.nullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder)
+        )
+          <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
+          <*> Value.toDecoder valueDecoder
   NonNullable valueDecoder ->
     Row case Value.toOid valueDecoder of
       Just oid ->
         fmap
           (Hasql.Comms.RowDecoder.nonNullableColumn (Just oid) . Binary.valueParser)
           (Value.toDecoder valueDecoder)
-      Nothing -> do
-        ToBeResolved.augmentedBy
-          (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
-          (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
-          (Value.toDecoder valueDecoder)
+      Nothing ->
+        (\lookupResult decoder -> Hasql.Comms.RowDecoder.nonNullableColumn (Just (chooseLookedUpOid valueDecoder lookupResult)) (Binary.valueParser decoder))
+          <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema valueDecoder) (Value.toTypeName valueDecoder))
+          <*> Value.toDecoder valueDecoder
   where
     chooseLookedUpOid valueDecoder typeInfo =
       if Value.toDimensionality valueDecoder > 0

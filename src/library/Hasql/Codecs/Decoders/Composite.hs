@@ -32,10 +32,9 @@ field = \case
             Composite (fmap (Binary.typedValueComposite oid) (Value.toDecoder imp))
           Nothing ->
             Composite
-              ( ToBeResolved.augmentedBy
-                  (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
-                  (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo) decoder)
-                  (Value.toDecoder imp)
+              ( (\typeInfo decoder -> Binary.typedValueComposite (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo) decoder)
+                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+                  <*> Value.toDecoder imp
               )
   NullableOrNot.Nullable imp ->
     let dimensionality = Value.toDimensionality imp
@@ -45,8 +44,7 @@ field = \case
             Composite (fmap (Binary.typedNullableValueComposite oid) (Value.toDecoder imp))
           Nothing ->
             Composite
-              ( ToBeResolved.augmentedBy
-                  (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
-                  (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo) decoder)
-                  (Value.toDecoder imp)
+              ( (\typeInfo decoder -> Binary.typedNullableValueComposite (if dimensionality == 0 then CodecsCore.TypeInfo.toBaseOid typeInfo else CodecsCore.TypeInfo.toArrayOid typeInfo) decoder)
+                  <$> ToBeResolved.lookup (CodecsCore.QualifiedTypeName.QualifiedTypeName (Value.toSchema imp) (Value.toTypeName imp))
+                  <*> Value.toDecoder imp
               )
