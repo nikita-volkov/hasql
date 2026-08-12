@@ -97,14 +97,11 @@ E.g., [not everyone will agree](https://github.com/nikita-volkov/hasql/issues/41
 - **Horizontal scalability of the ecosystem.**
 Instead of posting feature- or pull-requests, the users are encouraged to release their own small extension-libraries, with themselves becoming the copyright owners and taking on the maintenance responsibilities. Compare this model to the classical one, where some core-team is responsible for everything. One is scalable, the other is not.
 
-# Tutorials
+# Documentation
 
-## Videos
+- [**Data-Access Architecture**](https://github.com/nikita-volkov/hasql-docs/blob/main/data-access-architecture.md) — a normative reference for organising database integration code built on Hasql. It specifies how to layer types, statements, transactions and sessions, where the application domain enters the picture, how the three error channels differ, and what to test at each level. Every rule carries its rationale and derives from the capability differences between Hasql's four constructs.
 
-There's several videos on Hasql done as part of a nice intro-level series of live Haskell+Bazel coding by the "Ants Are Everywhere" YouTube channel:
-
-- [Coding Day 20: Switching from postgresql-simple to Hasql](https://youtu.be/ce7bGKETtoA?si=RmY_yDG24EX6i38I)
-- [Coding Day 21: Refactoring the Hasql code](https://youtu.be/a9mPNXbT-qw?si=RTtXe6BXnZSQZzh-)
+The reference is written to be consumed directly by coding agents as well as by people. Point an agent at [the raw file](https://raw.githubusercontent.com/nikita-volkov/hasql-docs/main/data-access-architecture.md) and it has the whole system in context, with the rules numbered so they can be cited back in review.
 
 # Short Example
 
