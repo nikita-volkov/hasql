@@ -1,3 +1,17 @@
+# v2.0.1.0
+
+## New Features
+
+- `IsError` gained a `toSqlState` method, exposing the SQLSTATE the server reported for an error, or `Nothing` where the error carries no server code. It saves consumers from pattern-matching their way down to the nested `ServerError` — a dig that has to be rewritten every time the error types gain a constructor.
+
+  ```haskell
+  case Errors.toSqlState err of
+    Just "23505" -> handleUniqueViolation
+    _ -> rethrow err
+  ```
+
+  The method has a default implementation returning `Nothing`, so existing instances keep compiling. Instances for error types that *wrap* another error type must override it and delegate to the wrapped value, otherwise they silently report `Nothing` for codes they do carry.
+
 # v2.0.0.3
 
 ## Fixes

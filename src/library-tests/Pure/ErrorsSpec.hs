@@ -31,6 +31,11 @@ spec = do
         (Errors.isTransient (Errors.AuthenticationConnectionError "invalid password"))
           `shouldBe` False
 
+    describe "toSqlState" do
+      it "is Nothing, since connection errors carry no server code" do
+        (Errors.toSqlState (Errors.NetworkingConnectionError "timeout"))
+          `shouldBe` Nothing
+
     describe "toDetailedText" do
       it "renders NetworkingConnectionError with details" do
         (Errors.toDetailedText (Errors.NetworkingConnectionError "connection refused"))
@@ -58,6 +63,11 @@ spec = do
           `shouldBe` [ ("code", "42601"),
                        ("message", "syntax error")
                      ]
+
+    describe "toSqlState" do
+      it "is the code the server reported" do
+        (Errors.toSqlState (Errors.ServerError "23505" "duplicate key value violates unique constraint" Nothing Nothing Nothing))
+          `shouldBe` Just "23505"
 
     describe "toDetailedText" do
       it "renders ServerError with all details" do
@@ -140,6 +150,19 @@ spec = do
         (Errors.toDetails (Errors.UnexpectedColumnTypeStatementError 2 23 1043))
           `shouldBe` [("columnIndex", "2"), ("expectedOid", "23"), ("actualOid", "1043")]
 
+    describe "toSqlState" do
+      it "digs the code out of ServerStatementError" do
+        (Errors.toSqlState (Errors.ServerStatementError (Errors.ServerError "23505" "duplicate key" Nothing Nothing Nothing)))
+          `shouldBe` Just "23505"
+
+      it "is Nothing for a decoding failure" do
+        (Errors.toSqlState (Errors.RowStatementError 3 (Errors.CellRowError 1 23 Errors.UnexpectedNullCellError)))
+          `shouldBe` Nothing
+
+      it "is Nothing for a row count mismatch" do
+        (Errors.toSqlState (Errors.UnexpectedRowCountStatementError 1 1 0))
+          `shouldBe` Nothing
+
     describe "toDetailedText" do
       it "renders UnexpectedRowCountStatementError with details" do
         (Errors.toDetailedText (Errors.UnexpectedRowCountStatementError 1 1 0))
@@ -195,6 +218,31 @@ spec = do
       it "StatementSessionError is not transient" do
         (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` False
+
+    describe "toSqlState" do
+      it "digs the code out of StatementSessionError" do
+        (Errors.toSqlState (Errors.StatementSessionError 1 0 "INSERT INTO users (email) VALUES ($1)" ["a@b.c"] True (Errors.ServerStatementError (Errors.ServerError "23505" "duplicate key" Nothing Nothing Nothing))))
+          `shouldBe` Just "23505"
+
+      it "digs the code out of ScriptSessionError" do
+        (Errors.toSqlState (Errors.ScriptSessionError "DROP TABLE users" (Errors.ServerError "42P01" "relation does not exist" Nothing Nothing Nothing)))
+          `shouldBe` Just "42P01"
+
+      it "is Nothing for StatementSessionError wrapping a non-server error" do
+        (Errors.toSqlState (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
+          `shouldBe` Nothing
+
+      it "is Nothing for ConnectionSessionError" do
+        (Errors.toSqlState (Errors.ConnectionSessionError "connection lost"))
+          `shouldBe` Nothing
+
+      it "is Nothing for MissingTypesSessionError" do
+        (Errors.toSqlState (Errors.MissingTypesSessionError (HashSet.fromList [(Just "public", "custom_type")])))
+          `shouldBe` Nothing
+
+      it "is Nothing for DriverSessionError" do
+        (Errors.toSqlState (Errors.DriverSessionError "unexpected response"))
+          `shouldBe` Nothing
 
     describe "toDetailedText" do
       it "renders StatementSessionError with all context" do

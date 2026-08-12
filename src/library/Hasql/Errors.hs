@@ -44,6 +44,23 @@ class IsError a where
   -- | Whether the error is transient and the operation causing it can be retried.
   isTransient :: a -> Bool
 
+  -- | The SQLSTATE the server reported, if this error carries one at all.
+  --
+  -- Lets you branch on a PostgreSQL error code without knowing which
+  -- constructors of which error type the server error is nested under. For the
+  -- code vocabulary see
+  -- <https://www.postgresql.org/docs/current/errcodes-appendix.html>.
+  --
+  -- 'Nothing' means the error carries no server code: a connection failure, a
+  -- decoding failure, a driver bug. It never means "the operation succeeded".
+  --
+  -- The default implementation returns 'Nothing', which is correct only for
+  -- error types that can never carry a server error. A type that wraps another
+  -- error type MUST override it and delegate to the wrapped value, otherwise it
+  -- silently reports 'Nothing' for codes it does in fact carry.
+  toSqlState :: a -> Maybe Text
+  toSqlState _ = Nothing
+
 -- | Convert the error to a multiline detailed human-readable text representation containing all details.
 toDetailedText :: (IsError e) => e -> Text
 toDetailedText = TextBuilder.toText . toDetailedTextBuilder
@@ -110,6 +127,8 @@ instance IsError ServerError where
 
   isTransient = const False
 
+  toSqlState (ServerError code _ _ _ _) = Just code
+
 instance IsError CellError where
   toMessage = \case
     UnexpectedNullCellError ->
@@ -163,6 +182,14 @@ instance IsError StatementError where
       [("reason", reason)]
 
   isTransient = const False
+
+  toSqlState = \case
+    ServerStatementError executionError -> toSqlState executionError
+    UnexpectedRowCountStatementError {} -> Nothing
+    UnexpectedColumnCountStatementError {} -> Nothing
+    UnexpectedColumnTypeStatementError {} -> Nothing
+    RowStatementError _ rowError -> toSqlState rowError
+    UnexpectedResultStatementError {} -> Nothing
 
 instance IsError RowError where
   toMessage = \case
@@ -224,3 +251,10 @@ instance IsError SessionError where
     ScriptSessionError {} -> False
     DriverSessionError {} -> False
     MissingTypesSessionError {} -> False
+
+  toSqlState = \case
+    StatementSessionError _ _ _ _ _ statementError -> toSqlState statementError
+    ScriptSessionError _ serverError -> toSqlState serverError
+    ConnectionSessionError {} -> Nothing
+    DriverSessionError {} -> Nothing
+    MissingTypesSessionError {} -> Nothing
