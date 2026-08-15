@@ -35,13 +35,13 @@ The codebase is layered along two axes: cabal components, and namespaces inside 
 |---|---|
 | `platform` | — |
 | `to-be-resolved` | — |
-| `codecs-core` | `platform`, `to-be-resolved` |
+| `codecs-vocab` | `platform`, `to-be-resolved` |
 | `comms` | `platform` |
-| `connection-state` | `codecs-core`, `platform` |
-| `Hasql.Codecs.*` | `codecs-core`, `platform`, `to-be-resolved` |
-| `Hasql.Engine.*` | `Hasql.Codecs.*`, `codecs-core`, `comms`, `connection-state`, `platform`, `to-be-resolved` |
+| `connection-state` | `codecs-vocab`, `platform` |
+| `Hasql.Codecs.*` | `codecs-vocab`, `platform`, `to-be-resolved` |
+| `Hasql.Engine.*` | `Hasql.Codecs.*`, `codecs-vocab`, `comms`, `connection-state`, `platform`, `to-be-resolved` |
 
-`codecs-core`, `comms`, `connection-state`, `to-be-resolved` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
+`codecs-vocab`, `comms`, `connection-state`, `to-be-resolved` and `platform` are separate cabal components; `Hasql.Codecs.*` and `Hasql.Engine.*` are namespaces inside the `library` component. Namespaces not listed (`Hasql.Connection.*`, the top-level public modules) are deliberately left unconstrained.
 
 Cabal components:
 
@@ -49,12 +49,12 @@ Cabal components:
 flowchart BT
   platform
   to-be-resolved
-  codecs-core --> platform
-  codecs-core --> to-be-resolved
+  codecs-vocab --> platform
+  codecs-vocab --> to-be-resolved
   comms --> platform
-  connection-state --> codecs-core
+  connection-state --> codecs-vocab
   connection-state --> platform
-  library --> codecs-core
+  library --> codecs-vocab
   library --> comms
   library --> connection-state
   library --> platform
@@ -65,11 +65,11 @@ flowchart BT
 
 ```mermaid
 flowchart BT
-  Codecs --> codecs-core
+  Codecs --> codecs-vocab
   Codecs --> platform
   Codecs --> to-be-resolved
   Engine --> Codecs
-  Engine --> codecs-core
+  Engine --> codecs-vocab
   Engine --> comms
   Engine --> connection-state
   Engine --> platform
@@ -94,7 +94,7 @@ Defined once in the `common base` stanza of [hasql.cabal](hasql.cabal) and impor
 
 - **Qualified imports** for everything except the module's own topic - e.g. `qualified as Encoders`, `qualified as Decoders`.
 - Qualify by the module's topic, not by an arbitrary abbreviation. Self-qualified form (`import Pqi.Ffi qualified`) is preferred where the name is already short.
-- **Custom prelude** - every library module imports `Hasql.Platform.Prelude`, never the standard `Prelude`. Outside the library the convention follows the layer under test: `comms-tests` uses `Hasql.Platform.Prelude`; `library-tests`, `engine-tests`, `benchmarks` and `profiling` use plain `Prelude`.
+- **Custom prelude** - every library module imports `Hasql.Platform.Prelude`, never the standard `Prelude`. Outside the library the convention follows the layer under test: `comms-tests` uses `Hasql.Platform.Prelude`; `library-tests`, `connection-state-tests`, `benchmarks` and `profiling` use plain `Prelude`.
 
 ### Naming
 
@@ -148,7 +148,7 @@ Prefer `do` notation with `ApplicativeDo` for clarity in applicative contexts.
 
 Within each category, modularize by the unit under test - see `src/library-tests/README.md` for the full policy on `[Module]Spec.hs` vs `[Module]/[Definition]Spec.hs` vs `[Module]/[Definition]/[Case]Spec.hs`. There is no `ByFeature/` or `ByBug/`; every test, including regression reproductions, is filed under the module/definition it exercises.
 
-Other components: `comms-tests` and `engine-tests` cover the internal layers directly; `benchmarks` and `profiling` are separate executables.
+Other components: `comms-tests` and `connection-state-tests` cover the internal layers directly; `benchmarks` and `profiling` are separate executables.
 
 ## Build System
 
