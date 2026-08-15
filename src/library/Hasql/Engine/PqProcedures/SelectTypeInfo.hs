@@ -1,6 +1,5 @@
 module Hasql.Engine.PqProcedures.SelectTypeInfo
   ( SelectTypeInfo (..),
-    SelectTypeInfoResult,
     run,
   )
 where

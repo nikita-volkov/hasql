@@ -1,6 +1,5 @@
 module Hasql.Platform.Prelude
   ( module Exports,
-    LazyByteString,
     forMToZero_,
     forMFromZero_,
     strictCons,
@@ -32,7 +31,6 @@ import Data.Bifunctor as Exports
 import Data.Bits as Exports
 import Data.Bool as Exports
 import Data.ByteString as Exports (ByteString)
-import Data.ByteString.Lazy qualified
 import Data.Char as Exports
 import Data.Coerce as Exports
 import Data.Complex as Exports
@@ -104,9 +102,6 @@ import Text.Printf as Exports (hPrintf, printf)
 import TextBuilder as Exports (TextBuilder)
 import Unsafe.Coerce as Exports
 import Witherable as Exports
-
-type LazyByteString =
-  Data.ByteString.Lazy.ByteString
 
 {-# INLINE forMToZero_ #-}
 forMToZero_ :: (Applicative m) => Int -> (Int -> m a) -> m ()
