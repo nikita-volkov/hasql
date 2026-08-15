@@ -12,6 +12,7 @@
 !/README.md
 !/CHANGELOG.md
 !/AGENTS.md
+!/CONTEXT.md
 !/cabal.project
 !/*.cabal
 
