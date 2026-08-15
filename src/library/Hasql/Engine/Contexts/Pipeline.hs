@@ -10,6 +10,7 @@ import Data.HashSet qualified as HashSet
 import Hasql.CodecsVocab qualified as CodecsVocab
 import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
+import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
 import Hasql.Engine.Errors qualified as Errors
@@ -20,16 +21,9 @@ import Pqi qualified as Pq
 
 run ::
   Pipeline a ->
-  Bool ->
-  Pq.Connection ->
-  OidCache.OidCache ->
-  StatementCache.StatementCache ->
-  IO
-    ( Either Errors.SessionError a,
-      OidCache.OidCache,
-      StatementCache.StatementCache
-    )
-run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements connection oidCache statementCache = do
+  ConnectionState.ConnectionState ->
+  IO (Either Errors.SessionError a, ConnectionState.ConnectionState)
+run (Pipeline totalStatements unknownTypes runPipeline) connectionState@ConnectionState.ConnectionState {..} = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
   resolvedOidCache <-
     if HashSet.null missingTypes
@@ -46,10 +40,10 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
                   then Left (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes))
                   else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
   case resolvedOidCache of
-    Left err -> pure (Left err, oidCache, statementCache)
+    Left err -> pure (Left err, connectionState)
     Right newOidCache -> do
       let (roundtrip, newStatementCache) =
-            runPipeline 0 usePreparedStatements newOidCache statementCache
+            runPipeline 0 preparedStatements newOidCache statementCache
           contextualRoundtrip = first Just roundtrip
 
       executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
@@ -72,7 +66,13 @@ run (Pipeline totalStatements unknownTypes runPipeline) usePreparedStatements co
                   (\(Context _ _ _ _ statementCache) -> statementCache)
                   (extract executionError)
 
-      pure (result, newOidCache, finalStatementCache)
+      pure
+        ( result,
+          connectionState
+            { ConnectionState.oidCache = newOidCache,
+              ConnectionState.statementCache = finalStatementCache
+            }
+        )
 
 -- |
 -- Composable abstraction over the execution of queries in [the pipeline mode](https://www.postgresql.org/docs/current/libpq-pipeline-mode.html).
