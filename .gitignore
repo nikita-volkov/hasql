@@ -15,6 +15,7 @@
 !/CONTEXT.md
 !/cabal.project
 !/*.cabal
+!/.ormolu
 
 # Unignore subtrees:
 !/.github/
