@@ -308,20 +308,20 @@ data CellError
       Text
   deriving stock (Show, Eq)
 
-fromRoundtripError :: Hasql.Comms.Roundtrip.Error context -> SessionError
+fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
 fromRoundtripError = \case
-  Hasql.Comms.Roundtrip.ClientError _context details ->
+  Hasql.Comms.Roundtrip.ClientError _tag details ->
     ConnectionSessionError (maybe "" decodeUtf8Lenient details)
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 
 fromRecvError :: Hasql.Comms.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
 fromRecvError = \case
-  Hasql.Comms.Recv.ResultError location _resultOffset resultError ->
-    case location of
+  Hasql.Comms.Recv.ResultError tag _resultOffset resultError ->
+    case tag of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
-          [ "Unexpected error outside of statement context. ",
+          [ "Unexpected error in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Error: ",
             TextBuilder.string (show resultError)
@@ -334,11 +334,11 @@ fromRecvError = \case
           parameters
           prepared
           (fromStatementResultError resultError)
-  Hasql.Comms.Recv.NoResultsError location details ->
-    case location of
+  Hasql.Comms.Recv.NoResultsError tag details ->
+    case tag of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
-          [ "Unexpectedly got no results outside of statement context. ",
+          [ "Unexpectedly got no results in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Details: ",
             TextBuilder.string (show details)
@@ -351,11 +351,11 @@ fromRecvError = \case
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 0)
-  Hasql.Comms.Recv.TooManyResultsError location actual ->
-    case location of
+  Hasql.Comms.Recv.TooManyResultsError tag actual ->
+    case tag of
       Nothing ->
         (DriverSessionError . TextBuilder.toText . mconcat)
-          [ "Unexpectedly got too many results outside of statement context. ",
+          [ "Unexpectedly got too many results in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Amount: ",
             TextBuilder.decimal actual

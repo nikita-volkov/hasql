@@ -3,65 +3,70 @@ module Hasql.Comms.Send where
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
 
-data Result context
+-- | Outcome of sending commands: success, or a failure carrying the tag of the commands.
+data Result tag
   = Ok
-  | Error context (Maybe ByteString)
+  | Error tag (Maybe ByteString)
   deriving stock (Eq, Show, Functor)
 
-newtype Send context
-  = Send (Pq.Connection -> IO (Result context))
+-- | An action that sends commands to a connection without receiving the results.
+--
+-- The @tag@ type parameter is a value attached to the commands,
+-- which the error carries if sending fails.
+newtype Send tag
+  = Send (Pq.Connection -> IO (Result tag))
   deriving stock (Functor)
 
-instance Semigroup (Send context) where
+instance Semigroup (Send tag) where
   {-# INLINE (<>) #-}
   Send send1 <> Send send2 = Send \cs -> do
     result <- send1 cs
     case result of
-      Error context details -> pure (Error context details)
+      Error tag details -> pure (Error tag details)
       Ok -> do
         result2 <- send2 cs
         pure result2
 
-instance Monoid (Send context) where
+instance Monoid (Send tag) where
   {-# INLINE mempty #-}
   mempty = Send \_ -> pure Ok
 
-toHandler :: Send context -> Pq.Connection -> IO (Result context)
+toHandler :: Send tag -> Pq.Connection -> IO (Result tag)
 toHandler (Send send) = send
 
-liftPqSend :: context -> (Pq.Connection -> IO Bool) -> Send context
-liftPqSend context pqSend = Send \connection -> do
+liftPqSend :: tag -> (Pq.Connection -> IO Bool) -> Send tag
+liftPqSend tag pqSend = Send \connection -> do
   success <- pqSend connection
   if success
     then pure Ok
     else do
       errorMessage <- Pq.errorMessage connection
-      pure (Error context errorMessage)
+      pure (Error tag errorMessage)
 
-prepare :: context -> ByteString -> ByteString -> Maybe [Word32] -> Send context
-prepare context statementName sql oidList =
-  liftPqSend context \connection -> Pq.sendPrepare connection statementName sql oidList
+prepare :: tag -> ByteString -> ByteString -> Maybe [Word32] -> Send tag
+prepare tag statementName sql oidList =
+  liftPqSend tag \connection -> Pq.sendPrepare connection statementName sql oidList
 
-query :: context -> ByteString -> Send context
-query context sql =
-  liftPqSend context \connection -> Pq.sendQuery connection sql
+query :: tag -> ByteString -> Send tag
+query tag sql =
+  liftPqSend tag \connection -> Pq.sendQuery connection sql
 
-queryPrepared :: context -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send context
-queryPrepared context statementName params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
+queryPrepared :: tag -> ByteString -> [Maybe (ByteString, Pq.Format)] -> Pq.Format -> Send tag
+queryPrepared tag statementName params resultFormat =
+  liftPqSend tag \connection -> Pq.sendQueryPrepared connection statementName params resultFormat
 
-queryParams :: context -> ByteString -> [Maybe (Word32, ByteString, Pq.Format)] -> Pq.Format -> Send context
-queryParams context sql params resultFormat =
-  liftPqSend context \connection -> Pq.sendQueryParams connection sql params resultFormat
+queryParams :: tag -> ByteString -> [Maybe (Word32, ByteString, Pq.Format)] -> Pq.Format -> Send tag
+queryParams tag sql params resultFormat =
+  liftPqSend tag \connection -> Pq.sendQueryParams connection sql params resultFormat
 
-pipelineSync :: context -> Send context
-pipelineSync context =
-  liftPqSend context \connection -> Pq.pipelineSync connection
+pipelineSync :: tag -> Send tag
+pipelineSync tag =
+  liftPqSend tag \connection -> Pq.pipelineSync connection
 
-enterPipelineMode :: context -> Send context
-enterPipelineMode context =
-  liftPqSend context \connection -> Pq.enterPipelineMode connection
+enterPipelineMode :: tag -> Send tag
+enterPipelineMode tag =
+  liftPqSend tag \connection -> Pq.enterPipelineMode connection
 
-exitPipelineMode :: context -> Send context
-exitPipelineMode context =
-  liftPqSend context \connection -> Pq.exitPipelineMode connection
+exitPipelineMode :: tag -> Send tag
+exitPipelineMode tag =
+  liftPqSend tag \connection -> Pq.exitPipelineMode connection

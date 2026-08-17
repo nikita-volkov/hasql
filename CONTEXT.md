@@ -109,3 +109,15 @@ The condition of the statement cache possibly disagreeing with the server about
 what is prepared, which no snapshot can resolve — as after a send-side failure,
 where it is unknown whether the batch reached the server at all. Resolved only
 by clearing both sides with a `DEALLOCATE ALL`.
+
+## Tag
+
+A value attached to a protocol action when it is constructed, identifying the
+statement it performs: its SQL, rendered parameters, position in a batch, and
+whether it is prepared. If the action fails, its tag travels with the error,
+so the error can name the statement that caused it (and, in pipelines, recover
+the statement-cache snapshot taken when the action was issued). Actions
+performed by the driver itself carry no tag, marking their errors as belonging
+to no user statement. Unrelated to the execution contexts — **Session** and
+**Pipeline**.
+

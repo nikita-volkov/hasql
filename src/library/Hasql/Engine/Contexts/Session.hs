@@ -107,9 +107,9 @@ statement stmt params =
         let resolve = OidCache.toResolver newOidCache
             decoder' = Statement.decoder stmt resolve
             prepared = usePreparedStatements && Statement.isPrepared stmt
-            -- Single-statement context for error reporting:
+            -- Single-statement tag for error reporting:
             -- total statements 1, index 0.
-            context = Just (1, 0, sql, Statement.printer stmt params, prepared)
+            tag = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
               Comms.Roundtrip.ClientError _ details ->
                 Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
@@ -132,7 +132,7 @@ statement stmt params =
                       & fmap (fmap (\(bytes, format) -> (bytes, bool Pq.Binary Pq.Text format)))
                   execute remoteKey =
                     Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.queryPrepared context remoteKey encodedParams Pq.Binary decoder')
+                      (Comms.Roundtrip.queryPrepared tag remoteKey encodedParams Pq.Binary decoder')
                       connection
               case StatementCache.lookup sql oidList statementCache of
                 Just remoteKey -> do
@@ -144,7 +144,7 @@ statement stmt params =
                   -- back-to-back, so prepare in a dedicated roundtrip first.
                   prepareResult <-
                     Comms.Roundtrip.toSerialIO
-                      (Comms.Roundtrip.prepare context remoteKey sql oidList)
+                      (Comms.Roundtrip.prepare tag remoteKey sql oidList)
                       connection
                   case prepareResult of
                     -- PARSE failed: the statement is not on the server, so
@@ -163,7 +163,7 @@ statement stmt params =
                       & fmap (fmap (\(oid, bytes, format) -> (oid, bytes, bool Pq.Binary Pq.Text format)))
               result <-
                 Comms.Roundtrip.toSerialIO
-                  (Comms.Roundtrip.queryParams context sql encodedParams Pq.Binary decoder')
+                  (Comms.Roundtrip.queryParams tag sql encodedParams Pq.Binary decoder')
                   connection
               pure (result, statementCache)
 

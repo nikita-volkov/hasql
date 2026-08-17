@@ -11,11 +11,15 @@ import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
 
-newtype Recv context a
-  = Recv (Pq.Connection -> IO (Either (Error context) a))
+-- | An action that receives and decodes results from a connection.
+--
+-- The @tag@ type parameter is a value attached at construction,
+-- which the error carries if receiving or decoding fails.
+newtype Recv tag a
+  = Recv (Pq.Connection -> IO (Either (Error tag) a))
   deriving stock (Functor)
 
-instance Applicative (Recv context) where
+instance Applicative (Recv tag) where
   {-# INLINE pure #-}
   pure x = Recv \_ -> pure (Right x)
   {-# INLINE (<*>) #-}
@@ -29,27 +33,27 @@ instance Bifunctor Recv where
   {-# INLINE bimap #-}
   bimap f g (Recv recv) = Recv (fmap (bimap (fmap f) g) . recv)
 
-toHandler :: Recv context a -> Pq.Connection -> IO (Either (Error context) a)
+toHandler :: Recv tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toHandler (Recv recv) = recv
 
 -- | Exactly one result.
-singleResult :: context -> ResultDecoder.ResultDecoder a -> Recv context a
-singleResult context handler = Recv \connection -> runExceptT do
+singleResult :: tag -> ResultDecoder.ResultDecoder a -> Recv tag a
+singleResult tag handler = Recv \connection -> runExceptT do
   result <- ExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> do
         errorMessage <- Pq.errorMessage connection
-        pure (Left (NoResultsError context errorMessage))
+        pure (Left (NoResultsError tag errorMessage))
       Just result -> pure (Right result)
   ExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> pure (Right result)
-      Just _ -> pure (Left (TooManyResultsError context 1))
+      Just _ -> pure (Left (TooManyResultsError tag 1))
   result <- ExceptT do
     result <- ResultDecoder.toHandler handler result
-    pure (first (ResultError context 0) result)
+    pure (first (ResultError tag 0) result)
   pure result
 
 -- | Consume all results from a multi-statement query (e.g., scripts).
@@ -58,8 +62,8 @@ singleResult context handler = Recv \connection -> runExceptT do
 -- where each statement produces a result that needs to be validated.
 -- All results are consumed even if an error occurs, to leave the connection
 -- in a clean state.
-allResults :: context -> ResultDecoder.ResultDecoder a -> Recv context ()
-allResults context handler = Recv \connection -> do
+allResults :: tag -> ResultDecoder.ResultDecoder a -> Recv tag ()
+allResults tag handler = Recv \connection -> do
   let loop resultIndex maybeError = do
         result <- Pq.getResult connection
         case result of
@@ -69,7 +73,7 @@ allResults context handler = Recv \connection -> do
             case decodedResult of
               Left err ->
                 -- Continue consuming results even after error to clean up connection
-                loop (resultIndex + 1) (Just (ResultError context resultIndex err))
+                loop (resultIndex + 1) (Just (ResultError tag resultIndex err))
               Right _ ->
                 loop (resultIndex + 1) maybeError
   errorOrUnit <- loop 0 Nothing
@@ -77,19 +81,20 @@ allResults context handler = Recv \connection -> do
 
 -- * Errors
 
-data Error context
+-- | Error of receiving results, carrying the tag of the action that caused it.
+data Error tag
   = ResultError
-      context
+      tag
       -- | Offset of the result in the series.
       Int
       -- | Underlying error.
       ResultDecoder.Error
   | NoResultsError
-      context
+      tag
       -- | Details about the error. Possibly empty.
       (Maybe ByteString)
   | TooManyResultsError
-      context
+      tag
       -- | Expected count.
       Int
   deriving stock (Show, Eq, Functor)
@@ -97,9 +102,9 @@ data Error context
 instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
-    ResultError context _ _ -> context
-    NoResultsError context _ -> context
-    TooManyResultsError context _ -> context
+    ResultError tag _ _ -> tag
+    NoResultsError tag _ -> tag
+    TooManyResultsError tag _ -> tag
 
   {-# INLINE duplicate #-}
   duplicate e = case e of

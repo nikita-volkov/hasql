@@ -44,17 +44,17 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
     Right newOidCache -> do
       let (roundtrip, newStatementCache) =
             runPipeline 0 preparedStatements newOidCache statementCache
-          contextualRoundtrip = first Just roundtrip
 
-      executionResult <- Comms.Roundtrip.toPipelineIO contextualRoundtrip Nothing connection
+      -- Statements carry their tag; the pipeline bookend commands below get none.
+      executionResult <- Comms.Roundtrip.toPipelineIO (first Just roundtrip) Nothing connection
 
       let result =
             first
               ( \case
-                  Comms.Roundtrip.ClientError _context details ->
+                  Comms.Roundtrip.ClientError _tag details ->
                     Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
                   Comms.Roundtrip.ServerError recvError ->
-                    Errors.fromRecvError (fmap (fmap (\(Context index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
+                    Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
               )
               executionResult
           finalStatementCache =
@@ -63,7 +63,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
               Left executionError ->
                 maybe
                   statementCache
-                  (\(Context _ _ _ _ statementCache) -> statementCache)
+                  (\(StatementTag _ _ _ _ statementCache) -> statementCache)
                   (extract executionError)
 
       pure
@@ -158,16 +158,18 @@ data Pipeline a
       -- 2. The updated statement cache after composing this part of the pipeline.
       --
       -- The resulting cache is optimistic: on failure we recover the last known
-      -- committed cache from statement contexts carried by roundtrip errors.
+      -- committed cache from statement tag carried by roundtrip errors.
       ( Int ->
         Bool ->
         OidCache.OidCache ->
         StatementCache.StatementCache ->
-        (Comms.Roundtrip.Roundtrip Context a, StatementCache.StatementCache)
+        (Comms.Roundtrip.Roundtrip StatementTag a, StatementCache.StatementCache)
       )
 
-data Context
-  = Context
+-- | Tag of a statement execution in a pipeline,
+-- carried by roundtrip errors to identify the statement and recover the cache.
+data StatementTag
+  = StatementTag
       -- | Offset of the statement in the pipeline (0-based).
       Int
       -- | SQL.
@@ -224,8 +226,8 @@ statement stmt params =
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
 
-        context soFarStatementCache =
-          Context
+        tag soFarStatementCache =
+          StatementTag
             offset
             sql
             (Statement.printer stmt params)
@@ -245,8 +247,8 @@ statement stmt params =
             roundtrip =
               when
                 isNew
-                (Comms.Roundtrip.prepare (context statementCache) remoteKey sql oidList)
-                *> Comms.Roundtrip.queryPrepared (context newStatementCache) remoteKey encodedParams Pq.Binary decoder'
+                (Comms.Roundtrip.prepare (tag statementCache) remoteKey sql oidList)
+                *> Comms.Roundtrip.queryPrepared (tag newStatementCache) remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
@@ -256,7 +258,7 @@ statement stmt params =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Comms.Roundtrip.queryParams (context statementCache) sql encodedParams Pq.Binary decoder'
+              Comms.Roundtrip.queryParams (tag statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   Statement.compileUnpreparedStatementData stmt resolve params

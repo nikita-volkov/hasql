@@ -21,11 +21,15 @@ import Hasql.Comms.Send qualified as Send
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
 
-data Roundtrip context a
-  = Roundtrip (Send.Send context) (Recv.Recv context a)
+-- | A send action paired with the matching receive action, forming a single protocol round trip.
+--
+-- The @tag@ type parameter is a value attached at construction,
+-- which the error carries if the round trip fails.
+data Roundtrip tag a
+  = Roundtrip (Send.Send tag) (Recv.Recv tag a)
   deriving stock (Functor)
 
-instance Applicative (Roundtrip context) where
+instance Applicative (Roundtrip tag) where
   {-# INLINE pure #-}
   pure x = Roundtrip mempty (pure x)
   {-# INLINE (<*>) #-}
@@ -39,45 +43,45 @@ instance Bifunctor Roundtrip where
       (fmap f send)
       (bimap f g recv)
 
-toPipelineIO :: Roundtrip context a -> context -> Pq.Connection -> IO (Either (Error context) a)
-toPipelineIO sendAndRecv context connection = mask \restore -> do
-  sendResult <- Send.toHandler (Send.enterPipelineMode context <> send) connection
+toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
+toPipelineIO sendAndRecv tag connection = mask \restore -> do
+  sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error context details -> pure (Left (ClientError context details))
+    Send.Error tag details -> pure (Left (ClientError tag details))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
-        result <- Send.toHandler (Send.exitPipelineMode context) connection
+        result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error context details -> pure (Left (ClientError context details))
+          Send.Error tag details -> pure (Left (ClientError tag details))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
-    Roundtrip send recv = sendAndRecv <* pipelineSync context
+    Roundtrip send recv = sendAndRecv <* pipelineSync tag
 
-toSerialIO :: Roundtrip context a -> Pq.Connection -> IO (Either (Error context) a)
+toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error context details -> pure (Left (ClientError context details))
+    Send.Error tag details -> pure (Left (ClientError tag details))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
 
-pipelineSync :: context -> Roundtrip context ()
-pipelineSync context =
+pipelineSync :: tag -> Roundtrip tag ()
+pipelineSync tag =
   Roundtrip
-    (Send.pipelineSync context)
-    (Recv.singleResult context ResultDecoder.pipelineSync)
+    (Send.pipelineSync tag)
+    (Recv.singleResult tag ResultDecoder.pipelineSync)
 
-prepare :: context -> ByteString -> ByteString -> [Word32] -> Roundtrip context ()
-prepare context statementName sql oidList =
+prepare :: tag -> ByteString -> ByteString -> [Word32] -> Roundtrip tag ()
+prepare tag statementName sql oidList =
   Roundtrip
-    (Send.prepare context statementName sql (Just oidList))
-    (Recv.singleResult context ResultDecoder.ok)
+    (Send.prepare tag statementName sql (Just oidList))
+    (Recv.singleResult tag ResultDecoder.ok)
 
 queryPrepared ::
-  context ->
+  tag ->
   -- | Prepared statement name.
   ByteString ->
   -- | Parameters.
@@ -86,14 +90,14 @@ queryPrepared ::
   Pq.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
-  Roundtrip context a
-queryPrepared context statementName params resultFormat resultDecoder =
+  Roundtrip tag a
+queryPrepared tag statementName params resultFormat resultDecoder =
   Roundtrip
-    (Send.queryPrepared context statementName params resultFormat)
-    (Recv.singleResult context resultDecoder)
+    (Send.queryPrepared tag statementName params resultFormat)
+    (Recv.singleResult tag resultDecoder)
 
 queryParams ::
-  context ->
+  tag ->
   -- | SQL.
   ByteString ->
   -- | Parameters.
@@ -102,36 +106,37 @@ queryParams ::
   Pq.Format ->
   -- | Result decoder.
   ResultDecoder.ResultDecoder a ->
-  Roundtrip context a
-queryParams context sql params resultFormat resultDecoder =
+  Roundtrip tag a
+queryParams tag sql params resultFormat resultDecoder =
   Roundtrip
-    (Send.queryParams context sql params resultFormat)
-    (Recv.singleResult context resultDecoder)
+    (Send.queryParams tag sql params resultFormat)
+    (Recv.singleResult tag resultDecoder)
 
-query :: context -> ByteString -> Roundtrip context ()
-query context sql =
+query :: tag -> ByteString -> Roundtrip tag ()
+query tag sql =
   Roundtrip
-    (Send.query context sql)
-    (Recv.singleResult context ResultDecoder.ok)
+    (Send.query tag sql)
+    (Recv.singleResult tag ResultDecoder.ok)
 
 -- | Execute a script (multi-statement SQL).
 -- Unlike 'query', this consumes all results from the execution,
 -- which is necessary for scripts containing multiple statements.
-script :: context -> ByteString -> Roundtrip context ()
-script context sql =
+script :: tag -> ByteString -> Roundtrip tag ()
+script tag sql =
   Roundtrip
-    (Send.query context sql)
-    (Recv.allResults context ResultDecoder.ok)
+    (Send.query tag sql)
+    (Recv.allResults tag ResultDecoder.ok)
 
-data Error context
-  = ClientError context (Maybe ByteString)
-  | ServerError (Recv.Error context)
+-- | Error of a round trip, carrying the tag of the action that caused it.
+data Error tag
+  = ClientError tag (Maybe ByteString)
+  | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
 
 instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
-    ClientError context _ -> context
+    ClientError tag _ -> tag
     ServerError recvError -> extract recvError
 
   {-# INLINE duplicate #-}
