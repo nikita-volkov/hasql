@@ -1,6 +1,7 @@
 module Pure.ErrorsSpec (spec) where
 
 import Data.HashSet qualified as HashSet
+import Data.Text qualified as Text
 import Hasql.Errors qualified as Errors
 import Prelude
 import Test.Hspec
@@ -72,6 +73,27 @@ spec = do
       it "other codes are not transient" do
         (Errors.isTransient (Errors.ServerError "42P01" "relation does not exist" Nothing Nothing Nothing))
           `shouldBe` False
+
+      mapM_
+        ( \code ->
+            it (Text.unpack code <> " is transient") do
+              (Errors.isTransient (Errors.ServerError code "server error" Nothing Nothing Nothing))
+                `shouldBe` True
+        )
+        [ "40001", -- serialization_failure
+          "40P01", -- deadlock_detected
+          "55P03", -- lock_not_available
+          "57P01", -- admin_shutdown
+          "57P02", -- crash_shutdown
+          "57P03", -- cannot_connect_now
+          "08000", -- connection_exception
+          "08003", -- connection_does_not_exist
+          "08006", -- connection_failure
+          "53100", -- disk_full
+          "53200", -- out_of_memory
+          "53300", -- too_many_connections
+          "25006" -- read_only_sql_transaction
+        ]
 
     describe "toSqlState" do
       it "is the code the server reported" do
@@ -172,6 +194,14 @@ spec = do
         (Errors.isTransient (Errors.UnexpectedRowCountStatementError 1 1 0))
           `shouldBe` False
 
+      it "delegates to the wrapped ServerError for a serialization failure" do
+        (Errors.isTransient (Errors.ServerStatementError (Errors.ServerError "40001" "could not serialize access due to concurrent update" Nothing Nothing Nothing)))
+          `shouldBe` True
+
+      it "is not transient for a decoder mismatch wrapped in RowStatementError" do
+        (Errors.isTransient (Errors.RowStatementError 3 (Errors.CellRowError 1 23 Errors.UnexpectedNullCellError)))
+          `shouldBe` False
+
     describe "toSqlState" do
       it "digs the code out of ServerStatementError" do
         (Errors.toSqlState (Errors.ServerStatementError (Errors.ServerError "23505" "duplicate key" Nothing Nothing Nothing)))
@@ -256,6 +286,14 @@ spec = do
       it "ScriptSessionError delegates to the wrapped ServerError" do
         (Errors.isTransient (Errors.ScriptSessionError "select 1" (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing)))
           `shouldBe` True
+
+      it "StatementSessionError is transient for a serialization failure nested through ServerStatementError" do
+        (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.ServerStatementError (Errors.ServerError "40001" "could not serialize access due to concurrent update" Nothing Nothing Nothing))))
+          `shouldBe` True
+
+      it "StatementSessionError is not transient for a decoder mismatch nested through RowStatementError" do
+        (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.RowStatementError 0 (Errors.CellRowError 0 23 Errors.UnexpectedNullCellError))))
+          `shouldBe` False
 
     describe "toSqlState" do
       it "digs the code out of StatementSessionError" do
