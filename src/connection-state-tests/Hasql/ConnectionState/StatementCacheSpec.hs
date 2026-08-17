@@ -28,6 +28,34 @@ spec = do
           (key2, _) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
       key1 `shouldBe` key2
 
+    it "distinguishes statements by their parameter OIDs" do
+      let (key1, _) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+          (key2, _) = StatementCache.insert "SELECT $1" [25] StatementCache.empty
+      key1 `shouldNotBe` key2
+
+    it "distinguishes statements by their parameter count" do
+      let (key1, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+          (key2, _) = StatementCache.insert "SELECT 1" [23] StatementCache.empty
+      key1 `shouldNotBe` key2
+
+    -- Golden values. The name is what the server sees and what a pooler
+    -- tracks statements by, so changing any of it — the serialization, the
+    -- digest, the truncation, the prefix — is a wire-visible change that
+    -- needs a version bump and a changelog entry. Do not update these to
+    -- make a build pass; work out first why the name moved.
+    --
+    -- Serialization under test: the SQL length as a big-endian Word64, the
+    -- SQL, the parameter count as a big-endian Word64, then each OID as a
+    -- big-endian Word32. SHA-256 of that, hex, first 57 characters, prefixed
+    -- with "hasql_".
+    it "matches the golden name for a statement without parameters" do
+      let (key, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+      key `shouldBe` "hasql_5edac06ba8f1fb3b8ad72465f3cffb0adb965e440bcd7712e33606b97"
+
+    it "matches the golden name for a statement with parameters" do
+      let (key, _) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+      key `shouldBe` "hasql_7497628d7431d49f8722fb860c35ebdc96c758a01032b58812c38ecaf"
+
   describe "empty" do
     it "returns Nothing on lookup" do
       StatementCache.lookup "SELECT 1" [] StatementCache.empty

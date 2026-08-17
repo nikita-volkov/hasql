@@ -382,6 +382,7 @@ test-suite library-tests
     Integration.Sharing.Session.StatementSpec
     Integration.Sharing.SessionSpec
     Integration.Sharing.SpecHook
+    Integration.Sharing.Statement.PreparedStatementNamingSpec
     Integration.Sharing.StatementSpec
     Integration.SpecHook
     Pure.Connection.AcquireSpec
