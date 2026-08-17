@@ -114,6 +114,49 @@ spec = do
                 Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 0}
             shouldBe result (Right [0])
 
+      describe "Effects on the database state" do
+        describe "With query error" do
+          it "Rolls back the statements preceding the failure and skips the following ones" \config -> do
+            Scripts.onPreparableConnection config \connection -> do
+              varname <- Execution.generateVarname
+              let setVar value =
+                    Execution.pipelineByParams
+                      Statements.SetConfig {name = varname, value, local = False}
+              result <-
+                (Connection.use connection . Session.pipeline)
+                  $ (,,)
+                  <$> setVar "before"
+                  <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
+                  <*> setVar "after"
+              case result of
+                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
+                _ -> expectationFailure $ "Unexpected result: " <> show result
+              settingResult <-
+                Connection.use connection
+                  $ Execution.sessionByParams Statements.CurrentSetting {name = varname, missingOk = True}
+              shouldBe settingResult (Right (Just ""))
+
+        describe "With decoding error" do
+          it "Keeps the effects of all statements" \config -> do
+            Scripts.onPreparableConnection config \connection -> do
+              varname <- Execution.generateVarname
+              let setVar value =
+                    Execution.pipelineByParams
+                      Statements.SetConfig {name = varname, value, local = False}
+              result <-
+                (Connection.use connection . Session.pipeline)
+                  $ (,,)
+                  <$> setVar "before"
+                  <*> Execution.pipelineByParams Statements.WrongDecoder {start = 0, end = 2}
+                  <*> setVar "after"
+              case result of
+                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {})) -> pure ()
+                _ -> expectationFailure $ "Unexpected result: " <> show result
+              settingResult <-
+                Connection.use connection
+                  $ Execution.sessionByParams Statements.CurrentSetting {name = varname, missingOk = True}
+              shouldBe settingResult (Right (Just "after"))
+
   describe "Failing pipeline" do
     it "Does not cause errors in the next pipeline" \config -> do
       Scripts.onPreparableConnection config \connection -> do
