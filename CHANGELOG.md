@@ -22,6 +22,8 @@
 
 - `Hasql.Connection.acquire`'s `ConnectionError` classification recognized far fewer transient failures than it should have: `"the database system is starting up"`, `"the database system is in recovery mode"`, `"sorry, too many clients already"`, `"server closed the connection unexpectedly"`, `"connection reset by peer"`, `"network is unreachable"`, `"no route to host"`, `"connection timed out"`, `"could not fork new process"`, and `"terminating connection due to administrator command"` all previously fell through to `OtherConnectionError`, so `isTransient` reported `False` for what are, in every case, worth retrying. Conversely, `"no such file or directory"` (a missing Unix-socket path — a misconfiguration, not a networking hiccup) was wrongly grouped with the transient cases; it's now `OtherConnectionError`. (#329)
 
+- A send failure partway through a pipeline (e.g. a statement with more than 65535 parameters, which libpq and `pqi-native` >=1.0.1.5 both reject locally) used to return the connection still in pipeline mode, with the commands dispatched before the failure holding undrained results. Every later session on that connection then failed as a `ConnectionSessionError` - the kind `isTransient` reports as retryable - while the connection was in fact stuck. `Hasql.Comms.Roundtrip.toPipelineIO` now cancels whatever dispatched commands are still executing and leaves the pipeline mode - syncing and draining the withheld results - before returning the send error. (#326)
+
 # v2.0.1.0
 
 ## New Features

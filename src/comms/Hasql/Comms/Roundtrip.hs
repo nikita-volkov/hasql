@@ -2,6 +2,7 @@ module Hasql.Comms.Roundtrip
   ( Roundtrip,
     toPipelineIO,
     toSerialIO,
+    leavePipelineMode,
 
     -- * Constructors
     prepare,
@@ -47,7 +48,16 @@ toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag cause details -> pure (Left (ClientError tag cause details))
+    Send.Error tag cause details -> do
+      -- The commands preceding the failed one have already been dispatched,
+      -- and the connection is still in pipeline mode. Returning it in this
+      -- state would leave it unusable for every subsequent operation, with
+      -- each failure mislabelled as a retryable connection error. So cancel
+      -- whatever of those commands is still executing and leave the mode,
+      -- syncing and draining the results it withheld.
+      restore (cancelIfPossible connection)
+      leaveResult <- restore (leavePipelineMode connection)
+      pure (Left (ClientError tag cause (appendLeaveFailure details leaveResult)))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
@@ -58,6 +68,75 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
       pure (recvResult <* exitResult)
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
+
+    appendLeaveFailure details = \case
+      Right () -> details
+      Left leaveError ->
+        Just
+          ( (encodeUtf8 . mconcat)
+              [ maybe "" ((<> "\n") . decodeUtf8Lenient) details,
+                "Failed to restore the connection after a send failure: ",
+                leaveError
+              ]
+          )
+
+cancelIfPossible :: Pq.Connection -> IO ()
+cancelIfPossible connection =
+  Pq.getCancel connection >>= \case
+    Nothing -> pure ()
+    Just cancel -> void (Pq.cancel cancel)
+
+-- | Leave the pipeline mode of a connection, draining all the results that
+-- the commands dispatched in it have produced or are still producing.
+--
+-- A connection in pipeline mode cannot serve serial commands: libpq rejects
+-- them while the mode is on, and the server withholds the results of the
+-- dispatched commands until it receives a Sync. Hence before turning the
+-- mode off we send a Sync and drain everything that comes back.
+--
+-- Draining is not a single pass: in pipeline mode @PQgetResult@ terminates
+-- the round of results of every command with a 'Nothing', so a drain loop
+-- stops at each command boundary. 'Pq.exitPipelineMode' only succeeds once
+-- the command queue is empty, so draining and exit attempts alternate for as
+-- long as draining keeps making progress.
+--
+-- Idempotent: a no-op when the connection is not in pipeline mode.
+leavePipelineMode :: Pq.Connection -> IO (Either Text ())
+leavePipelineMode connection = do
+  pipelineStatus <- Pq.pipelineStatus connection
+  if pipelineStatus == Pq.PipelineOff
+    then pure (Right ())
+    else do
+      _ <- Pq.pipelineSync connection
+      void (drainProgressively connection)
+      exitWithDraining
+  where
+    exitWithDraining =
+      Pq.exitPipelineMode connection >>= \case
+        True -> pure (Right ())
+        False ->
+          drainProgressively connection >>= \case
+            True -> exitWithDraining
+            False -> do
+              errorMessage <- Pq.errorMessage connection
+              pure (Left (renderExitFailure errorMessage))
+
+    renderExitFailure = \case
+      Nothing -> "Failed to exit pipeline mode after draining results"
+      Just details -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient details
+
+-- | Consume the results of the currently dispatched commands, reporting
+-- whether anything got consumed.
+--
+-- In pipeline mode this drains up to the next command boundary, since every
+-- command's round of results is terminated by a 'Nothing'.
+drainProgressively :: Pq.Connection -> IO Bool
+drainProgressively connection =
+  let go hasConsumedResult =
+        Pq.getResult connection >>= \case
+          Just _ -> go True
+          Nothing -> pure hasConsumedResult
+   in go False
 
 toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do

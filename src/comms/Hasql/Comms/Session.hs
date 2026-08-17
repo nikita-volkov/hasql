@@ -72,34 +72,11 @@ bringTransactionStatusToIdle = do
       -- Unknown state (connection issue), there's not much we can do.
       throwError "Transaction status is unknown, connection is corrupted"
 
+-- | PipelineAborted is still pipeline mode. It must reach a sync point
+-- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
+-- again.
 leavePipeline :: Session ()
-leavePipeline = do
-  pipelineStatus <- getPipelineStatus
-  -- PipelineAborted is still pipeline mode. It must reach a sync point before
-  -- libpq permits serial queries such as ABORT or DEALLOCATE ALL again.
-  when (pipelineStatus /= Pq.PipelineOff) do
-    -- In pipeline mode, we need to ensure the pipeline is synchronized before exiting.
-    -- Send a pipeline sync marker to flush any pending operations.
-    syncSuccess <- sendPipelineSync
-    when syncSuccess drainResults
-    -- After sync, send a flush to ensure all queued commands are sent to the server.
-    flushSuccess <- sendFlushRequest
-    when flushSuccess drainResults
-    -- Try to exit pipeline mode.
-    -- This might fail if there are pending results that need to be consumed.
-    success <- exitPipelineMode
-    unless success do
-      -- If exit failed, drain results and try again.
-      drainResults
-      success <- exitPipelineMode
-      unless success do
-        -- If it still fails, there's not much we can do.
-        -- The connection is probably in a bad state.
-        errorMessage <- getErrorMessage
-        let message = case errorMessage of
-              Nothing -> "Failed to exit pipeline mode after draining results"
-              Just details -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient details
-        throwError message
+leavePipeline = Session Roundtrip.leavePipelineMode
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =
@@ -118,29 +95,9 @@ cancel = Session \connection -> do
           pure (Right ())
     Nothing -> pure (Right ())
 
-getErrorMessage :: Session (Maybe ByteString)
-getErrorMessage = Session \connection -> do
-  Right <$> Pq.errorMessage connection
-
 getTransactionStatus :: Session Pq.TransactionStatus
 getTransactionStatus = Session \connection -> do
   Right <$> Pq.transactionStatus connection
-
-getPipelineStatus :: Session Pq.PipelineStatus
-getPipelineStatus = Session \connection -> do
-  Right <$> Pq.pipelineStatus connection
-
-exitPipelineMode :: Session Bool
-exitPipelineMode = Session \connection -> do
-  Right <$> Pq.exitPipelineMode connection
-
-sendPipelineSync :: Session Bool
-sendPipelineSync = Session \connection -> do
-  Right <$> Pq.pipelineSync connection
-
-sendFlushRequest :: Session Bool
-sendFlushRequest = Session \connection -> do
-  Right <$> Pq.sendFlushRequest connection
 
 -- Drain all pending results from the connection.
 drainResults :: Session ()
