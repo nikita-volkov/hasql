@@ -47,11 +47,9 @@ spec = do
       finishedRef <- newIORef False
       let adapter =
             fakeAdapter
-              ( fakeConnection
-                  finishedRef
-                  Pq.ConnectionOk
-                  Nothing
-                  180000
+              ( (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
+                  { Pq.exec = \_ -> pure (Just (fakeResult Pq.CommandOk Nothing))
+                  }
               )
       result <- Connection.acquire adapter mempty
       case result of
@@ -71,6 +69,53 @@ spec = do
         Left _ -> pure ()
         Right _ -> expectationFailure "Expected acquire to propagate the exception"
       readIORef finishedRef `shouldReturn` True
+
+    it "fails and finishes the pq connection when the session-init exec returns no result" do
+      finishedRef <- newIORef False
+      let brokenConnection =
+            (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
+              { Pq.exec = \_ -> pure Nothing,
+                Pq.errorMessage = pure (Just "server closed the connection")
+              }
+          adapter = fakeAdapter brokenConnection
+      result <- Connection.acquire adapter mempty
+      case result of
+        Left (Errors.OtherConnectionError _) -> pure ()
+        Left err -> expectationFailure ("Expected OtherConnectionError, got: " <> show err)
+        Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
+      readIORef finishedRef `shouldReturn` True
+
+    it "fails and finishes the pq connection when the session-init exec reports a non-CommandOk status" do
+      finishedRef <- newIORef False
+      let failedResult =
+            fakeResult Pq.FatalError (Just "permission denied for SET")
+          brokenConnection =
+            (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
+              { Pq.exec = \_ -> pure (Just failedResult)
+              }
+          adapter = fakeAdapter brokenConnection
+      result <- Connection.acquire adapter mempty
+      case result of
+        Left (Errors.OtherConnectionError msg) -> msg `shouldBe` "permission denied for SET"
+        Left err -> expectationFailure ("Expected OtherConnectionError, got: " <> show err)
+        Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
+      readIORef finishedRef `shouldReturn` True
+
+    it "succeeds when the session-init exec reports a CommandOk status" do
+      finishedRef <- newIORef False
+      let okResult =
+            fakeResult Pq.CommandOk Nothing
+          adapter =
+            fakeAdapter
+              ( (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
+                  { Pq.exec = \_ -> pure (Just okResult)
+                  }
+              )
+      result <- Connection.acquire adapter mempty
+      case result of
+        Right _ -> pure ()
+        Left err -> expectationFailure ("Expected acquire to succeed, got: " <> show err)
+      readIORef finishedRef `shouldReturn` False
 
 fakeAdapter :: Pq.Connection -> Pq.Adapter
 fakeAdapter connection =
@@ -159,6 +204,33 @@ fakeConnection finishedRef connStatus connErrorMessage connServerVersion =
       clientEncoding = unimplementedIO "clientEncoding",
       setClientEncoding = \_ -> unimplemented "setClientEncoding",
       setErrorVerbosity = \_ -> unimplemented "setErrorVerbosity"
+    }
+
+fakeResult :: Pq.ExecStatus -> Maybe ByteString -> Pq.Result
+fakeResult status errorMessage =
+  Pq.Result
+    { resultStatus = pure status,
+      resultErrorMessage = pure errorMessage,
+      resultErrorField = \_ -> unimplemented "resultErrorField",
+      unsafeFreeResult = unimplementedIO "unsafeFreeResult",
+      ntuples = unimplementedIO "ntuples",
+      nfields = unimplementedIO "nfields",
+      fname = \_ -> unimplemented "fname",
+      fnumber = \_ -> unimplemented "fnumber",
+      ftable = \_ -> unimplemented "ftable",
+      ftablecol = \_ -> unimplemented "ftablecol",
+      fformat = \_ -> unimplemented "fformat",
+      ftype = \_ -> unimplemented "ftype",
+      fmod = \_ -> unimplemented "fmod",
+      fsize = \_ -> unimplemented "fsize",
+      getvalue = \_ _ -> unimplemented "getvalue",
+      getvalue' = \_ _ -> unimplemented "getvalue'",
+      getisnull = \_ _ -> unimplemented "getisnull",
+      getlength = \_ _ -> unimplemented "getlength",
+      nparams = unimplementedIO "nparams",
+      paramtype = \_ -> unimplemented "paramtype",
+      cmdStatus = unimplementedIO "cmdStatus",
+      cmdTuples = unimplementedIO "cmdTuples"
     }
 
 -- | Marks a t'Pq.Connection'\/t'Pq.Adapter' field this test double doesn't

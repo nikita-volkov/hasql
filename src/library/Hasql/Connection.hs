@@ -75,10 +75,23 @@ acquire adapter settings =
               throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
 
             -- Initialize:
-            lift do
-              Pq.exec pqConnection do
-                "SET client_encoding = 'UTF8';\n\
-                \SET client_min_messages TO WARNING;"
+            do
+              execResult <-
+                lift do
+                  Pq.exec pqConnection do
+                    "SET client_encoding = 'UTF8';\n\
+                    \SET client_min_messages TO WARNING;"
+              case execResult of
+                Nothing -> do
+                  errorMessage <- lift (Pq.errorMessage pqConnection)
+                  throwError (OtherConnectionError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
+                Just result -> do
+                  status <- lift (Pq.resultStatus result)
+                  case status of
+                    Pq.CommandOk -> pure ()
+                    _ -> do
+                      errorMessage <- lift (Pq.resultErrorMessage result)
+                      throwError (OtherConnectionError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
 
             let connectionState =
                   ConnectionState.ConnectionState
