@@ -1,6 +1,5 @@
 module Hasql.ConnectionState.StatementCache
-  ( -- * Pure registry operations
-    StatementCache,
+  ( StatementCache,
     empty,
     lookup,
     insert,
@@ -8,40 +7,51 @@ module Hasql.ConnectionState.StatementCache
   )
 where
 
+import ByteString.StrictBuilder qualified
+import Crypto.Hash.SHA256 qualified
+import Data.ByteString qualified as ByteString
+import Data.ByteString.Base16 qualified as Base16
 import Data.HashMap.Strict qualified as HashMap
 import Hasql.Platform.Prelude hiding (empty, insert, lookup, reset)
 
--- | Pure registry state containing the hash map and counter
-data StatementCache = StatementCache (HashMap LocalKey ByteString) Word
+-- | Pure registry state mapping local statement keys to their deterministic remote names
+newtype StatementCache = StatementCache (HashMap LocalKey ByteString)
   deriving stock (Show, Eq)
 
 -- | Create an empty registry state
 {-# INLINEABLE empty #-}
 empty :: StatementCache
-empty = StatementCache HashMap.empty 0
+empty = StatementCache HashMap.empty
 
 -- | Pure lookup operation
 {-# INLINEABLE lookup #-}
 lookup :: ByteString -> [Word32] -> StatementCache -> Maybe ByteString
-lookup sql oids (StatementCache hashMap _) = HashMap.lookup localKey hashMap
-  where
-    localKey = LocalKey sql oids
+lookup sql oids (StatementCache hashMap) = HashMap.lookup (LocalKey sql oids) hashMap
 
 -- | Pure insert operation that returns new state and the generated remote key
 {-# INLINEABLE insert #-}
 insert :: ByteString -> [Word32] -> StatementCache -> (ByteString, StatementCache)
-insert sql oids (StatementCache hashMap counter) = (remoteKey, newState)
+insert sql oids (StatementCache hashMap) = (remoteKey, newState)
   where
-    remoteKey = fromString $ show $ newCounter
-    newHashMap = HashMap.insert localKey remoteKey hashMap
-    newCounter = counter + 1
-    newState = StatementCache newHashMap newCounter
     localKey = LocalKey sql oids
+    remoteKey =
+      "hasql_" <> ByteString.take 57 (Base16.encode (Crypto.Hash.SHA256.hash hashInput))
+      where
+        hashInput =
+          ByteString.StrictBuilder.builderBytes
+            ( mconcat
+                [ ByteString.StrictBuilder.word64BE (fromIntegral (ByteString.length sql)),
+                  ByteString.StrictBuilder.bytes sql,
+                  ByteString.StrictBuilder.word64BE (fromIntegral (length oids)),
+                  foldMap ByteString.StrictBuilder.word32BE oids
+                ]
+            )
+    newState = StatementCache (HashMap.insert localKey remoteKey hashMap)
 
 -- | Pure reset operation
 {-# INLINEABLE reset #-}
 reset :: StatementCache -> StatementCache
-reset _ = StatementCache HashMap.empty 0
+reset _ = StatementCache HashMap.empty
 
 -- |
 -- Local statement key.

@@ -229,6 +229,10 @@ library connection-state
     Hasql.ConnectionState.StatementCache
 
   build-depends:
+    base16-bytestring >=1.0 && <1.1,
+    bytestring >=0.10 && <0.13,
+    bytestring-strict-builder >=0.4.5.4 && <0.5,
+    cryptohash-sha256 >=0.11 && <0.12,
     hasql:codecs-vocab,
     hasql:platform,
     pqi >=1.0 && <1.2,
@@ -316,6 +320,7 @@ test-suite connection-state-tests
 
   build-depends:
     base >=4.14 && <5,
+    bytestring >=0.10 && <0.13,
     hasql:codecs-vocab,
     hasql:connection-state,
     hspec ^>=2.11.12,

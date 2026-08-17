@@ -1,11 +1,33 @@
 module Hasql.ConnectionState.StatementCacheSpec (spec) where
 
+import Data.ByteString qualified as ByteString
+import Data.ByteString.Char8 qualified as ByteString.Char8
 import Data.Maybe
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
+import Prelude
 import Test.Hspec
 
 spec :: Spec
 spec = do
+  describe "remote key format" do
+    it "is prefixed with \"hasql_\"" do
+      let (key, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+      ByteString.Char8.isPrefixOf "hasql_" key `shouldBe` True
+
+    it "is 63 bytes long" do
+      let (key, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+      ByteString.length key `shouldBe` 63
+
+    it "is deterministic across independent caches" do
+      let (key1, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+          (key2, _) = StatementCache.insert "SELECT 1" [] StatementCache.empty
+      key1 `shouldBe` key2
+
+    it "is deterministic for statements with parameter OIDs" do
+      let (key1, _) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+          (key2, _) = StatementCache.insert "SELECT $1" [23] StatementCache.empty
+      key1 `shouldBe` key2
+
   describe "empty" do
     it "returns Nothing on lookup" do
       StatementCache.lookup "SELECT 1" [] StatementCache.empty
