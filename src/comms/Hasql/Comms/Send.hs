@@ -6,8 +6,21 @@ import Pqi qualified as Pq
 -- | Outcome of sending commands: success, or a failure carrying the tag of the commands.
 data Result tag
   = Ok
-  | Error tag (Maybe ByteString)
+  | Error tag Cause (Maybe ByteString)
   deriving stock (Eq, Show, Functor)
+
+-- | Why a send failed.
+data Cause
+  = -- | @PQstatus@ reports the connection as bad: the socket is gone, so
+    -- every queued command failed identically and a retry needs a fresh
+    -- connection.
+    ConnectionLoss
+  | -- | @PQstatus@ still reports the connection as usable: libpq rejected
+    -- the request itself (e.g. more than 65535 parameters, or a command
+    -- issued while another is in progress). The same request will fail the
+    -- same way again on this connection or any other.
+    ClientRejection
+  deriving stock (Eq, Show)
 
 -- | An action that sends commands to a connection without receiving the results.
 --
@@ -22,7 +35,7 @@ instance Semigroup (Send tag) where
   Send send1 <> Send send2 = Send \cs -> do
     result <- send1 cs
     case result of
-      Error tag details -> pure (Error tag details)
+      Error tag cause details -> pure (Error tag cause details)
       Ok -> do
         result2 <- send2 cs
         pure result2
@@ -41,7 +54,9 @@ liftPqSend tag pqSend = Send \connection -> do
     then pure Ok
     else do
       errorMessage <- Pq.errorMessage connection
-      pure (Error tag errorMessage)
+      status <- Pq.status connection
+      let cause = if status == Pq.ConnectionBad then ConnectionLoss else ClientRejection
+      pure (Error tag cause errorMessage)
 
 prepare :: tag -> ByteString -> ByteString -> Maybe [Word32] -> Send tag
 prepare tag statementName sql oidList =
