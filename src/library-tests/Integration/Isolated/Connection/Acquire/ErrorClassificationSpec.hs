@@ -165,7 +165,8 @@ retryAcquire adapter settings attemptsLeft = do
 runMaxConnectionsOneContainer :: ((Text, Word16) -> IO ()) -> IO ()
 runMaxConnectionsOneContainer action =
   bracket
-    ( Text.strip . Text.pack
+    ( Text.strip
+        . Text.pack
         <$> Process.readProcess
           "docker"
           [ "run",
