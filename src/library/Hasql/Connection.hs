@@ -55,36 +55,49 @@ acquire adapter settings =
     let config = Config.construct settings
 
     -- Connect:
-    pqConnection <- lift (Pq.connectdb adapter (Config.connectionString config))
+    ExceptT do
+      bracketOnError
+        (Pq.connectdb adapter (Config.connectionString config))
+        Pq.finish
+        \pqConnection -> do
+          result <- runExceptT do
+            -- Check status:
+            status <- lift (Pq.status pqConnection)
+            case status of
+              Pq.ConnectionOk -> pure ()
+              _ -> do
+                errorMessage <- lift (Pq.errorMessage pqConnection)
+                throwError (interpretConnectionError errorMessage)
 
-    -- Check status:
-    status <- lift (Pq.status pqConnection)
-    case status of
-      Pq.ConnectionOk -> pure ()
-      _ -> do
-        errorMessage <- lift (Pq.errorMessage pqConnection)
-        throwError (interpretConnectionError errorMessage)
+            -- Check version:
+            version <- lift (ServerVersion.load pqConnection)
+            when (version < ServerVersion.minimum) do
+              throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
 
-    -- Check version:
-    version <- lift (ServerVersion.load pqConnection)
-    when (version < ServerVersion.minimum) do
-      throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
+            -- Initialize:
+            lift do
+              Pq.exec pqConnection do
+                "SET client_encoding = 'UTF8';\n\
+                \SET client_min_messages TO WARNING;"
 
-    -- Initialize:
-    lift do
-      Pq.exec pqConnection do
-        "SET client_encoding = 'UTF8';\n\
-        \SET client_min_messages TO WARNING;"
+            let connectionState =
+                  ConnectionState.ConnectionState
+                    { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
+                      ConnectionState.statementCache = StatementCache.empty,
+                      ConnectionState.oidCache = mempty,
+                      ConnectionState.connection = pqConnection
+                    }
+            connectionRef <- lift (newMVar connectionState)
+            pure (Connection connectionRef)
 
-    let connectionState =
-          ConnectionState.ConnectionState
-            { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
-              ConnectionState.statementCache = StatementCache.empty,
-              ConnectionState.oidCache = mempty,
-              ConnectionState.connection = pqConnection
-            }
-    connectionRef <- lift (newMVar connectionState)
-    pure (Connection connectionRef)
+          -- A classified failure (as opposed to a thrown exception, which
+          -- 'bracketOnError' already finishes the connection for) still
+          -- needs the connection finished, since it doesn't escape this
+          -- action as an exception.
+          case result of
+            Left _ -> Pq.finish pqConnection
+            Right _ -> pure ()
+          pure result
   where
     interpretConnectionError :: Maybe ByteString -> ConnectionError
     interpretConnectionError errorMessage =

@@ -384,6 +384,7 @@ test-suite library-tests
     Integration.Sharing.SpecHook
     Integration.Sharing.StatementSpec
     Integration.SpecHook
+    Pure.Connection.AcquireSpec
     Pure.ErrorsSpec
 
   build-tool-depends:
