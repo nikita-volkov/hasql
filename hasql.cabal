@@ -397,6 +397,7 @@ test-suite library-tests
     pqi >=1.0 && <1.2,
     pqi-ffi ^>=1.0,
     pqi-native ^>=1.0,
+    process,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,
