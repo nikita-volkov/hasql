@@ -219,7 +219,7 @@ instance IsError StatementError where
     UnexpectedRowCountStatementError {} -> False
     UnexpectedColumnCountStatementError {} -> False
     UnexpectedColumnTypeStatementError {} -> False
-    RowStatementError {} -> False
+    RowStatementError _ rowError -> isTransient rowError
     UnexpectedResultStatementError {} -> False
 
   toSqlState = \case
