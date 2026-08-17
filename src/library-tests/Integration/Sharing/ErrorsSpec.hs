@@ -2,7 +2,6 @@ module Integration.Sharing.ErrorsSpec (spec) where
 
 import Data.Either
 import Data.Functor.Contravariant
-import Data.Int (Int64)
 import Data.Vector qualified as Vector
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
