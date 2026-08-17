@@ -65,14 +65,15 @@ connection.
 
 ## Statement cache
 
-A connection-scoped, bounded LRU cache mapping a **local key** (SQL text plus
-parameter OIDs) to the server-side prepared plan behind it. Governed by two
-connection settings: `statementCacheSize` (capacity; `0` disables preparation
-entirely) and `prepareThreshold` (executions of the same local key required
-before it is admitted, i.e. actually `PARSE`d and kept server-side). Below the
-threshold, or once eviction has dropped an entry, an execution falls back to an
-unprepared roundtrip — this is invisible to the caller and does not affect
-correctness, only round-trip count.
+A connection-scoped mapping from a **local key** (SQL text plus parameter OIDs)
+to the **remote key** the statement is prepared under on the server. A
+preparable statement is `PARSE`d on its first execution and served from the
+cache on every execution after that.
+
+The cache is unbounded: no capacity, no admission threshold, no eviction policy.
+It grows with the number of distinct statements the connection has executed.
+Whether a statement is prepared at all is a property of the statement and of the
+connection's `noPreparedStatements` setting, not of the cache.
 
 ## Local key
 
@@ -84,24 +85,16 @@ different statement on the server.
 ## Remote key
 
 The name a statement is prepared under on the server — what a `DEALLOCATE`
-names, and what distinguishes two server-side plans for the same local key
-prepared at different times. Allocated by the connection and never reused while
-the server may still hold the statement.
+names, and what `pg_prepared_statements` lists.
 
-## Admission
-
-A statement crossing the prepare threshold and thereby entering the statement
-cache: `PARSE`d under a fresh remote key and kept server-side. The counterpart
-of eviction, and the reason the cache is not a plain LRU — without an admission
-policy a one-shot dynamic statement would occupy a slot and displace a hot one
-on its very first execution.
-
-## Eviction
-
-A statement leaving the statement cache — either to make room for an admission
-once the cache is at capacity, or because the server invalidated it. Names the
-client-side drop; whether the server-side statement is also `DEALLOCATE`d
-depends on whether the server is known to still hold it.
+It is content-addressed: `hasql_` followed by the first 57 hex characters of the
+SHA-256 of the statement's serialization (the SQL length, the SQL, the parameter
+count, then each parameter OID), for a 63-byte name that exactly fills the
+identifier limit. So it is a pure function of the local key, and deliberately
+stable — the same statement gets the same name on every connection, in every
+process, and a statement re-prepared after its entry was dropped comes back
+under the name it had before. That stability is what lets a pooler recognise a
+statement it has already prepared on a given server connection.
 
 ## Desync
 

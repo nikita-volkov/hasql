@@ -1,3 +1,13 @@
+# Upcoming
+
+## Non-breaking
+
+- Prepared statements are now named deterministically — `hasql_` followed by a SHA-256 digest of the SQL and the parameter OIDs — instead of by a per-connection counter. The same statement therefore gets the same name on every connection and in every process, which is what lets PgBouncer 1.21+ keep track of statements across a transaction-pooled deployment instead of losing the mapping and reporting `08P01`. (#324)
+
+  The names appear in `pg_prepared_statements` and in pooler logs, so anything matching on their previous shape needs updating. Nothing in the Haskell API changed.
+
+- `Hasql.Pipeline` now documents that a failed pipeline does not imply that nothing happened. A server-side error discards the whole pipeline, but a decoding failure is raised only after the server has already committed it — so the pipeline returns an error with all of its effects durable.
+
 # v2.0.1.0
 
 ## New Features
