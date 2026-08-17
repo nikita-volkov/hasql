@@ -86,6 +86,20 @@ acquire adapter settings =
     connectionRef <- lift (newMVar connectionState)
     pure (Connection connectionRef)
   where
+    -- Best-effort classification by substring-matching libpq's error message.
+    --
+    -- libpq exposes no structured failure code for a failed @connectdb@ (no
+    -- 'Pqi.Result' is ever produced to read a SQLSTATE off), so this is the
+    -- only signal available. Two consequences follow from that:
+    --
+    -- - The match is against libpq's /translated/ message text, so it is
+    --   sensitive to the client's locale (@LC_ALL@\/@LANG@\/@LANGUAGE@):
+    --   under a non-English locale, none of the patterns below match, and
+    --   the failure falls through to 'OtherConnectionError' regardless of
+    --   its real nature.
+    -- - Precedence is networking, then authentication, then everything
+    --   else: a message matching both a networking and an authentication
+    --   pattern is reported as networking.
     interpretConnectionError :: Maybe ByteString -> ConnectionError
     interpretConnectionError errorMessage =
       case errorMessage of
@@ -101,11 +115,23 @@ acquire adapter settings =
     networkingErrors :: [Text]
     networkingErrors =
       [ "could not connect to server",
-        "no such file or directory",
         "connection refused",
         "timeout expired",
+        "connection timed out",
         "host not found",
-        "could not translate host name"
+        "could not translate host name",
+        "network is unreachable",
+        "no route to host",
+        -- Server-side rejections that are transient by nature: the server
+        -- is there and reachable, it just isn't ready or able to serve this
+        -- connection right now.
+        "the database system is starting up",
+        "the database system is in recovery mode",
+        "sorry, too many clients already",
+        "server closed the connection unexpectedly",
+        "connection reset by peer",
+        "could not fork new process",
+        "terminating connection due to administrator command"
       ]
 
     authenticationErrors :: [Text]

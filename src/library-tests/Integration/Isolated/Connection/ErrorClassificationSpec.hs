@@ -1,3 +1,6 @@
+-- | Regression tests for <https://github.com/nikita-volkov/hasql/issues/329>:
+-- 'Hasql.Connection.acquire''s classification of a failed connection attempt
+-- into a 'Errors.ConnectionError'.
 module Integration.Isolated.Connection.ErrorClassificationSpec (spec) where
 
 import Control.Concurrent (threadDelay)
@@ -14,13 +17,9 @@ import System.Environment qualified as Environment
 import System.Process qualified as Process
 import Test.Hspec
 
--- | Reproductions for <https://github.com/nikita-volkov/hasql/issues/329>.
---
--- Each test below documents the classifier's /current/ (buggy) behaviour, so
--- that fixing the issue means flipping the assertions here, not deleting them.
 spec :: SpecWith Pqi.Adapter
-spec = describe "Issue 329: ConnectionError classification" do
-  describe "Locale dependence (claim a)" do
+spec = do
+  describe "Locale dependence" do
     it "stops recognizing a plainly transient networking failure once the client locale is non-English" \adapter -> do
       -- `LC_ALL` is process-global, and once libpq has translated a message
       -- under it, the C locale it caches internally does not revert on
@@ -52,7 +51,7 @@ spec = describe "Issue 329: ConnectionError classification" do
                 Process.readCreateProcess
                   ( Process.proc
                       exePath
-                      ["--match", "Issue 329: ConnectionError classification/Locale dependence"]
+                      ["--match", "Locale dependence/stops recognizing"]
                   )
                     { Process.env =
                         Just
@@ -62,33 +61,39 @@ spec = describe "Issue 329: ConnectionError classification" do
                           )
                     }
                   ""
-              -- This is the bug: under English (the default test locale), the very same
-              -- failure is classified as NetworkingConnectionError (see "is reported for
-              -- invalid host" above). Under French, libpq's translated message text no
-              -- longer contains any of the English substrings the classifier looks for,
-              -- so it falls through to OtherConnectionError, and `isTransient` silently
+              -- Classification is substring-matching on libpq's message text,
+              -- which is translated according to the client's locale. Under
+              -- English (the default test locale) this same failure is
+              -- NetworkingConnectionError (see the "AcquireSpec" tests). Under
+              -- French, none of the (English) patterns match, so it falls
+              -- through to OtherConnectionError, and `isTransient` silently
               -- flips from True to False for an identical underlying failure.
+              --
+              -- This is a known, documented limitation (see the Haddock on
+              -- `interpretConnectionError`), not something this fix addresses:
+              -- libpq exposes no structured code for a failed `connectdb`, so
+              -- there is no locale-independent signal to classify on.
               unless (childResultMarkerOther `List.isInfixOf` output) do
                 expectationFailure ("Expected the child process to report OtherConnectionError (the locale-mangled message defeating classification). Child output:\n" <> output)
 
-  describe "Miscategorised pattern (claim c)" do
-    it "classifies a missing Unix-socket directory as NetworkingConnectionError, though it is a permanent misconfiguration" \adapter ->
+  describe "Miscategorised pattern" do
+    it "classifies a missing Unix-socket directory as OtherConnectionError, since it is a permanent misconfiguration" \adapter ->
       if Pqi.name adapter /= "pqi-ffi"
-        then pendingWith "pqi-native only supports TCP connections; it has no Unix-domain-socket code path to misclassify"
+        then pendingWith "pqi-native only supports TCP connections; it has no Unix-domain-socket code path"
         else do
           let settings = Settings.host "/tmp/hasql-issue-329-nonexistent-socket-dir"
           result <- Connection.acquire adapter settings
           case result of
-            -- "no such file or directory" is in the networkingErrors list, so this
-            -- (permanent) misconfiguration is reported as transient.
-            Left (Errors.NetworkingConnectionError _) -> pure ()
-            Left err -> expectationFailure ("Expected the current (buggy) NetworkingConnectionError classification, but got: " <> show err)
+            -- A missing Unix-socket directory means the wrong host/socket
+            -- path was configured, not a transient networking failure.
+            Left (Errors.OtherConnectionError _) -> pure ()
+            Left err -> expectationFailure ("Expected OtherConnectionError, but got: " <> show err)
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail"
 
-  describe "Missing retryable pattern (claim b)" do
-    it "classifies \"sorry, too many clients already\" as OtherConnectionError, though it is pure backpressure" \adapter -> do
+  describe "Missing retryable pattern" do
+    it "classifies \"sorry, too many clients already\" as NetworkingConnectionError, since it is pure backpressure" \adapter -> do
       runMaxConnectionsOneContainer \(host, port) -> do
         let settings =
               mconcat
@@ -106,23 +111,17 @@ spec = describe "Issue 329: ConnectionError classification" do
           -- throws an uncaught IOException from mid-handshake instead of
           -- returning a classified Left, because `establish` only wraps the
           -- initial `Transport.connect` in a handler, not the `handshake`
-          -- that follows it (src/library/Pqi/Native/Connection.hs:317-327).
+          -- that follows it. Filed as nikita-volkov/pqi-native#8.
           Left ioException ->
             pendingWith ("pqi-native raised an uncaught IOException instead of a classified error (separate bug, unrelated to #329's classifier): " <> show ioException)
           Right result -> case result of
-            -- None of the patterns in `networkingErrors` match "sorry, too
-            -- many clients already", so this transient, load-shedding
-            -- failure is reported as permanent.
-            Left (Errors.OtherConnectionError msg) ->
+            Left (Errors.NetworkingConnectionError msg) ->
               Text.toLower msg `shouldSatisfy` Text.isInfixOf "too many clients"
-            Left err -> expectationFailure ("Expected the current (buggy) OtherConnectionError classification, but got: " <> show err)
+            Left err -> expectationFailure ("Expected NetworkingConnectionError, but got: " <> show err)
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected the second connection to fail with max_connections=1 already taken"
 
--- | Retry 'Connection.acquire' until it succeeds, used to wait out both
--- Docker/Postgres startup and (incidentally) the "database system is
--- starting up" window this issue is also about.
 -- | Env var used to tell a re-exec'd child instance of this test binary to
 -- run the locale test's `acquire` call directly, instead of spawning yet
 -- another child.
@@ -138,11 +137,14 @@ childResultMarkerUnexpected = "HASQL-ISSUE-329-RESULT: unexpected error: "
 childResultMarkerUnexpectedSuccess :: String
 childResultMarkerUnexpectedSuccess = "HASQL-ISSUE-329-RESULT: unexpected success"
 
+-- | Retry 'Connection.acquire' until it succeeds, used to wait out both
+-- Docker/Postgres startup and (incidentally) the "database system is
+-- starting up" window this issue is also about.
 retryAcquire :: Pqi.Adapter -> Settings.Settings -> Int -> IO Connection.Connection
 retryAcquire adapter settings attemptsLeft = do
   -- pqi-native can throw a bare IOException instead of returning a classified
   -- Left while the server is still starting up (a separate bug; see the
-  -- "Missing retryable pattern" test below), so retry on that too.
+  -- "Missing retryable pattern" test above), so retry on that too.
   resultOrIOException <- try @IOException (Connection.acquire adapter settings)
   case resultOrIOException of
     Right (Right conn) -> pure conn
