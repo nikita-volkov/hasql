@@ -1,9 +1,12 @@
 module Integration.Sharing.ErrorsSpec (spec) where
 
 import Data.Either
+import Data.Functor.Contravariant
+import Data.Int (Int64)
 import Data.Vector qualified as Vector
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
+import Hasql.Encoders qualified as Encoders
 import Hasql.Errors qualified as Errors
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
@@ -14,6 +17,28 @@ import Test.Hspec
 
 spec :: SpecWith Scripts.ScopeParams
 spec = do
+  describe "Client-side rejections (#327)" do
+    -- libpq rejects `sendQueryParams`/`sendQueryPrepared` outright when given
+    -- more than 65535 parameters, without ever talking to the server. Unlike
+    -- an actual connection loss, the exact same request fails identically on
+    -- every retry, so it must not be classified the same way as one.
+    it "reports too many parameters as ClientRejectionSessionError, not the transient ConnectionSessionError" \config -> do
+      Scripts.onPreparableConnection config \connection -> do
+        let tooManyParams = 65536
+            statement =
+              Statement.unpreparable
+                "select 1"
+                (mconcat (replicate tooManyParams (contramap (const (0 :: Int64)) (Encoders.param (Encoders.nonNullable Encoders.int8)))))
+                Decoders.noResult
+        result <- Connection.use connection (Session.statement () statement)
+        case result of
+          Left err@(Errors.ClientRejectionSessionError _) ->
+            Errors.isTransient err `shouldBe` False
+          Left err ->
+            expectationFailure ("Expected ClientRejectionSessionError, but got: " <> show err)
+          Right () ->
+            expectationFailure "Expected the statement to be rejected for having too many parameters"
+
   describe "Syntax errors" do
     forM_ [False, True] \inPipeline -> do
       describe (if inPipeline then "Pipeline" else "Session") do

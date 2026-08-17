@@ -47,13 +47,13 @@ toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag details -> pure (Left (ClientError tag details))
+    Send.Error tag cause details -> pure (Left (ClientError tag cause details))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error tag details -> pure (Left (ClientError tag details))
+          Send.Error tag cause details -> pure (Left (ClientError tag cause details))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
@@ -63,7 +63,7 @@ toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error tag details -> pure (Left (ClientError tag details))
+    Send.Error tag cause details -> pure (Left (ClientError tag cause details))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
@@ -129,17 +129,17 @@ script tag sql =
 
 -- | Error of a round trip, carrying the tag of the action that caused it.
 data Error tag
-  = ClientError tag (Maybe ByteString)
+  = ClientError tag Send.Cause (Maybe ByteString)
   | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
 
 instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
-    ClientError tag _ -> tag
+    ClientError tag _ _ -> tag
     ServerError recvError -> extract recvError
 
   {-# INLINE duplicate #-}
   duplicate = \case
-    clientError@(ClientError _ details) -> ClientError clientError details
+    clientError@(ClientError _ cause details) -> ClientError clientError cause details
     ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))

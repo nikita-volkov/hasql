@@ -4,6 +4,7 @@ import Hasql.Comms.Recv qualified
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowReader qualified
+import Hasql.Comms.Send qualified
 import Hasql.Platform.Prelude
 import TextBuilder qualified
 
@@ -119,6 +120,17 @@ data SessionError
     -- without resetting, preserving connection-local state.
     ConnectionSessionError
       -- | Human-readable details about the connection error.
+      Text
+  | -- | The client library (@libpq@) rejected the request before it ever
+    -- reached the server, and the connection itself is still fine.
+    --
+    -- This indicates a problem with the request that will fail identically
+    -- on every retry against this or any other connection: e.g., more than
+    -- 65535 parameters in a single statement, or a command issued while
+    -- another is already in progress. Unlike 'ConnectionSessionError', it is
+    -- never transient.
+    ClientRejectionSessionError
+      -- | Human-readable details about the rejection.
       Text
   | -- | One or more types referenced in the statement could not be found in the database.
     --
@@ -327,8 +339,12 @@ isPrepareCollision = \case
 
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
 fromRoundtripError = \case
-  Hasql.Comms.Roundtrip.ClientError _tag details ->
-    ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+  Hasql.Comms.Roundtrip.ClientError _tag cause details ->
+    case cause of
+      Hasql.Comms.Send.ConnectionLoss ->
+        ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+      Hasql.Comms.Send.ClientRejection ->
+        ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 

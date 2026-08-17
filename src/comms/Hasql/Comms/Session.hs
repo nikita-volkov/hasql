@@ -161,9 +161,9 @@ runRoundtrip roundtrip = Session \connection -> do
   case result of
     Left err ->
       let message = case err of
-            Roundtrip.ClientError () Nothing ->
+            Roundtrip.ClientError () _ Nothing ->
               "Unknown client error occurred"
-            Roundtrip.ClientError () (Just details) ->
+            Roundtrip.ClientError () _ (Just details) ->
               "Client error occurred: " <> decodeUtf8Lenient details
             Roundtrip.ServerError recvError ->
               "Server error occurred: " <> fromString (show recvError)
