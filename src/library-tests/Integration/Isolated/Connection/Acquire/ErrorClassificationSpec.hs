@@ -1,7 +1,7 @@
 -- | Regression tests for <https://github.com/nikita-volkov/hasql/issues/329>:
 -- 'Hasql.Connection.acquire''s classification of a failed connection attempt
 -- into a 'Errors.ConnectionError'.
-module Integration.Isolated.Connection.ErrorClassificationSpec (spec) where
+module Integration.Isolated.Connection.Acquire.ErrorClassificationSpec (spec) where
 
 import Control.Concurrent (threadDelay)
 import Control.Exception (IOException, bracket, try)

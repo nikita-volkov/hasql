@@ -346,8 +346,8 @@ test-suite library-tests
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
     Helpers.Statements.WrongDecoder
+    Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec
-    Integration.Isolated.Connection.ErrorClassificationSpec
     Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
     Integration.Sharing.Connection.UseSpec
     Integration.Sharing.Decoders.CitextSpec
