@@ -41,7 +41,15 @@ class IsError a where
   -- | Convert the error to a list of key-value pairs of dynamic details.
   toDetails :: a -> [(Text, Text)]
 
-  -- | Whether the error is transient and the operation causing it can be retried.
+  -- | Whether retrying against a clean connection state will succeed.
+  --
+  -- This is a statement about the connection, not about the caller's unit of
+  -- work. Inside an explicit transaction a failed statement cannot be
+  -- retried in place: the transaction is aborted and only a @ROLLBACK@ gets
+  -- the connection out of that state, same as for any other error. So the
+  -- unit that's safe to retry is the caller's whole transaction (or
+  -- pipeline), not necessarily the single statement that reported 'True'
+  -- here.
   isTransient :: a -> Bool
 
   -- | The SQLSTATE the server reported, if this error carries one at all.
@@ -125,7 +133,11 @@ instance IsError ServerError where
         maybe [] (\p -> [("position", (TextBuilder.toText . TextBuilder.decimal) p)]) position
       ]
 
-  isTransient = const False
+  -- 42P05 ("prepared statement already exists") is transient: prepared
+  -- statement names are content-addressed, so a collision on the name is a
+  -- collision on the statement, and the driver keeps the cache mapping that
+  -- lets the next use find it warm.
+  isTransient (ServerError code _ _ _ _) = code == "42P05"
 
   toSqlState (ServerError code _ _ _ _) = Just code
 
@@ -181,7 +193,13 @@ instance IsError StatementError where
     UnexpectedResultStatementError reason ->
       [("reason", reason)]
 
-  isTransient = const False
+  isTransient = \case
+    ServerStatementError executionError -> isTransient executionError
+    UnexpectedRowCountStatementError {} -> False
+    UnexpectedColumnCountStatementError {} -> False
+    UnexpectedColumnTypeStatementError {} -> False
+    RowStatementError {} -> False
+    UnexpectedResultStatementError {} -> False
 
   toSqlState = \case
     ServerStatementError executionError -> toSqlState executionError
@@ -247,8 +265,8 @@ instance IsError SessionError where
 
   isTransient = \case
     ConnectionSessionError _ -> True
-    StatementSessionError {} -> False
-    ScriptSessionError {} -> False
+    StatementSessionError _ _ _ _ _ statementError -> isTransient statementError
+    ScriptSessionError _ serverError -> isTransient serverError
     DriverSessionError {} -> False
     MissingTypesSessionError {} -> False
 

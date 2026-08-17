@@ -308,6 +308,23 @@ data CellError
       Text
   deriving stock (Show, Eq)
 
+-- |
+-- Whether a round trip error is a @Parse@ failing with SQLSTATE @42P05@
+-- ("prepared statement \"...\" already exists").
+--
+-- Since prepared statement names are content-addressed (a SHA-256 digest of
+-- the SQL text and the parameter OIDs), a collision on the name is - up to a
+-- hash collision - a collision on the statement itself: whatever the server
+-- already holds under that name is the very statement that was about to be
+-- parsed. Callers that evict a cache entry on ordinary @Parse@ failures
+-- should keep it in this one case, since the statement is in fact on the
+-- server under the name they just tried to commit.
+isPrepareCollision :: Hasql.Comms.Roundtrip.Error tag -> Bool
+isPrepareCollision = \case
+  Hasql.Comms.Roundtrip.ServerError (Hasql.Comms.Recv.ResultError _ _ (Hasql.Comms.ResultDecoder.ServerError code _ _ _ _)) ->
+    code == "42P05"
+  _ -> False
+
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
 fromRoundtripError = \case
   Hasql.Comms.Roundtrip.ClientError _tag details ->

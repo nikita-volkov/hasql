@@ -1,6 +1,7 @@
 module Integration.Sharing.StatementSpec (spec) where
 
 import Data.Either
+import Data.Text qualified as Text
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -390,9 +391,133 @@ spec = do
               Right val -> val `shouldBe` 2
               Left err -> expectationFailure ("Unexpected error on standalone ok2: " <> show err)
 
+    describe "42P05 (prepared statement name collision)" do
+      -- Collision is induced without a pooler, because prepared statement
+      -- names are content-addressed and thus deterministic: discover the
+      -- name hasql gives a statement on a scratch connection, then
+      -- hand-PREPARE that same name (with the same SQL) on the connection
+      -- under test before letting hasql PARSE it. hasql's own PARSE then
+      -- collides with a statement that is, by construction, identical to
+      -- the one it was about to submit.
+      let collidingStatement =
+            Statement.preparable
+              "select 42 :: int4"
+              mempty
+              (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+
+      describe "Session" do
+        it "is treated as transient and the cache mapping survives" \config -> do
+          name <- discoverPreparedStatementName config collidingStatement
+          Scripts.onPreparableConnection config \connection -> do
+            seedNameCollision connection name (Statement.toSql collidingStatement)
+
+            -- The colliding execution fails, but transiently, carrying 42P05.
+            result1 <- Connection.use connection (Session.statement () collidingStatement)
+            case result1 of
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _))) ->
+                Errors.isTransient err `shouldBe` True
+              other ->
+                expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
+
+            -- The same statement then succeeds, warm, without another PARSE.
+            result2 <- Connection.use connection (Session.statement () collidingStatement)
+            result2 `shouldBe` Right 42
+
+            -- The server still has exactly one statement under that name:
+            -- hasql did not re-prepare it under a fresh name.
+            names <- selectPreparedStatementNames connection
+            length (filter (== name) names) `shouldBe` 1
+
+      describe "Pipeline" do
+        it "is treated as transient and the cache mapping survives" \config -> do
+          name <- discoverPreparedStatementName config collidingStatement
+          Scripts.onPreparableConnection config \connection -> do
+            seedNameCollision connection name (Statement.toSql collidingStatement)
+
+            result1 <- Connection.use connection (Session.pipeline (Pipeline.statement () collidingStatement))
+            case result1 of
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _))) ->
+                Errors.isTransient err `shouldBe` True
+              other ->
+                expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
+
+            result2 <- Connection.use connection (Session.pipeline (Pipeline.statement () collidingStatement))
+            result2 `shouldBe` Right 42
+
+            names <- selectPreparedStatementNames connection
+            length (filter (== name) names) `shouldBe` 1
+
+        it "a collision at the first statement in a pipeline still commits its own mapping" \config -> do
+          let ok = Statement.preparable "select 1 :: int4" mempty (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+          name <- discoverPreparedStatementName config collidingStatement
+          Scripts.onPreparableConnection config \connection -> do
+            seedNameCollision connection name (Statement.toSql collidingStatement)
+
+            result1 <-
+              Connection.use connection do
+                Session.pipeline do
+                  (,)
+                    <$> Pipeline.statement () collidingStatement
+                    <*> Pipeline.statement () ok
+            case result1 of
+              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42P05" _ _ _ _))) ->
+                pure ()
+              other ->
+                expectationFailure ("Expected a 42P05 ServerError, got: " <> show other)
+
+            -- Re-running the same pipeline succeeds end-to-end: the
+            -- colliding statement's mapping was kept, so it needs no PARSE
+            -- this time either.
+            result2 <-
+              Connection.use connection do
+                Session.pipeline do
+                  (,)
+                    <$> Pipeline.statement () collidingStatement
+                    <*> Pipeline.statement () ok
+            result2 `shouldBe` Right (42, 1)
+
     describe "Decoder compatibility cache" $ parallel do
       decoderCompatibilityCacheByExecutor "Session" (Session.statement ())
       decoderCompatibilityCacheByExecutor "Pipeline" (Session.pipeline . Pipeline.statement ())
+
+-- | The name hasql gives a statement, discovered by running it once on a
+-- scratch connection and reading it back out of @pg_prepared_statements@.
+-- Names are content-addressed, so this is the same name any other
+-- connection will compute for the same statement.
+discoverPreparedStatementName :: Scripts.ScopeParams -> Statement.Statement () a -> IO Text
+discoverPreparedStatementName config stmt =
+  Scripts.onPreparableConnection config \connection -> do
+    _ <- Connection.use connection (Session.statement () stmt)
+    names <- selectPreparedStatementNames connection
+    case names of
+      [name] -> pure name
+      _ -> fail ("Expected exactly one prepared statement on the scratch connection, got: " <> show names)
+
+-- | Read prepared statement names via a plain (non-pipelined) statement, so
+-- this can safely be used right after a pipeline that errored.
+selectPreparedStatementNames :: Connection.Connection -> IO [Text]
+selectPreparedStatementNames connection = do
+  result <-
+    Connection.use connection
+      $ Session.statement
+        ()
+        ( Statement.unpreparable
+            "select name from pg_prepared_statements order by name"
+            mempty
+            (Decoders.rowList (Decoders.column (Decoders.nonNullable Decoders.text)))
+        )
+  case result of
+    Right names -> pure names
+    Left err -> fail ("Failed to read prepared statement names: " <> show err)
+
+-- | Hand-prepare a name on a connection out-of-band, so that hasql's own
+-- @Parse@ of the same statement on that connection collides with it (42P05).
+seedNameCollision :: Connection.Connection -> Text -> Text -> IO ()
+seedNameCollision connection name statementSql = do
+  result <- Connection.use connection (Session.script (Text.concat ["PREPARE ", name, " AS ", statementSql]))
+  case result of
+    Right () -> pure ()
+    Left err -> fail ("Failed to seed name collision: " <> show err)
 
 decoderCompatibilityCacheByExecutor ::
   Text ->

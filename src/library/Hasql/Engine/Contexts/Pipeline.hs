@@ -54,17 +54,23 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
                   Comms.Roundtrip.ClientError _tag details ->
                     Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
                   Comms.Roundtrip.ServerError recvError ->
-                    Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _) -> (totalStatements, index, sql, params, prepared))) recvError)
+                    Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _ _) -> (totalStatements, index, sql, params, prepared))) recvError)
               )
               executionResult
           finalStatementCache =
             case executionResult of
               Right _ -> newStatementCache
               Left executionError ->
-                maybe
-                  statementCache
-                  (\(StatementTag _ _ _ _ statementCache) -> statementCache)
-                  (extract executionError)
+                case extract executionError of
+                  Nothing -> statementCache
+                  Just (StatementTag _ _ _ _ soFarStatementCache collisionStatementCache) ->
+                    -- 42P05 can only be reported in response to our own
+                    -- Parse, so the collision cache (with this statement's
+                    -- own mapping committed) is safe to adopt whenever it
+                    -- occurs.
+                    if Errors.isPrepareCollision executionError
+                      then collisionStatementCache
+                      else soFarStatementCache
 
       pure
         ( result,
@@ -178,7 +184,14 @@ data StatementTag
       [Text]
       -- | Whether the statement is prepared.
       Bool
-      -- | The so far successfully updated statement cache.
+      -- | The cache to recover to on an ordinary failure.
+      StatementCache.StatementCache
+      -- | The cache to recover to when the failure is a @Parse@ hitting a
+      -- 42P05 name collision, i.e., with this statement's own mapping
+      -- committed. Since 42P05 can only ever be reported in response to our
+      -- own @Parse@, this is only consulted for the tag attached to the
+      -- @Parse@ step; elsewhere it's the same as the ordinary recovery
+      -- cache.
       StatementCache.StatementCache
   deriving stock (Show, Eq)
 
@@ -226,13 +239,14 @@ statement stmt params =
         prepare =
           usePreparedStatements && Statement.isPrepared stmt
 
-        tag soFarStatementCache =
+        tag soFarStatementCache collisionStatementCache =
           StatementTag
             offset
             sql
             (Statement.printer stmt params)
             prepare
             soFarStatementCache
+            collisionStatementCache
 
         runPrepared statementCache =
           (roundtrip, newStatementCache)
@@ -247,8 +261,8 @@ statement stmt params =
             roundtrip =
               when
                 isNew
-                (Comms.Roundtrip.prepare (tag statementCache) remoteKey sql oidList)
-                *> Comms.Roundtrip.queryPrepared (tag newStatementCache) remoteKey encodedParams Pq.Binary decoder'
+                (Comms.Roundtrip.prepare (tag statementCache newStatementCache) remoteKey sql oidList)
+                *> Comms.Roundtrip.queryPrepared (tag newStatementCache newStatementCache) remoteKey encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   valueAndFormatList
@@ -258,7 +272,7 @@ statement stmt params =
           (roundtrip, statementCache)
           where
             roundtrip =
-              Comms.Roundtrip.queryParams (tag statementCache) sql encodedParams Pq.Binary decoder'
+              Comms.Roundtrip.queryParams (tag statementCache statementCache) sql encodedParams Pq.Binary decoder'
               where
                 encodedParams =
                   Statement.compileUnpreparedStatementData stmt resolve params

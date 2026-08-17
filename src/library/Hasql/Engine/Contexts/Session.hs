@@ -147,9 +147,22 @@ statement stmt params =
                       (Comms.Roundtrip.prepare tag remoteKey sql oidList)
                       connection
                   case prepareResult of
-                    -- PARSE failed: the statement is not on the server, so
-                    -- keep the old cache (no entry committed).
-                    Left err -> pure (Left err, statementCache)
+                    -- PARSE failed. Ordinarily the statement is not on the
+                    -- server, so the old cache is kept (no entry committed).
+                    -- The one exception is 42P05 ("prepared statement
+                    -- already exists"): since names are content-addressed,
+                    -- a collision on the name is a collision on the
+                    -- statement, so whatever the server holds under
+                    -- remoteKey already is this statement. Commit the cache
+                    -- so the next use finds it warm instead of failing PARSE
+                    -- again.
+                    Left err ->
+                      pure
+                        ( Left err,
+                          if Errors.isPrepareCollision err
+                            then newStatementCache
+                            else statementCache
+                        )
                     Right () -> do
                       -- PARSE succeeded, so the statement is on the server
                       -- under remoteKey regardless of whether EXECUTE then

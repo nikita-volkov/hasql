@@ -64,6 +64,15 @@ spec = do
                        ("message", "syntax error")
                      ]
 
+    describe "isTransient" do
+      it "42P05 (prepared statement already exists) is transient" do
+        (Errors.isTransient (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing))
+          `shouldBe` True
+
+      it "other codes are not transient" do
+        (Errors.isTransient (Errors.ServerError "42P01" "relation does not exist" Nothing Nothing Nothing))
+          `shouldBe` False
+
     describe "toSqlState" do
       it "is the code the server reported" do
         (Errors.toSqlState (Errors.ServerError "23505" "duplicate key value violates unique constraint" Nothing Nothing Nothing))
@@ -150,6 +159,19 @@ spec = do
         (Errors.toDetails (Errors.UnexpectedColumnTypeStatementError 2 23 1043))
           `shouldBe` [("columnIndex", "2"), ("expectedOid", "23"), ("actualOid", "1043")]
 
+    describe "isTransient" do
+      it "delegates to the wrapped ServerError for 42P05" do
+        (Errors.isTransient (Errors.ServerStatementError (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing)))
+          `shouldBe` True
+
+      it "delegates to the wrapped ServerError for other codes" do
+        (Errors.isTransient (Errors.ServerStatementError (Errors.ServerError "42P01" "relation does not exist" Nothing Nothing Nothing)))
+          `shouldBe` False
+
+      it "is not transient for a row count mismatch" do
+        (Errors.isTransient (Errors.UnexpectedRowCountStatementError 1 1 0))
+          `shouldBe` False
+
     describe "toSqlState" do
       it "digs the code out of ServerStatementError" do
         (Errors.toSqlState (Errors.ServerStatementError (Errors.ServerError "23505" "duplicate key" Nothing Nothing Nothing)))
@@ -215,9 +237,17 @@ spec = do
         (Errors.isTransient (Errors.ConnectionSessionError "connection lost"))
           `shouldBe` True
 
-      it "StatementSessionError is not transient" do
+      it "StatementSessionError is not transient for a non-transient statement error" do
         (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` False
+
+      it "StatementSessionError is transient when the wrapped statement error is a 42P05" do
+        (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.ServerStatementError (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing))))
+          `shouldBe` True
+
+      it "ScriptSessionError delegates to the wrapped ServerError" do
+        (Errors.isTransient (Errors.ScriptSessionError "select 1" (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing)))
+          `shouldBe` True
 
     describe "toSqlState" do
       it "digs the code out of StatementSessionError" do

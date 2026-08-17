@@ -8,6 +8,10 @@
 
 - `Hasql.Pipeline` now documents that a failed pipeline does not imply that nothing happened. A server-side error discards the whole pipeline, but a decoding failure is raised only after the server has already committed it — so the pipeline returns an error with all of its effects durable.
 
+- `42P05` ("prepared statement ... already exists") is now treated as a transient `ServerError`, and the statement cache mapping survives it in both `Hasql.Session` and `Hasql.Pipeline`. Since prepared statement names are content-addressed (#324), a name collision is a collision on the statement itself, so whatever the server already holds under that name is the very statement hasql was about to `PARSE`; the next use of the statement finds it warm and succeeds without another `PARSE`. (#331)
+
+- `IsError`'s `isTransient` haddock now states precisely what the flag has always had to mean: that retrying succeeds against a clean connection state, not that the single failed statement can necessarily be retried in place — inside an explicit transaction only a `ROLLBACK` gets out, so the unit that's safe to retry is the caller's whole transaction or pipeline. (#331)
+
 ## Fixes
 
 - `Hasql.Connection.acquire`'s `ConnectionError` classification recognized far fewer transient failures than it should have: `"the database system is starting up"`, `"the database system is in recovery mode"`, `"sorry, too many clients already"`, `"server closed the connection unexpectedly"`, `"connection reset by peer"`, `"network is unreachable"`, `"no route to host"`, `"connection timed out"`, `"could not fork new process"`, and `"terminating connection due to administrator command"` all previously fell through to `OtherConnectionError`, so `isTransient` reported `False` for what are, in every case, worth retrying. Conversely, `"no such file or directory"` (a missing Unix-socket path — a misconfiguration, not a networking hiccup) was wrongly grouped with the transient cases; it's now `OtherConnectionError`. (#329)
