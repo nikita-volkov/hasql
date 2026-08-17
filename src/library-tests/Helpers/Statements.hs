@@ -4,6 +4,7 @@ module Helpers.Statements
     module Helpers.Statements.CurrentSetting,
     module Helpers.Statements.GenerateSeries,
     module Helpers.Statements.SelectOne,
+    module Helpers.Statements.SelectPreparedStatementNames,
     module Helpers.Statements.SelectProvidedInt8,
     module Helpers.Statements.SetConfig,
     module Helpers.Statements.Sleep,
@@ -16,6 +17,7 @@ import Helpers.Statements.CountPreparedStatements
 import Helpers.Statements.CurrentSetting
 import Helpers.Statements.GenerateSeries
 import Helpers.Statements.SelectOne
+import Helpers.Statements.SelectPreparedStatementNames
 import Helpers.Statements.SelectProvidedInt8
 import Helpers.Statements.SetConfig
 import Helpers.Statements.Sleep

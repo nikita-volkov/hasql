@@ -342,6 +342,7 @@ test-suite library-tests
     Helpers.Statements.CurrentSetting
     Helpers.Statements.GenerateSeries
     Helpers.Statements.SelectOne
+    Helpers.Statements.SelectPreparedStatementNames
     Helpers.Statements.SelectProvidedInt8
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
