@@ -204,6 +204,10 @@ spec = do
         (Errors.toMessage (Errors.ConnectionSessionError "connection lost"))
           `shouldBe` "Connection error"
 
+      it "renders ClientRejectionSessionError" do
+        (Errors.toMessage (Errors.ClientRejectionSessionError "cannot handle more than 65535 parameters"))
+          `shouldBe` "Client rejected the request"
+
       it "renders MissingTypesSessionError" do
         (Errors.toMessage (Errors.MissingTypesSessionError (HashSet.fromList [(Just "public", "custom_type"), (Nothing, "enum_type")])))
           `shouldBe` "Types not found in database"
@@ -237,6 +241,10 @@ spec = do
         (Errors.isTransient (Errors.ConnectionSessionError "connection lost"))
           `shouldBe` True
 
+      it "ClientRejectionSessionError is not transient, since retrying sends the same rejected request again" do
+        (Errors.isTransient (Errors.ClientRejectionSessionError "cannot handle more than 65535 parameters"))
+          `shouldBe` False
+
       it "StatementSessionError is not transient for a non-transient statement error" do
         (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` False
@@ -264,6 +272,10 @@ spec = do
 
       it "is Nothing for ConnectionSessionError" do
         (Errors.toSqlState (Errors.ConnectionSessionError "connection lost"))
+          `shouldBe` Nothing
+
+      it "is Nothing for ClientRejectionSessionError" do
+        (Errors.toSqlState (Errors.ClientRejectionSessionError "cannot handle more than 65535 parameters"))
           `shouldBe` Nothing
 
       it "is Nothing for MissingTypesSessionError" do
