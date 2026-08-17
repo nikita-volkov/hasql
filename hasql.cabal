@@ -266,7 +266,7 @@ benchmark benchmarks
     criterion >=1.6 && <2,
     hasql,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native >=1.0.1.5 && <1.1,
     rerebase <2,
 
 test-suite profiling
@@ -378,6 +378,7 @@ test-suite library-tests
     Integration.Sharing.Encoders.UnknownSpec
     Integration.Sharing.Encoders.UuidSpec
     Integration.Sharing.ErrorsSpec
+    Integration.Sharing.Pipeline.SendFailureSpec
     Integration.Sharing.PipelineSpec
     Integration.Sharing.Session.CatchErrorSpec
     Integration.Sharing.Session.ScriptSpec
@@ -400,7 +401,7 @@ test-suite library-tests
     iproute,
     pqi >=1.0 && <1.2,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native >=1.0.1.5 && <1.1,
     process,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,

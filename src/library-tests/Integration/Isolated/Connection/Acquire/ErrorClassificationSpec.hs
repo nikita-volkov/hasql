@@ -3,9 +3,6 @@
 -- into a 'Errors.ConnectionError'.
 module Integration.Isolated.Connection.Acquire.ErrorClassificationSpec (spec) where
 
-import Control.Concurrent (threadDelay)
-import Control.Exception (IOException, bracket, try)
-import Control.Monad (unless)
 import Data.List qualified as List
 import Data.Text qualified as Text
 import Hasql.Connection qualified as Connection
