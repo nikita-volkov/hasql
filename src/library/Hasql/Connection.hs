@@ -209,5 +209,48 @@ use (Connection var) session =
             putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
             throwIO exception
       Right (result, !newState) -> do
-        putMVar var newState
-        pure result
+        case result of
+          Left sessionError -> do
+            -- A plain 'Left' return means the session completed and chose
+            -- to report; the driver never lost control mid-command. The
+            -- only thing left to check is whether it returned with the
+            -- pipeline still open, which now only 'Session.onLibpqConnection'
+            -- can do: pipelining proper leaves the mode inside
+            -- 'Comms.Roundtrip.toPipelineIO', which owns the mode for the
+            -- span of one pipeline. It has to be repaired there rather than
+            -- here, because a session is a 'MonadError' and can catch a
+            -- pipeline failure and carry on - or catch it and succeed, in
+            -- which case this branch never runs.
+            --
+            -- So repair here is the light counterpart to
+            -- 'cleanUpAfterInterruption', not a copy of it: no cancel
+            -- (nothing is in flight), no ABORT (a transaction left open here
+            -- is for whoever composed it, e.g. hasql-transaction, to roll
+            -- back), no DEALLOCATE ALL (the statement cache is still
+            -- trustworthy). 'cleanUpAfterFailure' checks the pipeline status
+            -- itself, so this is unconditional and a no-op on the common,
+            -- already-clean path bar one local libpq call.
+            let newConnection = ConnectionState.connection newState
+            repairResult <- Comms.Session.toHandler Comms.Session.cleanUpAfterFailure newConnection
+            case repairResult of
+              Left repairErr -> do
+                -- Repair itself failed: the connection's protocol state is
+                -- indeterminate, so it must not be handed back to the pool
+                -- as reusable.
+                Pq.finish newConnection
+                putMVar var (ConnectionState.resetPreparedStatementsCache newState)
+                let message =
+                      mconcat
+                        [ "Failed to restore the connection after a session failure.\n",
+                          repairErr,
+                          "\n",
+                          "The following error was reported by the session:\n",
+                          Text.pack (show sessionError)
+                        ]
+                pure (Left (DriverSessionError message))
+              Right () -> do
+                putMVar var newState
+                pure result
+          Right _ -> do
+            putMVar var newState
+            pure result

@@ -242,6 +242,7 @@ library comms
   import: base
   hs-source-dirs: src/comms
   exposed-modules:
+    Hasql.Comms.Helpers.ConnOps
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -292,6 +293,7 @@ test-suite comms-tests
   hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
+    Hasql.Comms.Helpers.ConnOpsSpec
     Hasql.Comms.Session.CleanUpAfterFailureSpec
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook

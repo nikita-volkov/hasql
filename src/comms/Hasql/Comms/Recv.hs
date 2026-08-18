@@ -50,11 +50,25 @@ singleResult tag handler = Recv \connection -> runExceptT do
     result <- Pq.getResult connection
     case result of
       Nothing -> pure (Right result)
-      Just _ -> pure (Left (TooManyResultsError tag 1))
+      Just _ -> do
+        -- Unreachable today: 'singleResult' backs 'queryParams' and
+        -- 'queryPrepared', which go through the extended protocol where
+        -- Postgres rejects multi-statement SQL outright, and 'Roundtrip.query',
+        -- whose only caller is 'Hasql.Comms.Session.runCommand' with "ABORT"
+        -- and "DEALLOCATE ALL" - each a single statement. Draining anyway
+        -- keeps this branch correct on its own terms rather than relying on
+        -- that non-local argument to hold forever.
+        drainRemaining connection
+        pure (Left (TooManyResultsError tag 1))
   result <- ExceptT do
     result <- ResultDecoder.toHandler handler result
     pure (first (ResultError tag 0) result)
   pure result
+  where
+    drainRemaining connection =
+      Pq.getResult connection >>= \case
+        Nothing -> pure ()
+        Just _ -> drainRemaining connection
 
 -- | Consume all results from a multi-statement query (e.g., scripts).
 -- Each result is decoded using the provided handler.
