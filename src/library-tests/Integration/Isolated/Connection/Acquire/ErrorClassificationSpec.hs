@@ -3,7 +3,6 @@
 -- into a 'Errors.ConnectionError'.
 module Integration.Isolated.Connection.Acquire.ErrorClassificationSpec (spec) where
 
-import Data.Char (toLower)
 import Data.List qualified as List
 import Data.Text qualified as Text
 import Hasql.Connection qualified as Connection
