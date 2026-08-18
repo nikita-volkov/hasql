@@ -17,7 +17,7 @@ module Hasql.Comms.Roundtrip
   )
 where
 
-import Hasql.Comms.PipelineMode qualified as PipelineMode
+import Hasql.Comms.Helpers.ConnOps qualified as ConnOps
 import Hasql.Comms.Recv qualified as Recv
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Comms.Send qualified as Send
@@ -151,7 +151,14 @@ instance Comonad Error where
 -- it and succeed, in which case the repair never runs at all.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO sendAndRecv tag connection = do
-  result <- attempt
+  result <- do
+    sendResult <- runSend (Send.enterPipelineMode tag <> send) connection
+    case sendResult of
+      Left err -> pure (Left err)
+      Right () -> do
+        recvResult <- first ServerError <$> Recv.toHandler recv connection
+        exitResult <- runSend (Send.exitPipelineMode tag) connection
+        pure (recvResult <* exitResult)
   -- Idempotent, so on the common path where the exit above already
   -- succeeded this costs one local libpq call and no network traffic.
   leaveResult <- ConnOps.leave connection
@@ -166,15 +173,6 @@ toPipelineIO sendAndRecv tag connection = do
       -- connection as far as callers are concerned.
       Right _ -> Left (ClientError tag True details)
   where
-    attempt = do
-      sendResult <- runSend (Send.enterPipelineMode tag <> send) connection
-      case sendResult of
-        Left err -> pure (Left err)
-        Right () -> do
-          recvResult <- first ServerError <$> Recv.toHandler recv connection
-          exitResult <- runSend (Send.exitPipelineMode tag) connection
-          pure (recvResult <* exitResult)
-
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
