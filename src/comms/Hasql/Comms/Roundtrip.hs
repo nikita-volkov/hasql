@@ -13,8 +13,7 @@ module Hasql.Comms.Roundtrip
 
     -- * Errors
     Error (..),
-    LeavePipelineError (..),
-    renderLeavePipelineError,
+    renderLeaveFailure,
   )
 where
 
@@ -88,15 +87,15 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
         Nothing -> pure ()
         Just cancel -> void (Pq.cancel cancel)
 
-    appendLeaveFailure :: Maybe ByteString -> Either LeavePipelineError () -> Maybe ByteString
+    appendLeaveFailure :: Maybe ByteString -> Either (Maybe ByteString) () -> Maybe ByteString
     appendLeaveFailure details = \case
       Right () -> details
-      Left leaveError ->
+      Left leaveErrorDetails ->
         Just
           ( (encodeUtf8 . mconcat)
               [ maybe "" ((<> "\n") . decodeUtf8Lenient) details,
                 "Failed to restore the connection after a send failure: ",
-                renderLeavePipelineError leaveError
+                renderLeaveFailure leaveErrorDetails
               ]
           )
 
@@ -115,7 +114,7 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
 -- long as draining keeps making progress.
 --
 -- Idempotent: a no-op when the connection is not in pipeline mode.
-leavePipelineMode :: Pq.Connection -> IO (Either LeavePipelineError ())
+leavePipelineMode :: Pq.Connection -> IO (Either (Maybe ByteString) ())
 leavePipelineMode connection = do
   pipelineStatus <- Pq.pipelineStatus connection
   if pipelineStatus == Pq.PipelineOff
@@ -137,7 +136,7 @@ leavePipelineMode connection = do
             True -> exitWithDraining
             False -> do
               errorMessage <- Pq.errorMessage connection
-              pure (Left (LeavePipelineError errorMessage))
+              pure (Left errorMessage)
 
     -- | Consume the results of the currently dispatched commands, reporting
     -- whether anything got consumed.
@@ -152,15 +151,11 @@ leavePipelineMode connection = do
               Nothing -> pure hasConsumedResult
        in go False
 
--- | Failure to leave pipeline mode after exhausting draining retries.
-newtype LeavePipelineError = LeavePipelineError (Maybe ByteString)
-  deriving stock (Show, Eq)
-
-renderLeavePipelineError :: LeavePipelineError -> Text
-renderLeavePipelineError (LeavePipelineError details) =
-  case details of
-    Nothing -> "Failed to exit pipeline mode after draining results"
-    Just message -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient message
+-- | Render the detail 'leavePipelineMode' failed with, as returned by libpq.
+renderLeaveFailure :: Maybe ByteString -> Text
+renderLeaveFailure = \case
+  Nothing -> "Failed to exit pipeline mode after draining results"
+  Just message -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient message
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
 -- failure here never leaves dispatched-but-unacknowledged commands behind:

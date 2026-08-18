@@ -77,7 +77,7 @@ bringTransactionStatusToIdle = do
 -- again.
 leavePipeline :: Session ()
 leavePipeline = Session \connection ->
-  first Roundtrip.renderLeavePipelineError <$> Roundtrip.leavePipelineMode connection
+  first Roundtrip.renderLeaveFailure <$> Roundtrip.leavePipelineMode connection
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =
