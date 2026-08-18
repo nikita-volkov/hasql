@@ -169,6 +169,22 @@ spec = do
 
               result `shouldBe` Right 99
 
+  describe "Interruption by an exception" do
+    it "Re-throws the original exception rather than a driver wrapper around it" \config -> Scripts.onPreparableConnection config \connection -> do
+      -- The state a session got as far as reaches `use` on the back of an
+      -- exception, so `use` has to unwrap that carrier before re-throwing.
+      -- Caught here at the concrete type the session threw: were the carrier
+      -- to escape instead, `try` would not match it and it would fail the
+      -- example by propagating.
+      result <- try @IOException do
+        Connection.use connection do
+          Session.script "select 1"
+          liftIO (throwIO (userError "Original exception"))
+
+      case result of
+        Left err -> show err `shouldContain` "Original exception"
+        Right _ -> expectationFailure "Expected the exception to propagate out of `use`"
+
   describe "Concurrency" do
     it "handles concurrent connections properly" \config -> do
       Scripts.onPreparableConnection config \connection1 -> do
