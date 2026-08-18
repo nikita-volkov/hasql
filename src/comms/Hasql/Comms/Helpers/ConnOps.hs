@@ -9,7 +9,7 @@
 -- and "Hasql.Comms.Session", which repairs connections that got out of that
 -- span dirty.
 module Hasql.Comms.Helpers.ConnOps
-  ( leave,
+  ( leavePipeline,
     drainProgressively,
   )
 where
@@ -33,8 +33,8 @@ import Pqi qualified as Pq
 --
 -- Idempotent: a no-op when the connection is not in pipeline mode, costing
 -- one local @PQpipelineStatus@ call and no network traffic.
-leave :: Pq.Connection -> IO (Either Text ())
-leave connection = do
+leavePipeline :: Pq.Connection -> IO (Either Text ())
+leavePipeline connection = do
   pipelineStatus <- Pq.pipelineStatus connection
   if pipelineStatus == Pq.PipelineOff
     then pure (Right ())

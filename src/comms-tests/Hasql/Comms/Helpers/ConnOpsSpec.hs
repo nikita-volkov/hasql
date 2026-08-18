@@ -7,7 +7,7 @@ import Pqi.Ffi qualified
 import Test.Hspec
 import TextBuilder qualified
 
--- | 'ConnOps.leave' is what makes pipeline mode scoped: whoever turned
+-- | 'ConnOps.leavePipeline' is what makes pipeline mode scoped: whoever turned
 -- it on owes the connection a way out of it, on the failing paths as much as
 -- on the succeeding one.
 --
@@ -23,7 +23,7 @@ spec = do
   describe "leave" do
     it "Is a no-op on a connection that is not in pipeline mode" \config -> do
       withConnection config \connection -> do
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         status <- Pq.pipelineStatus connection
@@ -34,7 +34,7 @@ spec = do
         entered <- Pq.enterPipelineMode connection
         entered `shouldBe` True
 
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         status <- Pq.pipelineStatus connection
@@ -49,7 +49,7 @@ spec = do
         -- send failed before reaching its own Sync leaves them.
         dispatch connection 3
 
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         status <- Pq.pipelineStatus connection
@@ -64,7 +64,7 @@ spec = do
         entered `shouldBe` True
         dispatch connection 3
 
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         execResultStatus connection "select 'after' as marker"
@@ -80,10 +80,10 @@ spec = do
         entered `shouldBe` True
         dispatch connection 3
 
-        firstResult <- ConnOps.leave connection
+        firstResult <- ConnOps.leavePipeline connection
         firstResult `shouldBe` Right ()
 
-        secondResult <- ConnOps.leave connection
+        secondResult <- ConnOps.leavePipeline connection
         secondResult `shouldBe` Right ()
 
         execResultStatus connection "select 1" `shouldReturn` Just Pq.TuplesOk
@@ -99,7 +99,7 @@ spec = do
         synced <- Pq.pipelineSync connection
         synced `shouldBe` True
 
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         status <- Pq.pipelineStatus connection
@@ -125,7 +125,7 @@ spec = do
         void (Pq.getResult connection)
         Pq.pipelineStatus connection `shouldReturn` Pq.PipelineAborted
 
-        result <- ConnOps.leave connection
+        result <- ConnOps.leavePipeline connection
         result `shouldBe` Right ()
 
         status <- Pq.pipelineStatus connection

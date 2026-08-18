@@ -92,7 +92,7 @@ bringTransactionStatusToIdle = do
 -- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
 -- again.
 leavePipeline :: Session ()
-leavePipeline = Session ConnOps.leave
+leavePipeline = Session ConnOps.leavePipeline
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =

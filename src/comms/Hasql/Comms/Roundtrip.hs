@@ -161,7 +161,7 @@ toPipelineIO sendAndRecv tag connection = do
         pure (recvResult <* exitResult)
   -- Idempotent, so on the common path where the exit above already
   -- succeeded this costs one local libpq call and no network traffic.
-  leaveResult <- ConnOps.leave connection
+  leaveResult <- ConnOps.leavePipeline connection
   pure case leaveResult of
     Right () -> result
     Left details -> case result of
