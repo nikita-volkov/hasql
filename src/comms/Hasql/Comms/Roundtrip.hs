@@ -49,7 +49,7 @@ toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag cause details -> do
+    Send.Error tag cause rawDetails -> do
       -- The commands preceding the failed one have already been dispatched,
       -- and the connection is still in pipeline mode. Returning it in this
       -- state would leave it unusable for every subsequent operation, with
@@ -69,13 +69,13 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
           -- is discovered, rather than reporting a distinct error and
           -- relying on 'Hasql.Connection.use' to react to it.
           restore (Pq.finish connection)
-      pure (Left (ClientError tag cause (appendLeaveFailure details leaveResult)))
+      pure (Left (ClientError tag cause (appendLeaveFailure (decodeUtf8Lenient <$> rawDetails) leaveResult)))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error tag cause details -> pure (Left (ClientError tag cause details))
+          Send.Error tag cause details -> pure (Left (ClientError tag cause (decodeUtf8Lenient <$> details)))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
@@ -87,13 +87,13 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
         Nothing -> pure ()
         Just cancel -> void (Pq.cancel cancel)
 
-    appendLeaveFailure :: Maybe ByteString -> Either (Maybe ByteString) () -> Maybe ByteString
+    appendLeaveFailure :: Maybe Text -> Either (Maybe Text) () -> Maybe Text
     appendLeaveFailure details = \case
       Right () -> details
       Left leaveErrorDetails ->
         Just
-          ( (encodeUtf8 . mconcat)
-              [ maybe "" ((<> "\n") . decodeUtf8Lenient) details,
+          ( mconcat
+              [ maybe "" (<> "\n") details,
                 "Failed to restore the connection after a send failure: ",
                 renderLeaveFailure leaveErrorDetails
               ]
@@ -114,7 +114,7 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
 -- long as draining keeps making progress.
 --
 -- Idempotent: a no-op when the connection is not in pipeline mode.
-leavePipelineMode :: Pq.Connection -> IO (Either (Maybe ByteString) ())
+leavePipelineMode :: Pq.Connection -> IO (Either (Maybe Text) ())
 leavePipelineMode connection = do
   pipelineStatus <- Pq.pipelineStatus connection
   if pipelineStatus == Pq.PipelineOff
@@ -136,7 +136,7 @@ leavePipelineMode connection = do
             True -> exitWithDraining
             False -> do
               errorMessage <- Pq.errorMessage connection
-              pure (Left errorMessage)
+              pure (Left (decodeUtf8Lenient <$> errorMessage))
 
     -- | Consume the results of the currently dispatched commands, reporting
     -- whether anything got consumed.
@@ -152,10 +152,10 @@ leavePipelineMode connection = do
        in go False
 
 -- | Render the detail 'leavePipelineMode' failed with, as returned by libpq.
-renderLeaveFailure :: Maybe ByteString -> Text
+renderLeaveFailure :: Maybe Text -> Text
 renderLeaveFailure = \case
   Nothing -> "Failed to exit pipeline mode after draining results"
-  Just message -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient message
+  Just message -> "Failed to exit pipeline mode after draining results: " <> message
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
 -- failure here never leaves dispatched-but-unacknowledged commands behind:
@@ -165,7 +165,7 @@ toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error tag cause details -> pure (Left (ClientError tag cause details))
+    Send.Error tag cause details -> pure (Left (ClientError tag cause (decodeUtf8Lenient <$> details)))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
@@ -231,7 +231,7 @@ script tag sql =
 
 -- | Error of a round trip, carrying the tag of the action that caused it.
 data Error tag
-  = ClientError tag Send.Cause (Maybe ByteString)
+  = ClientError tag Send.Cause (Maybe Text)
   | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
 

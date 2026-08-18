@@ -342,9 +342,9 @@ fromRoundtripError = \case
   Hasql.Comms.Roundtrip.ClientError _tag cause details ->
     case cause of
       Hasql.Comms.Send.ConnectionLoss ->
-        ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+        ConnectionSessionError (fromMaybe "" details)
       Hasql.Comms.Send.ClientRejection ->
-        ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
+        ClientRejectionSessionError (fromMaybe "" details)
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 

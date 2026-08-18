@@ -54,8 +54,8 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
               ( \case
                   Comms.Roundtrip.ClientError _tag cause details ->
                     case cause of
-                      Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                      Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
+                      Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (fromMaybe "" details)
+                      Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (fromMaybe "" details)
                   Comms.Roundtrip.ServerError recvError ->
                     Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _ _) -> (totalStatements, index, sql, params, prepared))) recvError)
               )

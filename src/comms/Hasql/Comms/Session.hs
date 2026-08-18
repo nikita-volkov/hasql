@@ -122,7 +122,7 @@ runRoundtrip roundtrip = Session \connection -> do
             Roundtrip.ClientError () _ Nothing ->
               "Unknown client error occurred"
             Roundtrip.ClientError () _ (Just details) ->
-              "Client error occurred: " <> decodeUtf8Lenient details
+              "Client error occurred: " <> details
             Roundtrip.ServerError recvError ->
               "Server error occurred: " <> fromString (show recvError)
        in pure (Left message)
