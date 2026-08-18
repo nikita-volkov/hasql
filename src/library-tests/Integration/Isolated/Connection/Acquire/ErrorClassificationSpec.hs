@@ -3,6 +3,7 @@
 -- into a 'Errors.ConnectionError'.
 module Integration.Isolated.Connection.Acquire.ErrorClassificationSpec (spec) where
 
+import Data.Char (toLower)
 import Data.List qualified as List
 import Data.Text qualified as Text
 import Hasql.Connection qualified as Connection
@@ -36,36 +37,46 @@ spec = do
             Left err -> putStrLn (childResultMarkerUnexpected <> show err)
             Right conn -> Connection.release conn >> putStrLn childResultMarkerUnexpectedSuccess
         Nothing -> do
-          exePath <- Environment.getExecutablePath
-          parentEnv <- Environment.getEnvironment
-          output <-
-            Process.readCreateProcess
-              ( Process.proc
-                  exePath
-                  ["--match", "Locale dependence/stops recognizing"]
-              )
-                { Process.env =
-                    Just
-                      ( (childModeEnvVar, "1")
-                          : ("LC_ALL", "fr_FR.UTF-8")
-                          : filter ((/= childModeEnvVar) . fst) parentEnv
-                      )
-                }
-              ""
-          -- Classification is substring-matching on libpq's message text,
-          -- which is translated according to the client's locale. Under
-          -- English (the default test locale) this same failure is
-          -- NetworkingConnectionError (see the "AcquireSpec" tests). Under
-          -- French, none of the (English) patterns match, so it falls
-          -- through to OtherConnectionError, and `isTransient` silently
-          -- flips from True to False for an identical underlying failure.
-          --
-          -- This is a known, documented limitation (see the Haddock on
-          -- `interpretConnectionError`), not something this fix addresses:
-          -- libpq exposes no structured code for a failed `connectdb`, so
-          -- there is no locale-independent signal to classify on.
-          unless (childResultMarkerOther `List.isInfixOf` output) do
-            expectationFailure ("Expected the child process to report OtherConnectionError (the locale-mangled message defeating classification). Child output:\n" <> output)
+          frenchAvailable <- isLocaleAvailable "fr_FR.UTF-8"
+          if not frenchAvailable
+            then -- The child process's `setlocale` silently no-ops when the
+            -- requested locale isn't installed on the machine (rather than
+            -- failing), leaving libpq's messages in English and defeating
+            -- the whole premise of this test. This is the normal case on a
+            -- freshly-provisioned CI runner, which only generates the "C"
+            -- and "en_US.UTF-8" locales by default.
+              pendingWith "fr_FR.UTF-8 locale is not installed on this machine"
+            else do
+              exePath <- Environment.getExecutablePath
+              parentEnv <- Environment.getEnvironment
+              output <-
+                Process.readCreateProcess
+                  ( Process.proc
+                      exePath
+                      ["--match", "Locale dependence/stops recognizing"]
+                  )
+                    { Process.env =
+                        Just
+                          ( (childModeEnvVar, "1")
+                              : ("LC_ALL", "fr_FR.UTF-8")
+                              : filter ((/= childModeEnvVar) . fst) parentEnv
+                          )
+                    }
+                  ""
+              -- Classification is substring-matching on libpq's message text,
+              -- which is translated according to the client's locale. Under
+              -- English (the default test locale) this same failure is
+              -- NetworkingConnectionError (see the "AcquireSpec" tests). Under
+              -- French, none of the (English) patterns match, so it falls
+              -- through to OtherConnectionError, and `isTransient` silently
+              -- flips from True to False for an identical underlying failure.
+              --
+              -- This is a known, documented limitation (see the Haddock on
+              -- `interpretConnectionError`), not something this fix addresses:
+              -- libpq exposes no structured code for a failed `connectdb`, so
+              -- there is no locale-independent signal to classify on.
+              unless (childResultMarkerOther `List.isInfixOf` output) do
+                expectationFailure ("Expected the child process to report OtherConnectionError (the locale-mangled message defeating classification). Child output:\n" <> output)
 
   describe "Missing retryable pattern" do
     it "classifies \"sorry, too many clients already\" as NetworkingConnectionError, since it is pure backpressure" \adapter -> do
@@ -96,6 +107,18 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected the second connection to fail with max_connections=1 already taken"
+
+-- | Whether the given locale (e.g. @fr_FR.UTF-8@) is installed on this
+-- machine, per @locale -a@. Comparison is normalized against glibc's own
+-- listing convention (lowercase, no punctuation, e.g. @fr_fr.utf8@), since
+-- that's how @locale -a@ prints installed locales regardless of how they're
+-- conventionally spelled.
+isLocaleAvailable :: String -> IO Bool
+isLocaleAvailable locale = do
+  output <- Process.readProcess "locale" ["-a"] ""
+  pure (normalize locale `elem` fmap normalize (lines output))
+  where
+    normalize = filter (\c -> c /= '-' && c /= '_' && c /= '.') . fmap toLower
 
 -- | Env var used to tell a re-exec'd child instance of this test binary to
 -- run the locale test's `acquire` call directly, instead of spawning yet
