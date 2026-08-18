@@ -68,12 +68,12 @@ toSerialIO (Roundtrip send recv) connection = do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
 
--- | Turn a failed 'Send.Result' into an 'Error', consulting the connection
--- for the diagnostic details ('Send.Result' itself no longer carries them).
-interpretSendResult :: Pq.Connection -> Send.Result tag -> IO (Either (Error tag) ())
+-- | Turn a failed send result into an 'Error', consulting the connection
+-- for the diagnostic details (the send result itself no longer carries them).
+interpretSendResult :: Pq.Connection -> Either tag () -> IO (Either (Error tag) ())
 interpretSendResult connection = \case
-  Send.Ok -> pure (Right ())
-  Send.Error tag -> do
+  Right () -> pure (Right ())
+  Left tag -> do
     errorMessage <- Pq.errorMessage connection
     status <- Pq.status connection
     pure (Left (ClientError tag (status == Pq.ConnectionBad) (maybe "" decodeUtf8Lenient errorMessage)))
