@@ -1,11 +1,7 @@
 module Integration.Sharing.Session.RecoveredPipelineFailureSpec (spec) where
 
 import Hasql.Connection qualified as Connection
-import Hasql.Decoders qualified as Decoders
-import Hasql.Encoders qualified as Encoders
-import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
-import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements qualified as Statements
@@ -13,28 +9,15 @@ import Pqi qualified as Pq
 import Prelude
 import Test.Hspec
 
--- | A statement with more parameters than libpq accepts in a single command.
---
--- See "Integration.Sharing.Pipeline.Statement.SendFailureSpec" for the full
--- explanation: placed in the middle of a pipeline it makes the batched send
--- of the whole pipeline fail halfway through, leaving the connection in
--- pipeline mode with the preceding commands dispatched and unanswered.
-tooManyParamsStatement :: Statement.Statement () ()
-tooManyParamsStatement =
-  Statement.unpreparable
-    "select 1"
-    (foldMap (const int8Param) [1 .. paramCount])
-    Decoders.noResult
-  where
-    paramCount = 65536 :: Int
-    int8Param = contramap (const 1) (Encoders.param (Encoders.nonNullable Encoders.int8))
-
--- | A pipeline of five statements with 'tooManyParamsStatement' in the middle.
-failingPipeline :: Pipeline.Pipeline ()
+-- | A pipeline of five statements with 'Statements.TooManyParams' in the
+-- middle, so that the batched send of the whole pipeline fails halfway
+-- through and leaves the connection in pipeline mode with the preceding
+-- commands dispatched and unanswered.
+failingPipeline :: Execution.Pipeline ()
 failingPipeline = do
   _ <- goodStatement
   _ <- goodStatement
-  _ <- Pipeline.statement () tooManyParamsStatement
+  _ <- Execution.pipelineByParams Statements.TooManyParams
   _ <- goodStatement
   _ <- goodStatement
   pure ()
@@ -57,19 +40,20 @@ pipelineStatusSession =
     status <- Pq.pipelineStatus pqConnection
     pure (Right status, pqConnection)
 
--- | 'Hasql.Connection.use' repairs a connection left in pipeline mode only
--- after the session has returned, and only when it returns 'Left'.
+-- | Pipeline mode is scoped to one pipeline, and
+-- 'Hasql.Comms.Roundtrip.toPipelineIO' leaves it before returning on every
+-- path - including a send that failed halfway through the batch.
 --
--- But 'Session.Session' is a 'MonadError' over the connection state, so a
--- session can catch a pipeline failure and carry on - or catch it and
--- succeed. In the first case the rest of the session runs against a
--- connection still in pipeline mode; in the second no repair runs at all and
--- that connection is handed back for reuse. Either way the state
--- 'Hasql.Connection.use' is supposed to own escapes it.
+-- It has to happen there rather than in 'Hasql.Connection.use', which used
+-- to own it: 'Session.Session' is a 'MonadError' over the connection state,
+-- so a session can catch a pipeline failure and carry on, in which case the
+-- rest of it ran against a connection still in pipeline mode, or catch it
+-- and succeed, in which case the repair in 'Hasql.Connection.use' never ran
+-- and the connection was handed back for reuse still dirty.
 spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Pipeline send failure recovered from within the session" do
-    it "Leaves pipeline mode on for the rest of the session" \config -> do
+    it "Leaves pipeline mode off for the rest of the session" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
         result <-
           Connection.use connection do
@@ -78,7 +62,7 @@ spec = do
 
         result `shouldBe` Right Pq.PipelineOff
 
-    it "Hands the connection back in pipeline mode when the session goes on to succeed" \config -> do
+    it "Hands the connection back with pipeline mode off when the session goes on to succeed" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
         result <-
           Connection.use connection do
@@ -90,13 +74,31 @@ spec = do
 
         followUp `shouldBe` Right Pq.PipelineOff
 
-    it "Corrupts the results of a later statement in the same session" \config -> do
+    it "Lets a serial command run in the same session afterwards" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
-        -- A follow-up pipeline is not refused outright: it re-enters the
-        -- (already on) pipeline mode and reads the stale results the failed
-        -- pipeline left queued, decoding another statement's rows as its
-        -- own. 'SelectOne' selects an int4, but what comes back is a row of
-        -- the earlier 'GenerateSeries', whose column is an int8.
+        -- The sharpest form of the bug, and the reason the specs around it
+        -- assert on 'Pq.pipelineStatus' rather than on this: while the mode
+        -- was still on, a serial command did not fail, it blocked forever
+        -- waiting on results the server never sent - and the block did not
+        -- respond to 'System.Timeout.timeout' either, so a suite written
+        -- this way hung instead of reporting.
+        result <-
+          Connection.use connection do
+            catchError (Session.pipeline failingPipeline) (const (pure ()))
+            Session.script "select 1"
+
+        result `shouldBe` Right ()
+
+    it "Does not corrupt the results of a later statement in the same session" \config -> do
+      Scripts.onUnpreparableConnection config \connection -> do
+        -- A follow-up pipeline used not to be refused outright: it
+        -- re-entered the (already on) pipeline mode and read the stale
+        -- results the failed pipeline had left queued, decoding another
+        -- statement's rows as its own. 'SelectOne' selects an int4, and what
+        -- came back was a row of the earlier 'GenerateSeries', whose column
+        -- is an int8 - a mismatch the decoder happened to catch, but two
+        -- statements of matching column types would have silently returned
+        -- the wrong value.
         result <-
           Connection.use connection do
             catchError (Session.pipeline failingPipeline) (const (pure ()))

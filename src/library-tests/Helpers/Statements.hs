@@ -8,6 +8,7 @@ module Helpers.Statements
     module Helpers.Statements.SelectProvidedInt8,
     module Helpers.Statements.SetConfig,
     module Helpers.Statements.Sleep,
+    module Helpers.Statements.TooManyParams,
     module Helpers.Statements.WrongDecoder,
   )
 where
@@ -21,4 +22,5 @@ import Helpers.Statements.SelectPreparedStatementNames
 import Helpers.Statements.SelectProvidedInt8
 import Helpers.Statements.SetConfig
 import Helpers.Statements.Sleep
+import Helpers.Statements.TooManyParams
 import Helpers.Statements.WrongDecoder
