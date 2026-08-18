@@ -1,7 +1,5 @@
 module Hasql.Comms.Roundtrip
   ( Roundtrip,
-    toPipelineIO,
-    toSerialIO,
 
     -- * Constructors
     prepare,
@@ -12,6 +10,10 @@ module Hasql.Comms.Roundtrip
 
     -- * Errors
     Error (..),
+
+    -- * Execution
+    toPipelineIO,
+    toSerialIO,
   )
 where
 
@@ -42,41 +44,6 @@ instance Bifunctor Roundtrip where
     Roundtrip
       (fmap f send)
       (bimap f g recv)
-
-toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
-toPipelineIO sendAndRecv tag connection = mask \restore -> do
-  sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
-  sendResult <- interpretSendResult connection sendResult
-  case sendResult of
-    Left err -> pure (Left err)
-    Right () -> do
-      recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
-      exitResult <- do
-        result <- Send.toHandler (Send.exitPipelineMode tag) connection
-        interpretSendResult connection result
-      pure (recvResult <* exitResult)
-  where
-    Roundtrip send recv = sendAndRecv <* pipelineSync tag
-
-toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
-toSerialIO (Roundtrip send recv) connection = do
-  sendResult <- Send.toHandler send connection
-  sendResult <- interpretSendResult connection sendResult
-  case sendResult of
-    Left err -> pure (Left err)
-    Right () -> do
-      recvResult <- Recv.toHandler recv connection
-      pure (first ServerError recvResult)
-
--- | Turn a failed send result into an 'Error', consulting the connection
--- for the diagnostic details (the send result itself no longer carries them).
-interpretSendResult :: Pq.Connection -> Either tag () -> IO (Either (Error tag) ())
-interpretSendResult connection = \case
-  Right () -> pure (Right ())
-  Left tag -> do
-    errorMessage <- Pq.errorMessage connection
-    status <- Pq.status connection
-    pure (Left (ClientError tag (status == Pq.ConnectionBad) (maybe "" decodeUtf8Lenient errorMessage)))
 
 pipelineSync :: tag -> Roundtrip tag ()
 pipelineSync tag =
@@ -167,3 +134,39 @@ instance Comonad Error where
   duplicate = \case
     clientError@(ClientError _ connectionLost details) -> ClientError clientError connectionLost details
     ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))
+
+toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
+toPipelineIO sendAndRecv tag connection = mask \restore -> do
+  sendResult <- runSend (Send.enterPipelineMode tag <> send) connection
+  case sendResult of
+    Left err -> pure (Left err)
+    Right () -> do
+      recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
+      exitResult <- runSend (Send.exitPipelineMode tag) connection
+      pure (recvResult <* exitResult)
+  where
+    Roundtrip send recv = sendAndRecv <* pipelineSync tag
+
+toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
+toSerialIO (Roundtrip send recv) connection = do
+  sendResult <- runSend send connection
+  case sendResult of
+    Left err -> pure (Left err)
+    Right () -> do
+      recvResult <- Recv.toHandler recv connection
+      pure (first ServerError recvResult)
+
+-- | Execute a send action on a connection, turning a failed send into an 'Error',
+-- which consults the connection for the diagnostic details
+-- (the send result itself no longer carries them).
+runSend :: Send.Send tag -> Pq.Connection -> IO (Either (Error tag) ())
+runSend send connection = do
+  sendResult <- Send.toHandler send connection
+  case sendResult of
+    Right () -> pure (Right ())
+    Left tag -> do
+      errorMessage <- Pq.errorMessage connection
+      status <- Pq.status connection
+      let connectionLost = status == Pq.ConnectionBad
+          message = maybe "" decodeUtf8Lenient errorMessage
+      pure (Left (ClientError tag connectionLost message))
