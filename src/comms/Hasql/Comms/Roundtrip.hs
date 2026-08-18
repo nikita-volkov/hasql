@@ -13,7 +13,6 @@ module Hasql.Comms.Roundtrip
 
     -- * Errors
     Error (..),
-    renderLeaveFailure,
   )
 where
 
@@ -58,46 +57,39 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
       -- connection is already lost, in which case there is nothing to
       -- cancel) and leave the mode, syncing and draining the results it
       -- withheld.
-      when (cause /= Send.ConnectionLoss) (restore (cancelIfPossible connection))
+      when (cause /= Send.ConnectionLoss) do
+        restore do
+          Pq.getCancel connection >>= \case
+            Nothing -> pure ()
+            Just cancel -> void (Pq.cancel cancel)
       leaveResult <- restore (leavePipelineMode connection)
-      case leaveResult of
-        Right () -> pure ()
-        Left _ ->
+      details <- case leaveResult of
+        Right () -> pure (maybe "" decodeUtf8Lenient rawDetails)
+        Left leaveDetails -> do
           -- Restoration itself failed: the connection's protocol state is
           -- indeterminate, so it must not be handed back to the pool as
           -- reusable. Finish it right here, at the point where the failure
           -- is discovered, rather than reporting a distinct error and
           -- relying on 'Hasql.Connection.use' to react to it.
           restore (Pq.finish connection)
-      pure (Left (ClientError tag cause (appendLeaveFailure (decodeUtf8Lenient <$> rawDetails) leaveResult)))
+          pure
+            ( mconcat
+                [ maybe "" ((<> "\n") . decodeUtf8Lenient) rawDetails,
+                  "Failed to restore the connection after a send failure",
+                  if leaveDetails == "" then "" else ": " <> leaveDetails
+                ]
+            )
+      pure (Left (ClientError tag cause details))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error tag cause details -> pure (Left (ClientError tag cause (decodeUtf8Lenient <$> details)))
+          Send.Error tag cause details -> pure (Left (ClientError tag cause (maybe "" decodeUtf8Lenient details)))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
-
-    cancelIfPossible :: Pq.Connection -> IO ()
-    cancelIfPossible connection =
-      Pq.getCancel connection >>= \case
-        Nothing -> pure ()
-        Just cancel -> void (Pq.cancel cancel)
-
-    appendLeaveFailure :: Maybe Text -> Either (Maybe Text) () -> Maybe Text
-    appendLeaveFailure details = \case
-      Right () -> details
-      Left leaveErrorDetails ->
-        Just
-          ( mconcat
-              [ maybe "" (<> "\n") details,
-                "Failed to restore the connection after a send failure: ",
-                renderLeaveFailure leaveErrorDetails
-              ]
-          )
 
 -- | Leave the pipeline mode of a connection, draining all the results that
 -- the commands dispatched in it have produced or are still producing.
@@ -114,7 +106,7 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
 -- long as draining keeps making progress.
 --
 -- Idempotent: a no-op when the connection is not in pipeline mode.
-leavePipelineMode :: Pq.Connection -> IO (Either (Maybe Text) ())
+leavePipelineMode :: Pq.Connection -> IO (Either Text ())
 leavePipelineMode connection = do
   pipelineStatus <- Pq.pipelineStatus connection
   if pipelineStatus == Pq.PipelineOff
@@ -136,9 +128,9 @@ leavePipelineMode connection = do
             True -> exitWithDraining
             False -> do
               errorMessage <- Pq.errorMessage connection
-              pure (Left (decodeUtf8Lenient <$> errorMessage))
+              pure (Left (maybe "" decodeUtf8Lenient errorMessage))
 
-    -- | Consume the results of the currently dispatched commands, reporting
+    -- Consume the results of the currently dispatched commands, reporting
     -- whether anything got consumed.
     --
     -- In pipeline mode this drains up to the next command boundary, since
@@ -151,12 +143,6 @@ leavePipelineMode connection = do
               Nothing -> pure hasConsumedResult
        in go False
 
--- | Render the detail 'leavePipelineMode' failed with, as returned by libpq.
-renderLeaveFailure :: Maybe Text -> Text
-renderLeaveFailure = \case
-  Nothing -> "Failed to exit pipeline mode after draining results"
-  Just message -> "Failed to exit pipeline mode after draining results: " <> message
-
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
 -- failure here never leaves dispatched-but-unacknowledged commands behind:
 -- every call site sends a single operation and there is nothing queued
@@ -165,7 +151,7 @@ toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error tag cause details -> pure (Left (ClientError tag cause (decodeUtf8Lenient <$> details)))
+    Send.Error tag cause details -> pure (Left (ClientError tag cause (maybe "" decodeUtf8Lenient details)))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
@@ -231,7 +217,7 @@ script tag sql =
 
 -- | Error of a round trip, carrying the tag of the action that caused it.
 data Error tag
-  = ClientError tag Send.Cause (Maybe Text)
+  = ClientError tag Send.Cause Text
   | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
 

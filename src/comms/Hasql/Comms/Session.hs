@@ -76,8 +76,7 @@ bringTransactionStatusToIdle = do
 -- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
 -- again.
 leavePipeline :: Session ()
-leavePipeline = Session \connection ->
-  first Roundtrip.renderLeaveFailure <$> Roundtrip.leavePipelineMode connection
+leavePipeline = Session Roundtrip.leavePipelineMode
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =
@@ -119,9 +118,7 @@ runRoundtrip roundtrip = Session \connection -> do
   case result of
     Left err ->
       let message = case err of
-            Roundtrip.ClientError () _ Nothing ->
-              "Unknown client error occurred"
-            Roundtrip.ClientError () _ (Just details) ->
+            Roundtrip.ClientError () _ details ->
               "Client error occurred: " <> details
             Roundtrip.ServerError recvError ->
               "Server error occurred: " <> fromString (show recvError)

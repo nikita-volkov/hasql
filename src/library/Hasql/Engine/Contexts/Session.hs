@@ -55,8 +55,8 @@ script sql =
           pure
             ( Left
                 ( case cause of
-                    Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (fromMaybe "" details)
-                    Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (fromMaybe "" details)
+                    Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError details
+                    Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError details
                 ),
               connectionState
             )
@@ -118,8 +118,8 @@ statement stmt params =
             mapError = \case
               Comms.Roundtrip.ClientError _ cause details ->
                 case cause of
-                  Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (fromMaybe "" details)
-                  Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (fromMaybe "" details)
+                  Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError details
+                  Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError details
               Comms.Roundtrip.ServerError recvError ->
                 Errors.fromRecvError recvError
             withState (result, newStatementCache) =
