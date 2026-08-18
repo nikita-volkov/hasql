@@ -48,7 +48,7 @@ toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag cause rawDetails -> do
+    Send.Error tag connectionLost rawDetails -> do
       -- The commands preceding the failed one have already been dispatched,
       -- and the connection is still in pipeline mode. Returning it in this
       -- state would leave it unusable for every subsequent operation, with
@@ -57,7 +57,7 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
       -- connection is already lost, in which case there is nothing to
       -- cancel) and leave the mode, syncing and draining the results it
       -- withheld.
-      when (cause /= Send.ConnectionLoss) do
+      when (not connectionLost) do
         restore do
           Pq.getCancel connection >>= \case
             Nothing -> pure ()
@@ -79,13 +79,13 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
                   if leaveDetails == "" then "" else ": " <> leaveDetails
                 ]
             )
-      pure (Left (ClientError tag cause details))
+      pure (Left (ClientError tag connectionLost details))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error tag cause details -> pure (Left (ClientError tag cause (maybe "" decodeUtf8Lenient details)))
+          Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
@@ -151,7 +151,7 @@ toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error tag cause details -> pure (Left (ClientError tag cause (maybe "" decodeUtf8Lenient details)))
+    Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
@@ -217,7 +217,12 @@ script tag sql =
 
 -- | Error of a round trip, carrying the tag of the action that caused it.
 data Error tag
-  = ClientError tag Send.Cause Text
+  = ClientError
+      tag
+      -- | Whether the connection was reported as lost at the moment the send
+      -- failed. See 'Send.Result'.
+      Bool
+      Text
   | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
 
@@ -229,5 +234,5 @@ instance Comonad Error where
 
   {-# INLINE duplicate #-}
   duplicate = \case
-    clientError@(ClientError _ cause details) -> ClientError clientError cause details
+    clientError@(ClientError _ connectionLost details) -> ClientError clientError connectionLost details
     ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))

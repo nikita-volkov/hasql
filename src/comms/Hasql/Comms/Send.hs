@@ -6,21 +6,22 @@ import Pqi qualified as Pq
 -- | Outcome of sending commands: success, or a failure carrying the tag of the commands.
 data Result tag
   = Ok
-  | Error tag Cause (Maybe ByteString)
+  | Error
+      tag
+      -- | Whether @PQstatus@ reported the connection as bad right after the
+      -- failure.
+      --
+      -- 'True' means nothing reached the server and nothing will until the
+      -- connection is replaced. 'False' means the connection is still usable
+      -- and libpq refused the request itself - e.g. more than 65535
+      -- parameters, or a command issued while another is in progress - so the
+      -- same request will be refused the same way on any connection.
+      --
+      -- This is all the callers need in order to decide whether the failure is
+      -- worth retrying.
+      Bool
+      (Maybe ByteString)
   deriving stock (Eq, Show, Functor)
-
--- | Why a send failed.
-data Cause
-  = -- | @PQstatus@ reports the connection as bad: the socket is gone, so
-    -- every queued command failed identically and a retry needs a fresh
-    -- connection.
-    ConnectionLoss
-  | -- | @PQstatus@ still reports the connection as usable: libpq rejected
-    -- the request itself (e.g. more than 65535 parameters, or a command
-    -- issued while another is in progress). The same request will fail the
-    -- same way again on this connection or any other.
-    ClientRejection
-  deriving stock (Eq, Show)
 
 -- | An action that sends commands to a connection without receiving the results.
 --
@@ -35,7 +36,7 @@ instance Semigroup (Send tag) where
   Send send1 <> Send send2 = Send \cs -> do
     result <- send1 cs
     case result of
-      Error tag cause details -> pure (Error tag cause details)
+      Error tag connectionLost details -> pure (Error tag connectionLost details)
       Ok -> do
         result2 <- send2 cs
         pure result2
@@ -55,8 +56,7 @@ liftPqSend tag pqSend = Send \connection -> do
     else do
       errorMessage <- Pq.errorMessage connection
       status <- Pq.status connection
-      let cause = if status == Pq.ConnectionBad then ConnectionLoss else ClientRejection
-      pure (Error tag cause errorMessage)
+      pure (Error tag (status == Pq.ConnectionBad) errorMessage)
 
 prepare :: tag -> ByteString -> ByteString -> Maybe [Word32] -> Send tag
 prepare tag statementName sql oidList =

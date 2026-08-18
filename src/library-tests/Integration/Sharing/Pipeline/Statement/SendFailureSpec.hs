@@ -76,5 +76,5 @@ runFailingPipeline connection = do
     Connection.use connection
       $ Session.pipeline failingPipeline
   case result of
-    Left (Errors.ClientRejectionSessionError _) -> pure ()
+    Left (Errors.DriverSessionError _) -> pure ()
     _ -> expectationFailure ("Unexpected pipeline result: " <> show result)

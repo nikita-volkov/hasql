@@ -4,7 +4,6 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
-import Hasql.Comms.Send qualified as Comms.Send
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
@@ -51,13 +50,9 @@ script sql =
     result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.script (Just sql) sql) connection
     case result of
       Left err -> case err of
-        Comms.Roundtrip.ClientError _ cause details -> do
+        Comms.Roundtrip.ClientError _ connectionLost details -> do
           pure
-            ( Left
-                ( case cause of
-                    Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError details
-                    Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError details
-                ),
+            ( Left (Errors.fromSendError connectionLost details),
               connectionState
             )
         Comms.Roundtrip.ServerError recvError ->
@@ -116,10 +111,8 @@ statement stmt params =
             -- total statements 1, index 0.
             tag = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
-              Comms.Roundtrip.ClientError _ cause details ->
-                case cause of
-                  Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError details
-                  Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError details
+              Comms.Roundtrip.ClientError _ connectionLost details ->
+                Errors.fromSendError connectionLost details
               Comms.Roundtrip.ServerError recvError ->
                 Errors.fromRecvError recvError
             withState (result, newStatementCache) =

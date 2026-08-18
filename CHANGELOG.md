@@ -1,9 +1,5 @@
 # Upcoming
 
-## Breaking
-
-- `SessionError` gained a new constructor, `ClientRejectionSessionError`, so exhaustive pattern matches on it need updating. (#327)
-
 ## Non-breaking
 
 - Prepared statements are now named deterministically — `hasql_` followed by a SHA-256 digest of the SQL and the parameter OIDs — instead of by a per-connection counter. The same statement therefore gets the same name on every connection and in every process, which is what lets PgBouncer 1.21+ keep track of statements across a transaction-pooled deployment instead of losing the mapping and reporting `08P01`. (#324)
@@ -20,7 +16,7 @@
 
 - `ServerError`'s `isTransient` used to hard-code `False`, which classified the server errors an application most needs to retry — `serialization_failure` (`40001`), `deadlock_detected` (`40P01`), lock timeouts, admin/crash shutdowns, connection exceptions, resource exhaustion, and landing on a standby after failover (`read_only_sql_transaction`) — as permanent. It now consults the SQLSTATE for these codes, alongside the existing `42P05` case. `StatementError`'s `RowStatementError` case also discarded its wrapped `RowError` instead of delegating to it (`StatementSessionError` and `ScriptSessionError` already delegated correctly). All three levels now delegate `isTransient` to the wrapped error, so the flag surfaces correctly no matter how deeply an error is nested. (#325)
 
-- `ConnectionSessionError` used to be the catch-all for every libpq send-side failure, including deterministic client-side rejections (e.g. more than 65535 parameters in one statement, or a command sent while another is already in progress) that fail identically on every retry. Since `isTransient (ConnectionSessionError _) = True`, those rejections were retried forever under any retry-on-transient wrapper. `Send.liftPqSend` now checks `PQstatus` after a failed send: a genuine connection loss (`ConnectionBad`) still becomes `ConnectionSessionError` (transient), while a rejection with the connection otherwise intact becomes the new `ClientRejectionSessionError`, which `isTransient` reports `False` for. (#327)
+- `ConnectionSessionError` used to be the catch-all for every libpq send-side failure, including requests libpq refuses outright (e.g. more than 65535 parameters in one statement, or a command sent while another is already in progress) that fail identically on every retry. Since `isTransient (ConnectionSessionError _) = True`, those refusals were retried forever under any retry-on-transient wrapper. `PQstatus` is now checked after a failed send: a genuine connection loss (`ConnectionBad`) still becomes `ConnectionSessionError` (transient), while a refusal with the connection otherwise intact becomes `DriverSessionError`, which `isTransient` reports `False` for. (#327)
 
 - `Hasql.Connection.acquire`'s `ConnectionError` classification recognized far fewer transient failures than it should have: `"the database system is starting up"`, `"the database system is in recovery mode"`, `"sorry, too many clients already"`, `"server closed the connection unexpectedly"`, `"connection reset by peer"`, `"network is unreachable"`, `"no route to host"`, `"connection timed out"`, `"could not fork new process"`, and `"terminating connection due to administrator command"` all previously fell through to `OtherConnectionError`, so `isTransient` reported `False` for what are, in every case, worth retrying. Conversely, `"no such file or directory"` (a missing Unix-socket path — a misconfiguration, not a networking hiccup) was wrongly grouped with the transient cases; it's now `OtherConnectionError`. (#329)
 

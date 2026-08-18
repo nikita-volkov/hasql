@@ -4,7 +4,6 @@ import Hasql.Comms.Recv qualified
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowReader qualified
-import Hasql.Comms.Send qualified
 import Hasql.Platform.Prelude
 import TextBuilder qualified
 
@@ -121,17 +120,6 @@ data SessionError
     ConnectionSessionError
       -- | Human-readable details about the connection error.
       Text
-  | -- | The client library (@libpq@) rejected the request before it ever
-    -- reached the server, and the connection itself is still fine.
-    --
-    -- This indicates a problem with the request that will fail identically
-    -- on every retry against this or any other connection: e.g., more than
-    -- 65535 parameters in a single statement, or a command issued while
-    -- another is already in progress. Unlike 'ConnectionSessionError', it is
-    -- never transient.
-    ClientRejectionSessionError
-      -- | Human-readable details about the rejection.
-      Text
   | -- | One or more types referenced in the statement could not be found in the database.
     --
     -- This occurs when using custom types (enums, composite types, domains) that
@@ -154,8 +142,12 @@ data SessionError
     -- * A bug in Hasql
     -- * The PostgreSQL server misbehaving
     -- * An unexpected response from the server
+    -- * A request @libpq@ refused to send, the connection being intact -
+    --   e.g. more than 65535 parameters in one statement
     --
-    -- If you encounter this error, please report it as a bug.
+    -- Whatever the cause, the same request will fail the same way on a fresh
+    -- connection, so this is never transient. Unless the details point at a
+    -- limit you exceeded yourself, report it as a bug.
     DriverSessionError
       -- | Human-readable details about what went wrong.
       Text
@@ -337,14 +329,23 @@ isPrepareCollision = \case
     code == "42P05"
   _ -> False
 
+-- | Classify a failed @libpq@ send by whether the connection was lost with it.
+--
+-- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
+-- socket is worth another connection, a refused request is not.
+fromSendError :: Bool -> Text -> SessionError
+fromSendError connectionLost details =
+  construct details
+  where
+    construct =
+      if connectionLost
+        then ConnectionSessionError
+        else DriverSessionError
+
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
 fromRoundtripError = \case
-  Hasql.Comms.Roundtrip.ClientError _tag cause details ->
-    case cause of
-      Hasql.Comms.Send.ConnectionLoss ->
-        ConnectionSessionError details
-      Hasql.Comms.Send.ClientRejection ->
-        ClientRejectionSessionError details
+  Hasql.Comms.Roundtrip.ClientError _tag connectionLost details ->
+    fromSendError connectionLost details
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 
