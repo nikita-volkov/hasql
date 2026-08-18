@@ -291,6 +291,7 @@ test-suite comms-tests
   hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
+    Hasql.Comms.Session.CleanUpAfterFailureSpec
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
 
@@ -349,6 +350,7 @@ test-suite library-tests
     Helpers.Statements.WrongDecoder
     Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec
+    Integration.Sharing.Connection.Use.OnLibpqConnectionDirtyReturnCleanupSpec
     Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
     Integration.Sharing.Connection.UseSpec
     Integration.Sharing.Decoders.CitextSpec

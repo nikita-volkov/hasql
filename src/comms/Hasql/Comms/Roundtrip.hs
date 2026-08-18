@@ -2,7 +2,6 @@ module Hasql.Comms.Roundtrip
   ( Roundtrip,
     toPipelineIO,
     toSerialIO,
-    leavePipelineMode,
 
     -- * Constructors
     prepare,
@@ -44,44 +43,21 @@ instance Bifunctor Roundtrip where
       (fmap f send)
       (bimap f g recv)
 
+--
+-- On a send failure, reports the connection as it found it and returns:
+-- callers preceding this one in the same pipeline may already have
+-- dispatched commands the server hasn't answered yet, and a failed exit
+-- attempt below can leave the mode still on. Neither is repaired here -
+-- 'Hasql.Connection.use' owns repair for every way a session can return
+-- dirty, this being one instance of it, not a special case.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
-toPipelineIO sendAndRecv tag connection = mask \restore -> do
+toPipelineIO sendAndRecv tag connection = do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag connectionLost rawDetails -> do
-      -- The commands preceding the failed one have already been dispatched,
-      -- and the connection is still in pipeline mode. Returning it in this
-      -- state would leave it unusable for every subsequent operation, with
-      -- each failure mislabelled as a retryable connection error. So cancel
-      -- whatever of those commands is still executing (unless the
-      -- connection is already lost, in which case there is nothing to
-      -- cancel) and leave the mode, syncing and draining the results it
-      -- withheld.
-      when (not connectionLost) do
-        restore do
-          Pq.getCancel connection >>= \case
-            Nothing -> pure ()
-            Just cancel -> void (Pq.cancel cancel)
-      leaveResult <- restore (leavePipelineMode connection)
-      details <- case leaveResult of
-        Right () -> pure (maybe "" decodeUtf8Lenient rawDetails)
-        Left leaveDetails -> do
-          -- Restoration itself failed: the connection's protocol state is
-          -- indeterminate, so it must not be handed back to the pool as
-          -- reusable. Finish it right here, at the point where the failure
-          -- is discovered, rather than reporting a distinct error and
-          -- relying on 'Hasql.Connection.use' to react to it.
-          restore (Pq.finish connection)
-          pure
-            ( mconcat
-                [ maybe "" ((<> "\n") . decodeUtf8Lenient) rawDetails,
-                  "Failed to restore the connection after a send failure",
-                  if leaveDetails == "" then "" else ": " <> leaveDetails
-                ]
-            )
-      pure (Left (ClientError tag connectionLost details))
+    Send.Error tag connectionLost details ->
+      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
     Send.Ok -> do
-      recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
+      recvResult <- first ServerError <$> Recv.toHandler recv connection
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
@@ -90,58 +66,6 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
       pure (recvResult <* exitResult)
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
-
--- | Leave the pipeline mode of a connection, draining all the results that
--- the commands dispatched in it have produced or are still producing.
---
--- A connection in pipeline mode cannot serve serial commands: libpq rejects
--- them while the mode is on, and the server withholds the results of the
--- dispatched commands until it receives a Sync. Hence before turning the
--- mode off we send a Sync and a Flush and drain everything that comes back.
---
--- Draining is not a single pass: in pipeline mode @PQgetResult@ terminates
--- the round of results of every command with a 'Nothing', so a drain loop
--- stops at each command boundary. 'Pq.exitPipelineMode' only succeeds once
--- the command queue is empty, so draining and exit attempts alternate for as
--- long as draining keeps making progress.
---
--- Idempotent: a no-op when the connection is not in pipeline mode.
-leavePipelineMode :: Pq.Connection -> IO (Either Text ())
-leavePipelineMode connection = do
-  pipelineStatus <- Pq.pipelineStatus connection
-  if pipelineStatus == Pq.PipelineOff
-    then pure (Right ())
-    else do
-      _ <- Pq.pipelineSync connection
-      void (drainProgressively connection)
-      -- Ensure any queued commands the Sync above didn't flush on its own
-      -- reach the server before we start waiting on results for them.
-      _ <- Pq.sendFlushRequest connection
-      void (drainProgressively connection)
-      exitWithDraining
-  where
-    exitWithDraining =
-      Pq.exitPipelineMode connection >>= \case
-        True -> pure (Right ())
-        False ->
-          drainProgressively connection >>= \case
-            True -> exitWithDraining
-            False -> do
-              errorMessage <- Pq.errorMessage connection
-              pure (Left (maybe "" decodeUtf8Lenient errorMessage))
-
-    -- Consume the results of the currently dispatched commands, reporting
-    -- whether anything got consumed.
-    --
-    -- In pipeline mode this drains up to the next command boundary, since
-    -- every command's round of results is terminated by a 'Nothing'.
-    drainProgressively :: Pq.Connection -> IO Bool
-    drainProgressively connection =
-      let go hasConsumedResult =
-            Pq.getResult connection >>= \case
-              Just _ -> go True
-              Nothing -> pure hasConsumedResult
-       in go False
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
 -- failure here never leaves dispatched-but-unacknowledged commands behind:
