@@ -333,9 +333,9 @@ isPrepareCollision = \case
 --
 -- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
 -- socket is worth another connection, a refused request is not.
-fromSendError :: Bool -> Maybe ByteString -> SessionError
+fromSendError :: Bool -> Text -> SessionError
 fromSendError connectionLost details =
-  construct (maybe "" decodeUtf8Lenient details)
+  construct details
   where
     construct =
       if connectionLost
