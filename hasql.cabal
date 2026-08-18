@@ -242,6 +242,7 @@ library comms
   import: base
   hs-source-dirs: src/comms
   exposed-modules:
+    Hasql.Comms.PipelineMode
     Hasql.Comms.Recv
     Hasql.Comms.ResultDecoder
     Hasql.Comms.Roundtrip
@@ -292,6 +293,7 @@ test-suite comms-tests
   hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
+    Hasql.Comms.PipelineModeSpec
     Hasql.Comms.Session.CleanUpAfterFailureSpec
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
@@ -348,6 +350,7 @@ test-suite library-tests
     Helpers.Statements.SelectProvidedInt8
     Helpers.Statements.SetConfig
     Helpers.Statements.Sleep
+    Helpers.Statements.TooManyParams
     Helpers.Statements.WrongDecoder
     Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec

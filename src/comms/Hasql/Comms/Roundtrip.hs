@@ -15,6 +15,7 @@ module Hasql.Comms.Roundtrip
   )
 where
 
+import Hasql.Comms.PipelineMode qualified as PipelineMode
 import Hasql.Comms.Recv qualified as Recv
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Comms.Send qualified as Send
@@ -43,28 +44,50 @@ instance Bifunctor Roundtrip where
       (fmap f send)
       (bimap f g recv)
 
+-- | Run a round trip in pipeline mode, entering the mode and leaving it
+-- again before returning.
 --
--- On a send failure, reports the connection as it found it and returns:
--- callers preceding this one in the same pipeline may already have
--- dispatched commands the server hasn't answered yet, and a failed exit
--- attempt below can leave the mode still on. Neither is repaired here -
--- 'Hasql.Connection.use' owns repair for every way a session can return
--- dirty, this being one instance of it, not a special case.
+-- Pipeline mode is scoped to this call, so leaving it is this function's
+-- obligation on every path, not just the successful one. Two of them are
+-- easy to miss: a send failure can strand commands that preceding callers
+-- in the same batch already dispatched, and the ordinary exit attempt can
+-- itself fail. Both used to return with the mode still on, leaving the
+-- caller a connection that libpq refuses serial commands on and that hands
+-- the next pipeline the stale results of this one. Repairing it after the
+-- session returned - as 'Hasql.Connection.use' did - is too late: a session
+-- is a 'MonadError' and can catch a pipeline failure and carry on, or catch
+-- it and succeed, in which case the repair never runs at all.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO sendAndRecv tag connection = do
-  sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
-  case sendResult of
-    Send.Error tag connectionLost details ->
-      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
-    Send.Ok -> do
-      recvResult <- first ServerError <$> Recv.toHandler recv connection
-      exitResult <- do
-        result <- Send.toHandler (Send.exitPipelineMode tag) connection
-        case result of
-          Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
-          Send.Ok -> pure (Right ())
-      pure (recvResult <* exitResult)
+  result <- attempt
+  -- Idempotent, so on the common path where the exit above already
+  -- succeeded this costs one local libpq call and no network traffic.
+  leaveResult <- PipelineMode.leave connection
+  pure case leaveResult of
+    Right () -> result
+    Left details -> case result of
+      -- The failure that got us here explains the state better than the
+      -- failed repair does, so it is the one reported.
+      Left err -> Left err
+      -- Nothing went wrong up to here, yet the mode would not come off:
+      -- the connection's protocol state is indeterminate, which is a lost
+      -- connection as far as callers are concerned.
+      Right _ -> Left (ClientError tag True details)
   where
+    attempt = do
+      sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
+      case sendResult of
+        Send.Error tag connectionLost details ->
+          pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
+        Send.Ok -> do
+          recvResult <- first ServerError <$> Recv.toHandler recv connection
+          exitResult <- do
+            result <- Send.toHandler (Send.exitPipelineMode tag) connection
+            case result of
+              Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
+              Send.Ok -> pure (Right ())
+          pure (recvResult <* exitResult)
+
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send

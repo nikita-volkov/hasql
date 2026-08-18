@@ -214,13 +214,19 @@ use (Connection var) session =
             -- A plain 'Left' return means the session completed and chose
             -- to report; the driver never lost control mid-command. The
             -- only thing left to check is whether it returned with the
-            -- pipeline still open (a pipelined statement's send failing
-            -- part-way through, or 'Session.onLibpqConnection' handing back
-            -- a connection in that state) - so repair here is the light
-            -- counterpart to 'cleanUpAfterInterruption', not a copy of it:
-            -- no cancel (nothing is in flight), no ABORT (a transaction left
-            -- open here is for whoever composed it, e.g. hasql-transaction,
-            -- to roll back), no DEALLOCATE ALL (the statement cache is still
+            -- pipeline still open, which now only 'Session.onLibpqConnection'
+            -- can do: pipelining proper leaves the mode inside
+            -- 'Comms.Roundtrip.toPipelineIO', which owns the mode for the
+            -- span of one pipeline. It has to be repaired there rather than
+            -- here, because a session is a 'MonadError' and can catch a
+            -- pipeline failure and carry on - or catch it and succeed, in
+            -- which case this branch never runs.
+            --
+            -- So repair here is the light counterpart to
+            -- 'cleanUpAfterInterruption', not a copy of it: no cancel
+            -- (nothing is in flight), no ABORT (a transaction left open here
+            -- is for whoever composed it, e.g. hasql-transaction, to roll
+            -- back), no DEALLOCATE ALL (the statement cache is still
             -- trustworthy). 'cleanUpAfterFailure' checks the pipeline status
             -- itself, so this is unconditional and a no-op on the common,
             -- already-clean path bar one local libpq call.
