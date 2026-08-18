@@ -11,7 +11,6 @@ module Hasql.Comms.Session
 where
 
 import Data.Text qualified as Text
-import Hasql.Comms.Helpers.ConnOps qualified as ConnOps
 import Hasql.Comms.Roundtrip qualified as Roundtrip
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
@@ -88,11 +87,47 @@ bringTransactionStatusToIdle = do
       -- Unknown state (connection issue), there's not much we can do.
       throwError "Transaction status is unknown, connection is corrupted"
 
--- | PipelineAborted is still pipeline mode. It must reach a sync point
--- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
--- again.
+-- | Leave the pipeline mode of a connection, draining all the results that
+-- the commands dispatched in it have produced or are still producing.
+--
+-- A connection in pipeline mode cannot serve serial commands: libpq rejects
+-- them while the mode is on, and the server withholds the results of the
+-- dispatched commands until it receives a Sync. Hence before turning the
+-- mode off we send a Sync and a Flush and drain everything that comes back.
+--
+-- Draining is not a single pass: in pipeline mode @PQgetResult@ terminates
+-- the round of results of every command with a 'Nothing', so a drain loop
+-- stops at each command boundary. 'Pq.exitPipelineMode' only succeeds once
+-- the command queue is empty, so draining and exit attempts alternate for as
+-- long as draining keeps making progress.
+--
+-- Idempotent: a no-op when the connection is not in pipeline mode, costing
+-- one local @PQpipelineStatus@ call and no network traffic. PipelineAborted
+-- is still pipeline mode, and it must reach a sync point before libpq
+-- permits serial queries such as ABORT or DEALLOCATE ALL again.
 leavePipeline :: Session ()
-leavePipeline = Session ConnOps.leavePipeline
+leavePipeline = Session \connection -> do
+  pipelineStatus <- Pq.pipelineStatus connection
+  if pipelineStatus == Pq.PipelineOff
+    then pure (Right ())
+    else do
+      _ <- Pq.pipelineSync connection
+      void (drainProgressively connection)
+      -- Ensure any queued commands the Sync above didn't flush on its own
+      -- reach the server before we start waiting on results for them.
+      _ <- Pq.sendFlushRequest connection
+      void (drainProgressively connection)
+      exitWithDraining connection
+  where
+    exitWithDraining connection =
+      Pq.exitPipelineMode connection >>= \case
+        True -> pure (Right ())
+        False ->
+          drainProgressively connection >>= \case
+            True -> exitWithDraining connection
+            False -> do
+              errorMessage <- Pq.errorMessage connection
+              pure (Left (maybe "" decodeUtf8Lenient errorMessage))
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =
@@ -118,7 +153,20 @@ getTransactionStatus = Session \connection -> do
 -- Drain all pending results from the connection.
 drainResults :: Session ()
 drainResults = Session \connection ->
-  Right <$> void (ConnOps.drainProgressively connection)
+  Right <$> void (drainProgressively connection)
+
+-- | Consume the results of the currently dispatched commands, reporting
+-- whether anything got consumed.
+--
+-- In pipeline mode this drains up to the next command boundary, since every
+-- command's round of results is terminated by a 'Nothing'.
+drainProgressively :: Pq.Connection -> IO Bool
+drainProgressively connection =
+  let go hasConsumedResult =
+        Pq.getResult connection >>= \case
+          Just _ -> go True
+          Nothing -> pure hasConsumedResult
+   in go False
 
 runCommand :: ByteString -> Session ()
 runCommand sql = runRoundtrip (Roundtrip.query () sql)
