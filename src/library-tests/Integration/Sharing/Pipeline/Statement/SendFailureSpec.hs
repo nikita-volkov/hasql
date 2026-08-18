@@ -1,4 +1,4 @@
-module Integration.Sharing.Pipeline.SendFailureSpec (spec) where
+module Integration.Sharing.Pipeline.Statement.SendFailureSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders

@@ -378,7 +378,7 @@ test-suite library-tests
     Integration.Sharing.Encoders.UnknownSpec
     Integration.Sharing.Encoders.UuidSpec
     Integration.Sharing.ErrorsSpec
-    Integration.Sharing.Pipeline.SendFailureSpec
+    Integration.Sharing.Pipeline.Statement.SendFailureSpec
     Integration.Sharing.PipelineSpec
     Integration.Sharing.Session.CatchErrorSpec
     Integration.Sharing.Session.ScriptSpec
