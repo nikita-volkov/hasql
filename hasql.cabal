@@ -267,7 +267,7 @@ benchmark benchmarks
     criterion >=1.6 && <2,
     hasql,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native >=1.0.1.5 && <1.1,
     rerebase <2,
 
 test-suite profiling
@@ -292,6 +292,7 @@ test-suite comms-tests
   hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
+    Hasql.Comms.Session.CleanUpAfterFailureSpec
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
 
@@ -350,6 +351,7 @@ test-suite library-tests
     Helpers.Statements.WrongDecoder
     Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec
+    Integration.Sharing.Connection.Use.OnLibpqConnectionDirtyReturnCleanupSpec
     Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
     Integration.Sharing.Connection.UseSpec
     Integration.Sharing.Decoders.CitextSpec
@@ -379,8 +381,10 @@ test-suite library-tests
     Integration.Sharing.Encoders.UnknownSpec
     Integration.Sharing.Encoders.UuidSpec
     Integration.Sharing.ErrorsSpec
+    Integration.Sharing.Pipeline.Statement.SendFailureSpec
     Integration.Sharing.PipelineSpec
     Integration.Sharing.Session.CatchErrorSpec
+    Integration.Sharing.Session.RecoveredPipelineFailureSpec
     Integration.Sharing.Session.ScriptSpec
     Integration.Sharing.Session.StatementSpec
     Integration.Sharing.SessionSpec
@@ -401,7 +405,7 @@ test-suite library-tests
     iproute,
     pqi >=1.0 && <1.2,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native >=1.0.1.5 && <1.1,
     process,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
