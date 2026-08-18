@@ -1,4 +1,4 @@
-module Integration.Sharing.Connection.Use.OnLibpqConnectionDirtyReturnCleanupSpec (spec) where
+module Integration.Sharing.Session.OnLibpqConnection.DirtyReturnCleanupSpec (spec) where
 
 import Hasql.Connection qualified as Connection
 import Hasql.Errors qualified as Errors
