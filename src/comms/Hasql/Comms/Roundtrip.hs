@@ -13,6 +13,8 @@ module Hasql.Comms.Roundtrip
 
     -- * Errors
     Error (..),
+    LeavePipelineError (..),
+    renderLeavePipelineError,
   )
 where
 
@@ -53,10 +55,21 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
       -- and the connection is still in pipeline mode. Returning it in this
       -- state would leave it unusable for every subsequent operation, with
       -- each failure mislabelled as a retryable connection error. So cancel
-      -- whatever of those commands is still executing and leave the mode,
-      -- syncing and draining the results it withheld.
-      restore (cancelIfPossible connection)
+      -- whatever of those commands is still executing (unless the
+      -- connection is already lost, in which case there is nothing to
+      -- cancel) and leave the mode, syncing and draining the results it
+      -- withheld.
+      when (cause /= Send.ConnectionLoss) (restore (cancelIfPossible connection))
       leaveResult <- restore (leavePipelineMode connection)
+      case leaveResult of
+        Right () -> pure ()
+        Left _ ->
+          -- Restoration itself failed: the connection's protocol state is
+          -- indeterminate, so it must not be handed back to the pool as
+          -- reusable. Finish it right here, at the point where the failure
+          -- is discovered, rather than reporting a distinct error and
+          -- relying on 'Hasql.Connection.use' to react to it.
+          restore (Pq.finish connection)
       pure (Left (ClientError tag cause (appendLeaveFailure details leaveResult)))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
@@ -69,6 +82,13 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
 
+    cancelIfPossible :: Pq.Connection -> IO ()
+    cancelIfPossible connection =
+      Pq.getCancel connection >>= \case
+        Nothing -> pure ()
+        Just cancel -> void (Pq.cancel cancel)
+
+    appendLeaveFailure :: Maybe ByteString -> Either LeavePipelineError () -> Maybe ByteString
     appendLeaveFailure details = \case
       Right () -> details
       Left leaveError ->
@@ -76,15 +96,9 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
           ( (encodeUtf8 . mconcat)
               [ maybe "" ((<> "\n") . decodeUtf8Lenient) details,
                 "Failed to restore the connection after a send failure: ",
-                leaveError
+                renderLeavePipelineError leaveError
               ]
           )
-
-cancelIfPossible :: Pq.Connection -> IO ()
-cancelIfPossible connection =
-  Pq.getCancel connection >>= \case
-    Nothing -> pure ()
-    Just cancel -> void (Pq.cancel cancel)
 
 -- | Leave the pipeline mode of a connection, draining all the results that
 -- the commands dispatched in it have produced or are still producing.
@@ -92,7 +106,7 @@ cancelIfPossible connection =
 -- A connection in pipeline mode cannot serve serial commands: libpq rejects
 -- them while the mode is on, and the server withholds the results of the
 -- dispatched commands until it receives a Sync. Hence before turning the
--- mode off we send a Sync and drain everything that comes back.
+-- mode off we send a Sync and a Flush and drain everything that comes back.
 --
 -- Draining is not a single pass: in pipeline mode @PQgetResult@ terminates
 -- the round of results of every command with a 'Nothing', so a drain loop
@@ -101,13 +115,17 @@ cancelIfPossible connection =
 -- long as draining keeps making progress.
 --
 -- Idempotent: a no-op when the connection is not in pipeline mode.
-leavePipelineMode :: Pq.Connection -> IO (Either Text ())
+leavePipelineMode :: Pq.Connection -> IO (Either LeavePipelineError ())
 leavePipelineMode connection = do
   pipelineStatus <- Pq.pipelineStatus connection
   if pipelineStatus == Pq.PipelineOff
     then pure (Right ())
     else do
       _ <- Pq.pipelineSync connection
+      void (drainProgressively connection)
+      -- Ensure any queued commands the Sync above didn't flush on its own
+      -- reach the server before we start waiting on results for them.
+      _ <- Pq.sendFlushRequest connection
       void (drainProgressively connection)
       exitWithDraining
   where
@@ -119,25 +137,35 @@ leavePipelineMode connection = do
             True -> exitWithDraining
             False -> do
               errorMessage <- Pq.errorMessage connection
-              pure (Left (renderExitFailure errorMessage))
+              pure (Left (LeavePipelineError errorMessage))
 
-    renderExitFailure = \case
-      Nothing -> "Failed to exit pipeline mode after draining results"
-      Just details -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient details
+    -- | Consume the results of the currently dispatched commands, reporting
+    -- whether anything got consumed.
+    --
+    -- In pipeline mode this drains up to the next command boundary, since
+    -- every command's round of results is terminated by a 'Nothing'.
+    drainProgressively :: Pq.Connection -> IO Bool
+    drainProgressively connection =
+      let go hasConsumedResult =
+            Pq.getResult connection >>= \case
+              Just _ -> go True
+              Nothing -> pure hasConsumedResult
+       in go False
 
--- | Consume the results of the currently dispatched commands, reporting
--- whether anything got consumed.
---
--- In pipeline mode this drains up to the next command boundary, since every
--- command's round of results is terminated by a 'Nothing'.
-drainProgressively :: Pq.Connection -> IO Bool
-drainProgressively connection =
-  let go hasConsumedResult =
-        Pq.getResult connection >>= \case
-          Just _ -> go True
-          Nothing -> pure hasConsumedResult
-   in go False
+-- | Failure to leave pipeline mode after exhausting draining retries.
+newtype LeavePipelineError = LeavePipelineError (Maybe ByteString)
+  deriving stock (Show, Eq)
 
+renderLeavePipelineError :: LeavePipelineError -> Text
+renderLeavePipelineError (LeavePipelineError details) =
+  case details of
+    Nothing -> "Failed to exit pipeline mode after draining results"
+    Just message -> "Failed to exit pipeline mode after draining results: " <> decodeUtf8Lenient message
+
+-- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
+-- failure here never leaves dispatched-but-unacknowledged commands behind:
+-- every call site sends a single operation and there is nothing queued
+-- after it to strand. No restoration step is needed.
 toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection

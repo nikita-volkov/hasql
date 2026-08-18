@@ -76,7 +76,8 @@ bringTransactionStatusToIdle = do
 -- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
 -- again.
 leavePipeline :: Session ()
-leavePipeline = Session Roundtrip.leavePipelineMode
+leavePipeline = Session \connection ->
+  first Roundtrip.renderLeavePipelineError <$> Roundtrip.leavePipelineMode connection
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =

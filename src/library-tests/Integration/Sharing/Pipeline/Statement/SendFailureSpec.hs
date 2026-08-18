@@ -54,13 +54,7 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Send failure in the middle of a pipeline" do
     it "Captures the error" \config -> do
-      Scripts.onUnpreparableConnection config \connection -> do
-        result <-
-          Connection.use connection
-            $ Session.pipeline failingPipeline
-        case result of
-          Left (Errors.ClientRejectionSessionError _) -> pure ()
-          _ -> expectationFailure ("Unexpected result: " <> show result)
+      Scripts.onUnpreparableConnection config runFailingPipeline
 
     it "Leaves the connection usable" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
@@ -69,13 +63,18 @@ spec = do
         -- rejects every subsequent command sent on it, so every later
         -- session on the same connection fails too - even though the
         -- connection itself is otherwise perfectly usable.
-        result <-
-          Connection.use connection
-            $ Session.pipeline failingPipeline
-        case result of
-          Left (Errors.ClientRejectionSessionError _) -> pure ()
-          _ -> expectationFailure ("Unexpected pipeline result: " <> show result)
+        runFailingPipeline connection
         followUpResult <-
           Connection.use connection
             $ Session.script "select 1"
         shouldBe followUpResult (Right ())
+
+-- | Run 'failingPipeline' and assert it fails with the expected rejection.
+runFailingPipeline :: Connection.Connection -> IO ()
+runFailingPipeline connection = do
+  result <-
+    Connection.use connection
+      $ Session.pipeline failingPipeline
+  case result of
+    Left (Errors.ClientRejectionSessionError _) -> pure ()
+    _ -> expectationFailure ("Unexpected pipeline result: " <> show result)
