@@ -149,29 +149,24 @@ instance Comonad Error where
 -- session returned - as 'Hasql.Connection.use' did - is too late: a session
 -- is a 'MonadError' and can catch a pipeline failure and carry on, or catch
 -- it and succeed, in which case the repair never runs at all.
+--
+-- Hence the shape below: the happy path ends with the plain exit, which by
+-- then has nothing left to do but turn the mode off, and every failing path
+-- - whichever step it failed at - goes through the draining repair instead.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO sendAndRecv tag connection = do
-  result <- do
-    sendResult <- runSend (Send.enterPipelineMode tag <> send) connection
-    case sendResult of
-      Left err -> pure (Left err)
-      Right () -> do
-        recvResult <- first ServerError <$> Recv.toHandler recv connection
-        exitResult <- runSend (Send.exitPipelineMode tag) connection
-        pure (recvResult <* exitResult)
-  -- Idempotent, so on the common path where the exit above already
-  -- succeeded this costs one local libpq call and no network traffic.
-  leaveResult <- ConnOps.leavePipeline connection
-  pure case leaveResult of
-    Right () -> result
-    Left details -> case result of
-      -- The failure that got us here explains the state better than the
-      -- failed repair does, so it is the one reported.
-      Left err -> Left err
-      -- Nothing went wrong up to here, yet the mode would not come off:
-      -- the connection's protocol state is indeterminate, which is a lost
-      -- connection as far as callers are concerned.
-      Right _ -> Left (ClientError tag True details)
+  result <- runExceptT do
+    ExceptT (runSend (Send.enterPipelineMode tag <> send) connection)
+    result <- ExceptT (first ServerError <$> Recv.toHandler recv connection)
+    ExceptT (runSend (Send.exitPipelineMode tag) connection)
+    pure result
+  case result of
+    Right result -> pure (Right result)
+    -- The mode may still be on and commands may still be dispatched behind
+    -- the failure, so drain them and get the mode off. The failure that got
+    -- us here explains the state better than anything the repair could
+    -- report, so the repair's own outcome is discarded.
+    Left err -> Left err <$ ConnOps.leavePipeline connection
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
 
