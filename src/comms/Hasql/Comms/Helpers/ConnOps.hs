@@ -4,10 +4,11 @@
 -- While the mode is on libpq refuses every serial command and the server
 -- withholds the results of the dispatched ones until it receives a Sync, so
 -- turning the mode off again is a protocol obligation of whoever turned it
--- on. This module provides the operation that discharges it, shared by
--- "Hasql.Comms.Roundtrip", which owns the mode for the span of one pipeline,
--- and "Hasql.Comms.Session", which repairs connections that got out of that
--- span dirty.
+-- on. "Hasql.Comms.Roundtrip" discharges it for the span of the pipeline it
+-- owns, where it knows what it dispatched; this module provides the
+-- general-purpose counterpart for "Hasql.Comms.Session", which repairs
+-- connections that got out of that span dirty and knows nothing about what
+-- is queued on them.
 module Hasql.Comms.Helpers.ConnOps
   ( leavePipeline,
     drainProgressively,

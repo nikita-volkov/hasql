@@ -17,7 +17,6 @@ module Hasql.Comms.Roundtrip
   )
 where
 
-import Hasql.Comms.Helpers.ConnOps qualified as ConnOps
 import Hasql.Comms.Recv qualified as Recv
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
 import Hasql.Comms.Send qualified as Send
@@ -45,12 +44,6 @@ instance Bifunctor Roundtrip where
     Roundtrip
       (fmap f send)
       (bimap f g recv)
-
-pipelineSync :: tag -> Roundtrip tag ()
-pipelineSync tag =
-  Roundtrip
-    (Send.pipelineSync tag)
-    (Recv.singleResult tag ResultDecoder.pipelineSync)
 
 prepare :: tag -> ByteString -> ByteString -> [Word32] -> Roundtrip tag ()
 prepare tag statementName sql oidList =
@@ -152,23 +145,63 @@ instance Comonad Error where
 --
 -- Hence the shape below: the happy path ends with the plain exit, which by
 -- then has nothing left to do but turn the mode off, and every failing path
--- - whichever step it failed at - goes through the draining repair instead.
+-- - whichever step it failed at - goes through 'leavePipeline' instead.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
-toPipelineIO sendAndRecv tag connection = do
+toPipelineIO (Roundtrip send recv) tag connection = do
   result <- runExceptT do
-    ExceptT (runSend (Send.enterPipelineMode tag <> send) connection)
-    result <- ExceptT (first ServerError <$> Recv.toHandler recv connection)
+    ExceptT (runSend (Send.enterPipelineMode tag <> send <> Send.pipelineSync tag) connection)
+    result <- ExceptT (first ServerError <$> Recv.toHandler (recv <* Recv.singleResult tag ResultDecoder.pipelineSync) connection)
     ExceptT (runSend (Send.exitPipelineMode tag) connection)
     pure result
   case result of
     Right result -> pure (Right result)
-    -- The mode may still be on and commands may still be dispatched behind
-    -- the failure, so drain them and get the mode off. The failure that got
-    -- us here explains the state better than anything the repair could
-    -- report, so the repair's own outcome is discarded.
-    Left err -> Left err <$ ConnOps.leavePipeline connection
+    Left err -> Left err <$ leavePipeline
   where
-    Roundtrip send recv = sendAndRecv <* pipelineSync tag
+
+    -- Get the connection out of pipeline mode after something in the
+    -- pipeline went wrong. This is more than turning a flag off: libpq
+    -- exits the mode only once the command queue is empty and every
+    -- dispatched command's results have been consumed, and the server
+    -- withholds those results until it sees a Sync.
+    --
+    -- So we send one - which also flushes whatever of ours is still sitting
+    -- in the send buffer - and consume results up to the PipelineSync it
+    -- produces. That result is where libpq resumes normal result
+    -- processing; everything the aborted pipeline skipped comes back as
+    -- PipelineAborted before it.
+    --
+    -- The rounds repeat because the batch's own Sync can still be queued
+    -- ahead of ours, when the receive above failed before consuming it, and
+    -- because a round also ends at a plain command boundary. They stop as
+    -- soon as the exit is accepted, and stop regardless once a round finds
+    -- nothing left to consume - no amount of further draining improves on
+    -- that.
+    --
+    -- The outcome is not reported: the failure that got us here describes
+    -- the connection better than the repair could.
+    leavePipeline = do
+      _ <- Pq.pipelineSync connection
+      exitAfterDraining
+      where
+        exitAfterDraining = do
+          consumedAnything <- drainToSyncPoint
+          exited <- Pq.exitPipelineMode connection
+          when (not exited && consumedAnything) exitAfterDraining
+          where
+            -- Consume results up to and including the next sync point, reporting
+            -- whether anything got consumed.
+            drainToSyncPoint =
+              let go consumedAnything =
+                    Pq.getResult connection >>= \case
+                      -- A command boundary, or an empty queue.
+                      Nothing -> pure consumedAnything
+                      Just result ->
+                        Pq.resultStatus result >>= \case
+                          -- Terminated by a Nothing like any other command's round
+                          -- of results.
+                          Pq.PipelineSync -> True <$ Pq.getResult connection
+                          _ -> go True
+               in go False
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
 -- failure here never leaves dispatched-but-unacknowledged commands behind:
