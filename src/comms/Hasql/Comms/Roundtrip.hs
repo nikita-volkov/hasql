@@ -47,13 +47,15 @@ toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
   case sendResult of
-    Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
+    Send.Error tag connectionLost details -> 
+      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
     Send.Ok -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
         case result of
-          Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
+          Send.Error tag connectionLost details -> 
+            pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
           Send.Ok -> pure (Right ())
       pure (recvResult <* exitResult)
   where
@@ -63,7 +65,8 @@ toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
   case sendResult of
-    Send.Error tag connectionLost details -> pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
+    Send.Error tag connectionLost details ->
+      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
     Send.Ok -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
