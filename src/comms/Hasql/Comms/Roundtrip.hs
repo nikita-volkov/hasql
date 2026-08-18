@@ -46,17 +46,14 @@ instance Bifunctor Roundtrip where
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO sendAndRecv tag connection = mask \restore -> do
   sendResult <- Send.toHandler (Send.enterPipelineMode tag <> send) connection
+  sendResult <- interpretSendResult connection sendResult
   case sendResult of
-    Send.Error tag connectionLost details -> 
-      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
-    Send.Ok -> do
+    Left err -> pure (Left err)
+    Right () -> do
       recvResult <- first ServerError <$> restore (Recv.toHandler recv connection)
       exitResult <- do
         result <- Send.toHandler (Send.exitPipelineMode tag) connection
-        case result of
-          Send.Error tag connectionLost details -> 
-            pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
-          Send.Ok -> pure (Right ())
+        interpretSendResult connection result
       pure (recvResult <* exitResult)
   where
     Roundtrip send recv = sendAndRecv <* pipelineSync tag
@@ -64,12 +61,22 @@ toPipelineIO sendAndRecv tag connection = mask \restore -> do
 toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- Send.toHandler send connection
+  sendResult <- interpretSendResult connection sendResult
   case sendResult of
-    Send.Error tag connectionLost details ->
-      pure (Left (ClientError tag connectionLost (maybe "" decodeUtf8Lenient details)))
-    Send.Ok -> do
+    Left err -> pure (Left err)
+    Right () -> do
       recvResult <- Recv.toHandler recv connection
       pure (first ServerError recvResult)
+
+-- | Turn a failed 'Send.Result' into an 'Error', consulting the connection
+-- for the diagnostic details ('Send.Result' itself no longer carries them).
+interpretSendResult :: Pq.Connection -> Send.Result tag -> IO (Either (Error tag) ())
+interpretSendResult connection = \case
+  Send.Ok -> pure (Right ())
+  Send.Error tag -> do
+    errorMessage <- Pq.errorMessage connection
+    status <- Pq.status connection
+    pure (Left (ClientError tag (status == Pq.ConnectionBad) (maybe "" decodeUtf8Lenient errorMessage)))
 
 pipelineSync :: tag -> Roundtrip tag ()
 pipelineSync tag =
@@ -134,8 +141,17 @@ script tag sql =
 data Error tag
   = ClientError
       tag
-      -- | Whether the connection was reported as lost at the moment the send
-      -- failed. See 'Send.Result'.
+      -- | Whether @PQstatus@ reported the connection as bad right after the
+      -- send failed.
+      --
+      -- 'True' means nothing reached the server and nothing will until the
+      -- connection is replaced. 'False' means the connection is still usable
+      -- and libpq refused the request itself - e.g. more than 65535
+      -- parameters, or a command issued while another is in progress - so the
+      -- same request will be refused the same way on any connection.
+      --
+      -- This is all the callers need in order to decide whether the failure is
+      -- worth retrying.
       Bool
       Text
   | ServerError (Recv.Error tag)

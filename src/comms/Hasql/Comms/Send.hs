@@ -6,21 +6,7 @@ import Pqi qualified as Pq
 -- | Outcome of sending commands: success, or a failure carrying the tag of the commands.
 data Result tag
   = Ok
-  | Error
-      tag
-      -- | Whether @PQstatus@ reported the connection as bad right after the
-      -- failure.
-      --
-      -- 'True' means nothing reached the server and nothing will until the
-      -- connection is replaced. 'False' means the connection is still usable
-      -- and libpq refused the request itself - e.g. more than 65535
-      -- parameters, or a command issued while another is in progress - so the
-      -- same request will be refused the same way on any connection.
-      --
-      -- This is all the callers need in order to decide whether the failure is
-      -- worth retrying.
-      Bool
-      (Maybe ByteString)
+  | Error tag
   deriving stock (Eq, Show, Functor)
 
 -- | An action that sends commands to a connection without receiving the results.
@@ -36,7 +22,7 @@ instance Semigroup (Send tag) where
   Send send1 <> Send send2 = Send \cs -> do
     result <- send1 cs
     case result of
-      Error tag connectionLost details -> pure (Error tag connectionLost details)
+      Error tag -> pure (Error tag)
       Ok -> do
         result2 <- send2 cs
         pure result2
@@ -51,12 +37,7 @@ toHandler (Send send) = send
 liftPqSend :: tag -> (Pq.Connection -> IO Bool) -> Send tag
 liftPqSend tag pqSend = Send \connection -> do
   success <- pqSend connection
-  if success
-    then pure Ok
-    else do
-      errorMessage <- Pq.errorMessage connection
-      status <- Pq.status connection
-      pure (Error tag (status == Pq.ConnectionBad) errorMessage)
+  pure (if success then Ok else Error tag)
 
 prepare :: tag -> ByteString -> ByteString -> Maybe [Word32] -> Send tag
 prepare tag statementName sql oidList =
