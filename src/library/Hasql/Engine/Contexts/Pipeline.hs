@@ -51,8 +51,8 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
       let result =
             first
               ( \case
-                  Comms.Roundtrip.ClientError _tag cause details ->
-                    Errors.fromSendError cause details
+                  Comms.Roundtrip.ClientError _tag connectionLost details ->
+                    Errors.fromSendError connectionLost details
                   Comms.Roundtrip.ServerError recvError ->
                     Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _ _) -> (totalStatements, index, sql, params, prepared))) recvError)
               )

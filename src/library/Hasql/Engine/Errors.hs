@@ -4,7 +4,6 @@ import Hasql.Comms.Recv qualified
 import Hasql.Comms.ResultDecoder qualified
 import Hasql.Comms.Roundtrip qualified
 import Hasql.Comms.RowReader qualified
-import Hasql.Comms.Send qualified
 import Hasql.Platform.Prelude
 import TextBuilder qualified
 
@@ -330,22 +329,23 @@ isPrepareCollision = \case
     code == "42P05"
   _ -> False
 
--- | Classify a failed @libpq@ send.
+-- | Classify a failed @libpq@ send by whether the connection was lost with it.
 --
 -- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
 -- socket is worth another connection, a refused request is not.
-fromSendError :: Hasql.Comms.Send.Cause -> Maybe ByteString -> SessionError
-fromSendError cause details =
+fromSendError :: Bool -> Maybe ByteString -> SessionError
+fromSendError connectionLost details =
   construct (maybe "" decodeUtf8Lenient details)
   where
-    construct = case cause of
-      Hasql.Comms.Send.ConnectionLoss -> ConnectionSessionError
-      Hasql.Comms.Send.ClientRejection -> DriverSessionError
+    construct =
+      if connectionLost
+        then ConnectionSessionError
+        else DriverSessionError
 
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
 fromRoundtripError = \case
-  Hasql.Comms.Roundtrip.ClientError _tag cause details ->
-    fromSendError cause details
+  Hasql.Comms.Roundtrip.ClientError _tag connectionLost details ->
+    fromSendError connectionLost details
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 

@@ -50,9 +50,9 @@ script sql =
     result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.script (Just sql) sql) connection
     case result of
       Left err -> case err of
-        Comms.Roundtrip.ClientError _ cause details -> do
+        Comms.Roundtrip.ClientError _ connectionLost details -> do
           pure
-            ( Left (Errors.fromSendError cause details),
+            ( Left (Errors.fromSendError connectionLost details),
               connectionState
             )
         Comms.Roundtrip.ServerError recvError ->
@@ -111,8 +111,8 @@ statement stmt params =
             -- total statements 1, index 0.
             tag = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
-              Comms.Roundtrip.ClientError _ cause details ->
-                Errors.fromSendError cause details
+              Comms.Roundtrip.ClientError _ connectionLost details ->
+                Errors.fromSendError connectionLost details
               Comms.Roundtrip.ServerError recvError ->
                 Errors.fromRecvError recvError
             withState (result, newStatementCache) =
