@@ -9,16 +9,18 @@ data Result tag
   | Error tag Cause (Maybe ByteString)
   deriving stock (Eq, Show, Functor)
 
--- | Why a send failed.
+-- | Why a send failed, as told apart by @PQstatus@ right after the failure.
+--
+-- The two differ in whether a fresh connection would help, which is all the
+-- callers need in order to decide whether the failure is worth retrying.
 data Cause
-  = -- | @PQstatus@ reports the connection as bad: the socket is gone, so
-    -- every queued command failed identically and a retry needs a fresh
-    -- connection.
+  = -- | @PQstatus@ reports the connection as bad: nothing reached the
+    -- server, and nothing will until the connection is replaced.
     ConnectionLoss
-  | -- | @PQstatus@ still reports the connection as usable: libpq rejected
-    -- the request itself (e.g. more than 65535 parameters, or a command
-    -- issued while another is in progress). The same request will fail the
-    -- same way again on this connection or any other.
+  | -- | @PQstatus@ still reports the connection as usable, so libpq refused
+    -- the request itself - e.g. more than 65535 parameters, or a command
+    -- issued while another is in progress. The same request will be refused
+    -- the same way on any connection.
     ClientRejection
   deriving stock (Eq, Show)
 

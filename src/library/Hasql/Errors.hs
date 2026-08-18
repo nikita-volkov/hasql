@@ -235,8 +235,6 @@ instance IsError SessionError where
       toMessage execErr
     ConnectionSessionError {} ->
       "Connection error"
-    ClientRejectionSessionError {} ->
-      "Client rejected the request"
     DriverSessionError {} ->
       "Driver error"
     MissingTypesSessionError {} ->
@@ -255,8 +253,6 @@ instance IsError SessionError where
       ("sql", sql) : toDetails execErr
     ConnectionSessionError reason ->
       [("reason", reason)]
-    ClientRejectionSessionError reason ->
-      [("reason", reason)]
     DriverSessionError reason ->
       [("reason", reason)]
     MissingTypesSessionError missingTypes ->
@@ -269,7 +265,6 @@ instance IsError SessionError where
 
   isTransient = \case
     ConnectionSessionError _ -> True
-    ClientRejectionSessionError _ -> False
     StatementSessionError _ _ _ _ _ statementError -> isTransient statementError
     ScriptSessionError _ serverError -> isTransient serverError
     DriverSessionError {} -> False
@@ -279,6 +274,5 @@ instance IsError SessionError where
     StatementSessionError _ _ _ _ _ statementError -> toSqlState statementError
     ScriptSessionError _ serverError -> toSqlState serverError
     ConnectionSessionError {} -> Nothing
-    ClientRejectionSessionError {} -> Nothing
     DriverSessionError {} -> Nothing
     MissingTypesSessionError {} -> Nothing

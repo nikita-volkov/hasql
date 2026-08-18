@@ -17,12 +17,13 @@ import Test.Hspec
 
 spec :: SpecWith Scripts.ScopeParams
 spec = do
-  describe "Client-side rejections (#327)" do
-    -- libpq rejects `sendQueryParams`/`sendQueryPrepared` outright when given
-    -- more than 65535 parameters, without ever talking to the server. Unlike
-    -- an actual connection loss, the exact same request fails identically on
-    -- every retry, so it must not be classified the same way as one.
-    it "reports too many parameters as ClientRejectionSessionError, not the transient ConnectionSessionError" \config -> do
+  describe "Sends libpq refuses" do
+    -- libpq rejects `sendQueryParams` outright when given more than 65535
+    -- parameters, without ever talking to the server. The connection stays
+    -- fine, so the failure must not be reported as the transient
+    -- `ConnectionSessionError` - retrying it just resends the same rejected
+    -- request forever.
+    it "reports too many parameters as a non-transient driver error" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let tooManyParams = 65536
             statement =
@@ -32,10 +33,10 @@ spec = do
                 Decoders.noResult
         result <- Connection.use connection (Session.statement () statement)
         case result of
-          Left err@(Errors.ClientRejectionSessionError _) ->
+          Left err@(Errors.DriverSessionError _) ->
             Errors.isTransient err `shouldBe` False
           Left err ->
-            expectationFailure ("Expected ClientRejectionSessionError, but got: " <> show err)
+            expectationFailure ("Expected DriverSessionError, but got: " <> show err)
           Right () ->
             expectationFailure "Expected the statement to be rejected for having too many parameters"
 

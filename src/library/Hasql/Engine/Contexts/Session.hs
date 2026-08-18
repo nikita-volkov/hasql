@@ -4,7 +4,6 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
-import Hasql.Comms.Send qualified as Comms.Send
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
@@ -53,11 +52,7 @@ script sql =
       Left err -> case err of
         Comms.Roundtrip.ClientError _ cause details -> do
           pure
-            ( Left
-                ( case cause of
-                    Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                    Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
-                ),
+            ( Left (Errors.fromSendError cause details),
               connectionState
             )
         Comms.Roundtrip.ServerError recvError ->
@@ -117,9 +112,7 @@ statement stmt params =
             tag = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
               Comms.Roundtrip.ClientError _ cause details ->
-                case cause of
-                  Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                  Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
+                Errors.fromSendError cause details
               Comms.Roundtrip.ServerError recvError ->
                 Errors.fromRecvError recvError
             withState (result, newStatementCache) =

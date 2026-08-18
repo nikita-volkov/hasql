@@ -10,7 +10,6 @@ import Data.HashSet qualified as HashSet
 import Hasql.CodecsVocab qualified as CodecsVocab
 import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.Comms.Roundtrip qualified as Comms.Roundtrip
-import Hasql.Comms.Send qualified as Comms.Send
 import Hasql.ConnectionState qualified as ConnectionState
 import Hasql.ConnectionState.OidCache qualified as OidCache
 import Hasql.ConnectionState.StatementCache qualified as StatementCache
@@ -53,9 +52,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
             first
               ( \case
                   Comms.Roundtrip.ClientError _tag cause details ->
-                    case cause of
-                      Comms.Send.ConnectionLoss -> Errors.ConnectionSessionError (maybe "" decodeUtf8Lenient details)
-                      Comms.Send.ClientRejection -> Errors.ClientRejectionSessionError (maybe "" decodeUtf8Lenient details)
+                    Errors.fromSendError cause details
                   Comms.Roundtrip.ServerError recvError ->
                     Errors.fromRecvError (fmap (fmap (\(StatementTag index sql params prepared _ _) -> (totalStatements, index, sql, params, prepared))) recvError)
               )
