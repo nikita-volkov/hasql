@@ -157,7 +157,6 @@ toPipelineIO (Roundtrip send recv) tag connection = do
     Right result -> pure (Right result)
     Left err -> Left err <$ leavePipeline
   where
-
     -- Get the connection out of pipeline mode after something in the
     -- pipeline went wrong. This is more than turning a flag off: libpq
     -- exits the mode only once the command queue is empty and every
