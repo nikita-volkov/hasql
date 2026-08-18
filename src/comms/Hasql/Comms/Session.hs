@@ -11,7 +11,7 @@ module Hasql.Comms.Session
 where
 
 import Data.Text qualified as Text
-import Hasql.Comms.PipelineMode qualified as PipelineMode
+import Hasql.Comms.Helpers.ConnOps qualified as ConnOps
 import Hasql.Comms.Roundtrip qualified as Roundtrip
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
@@ -92,7 +92,7 @@ bringTransactionStatusToIdle = do
 -- before libpq permits serial queries such as ABORT or DEALLOCATE ALL
 -- again.
 leavePipeline :: Session ()
-leavePipeline = Session PipelineMode.leave
+leavePipeline = Session ConnOps.leave
 
 deallocateAllPreparedStatements :: Session ()
 deallocateAllPreparedStatements =
@@ -118,7 +118,7 @@ getTransactionStatus = Session \connection -> do
 -- Drain all pending results from the connection.
 drainResults :: Session ()
 drainResults = Session \connection ->
-  Right <$> void (PipelineMode.drainProgressively connection)
+  Right <$> void (ConnOps.drainProgressively connection)
 
 runCommand :: ByteString -> Session ()
 runCommand sql = runRoundtrip (Roundtrip.query () sql)

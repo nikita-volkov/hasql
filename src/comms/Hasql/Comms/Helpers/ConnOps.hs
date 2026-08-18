@@ -8,7 +8,7 @@
 -- "Hasql.Comms.Roundtrip", which owns the mode for the span of one pipeline,
 -- and "Hasql.Comms.Session", which repairs connections that got out of that
 -- span dirty.
-module Hasql.Comms.PipelineMode
+module Hasql.Comms.Helpers.ConnOps
   ( leave,
     drainProgressively,
   )
