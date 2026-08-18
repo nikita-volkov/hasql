@@ -10,6 +10,7 @@ module Hasql.Comms.Session
   )
 where
 
+import Data.Text qualified as Text
 import Hasql.Comms.Roundtrip qualified as Roundtrip
 import Hasql.Platform.Prelude
 import Pqi qualified as Pq
@@ -180,7 +181,9 @@ runRoundtrip roundtrip = Session \connection -> do
     Left err ->
       let message = case err of
             Roundtrip.ClientError () _ details ->
-              "Client error occurred: " <> details
+              if Text.null details
+                then "Unknown client error occurred"
+                else "Client error occurred: " <> details
             Roundtrip.ServerError recvError ->
               "Server error occurred: " <> fromString (show recvError)
        in pure (Left message)

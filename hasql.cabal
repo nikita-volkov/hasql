@@ -255,6 +255,7 @@ library comms
     bytestring >=0.10 && <0.13,
     hasql:platform,
     pqi >=1.0 && <1.2,
+    text >=1 && <3,
     vector >=0.10 && <0.14,
 
 benchmark benchmarks
