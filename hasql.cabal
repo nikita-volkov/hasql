@@ -384,6 +384,7 @@ test-suite library-tests
     Integration.Sharing.Pipeline.Statement.SendFailureSpec
     Integration.Sharing.PipelineSpec
     Integration.Sharing.Session.CatchErrorSpec
+    Integration.Sharing.Session.RecoveredPipelineFailureSpec
     Integration.Sharing.Session.ScriptSpec
     Integration.Sharing.Session.StatementSpec
     Integration.Sharing.SessionSpec
