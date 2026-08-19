@@ -176,7 +176,8 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
         describe "rowVector" do
           it "gets reported when column type mismatches decoder" \config -> do
             Scripts.onPreparableConnection config \connection -> do
-              let statement =
+              let statement :: Statement.Statement () (Vector.Vector (Int64, Int64))
+                  statement =
                     (if preparable then Statement.preparable else Statement.unpreparable)
                       "select int8 '1', text 'text'"
                       mempty

@@ -1,5 +1,9 @@
 # Upcoming
 
+## Breaking
+
+- `Hasql.Decoders.rowVector` now decodes into any `Data.Vector.Generic` vector (`Vector`, unboxed, storable, primitive) instead of only the boxed `Data.Vector.Vector`, picked by the type the result is consumed as. Call sites that left the vector type to be inferred with nothing pinning it down (no type signature, no boxed-`Vector`-specific downstream use) will now hit an ambiguous type error and need an explicit annotation. (#336)
+
 ## Non-breaking
 
 - Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
