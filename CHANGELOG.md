@@ -1,5 +1,19 @@
 # Upcoming
 
+## Breaking
+
+- A session error that says the connection is no longer trustworthy - `ConnectionSessionError` or `DriverSessionError` - now means exactly that. `Hasql.Connection.use` closes the connection before returning either of them, and the handle is spent from then on: further `use` on it reports `ConnectionSessionError`, and `Hasql.Connection.release` on it does nothing. Pools already discarded connections on both errors, so this makes the driver keep the contract its callers were already assuming.
+
+  As a consequence `Hasql.Connection.release` is idempotent, and a released connection can no longer be reached through `use`. Both were undefined behaviour before: `libpq` forbids touching a connection after `PQfinish`, and the driver already closed connections it could not clean up.
+
+  The driver no longer attempts to repair a connection it failed to send on. There is nothing it can assume about the protocol state of such a connection, and the only repair available - pushing a Sync - has the side effect of flushing and committing whatever the failed session had queued. Closing it is both simpler and more honest.
+
+- An exception that cuts a session short - one thrown by the session itself, or an interruption delivered from another thread by `timeout`, `race` or `killThread` - now closes the connection. It propagates as before, but the handle it fired on is spent from then on, so a `timeout` around a session costs a connection rather than returning one. Pools reconnect; code holding a `Hasql.Connection.Connection` directly has to acquire a new one. Server-side session state - anything `set` on the connection - goes with it, where it used to be deliberately preserved across an interruption.
+
+  The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned `DriverSessionError` without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
+
+- `isTransient` on a `ConnectionSessionError` now describes the operation only, never the handle that reported it. It was already documented as "retrying against a clean connection state will succeed", and a pool supplies one; what changed is that the `Hasql.Connection.Connection` the error fired on never will, since `use` finished it. Retry loops that acquire a connection per attempt are unaffected. One that reuses the same handle used to recover once the driver had repaired it, and now spins on an error that is transient forever.
+
 ## Non-breaking
 
 - Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
@@ -12,9 +26,15 @@
 
 - `isTransient` now consults the SQLSTATE instead of being hard-coded to `False` on `ServerError`, and delegates through every wrapping error type. Serialization failures, deadlocks, lock timeouts, shutdowns, resource exhaustion and read-only standbys were all classified as permanent. (#325)
 
-- Send requests libpq refuses outright (e.g. over 65535 parameters) now yield a non-transient `DriverSessionError` instead of a `ConnectionSessionError` that retry wrappers retried forever. (#327)
+- Send requests libpq refuses outright (e.g. over 65535 parameters) now yield a non-transient `DriverSessionError` instead of a `ConnectionSessionError` that retry wrappers retried forever. The connection is closed with it. (#327)
 
-- A send failure partway through a pipeline left the connection stuck in pipeline mode with undrained results. It is now cancelled and drained before the error is returned, and finished outright if that fails. (#326)
+- A send failure partway through a pipeline left the connection stuck in pipeline mode with undrained results, so every later session on it failed too. The connection is now closed rather than handed back. (#326)
+
+- A pipeline whose send fails partway through no longer applies the statements preceding the failure. In pipeline mode libpq buffers until a Sync, so those statements had not reached the server; what put them there was the recovery attempt, whose Sync flushed and committed them on the way to reclaiming the connection. Such a pipeline is now discarded whole, matching what a pipeline that fails on a server error already did.
+
+- A session that catches a pipeline failure and carries on no longer runs the rest of itself against a connection the send failed on. The remaining operations report `ConnectionSessionError` instead, and the connection is closed however the session ends - including when it swallows the failure and succeeds. Previously the first serial statement after such a catch blocked forever on results the server had never been asked for.
+
+- A connection lost while receiving results is now reported as `ConnectionSessionError`, matching how the send side already classified a lost socket. It used to surface as a `StatementSessionError` carrying `UnexpectedRowCountStatementError` - "expected 1 row, got 0" - which is not transient, so retry wrappers did not retry it and pools returned the dead connection for reuse.
 
 # v2.0.1.0
 
