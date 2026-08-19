@@ -230,7 +230,7 @@ use (Connection var) session =
             putMVar var Nothing
             Pq.finish (ConnectionState.connection connectionState)
 
-        if ConnectionState.dead newState
+        if ConnectionState.dead newState || either connectionIsSpent (const False) result
           then do
             -- The driver gave up on the connection somewhere inside the
             -- session. Whether the session went on to report that, to
