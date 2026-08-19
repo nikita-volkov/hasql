@@ -60,7 +60,7 @@ spec = do
                 (fmap (maybe False (const True)) (Decoders.rowMaybe (Decoders.column (Decoders.nonNullable Decoders.bool))))
         result <- Connection.use connection (Session.statement ([3, 7] :: [Int64], "a") statement)
         case result of
-          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
+          Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _))) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
 
 echoStatement :: Statement.Statement Int64 Int64

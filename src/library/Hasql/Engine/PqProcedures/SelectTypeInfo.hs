@@ -27,7 +27,7 @@ newtype SelectTypeInfo = SelectTypeInfo
 type SelectTypeInfoResult =
   HashMap CodecsVocab.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo
 
-run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.SessionError SelectTypeInfoResult)
+run :: Pq.Connection -> SelectTypeInfo -> IO (Either Errors.UseError SelectTypeInfoResult)
 run connection (SelectTypeInfo keys) =
   if HashSet.null keys
     then pure (Right HashMap.empty)

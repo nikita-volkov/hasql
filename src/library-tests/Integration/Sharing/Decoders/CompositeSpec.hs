@@ -664,7 +664,7 @@ spec = do
                 )
           -- Should fail with a cell error because text cannot be decoded as a composite
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _))) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
@@ -710,7 +710,7 @@ spec = do
                 )
           -- Should fail with a cell error because the field count doesn't match
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _)) ->
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError 0 _ _))) ->
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)
@@ -771,7 +771,7 @@ spec = do
             )
 
       case result of
-        Left (Errors.MissingTypesSessionError missingTypes) ->
+        Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
           missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_composite_type")]
         _ ->
           expectationFailure ("Unexpected result: " <> show result)

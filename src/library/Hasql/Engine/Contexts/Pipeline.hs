@@ -22,7 +22,7 @@ import Pqi qualified as Pq
 run ::
   Pipeline a ->
   ConnectionState.ConnectionState ->
-  IO (Either Errors.SessionError a, ConnectionState.ConnectionState)
+  IO (Either Errors.UseError a, ConnectionState.ConnectionState)
 run (Pipeline totalStatements unknownTypes runPipeline) connectionState@ConnectionState.ConnectionState {..} = do
   let missingTypes = OidCache.selectUnknownNames unknownTypes oidCache
   resolvedOidCache <-
@@ -37,7 +37,7 @@ run (Pipeline totalStatements unknownTypes runPipeline) connectionState@Connecti
             let foundTypes = HashMap.keysSet oidCacheUpdates
                 notFoundTypes = HashSet.difference missingTypes foundTypes
              in if not (HashSet.null notFoundTypes)
-                  then Left (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes))
+                  then Left (Errors.SessionUseError (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes)))
                   else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
   case resolvedOidCache of
     Left err -> pure (Left err, connectionState)

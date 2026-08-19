@@ -266,7 +266,7 @@ spec = do
             result2 <- Connection.use connection do
               Session.pipeline (Pipeline.statement () brokenStatement)
             case result2 of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42601" _ _ _ _))) ->
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42601" _ _ _ _)))) ->
                 pure ()
               Left other ->
                 expectationFailure ("Unexpected error on second run: " <> show other)
@@ -372,7 +372,7 @@ spec = do
                   <*> Pipeline.statement () broken
                   <*> Pipeline.statement () ok2
             case result2 of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42601" _ _ _ _))) ->
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42601" _ _ _ _)))) ->
                 pure ()
               Left other ->
                 expectationFailure ("Unexpected error on second run: " <> show other)
@@ -414,7 +414,7 @@ spec = do
             -- The colliding execution fails, but transiently, carrying 42P05.
             result1 <- Connection.use connection (Session.statement () collidingStatement)
             case result1 of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _))) ->
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _)))) ->
                 Errors.isTransient err `shouldBe` True
               other ->
                 expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
@@ -436,7 +436,7 @@ spec = do
 
             result1 <- Connection.use connection (Session.pipeline (Pipeline.statement () collidingStatement))
             case result1 of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _))) ->
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _)))) ->
                 Errors.isTransient err `shouldBe` True
               other ->
                 expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
@@ -460,7 +460,7 @@ spec = do
                     <$> Pipeline.statement () collidingStatement
                     <*> Pipeline.statement () ok
             case result1 of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42P05" _ _ _ _))) ->
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42P05" _ _ _ _)))) ->
                 pure ()
               other ->
                 expectationFailure ("Expected a 42P05 ServerError, got: " <> show other)
@@ -552,7 +552,7 @@ decoderCompatibilityCacheByExecutor executorName executor = do
         shouldBe firstResult (Right (1, "text"))
         secondResult <- Connection.use connection (executor mismatchingStatement)
         case secondResult of
-          Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+          Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
             shouldBe column 1
             (expected, actual) `shouldBe` (20, 25)
           Left err ->

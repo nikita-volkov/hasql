@@ -23,9 +23,27 @@ import Pqi qualified as Pq
 --
 -- To actually execute a 'Session' use 'Hasql.Connection.use', which manages
 -- concurrent access to the shared connection state and returns either a
--- 'Errors.SessionError' or the result:
+-- 'Errors.UseError' or the result:
 --
 -- > result <- Hasql.Connection.use connection mySession
+--
+-- The 'Control.Monad.Except.MonadError' instance ranges over
+-- 'Errors.SessionError' only - the failures that leave the connection
+-- usable. A failure that leaves the connection gone
+-- ('Errors.ConnectionUseError', 'Errors.DriverUseError') is not a value
+-- 'Control.Monad.Except.throwError' can construct or
+-- 'Control.Monad.Except.catchError' can see: it propagates through every
+-- later 'Control.Monad.>>=' untouched and reaches 'Hasql.Connection.use'
+-- whole. This is enforced structurally by this 'Monad' instance rather than
+-- by a check any handler has to remember to make.
+--
+-- A caught error retains every connection-state change made before it -
+-- both branches below thread the state through, matching @ExceptT e (State
+-- s)@ rather than @StateT s (Either e)@. A statement whose @PARSE@ succeeded
+-- and whose @EXECUTE@ failed has truthfully been prepared on the server, so
+-- the cache entry survives the catch; only 'statement' and 'pipeline'
+-- revert it themselves, on an ordinary failure, since they alone know
+-- whether what they recorded was actually confirmed by the server.
 --
 -- Note: while most session errors are returned as values, user code executed
 -- inside a session may still throw exceptions, and an interruption from
@@ -34,45 +52,51 @@ import Pqi qualified as Pq
 -- 'Hasql.Connection.use', which finishes the connection on the way out rather
 -- than trying to bring it back to a clean state.
 newtype Session a
-  = Session (ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState))
-  deriving
-    (Functor, Applicative, Monad, MonadError Errors.SessionError, MonadIO)
-    via (ExceptT Errors.SessionError (StateT ConnectionState.ConnectionState IO))
+  = Session (ConnectionState.ConnectionState -> IO (Either Errors.UseError a, ConnectionState.ConnectionState))
 
-run :: Session a -> ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState)
+run :: Session a -> ConnectionState.ConnectionState -> IO (Either Errors.UseError a, ConnectionState.ConnectionState)
 run (Session session) connectionState = session connectionState
 
--- | Build a session out of an operation on the connection state, guarding
--- it on both ends.
---
--- Before: a connection the driver has already given up on serves nothing,
--- so the operation is skipped and the verdict repeated. This is what stops
--- a session that caught a failed send from carrying on against a connection
--- libpq refuses - where a serial command does not fail but blocks forever
--- on results the server was never asked for.
---
--- After: an error that says the connection is spent
--- ('Errors.connectionIsSpent') is recorded in the state, so it survives the
--- session catching the error, and 'Hasql.Connection.use' finishes the
--- connection whichever way the session ends.
-onConnectionState ::
-  (ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState)) ->
-  Session a
-onConnectionState f = Session \connectionState ->
-  if ConnectionState.dead connectionState
-    then pure (Left deadConnectionError, connectionState)
-    else do
-      (result, newConnectionState) <- f connectionState
-      pure
-        ( result,
-          case result of
-            Left err | Errors.connectionIsSpent err -> ConnectionState.setDead newConnectionState
-            _ -> newConnectionState
-        )
+instance Functor Session where
+  fmap f (Session m) = Session \connectionState -> do
+    (result, newConnectionState) <- m connectionState
+    pure (fmap f result, newConnectionState)
 
-deadConnectionError :: Errors.SessionError
-deadConnectionError =
-  Errors.ConnectionSessionError "The driver has given up on this connection earlier in the session"
+instance Applicative Session where
+  pure a = Session \connectionState -> pure (Right a, connectionState)
+
+  Session mf <*> Session ma = Session \connectionState -> do
+    (resultF, connectionState') <- mf connectionState
+    case resultF of
+      Left err -> pure (Left err, connectionState')
+      Right f -> do
+        (resultA, connectionState'') <- ma connectionState'
+        pure (fmap f resultA, connectionState'')
+
+instance Monad Session where
+  Session m >>= f = Session \connectionState -> do
+    (result, connectionState') <- m connectionState
+    case result of
+      Left err -> pure (Left err, connectionState')
+      Right a -> run (f a) connectionState'
+
+instance MonadIO Session where
+  liftIO io = Session \connectionState -> do
+    a <- io
+    pure (Right a, connectionState)
+
+-- | Ranges over 'Errors.SessionError' only. 'throwError' can only construct
+-- 'Errors.SessionUseError', and 'catchError' only ever sees that
+-- constructor - 'Errors.ConnectionUseError' and 'Errors.DriverUseError'
+-- flow past both untouched. See the note on the 'Session' type.
+instance MonadError Errors.SessionError Session where
+  throwError err = Session \connectionState -> pure (Left (Errors.SessionUseError err), connectionState)
+
+  catchError (Session m) handler = Session \connectionState -> do
+    (result, connectionState') <- m connectionState
+    case result of
+      Left (Errors.SessionUseError err) -> run (handler err) connectionState'
+      other -> pure (other, connectionState')
 
 -- |
 -- Possibly a multi-statement query,
@@ -80,7 +104,7 @@ deadConnectionError =
 -- nor can any results of it be collected.
 script :: ByteString -> Session ()
 script sql =
-  onConnectionState \connectionState -> do
+  Session \connectionState -> do
     let connection = ConnectionState.connection connectionState
     result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.script (Just sql) sql) connection
     case result of
@@ -115,7 +139,7 @@ statement ::
   params ->
   Session result
 statement stmt params =
-  onConnectionState \connectionState -> do
+  Session \connectionState -> do
     let usePreparedStatements = ConnectionState.preparedStatements connectionState
         statementCache = ConnectionState.statementCache connectionState
         oidCache = ConnectionState.oidCache connectionState
@@ -134,7 +158,7 @@ statement stmt params =
               let foundTypes = HashMap.keysSet oidCacheUpdates
                   notFoundTypes = HashSet.difference missingTypes foundTypes
                in if not (HashSet.null notFoundTypes)
-                    then Left (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes))
+                    then Left (Errors.SessionUseError (Errors.MissingTypesSessionError (HashSet.map CodecsVocab.QualifiedTypeName.toNameTuple notFoundTypes)))
                     else Right (oidCache <> OidCache.fromHashMap oidCacheUpdates)
     case resolvedOidCache of
       Left err -> pure (Left err, connectionState)
@@ -218,7 +242,7 @@ statement stmt params =
 -- |
 -- Execute a pipeline.
 pipeline :: Pipeline.Pipeline result -> Session result
-pipeline pipeline = onConnectionState (Pipeline.run pipeline)
+pipeline pipeline = Session (Pipeline.run pipeline)
 
 -- |
 -- Execute an operation on the raw libpq connection possibly producing an error and updating the connection.
@@ -244,13 +268,13 @@ pipeline pipeline = onConnectionState (Pipeline.run pipeline)
 -- 'Hasql.Connection.use' inherits, and what gets handed back to the pool
 -- afterwards. Nothing repairs it for you: the driver only ever finishes a
 -- connection it cannot vouch for, and it has no way of telling that this
--- one is in that state. Returning a 'Left' of 'Errors.ConnectionSessionError'
--- or 'Errors.DriverSessionError' is how you say so - 'Hasql.Connection.use'
+-- one is in that state. Returning a 'Left' of 'Errors.ConnectionUseError'
+-- or 'Errors.DriverUseError' is how you say so - 'Hasql.Connection.use'
 -- finishes the connection when it sees either.
 onLibpqConnection ::
-  (Pq.Connection -> IO (Either Errors.SessionError a, Pq.Connection)) ->
+  (Pq.Connection -> IO (Either Errors.UseError a, Pq.Connection)) ->
   Session a
-onLibpqConnection f = onConnectionState \connectionState -> do
+onLibpqConnection f = Session \connectionState -> do
   let pqConnection = ConnectionState.connection connectionState
   (result, newConnection) <- f pqConnection
   let newState = ConnectionState.setConnection newConnection connectionState

@@ -15,7 +15,7 @@ import TextBuilder qualified
 -- These errors can occur when calling 'Hasql.Connection.acquire'.
 -- Connection errors are categorized into several types to help with
 -- error handling and logging.
-data ConnectionError
+data AcquireError
   = -- | Network-level error while connecting to the database server.
     --
     -- This typically indicates issues like:
@@ -26,7 +26,7 @@ data ConnectionError
     -- * Connection timeout
     --
     -- These errors are transient and the operation can be retried.
-    NetworkingConnectionError
+    NetworkingAcquireError
       -- | Human readable details intended for logging.
       Text
   | -- | Authentication failed when connecting to the database.
@@ -38,7 +38,7 @@ data ConnectionError
     -- * Authentication method mismatch (e.g., server requires SSL but client doesn't use it)
     --
     -- These errors are not transient and require fixing the credentials or permissions.
-    AuthenticationConnectionError
+    AuthenticationAcquireError
       -- | Human readable details intended for logging.
       Text
   | -- | Compatibility issue between client and server.
@@ -51,7 +51,7 @@ data ConnectionError
     --
     -- These errors are not transient and require upgrading/downgrading
     -- the server or client.
-    CompatibilityConnectionError
+    CompatibilityAcquireError
       -- | Human readable details intended for logging.
       Text
   | -- | Uncategorized error coming from @libpq@.
@@ -60,17 +60,21 @@ data ConnectionError
     -- The error message may be empty if @libpq@ doesn't provide details.
     --
     -- These errors are not transient by default.
-    OtherConnectionError
+    OtherAcquireError
       -- | Human readable details intended for logging. May be empty.
       Text
   deriving stock (Show, Eq)
 
 -- |
--- Error that occurs during session execution.
+-- Error that occurs during session execution and leaves the connection
+-- usable.
 --
 -- A session is a batch of actions executed in a database connection context.
--- Session errors can occur due to statement failures, connection issues,
--- missing types, or internal driver errors.
+-- Every constructor here means the connection is still fit to be handed
+-- back for reuse - that is the axis 'SessionError' is narrowed on, not
+-- provenance. A failure that leaves the connection gone is not a
+-- 'SessionError' at all; it is one of the other two constructors of
+-- 'UseError'.
 --
 -- Session errors provide detailed context to help diagnose problems,
 -- including SQL text, parameters, and the location of the error within
@@ -109,6 +113,37 @@ data SessionError
       Text
       -- | The server error that occurred.
       ServerError
+  | -- | One or more types referenced in the statement could not be found in the database.
+    --
+    -- This occurs when using custom types (enums, composite types, domains) that
+    -- are resolved by name at runtime, but the types don't exist in the database.
+    --
+    -- To fix this error:
+    --
+    -- * Ensure the types are defined in the database
+    -- * Check that schema search paths are configured correctly
+    -- * Verify that the type names in your code match those in the database
+    MissingTypesSessionError
+      -- | Set of (schema name, type name) pairs that could not be found.
+      --
+      -- Schema name is 'Nothing' when the type was looked up without a schema qualifier.
+      (HashSet (Maybe Text, Text))
+  deriving stock (Show, Eq)
+
+-- |
+-- Error that 'Hasql.Connection.use' can return.
+--
+-- 'SessionUseError' means the connection is still usable and is the only
+-- constructor 'Control.Monad.Except.catchError' on a 'Hasql.Session.Session'
+-- can see. The other two mean the connection is gone, and no handler inside
+-- the session can intercept them - the split is structural, enforced by the
+-- 'Session' 'Control.Monad.Monad' instance rather than by any check a
+-- handler has to remember to make.
+data UseError
+  = -- | The session reported an ordinary failure and the connection is
+    -- still usable.
+    SessionUseError
+      SessionError
   | -- | A connection-level error occurred during session execution.
     --
     -- This indicates that the connection to the database was lost or
@@ -128,24 +163,9 @@ data SessionError
     -- connection between attempts; one that reuses the same
     -- 'Hasql.Connection.Connection' spins forever on a permanently transient
     -- error.
-    ConnectionSessionError
+    ConnectionUseError
       -- | Human-readable details about the connection error.
       Text
-  | -- | One or more types referenced in the statement could not be found in the database.
-    --
-    -- This occurs when using custom types (enums, composite types, domains) that
-    -- are resolved by name at runtime, but the types don't exist in the database.
-    --
-    -- To fix this error:
-    --
-    -- * Ensure the types are defined in the database
-    -- * Check that schema search paths are configured correctly
-    -- * Verify that the type names in your code match those in the database
-    MissingTypesSessionError
-      -- | Set of (schema name, type name) pairs that could not be found.
-      --
-      -- Schema name is 'Nothing' when the type was looked up without a schema qualifier.
-      (HashSet (Maybe Text, Text))
   | -- | An internal driver error occurred.
     --
     -- This indicates either:
@@ -163,13 +183,13 @@ data SessionError
     -- __The connection is gone.__ 'Hasql.Connection.use' has finished it
     -- before returning this, so the 'Hasql.Connection.Connection' the
     -- session ran on is spent: further 'Hasql.Connection.use' on it fails
-    -- with 'ConnectionSessionError', and 'Hasql.Connection.release' is a
+    -- with 'ConnectionUseError', and 'Hasql.Connection.release' is a
     -- no-op. Pools must discard it rather than return it. The driver cannot
     -- vouch for the protocol state of a connection a request failed to
     -- leave, and repairing one costs more than replacing it: the repair
     -- would have to push a Sync, which flushes and commits the very
     -- commands the failed session never got to complete.
-    DriverSessionError
+    DriverUseError
       -- | Human-readable details about what went wrong.
       Text
   deriving stock (Show, Eq)
@@ -350,8 +370,10 @@ isPrepareCollision = \case
     code == "42P05"
   _ -> False
 
--- | Whether an error a session reported means the connection it ran on is
--- no longer fit to be used again.
+-- | Classify a failed @libpq@ send by whether the connection was lost with it.
+--
+-- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
+-- socket is worth another connection, a refused request is not.
 --
 -- These are the two errors a failed send produces, and the driver has
 -- nothing to say about the connection's protocol state once one of them
@@ -360,100 +382,84 @@ isPrepareCollision = \case
 -- seen. Neither is worth repairing - a repair would have to push a Sync,
 -- which flushes and commits the very commands the failed session never got
 -- to complete - so the connection is finished instead.
---
--- The classification errs towards finishing: a driver error raised while
--- decoding results leaves a perfectly healthy connection, and costs one
--- reconnect here. That is the same over-approximation @hasql-pool@ already
--- makes when it discards on these two errors, and it buys an invariant
--- worth more than the reconnect - these constructors mean the connection is
--- gone because 'use' makes it so, rather than by convention.
-connectionIsSpent :: SessionError -> Bool
-connectionIsSpent = \case
-  ConnectionSessionError {} -> True
-  DriverSessionError {} -> True
-  StatementSessionError {} -> False
-  ScriptSessionError {} -> False
-  MissingTypesSessionError {} -> False
-
--- | Classify a failed @libpq@ send by whether the connection was lost with it.
---
--- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
--- socket is worth another connection, a refused request is not.
-fromSendError :: Bool -> Text -> SessionError
+fromSendError :: Bool -> Text -> UseError
 fromSendError connectionLost details =
   construct details
   where
     construct =
       if connectionLost
-        then ConnectionSessionError
-        else DriverSessionError
+        then ConnectionUseError
+        else DriverUseError
 
-fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> SessionError
+fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> UseError
 fromRoundtripError = \case
   Hasql.Comms.Roundtrip.ClientError _tag connectionLost details ->
     fromSendError connectionLost details
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 
-fromRecvError :: Hasql.Comms.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> SessionError
+fromRecvError :: Hasql.Comms.Recv.Error (Maybe (Int, Int, ByteString, [Text], Bool)) -> UseError
 fromRecvError = \case
   Hasql.Comms.Recv.ResultError tag _resultOffset resultError ->
     case tag of
       Nothing ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Unexpected error in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Error: ",
             TextBuilder.string (show resultError)
           ]
       Just (totalStatements, statementIndex, sql, parameters, prepared) ->
-        StatementSessionError
-          totalStatements
-          statementIndex
-          (decodeUtf8Lenient sql)
-          parameters
-          prepared
-          (fromStatementResultError resultError)
+        SessionUseError
+          $ StatementSessionError
+            totalStatements
+            statementIndex
+            (decodeUtf8Lenient sql)
+            parameters
+            prepared
+            (fromStatementResultError resultError)
   Hasql.Comms.Recv.NoResultsError tag connectionLost details ->
     if connectionLost
       then -- The results are not late, they are never coming: the socket is
       -- gone. Reporting this as a row-count mismatch would describe a
       -- dropped connection as a statement that returned nothing, and
       -- leave pools reusing a connection that no longer exists.
-        ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+        ConnectionUseError (maybe "" decodeUtf8Lenient details)
       else case tag of
         Nothing ->
-          (DriverSessionError . TextBuilder.toText . mconcat)
+          (DriverUseError . TextBuilder.toText . mconcat)
             [ "Unexpectedly got no results in an operation not associated with any statement. ",
               "This indicates a bug in Hasql or the server misbehaving. ",
               "Details: ",
               TextBuilder.string (show details)
             ]
         Just (totalStatements, statementIndex, sql, parameters, prepared) ->
-          StatementSessionError
-            totalStatements
-            statementIndex
-            (decodeUtf8Lenient sql)
-            parameters
-            prepared
-            (UnexpectedRowCountStatementError 1 1 0)
+          SessionUseError
+            $ StatementSessionError
+              totalStatements
+              statementIndex
+              (decodeUtf8Lenient sql)
+              parameters
+              prepared
+              (UnexpectedRowCountStatementError 1 1 0)
   Hasql.Comms.Recv.TooManyResultsError tag actual ->
     case tag of
       Nothing ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got too many results in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Amount: ",
             TextBuilder.decimal actual
           ]
       Just (totalStatements, statementIndex, sql, parameters, prepared) ->
-        StatementSessionError
-          totalStatements
-          statementIndex
-          (decodeUtf8Lenient sql)
-          parameters
-          prepared
-          (UnexpectedRowCountStatementError 1 1 actual)
+        SessionUseError
+          $ StatementSessionError
+            totalStatements
+            statementIndex
+            (decodeUtf8Lenient sql)
+            parameters
+            prepared
+            (UnexpectedRowCountStatementError 1 1 actual)
 
 fromStatementResultError :: Hasql.Comms.ResultDecoder.Error -> StatementError
 fromStatementResultError = \case
@@ -495,39 +501,40 @@ fromStatementResultError = \case
           rowIndex
           (RefinementRowError msg)
 
-fromRecvErrorInScript :: ByteString -> Hasql.Comms.Recv.Error (Maybe ByteString) -> SessionError
+fromRecvErrorInScript :: ByteString -> Hasql.Comms.Recv.Error (Maybe ByteString) -> UseError
 fromRecvErrorInScript scriptSql = \case
   Hasql.Comms.Recv.ResultError _ _ resultError ->
     case resultError of
       Hasql.Comms.ResultDecoder.ServerError code message detail hint position ->
-        ScriptSessionError
-          (decodeUtf8Lenient scriptSql)
-          ( ServerError
-              (decodeUtf8Lenient code)
-              (decodeUtf8Lenient message)
-              (fmap decodeUtf8Lenient detail)
-              (fmap decodeUtf8Lenient hint)
-              position
-          )
+        SessionUseError
+          $ ScriptSessionError
+            (decodeUtf8Lenient scriptSql)
+            ( ServerError
+                (decodeUtf8Lenient code)
+                (decodeUtf8Lenient message)
+                (fmap decodeUtf8Lenient detail)
+                (fmap decodeUtf8Lenient hint)
+                position
+            )
       Hasql.Comms.ResultDecoder.UnexpectedResult msg ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Unexpected result in script: ",
             TextBuilder.text msg
           ]
       Hasql.Comms.ResultDecoder.UnexpectedRowCount actual ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of rows in script: ",
             TextBuilder.decimal actual
           ]
       Hasql.Comms.ResultDecoder.UnexpectedColumnCount expected actual ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of columns in script: expected ",
             TextBuilder.decimal expected,
             ", got ",
             TextBuilder.decimal actual
           ]
       Hasql.Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Decoder type mismatch in script: expected OID ",
             TextBuilder.string (show expectedOid),
             " at column ",
@@ -536,7 +543,7 @@ fromRecvErrorInScript scriptSql = \case
             TextBuilder.string (show actualOid)
           ]
       Hasql.Comms.ResultDecoder.RowError rowIndex rowError ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Row error in script at row ",
             TextBuilder.decimal rowIndex,
             ": ",
@@ -544,9 +551,9 @@ fromRecvErrorInScript scriptSql = \case
           ]
   Hasql.Comms.Recv.NoResultsError _ connectionLost details ->
     if connectionLost
-      then ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+      then ConnectionUseError (maybe "" decodeUtf8Lenient details)
       else
-        (DriverSessionError . TextBuilder.toText . mconcat)
+        (DriverUseError . TextBuilder.toText . mconcat)
           [ "Got no results in script.",
             " This indicates a bug in Hasql or the server misbehaving.",
             details
@@ -554,7 +561,7 @@ fromRecvErrorInScript scriptSql = \case
               & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
           ]
   Hasql.Comms.Recv.TooManyResultsError _ actual ->
-    (DriverSessionError . TextBuilder.toText . mconcat)
+    (DriverUseError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Amount: ",

@@ -22,10 +22,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.NetworkingConnectionError _) ->
+            Left (Errors.NetworkingAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected NetworkingConnectionError, but got: " <> show err)
+              expectationFailure ("Expected NetworkingAcquireError, but got: " <> show err)
 
   describe "postgres:9" do
     it "Succeeds" \adapter -> do
@@ -93,10 +93,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.AuthenticationConnectionError _) ->
+            Left (Errors.AuthenticationAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
+              expectationFailure ("Expected AuthenticationAcquireError, but got: " <> show err)
 
     it "Fails with authentication error on incorrect user" \adapter -> do
       TestcontainersPostgresql.run
@@ -118,10 +118,10 @@ spec = do
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.AuthenticationConnectionError _) ->
+            Left (Errors.AuthenticationAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationConnectionError, but got: " <> show err)
+              expectationFailure ("Expected AuthenticationAcquireError, but got: " <> show err)
 
   describe "postgres:9" do
     byDistro "postgres:9"
@@ -165,7 +165,7 @@ byDistro tagName = do
         itConnects "new user" "password"
 
   describe "Connection errors" do
-    describe "NetworkingConnectionError" do
+    describe "NetworkingAcquireError" do
       it "is reported for invalid host" \adapter -> do
         result <-
           Hasql.Connection.acquire
@@ -177,8 +177,8 @@ byDistro tagName = do
                 ]
             )
         case result of
-          Left (Errors.NetworkingConnectionError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
+          Left (Errors.NetworkingAcquireError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
       it "is reported for connection refused" \adapter -> do
@@ -192,11 +192,11 @@ byDistro tagName = do
                 ]
             )
         case result of
-          Left (Errors.NetworkingConnectionError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
+          Left (Errors.NetworkingAcquireError _) -> pure ()
+          Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
-    describe "AuthenticationConnectionError" do
+    describe "AuthenticationAcquireError" do
       it "is reported for invalid credentials" \adapter -> do
         TestcontainersPostgresql.run
           TestcontainersPostgresql.Config
@@ -215,6 +215,6 @@ byDistro tagName = do
                     ]
                 )
             case result of
-              Left (Errors.AuthenticationConnectionError _) -> pure ()
-              Left err -> expectationFailure ("Expected AuthenticationConnectionError, got: " <> show err)
+              Left (Errors.AuthenticationAcquireError _) -> pure ()
+              Left err -> expectationFailure ("Expected AuthenticationAcquireError, got: " <> show err)
               Right _conn -> expectationFailure "Expected connection to fail with authentication error"

@@ -79,7 +79,7 @@ spec = do
           Connection.use connection
             $ Session.script "select 1"
         case followUpResult of
-          Left (Errors.ConnectionSessionError _) -> pure ()
+          Left (Errors.ConnectionUseError _) -> pure ()
           _ -> expectationFailure ("Unexpected follow-up result: " <> show followUpResult)
 
     it "Keeps reporting the connection as gone however many times it is used" \config -> do
@@ -88,7 +88,7 @@ spec = do
         replicateM_ 3 do
           result <- Connection.use connection (Session.script "select 1")
           case result of
-            Left (Errors.ConnectionSessionError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected follow-up result: " <> show result)
 
     it "Leaves the connection releasable" \config -> do
@@ -109,13 +109,13 @@ spec = do
             Connection.use connection
               $ Session.pipeline failingOnFirstStatementPipeline
           case result of
-            Left (Errors.DriverSessionError _) -> pure ()
+            Left (Errors.DriverUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected pipeline result: " <> show result)
           followUpResult <-
             Connection.use connection
               $ Session.script "select 1"
           case followUpResult of
-            Left (Errors.ConnectionSessionError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected follow-up result: " <> show followUpResult)
 
     describe "Effects on the database state" do
@@ -141,7 +141,7 @@ spec = do
                 <$> Pipeline.statement () (insertStatement tableName)
                 <*> Execution.pipelineByParams Statements.TooManyParams
           case pipelineResult of
-            Left (Errors.DriverSessionError _) -> pure ()
+            Left (Errors.DriverUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected pipeline result: " <> show pipelineResult)
 
           countResult <- Connection.use observer (Session.statement () (countStatement tableName))
@@ -171,5 +171,5 @@ runFailingPipeline connection = do
     Connection.use connection
       $ Session.pipeline failingPipeline
   case result of
-    Left (Errors.DriverSessionError _) -> pure ()
+    Left (Errors.DriverUseError _) -> pure ()
     _ -> expectationFailure ("Unexpected pipeline result: " <> show result)

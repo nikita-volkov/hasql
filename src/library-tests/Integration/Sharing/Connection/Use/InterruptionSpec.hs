@@ -58,7 +58,7 @@ spec = do
       -- stays 'True' however many times it is asked, and a retry wrapper that
       -- loops on it while reusing the same handle spins rather than
       -- recovering. Pinned here because the promise is made in the haddock on
-      -- 'Errors.isTransient' and on 'Errors.ConnectionSessionError', and a
+      -- 'Errors.isTransient' and on 'Errors.ConnectionUseError', and a
       -- promise with no example is one that drifts.
       Scripts.onPreparableConnection config \connection -> do
         interruptWith connection
@@ -171,7 +171,7 @@ shouldReportTheConnectionAsGone :: Connection.Connection -> IO ()
 shouldReportTheConnectionAsGone connection = do
   result <- Connection.use connection (Session.script "select 1")
   case result of
-    Left (Errors.ConnectionSessionError _) -> pure ()
+    Left (Errors.ConnectionUseError _) -> pure ()
     _ -> expectationFailure ("Unexpected follow-up result: " <> show result)
 
 insertStatement :: Text -> Statement.Statement () ()

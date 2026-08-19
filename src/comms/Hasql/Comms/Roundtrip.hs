@@ -146,11 +146,10 @@ instance Comonad Error where
 -- both the rarer and the graver: a mode that cannot be left means the
 -- connection serves nothing serial from then on, whereas the failure that got
 -- us here is quite possibly an ordinary server error the caller is meant to
--- catch and carry on from. Reporting the latter would describe the connection
--- as healthy - the verdict is derived from the error alone, see
--- 'Hasql.Engine.Errors.connectionIsSpent' - and hand it back still in pipeline
--- mode, which is <https://github.com/nikita-volkov/hasql/issues/326> over
--- again.
+-- catch and carry on from. Reporting the latter would return a
+-- 'Hasql.Engine.Errors.SessionUseError' - catchable, connection retained -
+-- and hand it back still in pipeline mode, which is
+-- <https://github.com/nikita-volkov/hasql/issues/326> over again.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO (Roundtrip send recv) tag connection = runExceptT do
   ExceptT (runSend (Send.enterPipelineMode tag <> send <> Send.pipelineSync tag) connection)

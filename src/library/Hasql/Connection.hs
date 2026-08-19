@@ -27,9 +27,10 @@ newtype Connection
       -- |
       -- The state is 'Nothing' once the connection is gone. That happens when
       -- 'release' is called on it, when a session fails in a way that leaves
-      -- the driver unable to vouch for the connection's protocol state (see
-      -- 'Hasql.Engine.Errors.connectionIsSpent'), and when an exception cuts a
-      -- session short - in the latter two cases 'use' finishes it. @libpq@
+      -- the driver unable to vouch for the connection's protocol state (a
+      -- 'ConnectionUseError' or 'DriverUseError' out of 'use'), and when an
+      -- exception cuts a session short - in the latter two cases 'use'
+      -- finishes it. @libpq@
       -- forbids touching a connection after @PQfinish@, so the handle has to
       -- remember that it did: without it a second 'release' finishes a freed
       -- connection and a later 'use' sends on one.
@@ -53,11 +54,11 @@ newtype Connection
 -- - Initializes session-level settings (encoding and message verbosity).
 --
 -- On success, returns a 'Connection' wrapped in 'Right'.
--- On failure, returns a classified 'ConnectionError' in 'Left'.
+-- On failure, returns a classified 'AcquireError' in 'Left'.
 acquire ::
   Adapter ->
   Settings.Settings ->
-  IO (Either ConnectionError Connection)
+  IO (Either AcquireError Connection)
 acquire adapter settings =
   {-# SCC "acquire" #-}
   runExceptT do
@@ -81,7 +82,7 @@ acquire adapter settings =
             -- Check version:
             version <- lift (ServerVersion.load pqConnection)
             when (version < ServerVersion.minimum) do
-              throwError (CompatibilityConnectionError ("Server version is lower than 9: " <> ServerVersion.toText version))
+              throwError (CompatibilityAcquireError ("Server version is lower than 9: " <> ServerVersion.toText version))
 
             -- Initialize:
             do
@@ -93,22 +94,21 @@ acquire adapter settings =
               case execResult of
                 Nothing -> do
                   errorMessage <- lift (Pq.errorMessage pqConnection)
-                  throwError (OtherConnectionError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
+                  throwError (OtherAcquireError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
                 Just result -> do
                   status <- lift (Pq.resultStatus result)
                   case status of
                     Pq.CommandOk -> pure ()
                     _ -> do
                       errorMessage <- lift (Pq.resultErrorMessage result)
-                      throwError (OtherConnectionError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
+                      throwError (OtherAcquireError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
 
             let connectionState =
                   ConnectionState.ConnectionState
                     { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
                       ConnectionState.statementCache = StatementCache.empty,
                       ConnectionState.oidCache = mempty,
-                      ConnectionState.connection = pqConnection,
-                      ConnectionState.dead = False
+                      ConnectionState.connection = pqConnection
                     }
             connectionRef <- lift (newMVar (Just connectionState))
             pure (Connection connectionRef)
@@ -131,22 +131,22 @@ acquire adapter settings =
     -- - The match is against libpq's /translated/ message text, so it is
     --   sensitive to the client's locale (@LC_ALL@\/@LANG@\/@LANGUAGE@):
     --   under a non-English locale, none of the patterns below match, and
-    --   the failure falls through to 'OtherConnectionError' regardless of
+    --   the failure falls through to 'OtherAcquireError' regardless of
     --   its real nature.
     -- - Precedence is networking, then authentication, then everything
     --   else: a message matching both a networking and an authentication
     --   pattern is reported as networking.
-    interpretConnectionError :: Maybe ByteString -> ConnectionError
+    interpretConnectionError :: Maybe ByteString -> AcquireError
     interpretConnectionError errorMessage =
       case errorMessage of
-        Nothing -> OtherConnectionError "Unknown connection error"
+        Nothing -> OtherAcquireError "Unknown connection error"
         Just msg ->
           let msgText = decodeUtf8Lenient msg
               msgLower = Text.toLower msgText
            in if
-                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingConnectionError msgText
-                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationConnectionError msgText
-                | otherwise -> OtherConnectionError (decodeUtf8Lenient msg)
+                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquireError msgText
+                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquireError msgText
+                | otherwise -> OtherAcquireError (decodeUtf8Lenient msg)
 
     networkingErrors :: [Text]
     networkingErrors =
@@ -203,13 +203,13 @@ release (Connection var) =
 -- 'Control.Concurrent.killThread' do - propagates, and the connection is
 -- finished on the way out. See the note on the exception path below for why
 -- it is not repaired instead.
-use :: Connection -> Session.Session a -> IO (Either SessionError a)
+use :: Connection -> Session.Session a -> IO (Either UseError a)
 use (Connection var) session =
   mask \unmask -> do
     takeMVar var >>= \case
       Nothing -> do
         putMVar var Nothing
-        pure (Left (ConnectionSessionError "The connection is no longer available"))
+        pure (Left (ConnectionUseError "The connection is no longer available"))
       Just connectionState -> do
         (result, !newState) <-
           onException (unmask (Session.run session connectionState)) do
@@ -230,15 +230,15 @@ use (Connection var) session =
             putMVar var Nothing
             Pq.finish (ConnectionState.connection connectionState)
 
-        if ConnectionState.dead newState || either connectionIsSpent (const False) result
-          then do
-            -- The driver gave up on the connection somewhere inside the
-            -- session. Whether the session went on to report that, to
-            -- catch it and fail differently, or to catch it and
-            -- succeed, the connection is not fit to be handed back.
-            putMVar var Nothing
-            Pq.finish (ConnectionState.connection newState)
-          else do
-            putMVar var (Just newState)
+        -- The driver gave up on the connection somewhere inside the session,
+        -- and by construction that verdict is what 'result' says: nothing
+        -- further inside the session could have caught it and carried on.
+        let finish = do
+              putMVar var Nothing
+              Pq.finish (ConnectionState.connection newState)
+        case result of
+          Left (ConnectionUseError _) -> finish
+          Left (DriverUseError _) -> finish
+          _ -> putMVar var (Just newState)
 
         pure result

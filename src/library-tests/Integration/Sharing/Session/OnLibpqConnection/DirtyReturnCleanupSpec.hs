@@ -23,8 +23,8 @@ import Test.Hspec
 -- connection the escape hatch quietly broke from one it left clean, and the
 -- one repair it could attempt - pushing a Sync - would flush and commit
 -- whatever the caller had queued. So the contract is that the escape hatch
--- restores what it breaks, and reports 'Errors.ConnectionSessionError' or
--- 'Errors.DriverSessionError' when it cannot.
+-- restores what it breaks, and reports 'Errors.ConnectionUseError' or
+-- 'Errors.DriverUseError' when it cannot.
 --
 -- These drive the connection into exactly that state directly, entering
 -- pipeline mode on the raw handle without leaving it, and pin both halves:
@@ -37,16 +37,16 @@ spec = do
     describe "Reporting a connection error" do
       it "Gets the connection finished rather than repaired" \config -> do
         Scripts.onPreparableConnection config \connection -> do
-          result <- Connection.use connection (dirtyReturn (Errors.ConnectionSessionError "Simulated failure"))
+          result <- Connection.use connection (dirtyReturn (Errors.ConnectionUseError "Simulated failure"))
           case result of
-            Left (Errors.ConnectionSessionError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected result: " <> show result)
 
           followUp <-
             Connection.use connection
               $ Execution.sessionByParams Statements.SelectOne.SelectOne
           case followUp of
-            Left (Errors.ConnectionSessionError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected follow-up result: " <> show followUp)
 
     describe "Reporting an error that says nothing about the connection" do
@@ -54,9 +54,9 @@ spec = do
         Scripts.onPreparableConnection config \connection -> do
           result <-
             Connection.use connection
-              $ dirtyReturn (Errors.MissingTypesSessionError mempty)
+              $ dirtyReturn (Errors.SessionUseError (Errors.MissingTypesSessionError mempty))
           case result of
-            Left (Errors.MissingTypesSessionError _) -> pure ()
+            Left (Errors.SessionUseError (Errors.MissingTypesSessionError _)) -> pure ()
             _ -> expectationFailure ("Unexpected result: " <> show result)
 
           -- Nothing repaired it: the mode the escape hatch turned on is
@@ -81,7 +81,7 @@ spec = do
 
 -- | Enter pipeline mode on the raw connection and report the given error
 -- without leaving it.
-dirtyReturn :: Errors.SessionError -> Session.Session ()
+dirtyReturn :: Errors.UseError -> Session.Session ()
 dirtyReturn err =
   Session.onLibpqConnection \pqConnection -> do
     entered <- Pq.enterPipelineMode pqConnection

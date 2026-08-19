@@ -131,7 +131,7 @@ spec = do
                 filter
                   ( \case
                       Right 42 -> False
-                      Left (Errors.ConnectionSessionError _) -> False
+                      Left (Errors.ConnectionUseError _) -> False
                       _ -> True
                   )
                   results
@@ -140,5 +140,5 @@ spec = do
           -- Once gone, gone: the handle does not come back to life.
           finalResult <- Connection.use connection (Execution.sessionByParams (Statements.SelectProvidedInt8.SelectProvidedInt8 99))
           case finalResult of
-            Left (Errors.ConnectionSessionError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected final result: " <> show finalResult)
