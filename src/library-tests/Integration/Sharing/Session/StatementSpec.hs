@@ -41,6 +41,24 @@ spec = do
         success <- Connection.use connection (Session.statement 1 divStatement)
         success `shouldBe` Right 1
 
+    it "keeps a not-yet-cached statement usable after an exception interrupts its first execution" \config -> do
+      -- Regression: an exception (here, an async timeout) interrupts a session
+      -- while it is executing a statement that has never been prepared on this
+      -- connection before. `Connection.use` reacts to any exception by
+      -- deallocating all prepared statements on the server and resetting the
+      -- local statement cache to match, so a fresh session running the very
+      -- same statement afterwards must succeed rather than hit a stale
+      -- "prepared statement ... does not exist" error caused by the local
+      -- cache and the server state disagreeing.
+      Scripts.onPreparableConnection config \connection -> do
+        interrupted <-
+          timeout 50_000 do
+            Connection.use connection (Session.statement 0.1 sleepStatement)
+        interrupted `shouldBe` Nothing
+
+        success <- Connection.use connection (Session.statement 0 sleepStatement)
+        success `shouldBe` Right ()
+
     it "works on an unpreparable connection" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
         result <- Connection.use connection (Session.statement (42 :: Int64) echoStatement)
@@ -77,3 +95,10 @@ divStatement =
     "select 1 / $1"
     (Encoders.param (Encoders.nonNullable Encoders.int8))
     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+
+sleepStatement :: Statement.Statement Double ()
+sleepStatement =
+  Statement.preparable
+    "select pg_sleep($1)"
+    (Encoders.param (Encoders.nonNullable Encoders.float8))
+    Decoders.noResult
