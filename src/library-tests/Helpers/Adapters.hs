@@ -19,11 +19,9 @@ adapters =
 -- nesting each run under a @describe@ named after the adapter.
 byAdapter :: (Pqi.Adapter -> Spec) -> Spec
 byAdapter f =
-  parallel do
-    for_ adapters \adapter ->
-      describe (toList (Pqi.name adapter)) do
-        sequential do
-          f adapter
+  for_ adapters \adapter ->
+    describe (toList (Pqi.name adapter)) do
+      f adapter
 
 hook :: SpecWith Pqi.Adapter -> Spec
 hook hookedSpec =
