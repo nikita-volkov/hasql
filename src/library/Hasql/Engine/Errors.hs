@@ -120,9 +120,6 @@ data SessionError
     -- session ran on is spent: further 'Hasql.Connection.use' on it fails
     -- with this same error, and 'Hasql.Connection.release' is a no-op.
     -- Pools must discard it rather than return it.
-    --
-    -- Note: As of version 1.10, connections recover from async exceptions
-    -- without resetting, preserving connection-local state.
     ConnectionSessionError
       -- | Human-readable details about the connection error.
       Text
