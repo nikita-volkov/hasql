@@ -352,7 +352,6 @@ test-suite library-tests
     Helpers.Statements.WrongDecoder
     Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec
-    Integration.Isolated.Connection.Use.OidCacheRetentionSpec
     Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
     Integration.Sharing.Connection.Use.ReplacedConnectionCleanupSpec
     Integration.Sharing.Connection.UseSpec
