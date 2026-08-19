@@ -28,8 +28,11 @@ import Pqi qualified as Pq
 -- > result <- Hasql.Connection.use connection mySession
 --
 -- Note: while most session errors are returned as values, user code executed
--- inside a session may still throw exceptions; in that case the driver will
--- reset the connection to a clean state.
+-- inside a session may still throw exceptions, and an interruption from
+-- another thread ('System.Timeout.timeout', 'Control.Concurrent.killThread')
+-- arrives the same way. Such an exception propagates out of
+-- 'Hasql.Connection.use', which finishes the connection on the way out rather
+-- than trying to bring it back to a clean state.
 newtype Session a
   = Session (ConnectionState.ConnectionState -> IO (Either Errors.SessionError a, ConnectionState.ConnectionState))
   deriving
@@ -228,7 +231,12 @@ pipeline pipeline = onConnectionState (Pipeline.run pipeline)
 -- Producing a 'Left' value will cause the session to fail with the given error.
 -- Regardless of success or failure, the connection will be replaced with the one you return.
 --
--- Throwing exceptions is okay. It will lead to the connection getting reset.
+-- Throwing exceptions is okay, but it costs the connection:
+-- 'Hasql.Connection.use' finishes the one it handed to the session and spends
+-- the handle. It finishes that one - not any replacement you returned before
+-- the exception, since an exception unwinds past the state carrying it. A
+-- replacement lost that way is yours to close, like the connection it
+-- displaced.
 --
 -- Restoring the connection is on you on the ordinary return path. Whatever
 -- protocol state you leave it in - pipeline mode still on, results

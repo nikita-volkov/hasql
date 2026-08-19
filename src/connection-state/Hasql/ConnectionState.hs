@@ -12,7 +12,6 @@ module Hasql.ConnectionState
     mapStatementCache,
     mapOidCache,
     traverseStatementCache,
-    resetPreparedStatementsCache,
   )
 where
 
@@ -113,7 +112,3 @@ traverseStatementCache f ConnectionState {..} =
           }
     )
     (f statementCache)
-
-resetPreparedStatementsCache :: ConnectionState -> ConnectionState
-resetPreparedStatementsCache =
-  mapStatementCache (const StatementCache.empty)

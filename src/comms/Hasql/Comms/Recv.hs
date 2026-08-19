@@ -54,9 +54,7 @@ singleResult tag handler = Recv \connection -> runExceptT do
       Just _ -> do
         -- Unreachable today: 'singleResult' backs 'queryParams' and
         -- 'queryPrepared', which go through the extended protocol where
-        -- Postgres rejects multi-statement SQL outright, and 'Roundtrip.query',
-        -- whose only caller is 'Hasql.Comms.Session.runCommand' with "ABORT"
-        -- and "DEALLOCATE ALL" - each a single statement. Draining anyway
+        -- Postgres rejects multi-statement SQL outright. Draining anyway
         -- keeps this branch correct on its own terms rather than relying on
         -- that non-local argument to hold forever.
         drainRemaining connection

@@ -12,6 +12,10 @@
 
   The driver no longer attempts to repair a connection it failed to send on. There is nothing it can assume about the protocol state of such a connection, and the only repair available - pushing a Sync - has the side effect of flushing and committing whatever the failed session had queued. Closing it is both simpler and more honest.
 
+- An exception that cuts a session short - one thrown by the session itself, or an interruption delivered from another thread by `timeout`, `race` or `killThread` - now closes the connection. It propagates as before, but the handle it fired on is spent from then on, so a `timeout` around a session costs a connection rather than returning one. Pools reconnect; code holding a `Hasql.Connection.Connection` directly has to acquire a new one. Server-side session state - anything `set` on the connection - goes with it, where it used to be deliberately preserved across an interruption.
+
+  The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned `DriverSessionError` without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
+
 ## Fixes
 
 - `Hasql.Connection.acquire` now finishes the underlying connection on every failure path, and no longer ignores the result of its session-init statements.

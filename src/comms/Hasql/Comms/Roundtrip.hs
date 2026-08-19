@@ -5,7 +5,6 @@ module Hasql.Comms.Roundtrip
     prepare,
     queryPrepared,
     queryParams,
-    query,
     script,
 
     -- * Errors
@@ -83,14 +82,8 @@ queryParams tag sql params resultFormat resultDecoder =
     (Send.queryParams tag sql params resultFormat)
     (Recv.singleResult tag resultDecoder)
 
-query :: tag -> ByteString -> Roundtrip tag ()
-query tag sql =
-  Roundtrip
-    (Send.query tag sql)
-    (Recv.singleResult tag ResultDecoder.ok)
-
 -- | Execute a script (multi-statement SQL).
--- Unlike 'query', this consumes all results from the execution,
+-- It consumes all results from the execution,
 -- which is necessary for scripts containing multiple statements.
 script :: tag -> ByteString -> Roundtrip tag ()
 script tag sql =

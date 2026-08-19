@@ -9,7 +9,6 @@ module Hasql.Connection
 where
 
 import Data.Text qualified as Text
-import Hasql.Comms.Session qualified as Comms.Session
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
@@ -26,13 +25,14 @@ import Pqi qualified as Pq
 newtype Connection
   = Connection
       -- |
-      -- The state is 'Nothing' once the connection is gone - either because
-      -- 'release' was called on it, or because a session failed in a way that
-      -- left the driver unable to vouch for the connection's protocol state, in
-      -- which case 'use' finishes it (see 'Hasql.Engine.Errors.connectionIsSpent'). @libpq@ forbids
-      -- touching a connection after @PQfinish@, so the handle has to remember
-      -- that it did: without it a second 'release' finishes a freed connection
-      -- and a later 'use' sends on one.
+      -- The state is 'Nothing' once the connection is gone. That happens when
+      -- 'release' is called on it, when a session fails in a way that leaves
+      -- the driver unable to vouch for the connection's protocol state (see
+      -- 'Hasql.Engine.Errors.connectionIsSpent'), and when an exception cuts a
+      -- session short - in the latter two cases 'use' finishes it. @libpq@
+      -- forbids touching a connection after @PQfinish@, so the handle has to
+      -- remember that it did: without it a second 'release' finishes a freed
+      -- connection and a later 'use' sends on one.
       (MVar (Maybe ConnectionState.ConnectionState))
 
 -- |
@@ -187,56 +187,58 @@ release :: Connection -> IO ()
 release (Connection var) =
   mask_ do
     connectionState <- takeMVar var
-    traverse_ (Pq.finish . ConnectionState.connection) connectionState
+    -- The handle is marked spent before the connection is touched, so that a
+    -- 'Pq.finish' that somehow fails leaves the handle unusable rather than
+    -- the MVar empty forever.
     putMVar var Nothing
+    traverse_ (Pq.finish . ConnectionState.connection) connectionState
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
 --
 -- Blocks until the connection is available when there is another session running upon the connection on a different thread.
+--
+-- An exception thrown out of the session - including an interruption
+-- delivered from another thread, as 'System.Timeout.timeout' and
+-- 'Control.Concurrent.killThread' do - propagates, and the connection is
+-- finished on the way out. See the note on the exception path below for why
+-- it is not repaired instead.
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
 use (Connection var) session =
-  mask \restore -> do
+  mask \unmask -> do
     takeMVar var >>= \case
       Nothing -> do
         putMVar var Nothing
         pure (Left (ConnectionSessionError "The connection has been released"))
       Just connectionState -> do
-        let connection = ConnectionState.connection connectionState
-        result <- try @SomeException (restore (Session.run session connectionState))
-        case result of
-          Left exception -> do
-            -- If an exception happened, we need to bring the connection back to idle
-            -- without resetting (to preserve session state).
-            result <- Comms.Session.toHandler Comms.Session.cleanUpAfterInterruption connection
-            case result of
-              Left err -> do
-                -- If cleanup failed, we have to close the connection.
-                -- There's not much else we can do.
-                Pq.finish connection
-                putMVar var Nothing
-                let message =
-                      mconcat
-                        [ "Failed to clean up after interruption.\n",
-                          err,
-                          "\n",
-                          "The following exception was raised during the operation:\n",
-                          Text.pack (displayException exception)
-                        ]
-                pure (Left (DriverSessionError message))
-              Right () -> do
-                putMVar var (Just (ConnectionState.resetPreparedStatementsCache connectionState))
-                throwIO exception
-          Right (result, !newState) ->
-            if ConnectionState.dead newState
-              then do
-                -- The driver gave up on the connection somewhere inside the
-                -- session. Whether the session went on to report that, to
-                -- catch it and fail differently, or to catch it and
-                -- succeed, the connection is not fit to be handed back.
-                Pq.finish (ConnectionState.connection newState)
-                putMVar var Nothing
-                pure result
-              else do
-                putMVar var (Just newState)
-                pure result
+        (result, !newState) <-
+          onException (unmask (Session.run session connectionState)) do
+            -- An exception leaves the connection somewhere inside a round
+            -- trip, and the driver has no way of finding out where. Repairing
+            -- it means draining results and aborting the transaction -
+            -- blocking network IO, performed here under a mask, which on a
+            -- connection whose peer has gone away never returns. The
+            -- interruption being handled would then never land, which is the
+            -- opposite of what the caller asked for. Finishing the connection
+            -- touches nothing but the socket.
+            --
+            -- The connection finished here is the one taken out of the MVar. A
+            -- session that replaced it through 'Hasql.Session.onLibpqConnection'
+            -- loses the replacement along with the rest of the state the
+            -- exception unwound past; closing that one is on the caller, which
+            -- is what the escape hatch already promises.
+            putMVar var Nothing
+            Pq.finish (ConnectionState.connection connectionState)
+
+        if ConnectionState.dead newState
+          then do
+            -- The driver gave up on the connection somewhere inside the
+            -- session. Whether the session went on to report that, to
+            -- catch it and fail differently, or to catch it and
+            -- succeed, the connection is not fit to be handed back.
+            putMVar var Nothing
+            Pq.finish (ConnectionState.connection newState)
+          else do
+            putMVar var (Just newState)
+
+        pure result
