@@ -18,14 +18,20 @@ ConnectionSessionError "The driver has given up on this connection earlier in th
 `Hasql.Connection.use` on a handle whose connection is gone:
 
 ```
-ConnectionSessionError "The connection has been released"
+ConnectionSessionError "The connection is no longer available"
 ```
 
-The second is reached by two routes that have nothing in common. One is
-`Hasql.Connection.release`, where the wording is accurate. The other is `use`
-having finished the connection itself - after a failed send, a socket lost
-mid-receive, or an exception cutting the session short - where the wording
-describes something the caller never did.
+The second is reached by two routes that have nothing in common:
+`Hasql.Connection.release`, and `use` having finished the connection itself
+after a failed send, a socket lost mid-receive, or an exception cutting the
+session short. The message covers both because it names neither.
+
+That is an improvement on where this started. The message used to read "The
+connection has been released", which was accurate for one route and a
+description of something the caller never did for the other; 13915f63 replaced
+it. What is left is not wrong, only silent: a caller looking at a spent handle
+cannot tell whether they released it or whether the driver spent it, and if the
+driver spent it, on what.
 
 ## Where it lands
 
@@ -33,9 +39,10 @@ Both errors are what a caller sees when a connection dies, so both surface
 outside the driver.
 
 `hasql-pool` returns them verbatim as `SessionUsageError`. A pool user whose
-connection died mid-send is told the connection was released. Nothing in the
-message distinguishes that from the pool having been released underneath them,
-which is a different bug with a different fix.
+connection died mid-send is told the connection is no longer available, which is
+what they would also be told had the pool been released underneath them - a
+different situation with a different fix, and nothing in the message separates
+the two.
 
 `hasql-transaction` amplifies the first one. `tryTransaction` catches an error
 from the transaction body and issues `ABORT` before classifying it:
