@@ -120,6 +120,14 @@ data SessionError
     -- session ran on is spent: further 'Hasql.Connection.use' on it fails
     -- with this same error, and 'Hasql.Connection.release' is a no-op.
     -- Pools must discard it rather than return it.
+    --
+    -- Read \"with a new connection\" strictly. This error is transient about
+    -- the operation, not about the handle that reported it - that handle is
+    -- finished, and reporting this again is all it will ever do. A retry
+    -- wrapper that loops on 'Hasql.Errors.isTransient' has to acquire a
+    -- connection between attempts; one that reuses the same
+    -- 'Hasql.Connection.Connection' spins forever on a permanently transient
+    -- error.
     ConnectionSessionError
       -- | Human-readable details about the connection error.
       Text

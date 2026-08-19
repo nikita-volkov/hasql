@@ -50,6 +50,17 @@ class IsError a where
   -- unit that's safe to retry is the caller's whole transaction (or
   -- pipeline), not necessarily the single statement that reported 'True'
   -- here.
+  --
+  -- Note what supplying a clean connection state takes for the errors that
+  -- say the connection is gone. 'ConnectionSessionError' is transient, but
+  -- 'Hasql.Connection.use' has finished the connection before returning it,
+  -- and the 'Hasql.Connection.Connection' it fired on never carries a clean
+  -- state again: every later 'Hasql.Connection.use' on that same handle
+  -- reports the same transient error. Retrying there means acquiring a
+  -- connection or asking a pool for one, never calling
+  -- 'Hasql.Connection.use' again on the value that just failed. A loop that
+  -- retries in place on a 'True' from this method does not eventually
+  -- recover; it spins.
   isTransient :: a -> Bool
 
   -- | The SQLSTATE the server reported, if this error carries one at all.

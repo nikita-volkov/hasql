@@ -12,6 +12,8 @@
 
   The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned `DriverSessionError` without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
 
+- `isTransient` on a `ConnectionSessionError` now describes the operation only, never the handle that reported it. It was already documented as "retrying against a clean connection state will succeed", and a pool supplies one; what changed is that the `Hasql.Connection.Connection` the error fired on never will, since `use` finished it. Retry loops that acquire a connection per attempt are unaffected. One that reuses the same handle used to recover once the driver had repaired it, and now spins on an error that is transient forever.
+
 ## Non-breaking
 
 - Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
