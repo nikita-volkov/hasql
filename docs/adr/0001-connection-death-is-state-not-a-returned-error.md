@@ -6,6 +6,19 @@ letting `Hasql.Connection.use` derive it from the `SessionError` the session ret
 `use` finishes the connection when the flag comes back set, and every session operation
 short-circuits on it.
 
+`use` also derives the verdict from the returned error, as a second net beside the flag:
+
+```haskell
+if ConnectionState.dead newState || either connectionIsSpent (const False) result
+```
+
+The two catch different things. The flag catches a verdict the session went on to
+swallow, which no derivation can see. The derivation catches an error that never passed
+through `onConnectionState` and so never reached the flag - a session calling `throwError`
+with a `ConnectionSessionError` of its own, for one. Neither subsumes the other, so both
+run. Everything below is about why the flag cannot be dropped in favour of the derivation
+alone.
+
 The simpler design is to derive it: `use` finishes the connection whenever the session
 returns `ConnectionSessionError` or `DriverSessionError`, with no flag and no per-operation
 guard. That design is what we settled on first, and it is what we would still prefer. It
@@ -40,11 +53,11 @@ session error. Dropping `MonadError` from `Session`; splitting the error type so
 fatal cases travel on a channel `catchError` does not cover; or making `catchError`
 rethrow rather than absorb that subset. With any of those in place,
 `ConnectionState.dead`, `Hasql.Engine.Contexts.Session.onConnectionState` and its guard
-can go, and `use` can classify the returned error directly.
+can go, and the derivation `use` already performs is left standing on its own.
 
 Note that the classifier survives either way: `Hasql.Engine.Errors.connectionIsSpent` is
-what sets the flag today and is what `use` would consult tomorrow. Only its placement is
-at stake, not the classification itself.
+what sets the flag, and it is what `use` already consults directly. Only the flag's
+placement is at stake, not the classification itself.
 
 `Integration.Sharing.Session.RecoveredPipelineFailureSpec` is the test of whether the
 blocker is still there. It catches a pipeline send failure inside a session and asserts
