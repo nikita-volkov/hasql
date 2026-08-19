@@ -2,25 +2,19 @@
 
 ## Non-breaking
 
-- Prepared statements are now named deterministically — `hasql_` followed by a SHA-256 digest of the SQL and the parameter OIDs — instead of by a per-connection counter. The same statement therefore gets the same name on every connection and in every process, which is what lets PgBouncer 1.21+ keep track of statements across a transaction-pooled deployment instead of losing the mapping and reporting `08P01`. (#324)
+- Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
 
-  The names appear in `pg_prepared_statements` and in pooler logs, so anything matching on their previous shape needs updating. Nothing in the Haskell API changed.
-
-- `Hasql.Pipeline` now documents that a failed pipeline does not imply that nothing happened. A server-side error discards the whole pipeline, but a decoding failure is raised only after the server has already committed it — so the pipeline returns an error with all of its effects durable.
-
-- `42P05` ("prepared statement ... already exists") is now treated as a transient `ServerError`, and the statement cache mapping survives it in both `Hasql.Session` and `Hasql.Pipeline`. Since prepared statement names are content-addressed (#324), a name collision is a collision on the statement itself, so whatever the server already holds under that name is the very statement hasql was about to `PARSE`; the next use of the statement finds it warm and succeeds without another `PARSE`. (#331)
-
-- `IsError`'s `isTransient` haddock now states precisely what the flag has always had to mean: that retrying succeeds against a clean connection state, not that the single failed statement can necessarily be retried in place — inside an explicit transaction only a `ROLLBACK` gets out, so the unit that's safe to retry is the caller's whole transaction or pipeline. (#331)
+- `42P05` ("prepared statement already exists") is now transient, and the statement cache mapping survives it. (#331)
 
 ## Fixes
 
-- `ServerError`'s `isTransient` used to hard-code `False`, which classified the server errors an application most needs to retry — `serialization_failure` (`40001`), `deadlock_detected` (`40P01`), lock timeouts, admin/crash shutdowns, connection exceptions, resource exhaustion, and landing on a standby after failover (`read_only_sql_transaction`) — as permanent. It now consults the SQLSTATE for these codes, alongside the existing `42P05` case. `StatementError`'s `RowStatementError` case also discarded its wrapped `RowError` instead of delegating to it (`StatementSessionError` and `ScriptSessionError` already delegated correctly). All three levels now delegate `isTransient` to the wrapped error, so the flag surfaces correctly no matter how deeply an error is nested. (#325)
+- `Hasql.Connection.acquire` now finishes the underlying connection on every failure path, and no longer ignores the result of its session-init statements.
 
-- `ConnectionSessionError` used to be the catch-all for every libpq send-side failure, including requests libpq refuses outright (e.g. more than 65535 parameters in one statement, or a command sent while another is already in progress) that fail identically on every retry. Since `isTransient (ConnectionSessionError _) = True`, those refusals were retried forever under any retry-on-transient wrapper. `PQstatus` is now checked after a failed send: a genuine connection loss (`ConnectionBad`) still becomes `ConnectionSessionError` (transient), while a refusal with the connection otherwise intact becomes `DriverSessionError`, which `isTransient` reports `False` for. (#327)
+- `isTransient` now consults the SQLSTATE instead of being hard-coded to `False` on `ServerError`, and delegates through every wrapping error type. Serialization failures, deadlocks, lock timeouts, shutdowns, resource exhaustion and read-only standbys were all classified as permanent. (#325)
 
-- `Hasql.Connection.acquire`'s `ConnectionError` classification recognized far fewer transient failures than it should have: `"the database system is starting up"`, `"the database system is in recovery mode"`, `"sorry, too many clients already"`, `"server closed the connection unexpectedly"`, `"connection reset by peer"`, `"network is unreachable"`, `"no route to host"`, `"connection timed out"`, `"could not fork new process"`, and `"terminating connection due to administrator command"` all previously fell through to `OtherConnectionError`, so `isTransient` reported `False` for what are, in every case, worth retrying. Conversely, `"no such file or directory"` (a missing Unix-socket path — a misconfiguration, not a networking hiccup) was wrongly grouped with the transient cases; it's now `OtherConnectionError`. (#329)
+- Send requests libpq refuses outright (e.g. over 65535 parameters) now yield a non-transient `DriverSessionError` instead of a `ConnectionSessionError` that retry wrappers retried forever. (#327)
 
-- A send failure partway through a pipeline (e.g. a statement with more than 65535 parameters, which libpq and `pqi-native` >=1.0.1.5 both reject locally) used to return the connection still in pipeline mode, with the commands dispatched before the failure holding undrained results. Every later session on that connection then failed as a `ConnectionSessionError` - the kind `isTransient` reports as retryable - while the connection was in fact stuck. `Hasql.Comms.Roundtrip.toPipelineIO` now cancels whatever dispatched commands are still executing and leaves the pipeline mode - syncing and draining the withheld results - before returning the send error. If that restoration itself fails, the connection's protocol state is indeterminate, so `toPipelineIO` finishes it on the spot instead of handing it back to `Hasql.Connection.use` as reusable. (#326)
+- A send failure partway through a pipeline left the connection stuck in pipeline mode with undrained results. It is now cancelled and drained before the error is returned, and finished outright if that fails. (#326)
 
 # v2.0.1.0
 
