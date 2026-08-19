@@ -1,10 +1,6 @@
 # Upcoming
 
-## Non-breaking
-
-- Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
-
-- `42P05` ("prepared statement already exists") is now transient, and the statement cache mapping survives it. (#331)
+## Breaking
 
 - A session error that says the connection is no longer trustworthy - `ConnectionSessionError` or `DriverSessionError` - now means exactly that. `Hasql.Connection.use` closes the connection before returning either of them, and the handle is spent from then on: further `use` on it reports `ConnectionSessionError`, and `Hasql.Connection.release` on it does nothing. Pools already discarded connections on both errors, so this makes the driver keep the contract its callers were already assuming.
 
@@ -15,6 +11,12 @@
 - An exception that cuts a session short - one thrown by the session itself, or an interruption delivered from another thread by `timeout`, `race` or `killThread` - now closes the connection. It propagates as before, but the handle it fired on is spent from then on, so a `timeout` around a session costs a connection rather than returning one. Pools reconnect; code holding a `Hasql.Connection.Connection` directly has to acquire a new one. Server-side session state - anything `set` on the connection - goes with it, where it used to be deliberately preserved across an interruption.
 
   The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned `DriverSessionError` without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
+
+## Non-breaking
+
+- Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
+
+- `42P05` ("prepared statement already exists") is now transient, and the statement cache mapping survives it. (#331)
 
 ## Fixes
 
