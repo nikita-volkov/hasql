@@ -1,6 +1,7 @@
 -- Docs: https://hspec.github.io/hspec-discover.html
 module Integration.Sharing.SpecHook where
 
+import Helpers.PostgresContainer qualified as PostgresContainer
 import Helpers.Scripts qualified as Scripts
 import Pqi qualified
 import Prelude
@@ -18,7 +19,7 @@ hook hookedSpec = do
       describe (toList tagName)
         $ aroundAllWith
           ( \action adapter ->
-              TestcontainersPostgresql.run
+              PostgresContainer.run
                 TestcontainersPostgresql.Config
                   { tagName,
                     auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",

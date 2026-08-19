@@ -313,6 +313,7 @@ test-suite library-tests
     Helpers.Adapters
     Helpers.Dsls.Execution
     Helpers.Dsls.Statement
+    Helpers.PostgresContainer
     Helpers.Scripts
     Helpers.Statements
     Helpers.Statements.BrokenSyntax
@@ -389,5 +390,6 @@ test-suite library-tests
     random >=1.3 && <1.4,
     random ^>=1.3.1,
     rerebase >=1 && <2,
+    testcontainers ^>=0.5,
     testcontainers-postgresql ^>=0.2,
     text-builder >=1 && <1.1,

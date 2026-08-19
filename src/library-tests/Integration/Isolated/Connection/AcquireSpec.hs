@@ -4,6 +4,7 @@ import Hasql.Connection qualified
 import Hasql.Connection qualified as Connection
 import Hasql.Connection.Settings qualified as Settings
 import Hasql.Errors qualified as Errors
+import Helpers.PostgresContainer qualified as PostgresContainer
 import Pqi qualified
 import Prelude
 import Test.Hspec
@@ -29,7 +30,7 @@ spec = do
 
   describe "postgres:9" do
     it "Succeeds" \adapter -> do
-      TestcontainersPostgresql.run
+      PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:9",
             auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
@@ -52,7 +53,7 @@ spec = do
 
   describe "postgres:18" do
     it "Succeeds" \adapter -> do
-      TestcontainersPostgresql.run
+      PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
             auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
@@ -74,7 +75,7 @@ spec = do
               expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
     it "Fails with authentication error on incorrect password" \adapter -> do
-      TestcontainersPostgresql.run
+      PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
             auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
@@ -99,7 +100,7 @@ spec = do
               expectationFailure ("Expected AuthenticationAcquireError, but got: " <> show err)
 
     it "Fails with authentication error on incorrect user" \adapter -> do
-      TestcontainersPostgresql.run
+      PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
             auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
@@ -136,7 +137,7 @@ byDistro tagName = do
         describe ("username: " <> toList username) do
           describe ("password: " <> toList password) do
             it "connects" \adapter -> do
-              TestcontainersPostgresql.run
+              PostgresContainer.run
                 TestcontainersPostgresql.Config
                   { tagName,
                     auth = TestcontainersPostgresql.CredentialsAuth username password,
@@ -198,7 +199,7 @@ byDistro tagName = do
 
     describe "AuthenticationAcquireError" do
       it "is reported for invalid credentials" \adapter -> do
-        TestcontainersPostgresql.run
+        PostgresContainer.run
           TestcontainersPostgresql.Config
             { tagName,
               auth = TestcontainersPostgresql.CredentialsAuth "password" "correctpassword",
