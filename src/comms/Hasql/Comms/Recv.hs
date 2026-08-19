@@ -50,7 +50,13 @@ singleResult tag handler = Recv \connection -> runExceptT do
   ExceptT do
     result <- Pq.getResult connection
     case result of
-      Nothing -> pure (Right result)
+      Nothing -> do
+        status <- Pq.status connection
+        if status == Pq.ConnectionBad
+          then do
+            errorMessage <- Pq.errorMessage connection
+            pure (Left (NoResultsError tag True errorMessage))
+          else pure (Right result)
       Just _ -> do
         -- Unreachable today: 'singleResult' backs 'queryParams' and
         -- 'queryPrepared', which go through the extended protocol where
@@ -80,7 +86,13 @@ allResults tag handler = Recv \connection -> do
   let loop resultIndex maybeError = do
         result <- Pq.getResult connection
         case result of
-          Nothing -> pure maybeError
+          Nothing -> do
+            status <- Pq.status connection
+            if status == Pq.ConnectionBad
+              then do
+                errorMessage <- Pq.errorMessage connection
+                pure (Just (NoResultsError tag True errorMessage))
+              else pure maybeError
           Just result -> do
             decodedResult <- ResultDecoder.toHandler handler result
             case decodedResult of
