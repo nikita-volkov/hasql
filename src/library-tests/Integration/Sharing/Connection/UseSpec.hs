@@ -46,6 +46,33 @@ spec = do
 
         result `shouldBe` Right (3 :: Int64)
 
+  describe "Release" do
+    it "Is idempotent on a connection that never failed" \config -> do
+      -- 'release' must not touch a connection it has already finished:
+      -- libpq forbids calling anything, including a second PQfinish, on a
+      -- handle after PQfinish. Every other idempotency example gets there
+      -- via a prior failure or exception; this is the plain path, with
+      -- nothing having gone wrong first.
+      Scripts.onPreparableConnection config \connection -> do
+        _ <- Connection.use connection (Session.script "select 1")
+        Connection.release connection
+        Connection.release connection
+
+    it "Makes `use` report the connection as gone rather than reconnecting" \config -> do
+      -- Releasing is one of the three ways a handle goes spent (the others
+      -- being a session that finishes the connection, and an exception). No
+      -- other example reaches "spent by `release`" directly.
+      Scripts.onPreparableConnection config \connection -> do
+        Connection.release connection
+
+        result <- Connection.use connection (Session.script "select 1")
+        case result of
+          Left (Errors.ConnectionUseError _) -> pure ()
+          _ -> expectationFailure ("Unexpected result: " <> show result)
+
+        -- Releasing an already-spent connection remains a no-op.
+        Connection.release connection
+
   describe "Concurrency" do
     it "handles concurrent connections properly" \config -> do
       Scripts.onPreparableConnection config \connection1 -> do
