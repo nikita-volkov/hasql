@@ -209,7 +209,7 @@ use (Connection var) session =
     takeMVar var >>= \case
       Nothing -> do
         putMVar var Nothing
-        pure (Left (ConnectionSessionError "The connection has been released"))
+        pure (Left (ConnectionSessionError "The connection is no longer available"))
       Just connectionState -> do
         (result, !newState) <-
           onException (unmask (Session.run session connectionState)) do
