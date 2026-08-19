@@ -1,5 +1,14 @@
 # Connection death is state, not a returned error
 
+> **Status: Superseded by [ADR 0002](0002-narrowing-the-error-a-session-can-catch.md)**
+>
+> ADR 0002 implements the unblocking change described in the "What would unblock it" section
+> below: the error type is split so fatal cases travel on a channel `catchError` does not
+> cover. As a result, `ConnectionState.dead`, `onConnectionState`, and the per-operation
+> guard have been removed. The analysis that follows is preserved for historical context.
+
+---
+
 When the driver gives up on a connection - a failed send, a socket lost mid-receive - it
 records that verdict in `ConnectionState.dead` at the point of failure, rather than
 letting `Hasql.Connection.use` derive it from the `SessionError` the session returns.
