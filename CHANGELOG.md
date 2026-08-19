@@ -4,17 +4,18 @@
 
 - `Hasql.Decoders.rowVector` now decodes into any `Data.Vector.Generic` vector (`Vector`, unboxed, storable, primitive) instead of only the boxed `Data.Vector.Vector`, picked by the type the result is consumed as. Call sites that left the vector type to be inferred with nothing pinning it down (no type signature, no boxed-`Vector`-specific downstream use) will now hit an ambiguous type error and need an explicit annotation. (#336)
 
-- `Hasql.Connection.use` now returns `UseError` instead of a single session-error type. `UseError` has three constructors:
+- `Hasql.Connection.use` now returns `UseError` instead of a single session-error type. `UseError` has two constructors:
 
   - `SessionUseError` wraps a `SessionError` - the session ran but reported a recoverable error (a server error, a decode failure). The connection is still live.
-  - `ConnectionUseError` - the connection was lost. `use` has closed the handle before returning; every subsequent `use` on the same `Connection` reports this error again. It is transient: retry against a fresh connection or ask the pool for one.
-  - `DriverUseError` - an unrecoverable driver-level failure (e.g. libpq rejected the request outright). The connection is closed. It is not transient.
+  - `ConnectionUseError` - the connection is gone, for any reason: a dropped socket, a request libpq refused to send outright, an unexpected response, a bug in Hasql. `use` has closed the handle before returning; every subsequent `use` on the same `Connection` reports this error again.
 
-  Code that pattern-matched on the old session-error type now matches on `UseError`. The `SessionUseError` arm covers the recoverable errors that `SessionError` already expressed; the two new arms replace the former `ConnectionSessionError`/`DriverSessionError` distinction.
+  Code that pattern-matched on the old session-error type now matches on `UseError`. The `SessionUseError` arm covers the recoverable errors that `SessionError` already expressed; `ConnectionUseError` replaces every constructor that meant the connection was gone.
 
-- `Hasql.Connection.acquire` now returns `AcquireError` instead of a plain `Text` message. The constructors are `NetworkingAcquireError`, `AuthenticationAcquireError`, `CompatibilityAcquireError`, and `OtherAcquireError`, all carrying a `Text` reason. Only `NetworkingAcquireError` is transient.
+- `Hasql.Errors.IsError` no longer has an `isTransient` method. Whether a failure is worth retrying depends on the caller's retry policy and, for server errors, the SQLSTATE reported through `toSqlState` - not on a verdict the driver hands out. No replacement is provided.
 
-- A `ConnectionUseError` or `DriverUseError` now closes the connection before returning. `Hasql.Connection.release` on a spent handle does nothing. Pools already discarded connections on fatal errors, so this makes the driver keep the contract its callers were already assuming.
+- `Hasql.Connection.acquire` now returns `AcquireError` instead of a plain `Text` message. The constructors are `NetworkingAcquireError`, `AuthenticationAcquireError`, `CompatibilityAcquireError`, and `OtherAcquireError`, all carrying a `Text` reason.
+
+- A `ConnectionUseError` now closes the connection before returning. `Hasql.Connection.release` on a spent handle does nothing. Pools already discarded connections on fatal errors, so this makes the driver keep the contract its callers were already assuming.
 
   As a consequence `Hasql.Connection.release` is idempotent, and a released connection can no longer be reached through `use`. Both were undefined behaviour before: `libpq` forbids touching a connection after `PQfinish`, and the driver already closed connections it could not clean up.
 
@@ -24,21 +25,17 @@
 
   The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned error without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
 
-- `isTransient` on a `ConnectionUseError` now describes the operation only, never the handle that reported it. It was already documented as "retrying against a clean connection state will succeed", and a pool supplies one; what changed is that the `Hasql.Connection.Connection` the error fired on never will, since `use` finished it. Retry loops that acquire a connection per attempt are unaffected. One that reuses the same handle used to recover once the driver had repaired it, and now spins on an error that is transient forever.
-
 ## Non-breaking
 
 - Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
 
-- `42P05` ("prepared statement already exists") is now transient, and the statement cache mapping survives it. (#331)
+- `42P05` ("prepared statement already exists") no longer forces the driver to evict the statement cache entry, and the mapping survives it. (#331)
 
 ## Fixes
 
 - `Hasql.Connection.acquire` now finishes the underlying connection on every failure path, and no longer ignores the result of its session-init statements.
 
-- `isTransient` now consults the SQLSTATE instead of being hard-coded to `False` on `ServerError`, and delegates through every wrapping error type. Serialization failures, deadlocks, lock timeouts, shutdowns, resource exhaustion and read-only standbys were all classified as permanent. (#325)
-
-- Send requests libpq refuses outright (e.g. over 65535 parameters) now yield a non-transient `DriverUseError` instead of a `ConnectionUseError` that retry wrappers retried forever. The connection is closed with it. (#327)
+- Send requests libpq refuses outright (e.g. over 65535 parameters) now close the connection, so a retry wrapper cannot resend the identical rejected request against the same handle forever. (#327)
 
 - A send failure partway through a pipeline left the connection stuck in pipeline mode with undrained results, so every later session on it failed too. The connection is now closed rather than handed back. (#326)
 

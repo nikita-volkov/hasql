@@ -431,18 +431,18 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
 
       describe "Session" do
-        it "is treated as transient and the cache mapping survives" \config -> do
+        it "is reported as 42P05 and the cache mapping survives" \config -> do
           name <- discoverPreparedStatementName config collidingStatement
           Scripts.onPreparableConnection config \connection -> do
             seedNameCollision connection name (Statement.toSql collidingStatement)
 
-            -- The colliding execution fails, but transiently, carrying 42P05.
+            -- The colliding execution fails, carrying 42P05.
             result1 <- Connection.use connection (Session.statement () collidingStatement)
             case result1 of
-              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _)))) ->
-                Errors.isTransient err `shouldBe` True
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42P05" _ _ _ _)))) ->
+                pure ()
               other ->
-                expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
+                expectationFailure ("Expected a 42P05 ServerError, got: " <> show other)
 
             -- The same statement then succeeds, warm, without another PARSE.
             result2 <- Connection.use connection (Session.statement () collidingStatement)
@@ -454,17 +454,17 @@ spec = do
             length (filter (== name) names) `shouldBe` 1
 
       describe "Pipeline" do
-        it "is treated as transient and the cache mapping survives" \config -> do
+        it "is reported as 42P05 and the cache mapping survives" \config -> do
           name <- discoverPreparedStatementName config collidingStatement
           Scripts.onPreparableConnection config \connection -> do
             seedNameCollision connection name (Statement.toSql collidingStatement)
 
             result1 <- Connection.use connection (Session.pipeline (Pipeline.statement () collidingStatement))
             case result1 of
-              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError err@(Errors.ServerError "42P05" _ _ _ _)))) ->
-                Errors.isTransient err `shouldBe` True
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError (Errors.ServerError "42P05" _ _ _ _)))) ->
+                pure ()
               other ->
-                expectationFailure ("Expected a transient 42P05 ServerError, got: " <> show other)
+                expectationFailure ("Expected a 42P05 ServerError, got: " <> show other)
 
             result2 <- Connection.use connection (Session.pipeline (Pipeline.statement () collidingStatement))
             result2 `shouldBe` Right 42

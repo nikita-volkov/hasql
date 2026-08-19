@@ -52,21 +52,17 @@ spec = do
         interruptWith connection
         shouldReportTheConnectionAsGone connection
 
-    it "Keeps reporting the spent handle as transient, which is a claim about a new connection" \config ->
-      -- 'Errors.isTransient' means "retrying against a clean connection state
-      -- will succeed", and a spent handle never carries one again. So this
-      -- stays 'True' however many times it is asked, and a retry wrapper that
-      -- loops on it while reusing the same handle spins rather than
-      -- recovering. Pinned here because the promise is made in the haddock on
-      -- 'Errors.isTransient' and on 'Errors.ConnectionUseError', and a
-      -- promise with no example is one that drifts.
+    it "Keeps reporting the spent handle as gone" \config ->
+      -- A spent handle never carries a usable connection state again, so
+      -- 'use' keeps reporting 'Errors.ConnectionUseError' however many times
+      -- it is asked, rather than reconnecting.
       Scripts.onPreparableConnection config \connection -> do
         interruptWith connection
         replicateM_ 3 do
           result <- Connection.use connection (Session.script "select 1")
           case result of
-            Left err -> Errors.isTransient err `shouldBe` True
-            Right () -> expectationFailure "Expected the spent handle to keep failing"
+            Left (Errors.ConnectionUseError _) -> pure ()
+            _ -> expectationFailure ("Expected the spent handle to keep failing: " <> show result)
 
     it "Leaves the connection releasable" \config ->
       -- 'release' on a connection the driver already finished must not

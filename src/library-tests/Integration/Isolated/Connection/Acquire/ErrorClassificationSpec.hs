@@ -67,8 +67,8 @@ spec = do
               -- English (the default test locale) this same failure is
               -- NetworkingAcquireError (see the "AcquireSpec" tests). Under
               -- French, none of the (English) patterns match, so it falls
-              -- through to OtherAcquireError, and `isTransient` silently
-              -- flips from True to False for an identical underlying failure.
+              -- through to OtherAcquireError instead, for an identical
+              -- underlying failure.
               --
               -- This is a known, documented limitation (see the Haddock on
               -- `interpretConnectionError`), not something this fix addresses:

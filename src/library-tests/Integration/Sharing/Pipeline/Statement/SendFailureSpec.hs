@@ -55,17 +55,6 @@ spec = do
     it "Captures the error" \config -> do
       Scripts.onUnpreparableConnection config runFailingPipeline
 
-    it "Reports it as non-transient" \config -> do
-      Scripts.onUnpreparableConnection config \connection -> do
-        -- libpq refused the request itself without touching the socket, so
-        -- the same request will be refused the same way on any other
-        -- connection. Reporting this as transient is what made retry
-        -- wrappers spin on it forever.
-        result <- Connection.use connection (Session.pipeline failingPipeline)
-        case result of
-          Left err -> Errors.isTransient err `shouldBe` False
-          Right () -> expectationFailure "The pipeline unexpectedly succeeded"
-
     it "Finishes the connection" \config -> do
       -- The driver cannot vouch for the protocol state of a connection it
       -- failed to send on: the mode is still on, commands are queued behind
@@ -109,7 +98,7 @@ spec = do
             Connection.use connection
               $ Session.pipeline failingOnFirstStatementPipeline
           case result of
-            Left (Errors.DriverUseError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected pipeline result: " <> show result)
           followUpResult <-
             Connection.use connection
@@ -141,7 +130,7 @@ spec = do
                 <$> Pipeline.statement () (insertStatement tableName)
                 <*> Execution.pipelineByParams Statements.TooManyParams
           case pipelineResult of
-            Left (Errors.DriverUseError _) -> pure ()
+            Left (Errors.ConnectionUseError _) -> pure ()
             _ -> expectationFailure ("Unexpected pipeline result: " <> show pipelineResult)
 
           countResult <- Connection.use observer (Session.statement () (countStatement tableName))
@@ -171,5 +160,5 @@ runFailingPipeline connection = do
     Connection.use connection
       $ Session.pipeline failingPipeline
   case result of
-    Left (Errors.DriverUseError _) -> pure ()
+    Left (Errors.ConnectionUseError _) -> pure ()
     _ -> expectationFailure ("Unexpected pipeline result: " <> show result)

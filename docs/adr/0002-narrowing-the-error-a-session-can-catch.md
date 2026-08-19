@@ -1,5 +1,16 @@
 # Narrowing the error a session can catch
 
+> **Amended by [ADR 0003](0003-the-fatal-side-of-useerror-needs-no-subdivision.md)**
+>
+> ADR 0003 merges this document's two fatal constructors, `ConnectionUseError` and
+> `DriverUseError`, into one, and removes `isTransient` from `IsError` outright. Nothing here
+> shipped before that merge, so this is a revision of unreleased work rather than a second
+> breaking change. This document's thesis - that `SessionError` narrows to
+> connection-survivable failures while connection-fatal failures travel on a channel
+> `catchError` structurally cannot reach - is unaffected and remains authoritative on that
+> axis; only its subdivision of the fatal side is superseded. References to `DriverUseError`
+> and to `isTransient` below describe the design as it stood before that amendment.
+
 `Session` keeps its `MonadError` instance. What changes is the type that instance ranges
 over: `SessionError` is narrowed to failures that leave the connection usable, and every
 connection-fatal failure moves into a new outer type that `catchError` structurally cannot

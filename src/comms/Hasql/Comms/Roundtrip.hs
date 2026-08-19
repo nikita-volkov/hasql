@@ -92,21 +92,17 @@ script tag sql =
     (Recv.allResults tag ResultDecoder.ok)
 
 -- | Error of a round trip, carrying the tag of the action that caused it.
+--
+-- A 'ClientError' means the send itself failed - either nothing reached the
+-- server and nothing will until the connection is replaced, or the
+-- connection is still usable but libpq refused the request outright (e.g.
+-- more than 65535 parameters, or a command issued while another is in
+-- progress). Both finish the connection the same way (see
+-- 'Hasql.Engine.Errors.fromSendError'), so this carries no further
+-- distinction between them.
 data Error tag
   = ClientError
       tag
-      -- | Whether @PQstatus@ reported the connection as bad right after the
-      -- send failed.
-      --
-      -- 'True' means nothing reached the server and nothing will until the
-      -- connection is replaced. 'False' means the connection is still usable
-      -- and libpq refused the request itself - e.g. more than 65535
-      -- parameters, or a command issued while another is in progress - so the
-      -- same request will be refused the same way on any connection.
-      --
-      -- This is all the callers need in order to decide whether the failure is
-      -- worth retrying.
-      Bool
       Text
   | ServerError (Recv.Error tag)
   deriving stock (Show, Eq, Functor)
@@ -114,12 +110,12 @@ data Error tag
 instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
-    ClientError tag _ _ -> tag
+    ClientError tag _ -> tag
     ServerError recvError -> extract recvError
 
   {-# INLINE duplicate #-}
   duplicate = \case
-    clientError@(ClientError _ connectionLost details) -> ClientError clientError connectionLost details
+    clientError@(ClientError _ details) -> ClientError clientError details
     ServerError recvError -> ServerError (fmap ServerError (duplicate recvError))
 
 -- | Run a round trip in pipeline mode, entering the mode and leaving it
@@ -179,7 +175,5 @@ runSend send connection = do
     Right () -> pure (Right ())
     Left tag -> do
       errorMessage <- Pq.errorMessage connection
-      status <- Pq.status connection
-      let connectionLost = status == Pq.ConnectionBad
-          message = maybe "" decodeUtf8Lenient errorMessage
-      pure (Left (ClientError tag connectionLost message))
+      let message = maybe "" decodeUtf8Lenient errorMessage
+      pure (Left (ClientError tag message))

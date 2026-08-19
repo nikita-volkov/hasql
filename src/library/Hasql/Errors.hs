@@ -38,34 +38,21 @@ import TextBuilder qualified
 -- * Classes
 
 -- | A class for types that can be treated as errors.
+--
+-- This is a rendering interface: it turns an error value into a
+-- human-readable message, a list of dynamic details, and - where the error
+-- carries one - the server's SQLSTATE. It deliberately does not offer a
+-- retryability verdict. Whether an operation is worth retrying depends on
+-- the caller's retry policy, the transaction it sits inside, and the
+-- SQLSTATE where one is available - not on a boolean this class hands out.
+-- Hasql declines to own that decision, so the omission here is not an
+-- oversight.
 class IsError a where
   -- | Convert the error to a human-readable message with no dynamic details.
   toMessage :: a -> Text
 
   -- | Convert the error to a list of key-value pairs of dynamic details.
   toDetails :: a -> [(Text, Text)]
-
-  -- | Whether retrying against a clean connection state will succeed.
-  --
-  -- This is a statement about the connection, not about the caller's unit of
-  -- work. Inside an explicit transaction a failed statement cannot be
-  -- retried in place: the transaction is aborted and only a @ROLLBACK@ gets
-  -- the connection out of that state, same as for any other error. So the
-  -- unit that's safe to retry is the caller's whole transaction (or
-  -- pipeline), not necessarily the single statement that reported 'True'
-  -- here.
-  --
-  -- Note what supplying a clean connection state takes for the errors that
-  -- say the connection is gone. 'ConnectionUseError' is transient, but
-  -- 'Hasql.Connection.use' has finished the connection before returning it,
-  -- and the 'Hasql.Connection.Connection' it fired on never carries a clean
-  -- state again: every later 'Hasql.Connection.use' on that same handle
-  -- reports the same transient error. Retrying there means acquiring a
-  -- connection or asking a pool for one, never calling
-  -- 'Hasql.Connection.use' again on the value that just failed. A loop that
-  -- retries in place on a 'True' from this method does not eventually
-  -- recover; it spins.
-  isTransient :: a -> Bool
 
   -- | The SQLSTATE the server reported, if this error carries one at all.
   --
@@ -130,12 +117,6 @@ instance IsError AcquireError where
     OtherAcquireError reason ->
       [("reason", reason)]
 
-  isTransient = \case
-    NetworkingAcquireError {} -> True
-    AuthenticationAcquireError {} -> False
-    CompatibilityAcquireError {} -> False
-    OtherAcquireError {} -> False
-
 instance IsError ServerError where
   toMessage _ =
     "Server error"
@@ -147,33 +128,6 @@ instance IsError ServerError where
         maybe [] (\h -> [("hint", h)]) hint,
         maybe [] (\p -> [("position", (TextBuilder.toText . TextBuilder.decimal) p)]) position
       ]
-
-  -- 42P05 ("prepared statement already exists") is transient: prepared
-  -- statement names are content-addressed, so a collision on the name is a
-  -- collision on the statement, and the driver keeps the cache mapping that
-  -- lets the next use find it warm.
-  --
-  -- The rest are the SQLSTATEs that a retry against a clean connection can
-  -- plausibly turn into success: serialization/deadlock conflicts, lock
-  -- timeouts, the server shutting the connection down or refusing new work,
-  -- resource exhaustion, and landing on a standby after failover.
-  isTransient (ServerError code _ _ _ _) =
-    code
-      `elem` [ "42P05", -- prepared_statement_exists
-               "40001", -- serialization_failure
-               "40P01", -- deadlock_detected
-               "55P03", -- lock_not_available
-               "57P01", -- admin_shutdown
-               "57P02", -- crash_shutdown
-               "57P03", -- cannot_connect_now
-               "08000", -- connection_exception
-               "08003", -- connection_does_not_exist
-               "08006", -- connection_failure
-               "53100", -- disk_full
-               "53200", -- out_of_memory
-               "53300", -- too_many_connections
-               "25006" -- read_only_sql_transaction
-             ]
 
   toSqlState (ServerError code _ _ _ _) = Just code
 
@@ -189,8 +143,6 @@ instance IsError CellError where
       []
     DeserializationCellError reason ->
       [("reason", reason)]
-
-  isTransient = const False
 
 instance IsError StatementError where
   toMessage = \case
@@ -229,14 +181,6 @@ instance IsError StatementError where
     UnexpectedResultStatementError reason ->
       [("reason", reason)]
 
-  isTransient = \case
-    ServerStatementError executionError -> isTransient executionError
-    UnexpectedRowCountStatementError {} -> False
-    UnexpectedColumnCountStatementError {} -> False
-    UnexpectedColumnTypeStatementError {} -> False
-    RowStatementError _ rowError -> isTransient rowError
-    UnexpectedResultStatementError {} -> False
-
   toSqlState = \case
     ServerStatementError executionError -> toSqlState executionError
     UnexpectedRowCountStatementError {} -> Nothing
@@ -260,8 +204,6 @@ instance IsError RowError where
         <> toDetails cellErr
     RefinementRowError reason ->
       [("reason", reason)]
-
-  isTransient = const False
 
 instance IsError SessionError where
   toMessage = \case
@@ -291,11 +233,6 @@ instance IsError SessionError where
       where
         formatType (schema, name) = maybe "" ((<> ".") . TextBuilder.text) schema <> TextBuilder.text name
 
-  isTransient = \case
-    StatementSessionError _ _ _ _ _ statementError -> isTransient statementError
-    ScriptSessionError _ serverError -> isTransient serverError
-    MissingTypesSessionError {} -> False
-
   toSqlState = \case
     StatementSessionError _ _ _ _ _ statementError -> toSqlState statementError
     ScriptSessionError _ serverError -> toSqlState serverError
@@ -307,31 +244,13 @@ instance IsError UseError where
       toMessage err
     ConnectionUseError {} ->
       "Connection error"
-    DriverUseError {} ->
-      "Driver error"
 
   toDetails = \case
     SessionUseError err ->
       toDetails err
     ConnectionUseError reason ->
       [("reason", reason)]
-    DriverUseError reason ->
-      [("reason", reason)]
-
-  -- 'ConnectionUseError' is transient, but 'Hasql.Connection.use' has
-  -- finished the connection before returning it, and the
-  -- 'Hasql.Connection.Connection' it fired on never carries a clean state
-  -- again: every later 'Hasql.Connection.use' on that same handle reports
-  -- the same transient error. Retrying there means acquiring a connection
-  -- or asking a pool for one, never calling 'Hasql.Connection.use' again on
-  -- the value that just failed. A loop that retries in place on a 'True'
-  -- from this method does not eventually recover; it spins.
-  isTransient = \case
-    SessionUseError err -> isTransient err
-    ConnectionUseError {} -> True
-    DriverUseError {} -> False
 
   toSqlState = \case
     SessionUseError err -> toSqlState err
     ConnectionUseError {} -> Nothing
-    DriverUseError {} -> Nothing

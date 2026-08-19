@@ -135,61 +135,36 @@ data SessionError
 --
 -- 'SessionUseError' means the connection is still usable and is the only
 -- constructor 'Control.Monad.Except.catchError' on a 'Hasql.Session.Session'
--- can see. The other two mean the connection is gone, and no handler inside
--- the session can intercept them - the split is structural, enforced by the
--- 'Session' 'Control.Monad.Monad' instance rather than by any check a
+-- can see. 'ConnectionUseError' means the connection is gone, and no handler
+-- inside the session can intercept it - the split is structural, enforced by
+-- the 'Session' 'Control.Monad.Monad' instance rather than by any check a
 -- handler has to remember to make.
 data UseError
   = -- | The session reported an ordinary failure and the connection is
     -- still usable.
     SessionUseError
       SessionError
-  | -- | A connection-level error occurred during session execution.
+  | -- | The connection is gone.
     --
-    -- This indicates that the connection to the database was lost or
-    -- became unusable during the session. These errors are transient
-    -- and the operation can be retried with a new connection.
+    -- This covers every way 'Hasql.Connection.use' can lose the connection:
+    -- a dropped socket, a request @libpq@ refused to send outright (e.g.
+    -- more than 65535 parameters in one statement), an unexpected response
+    -- from the server, or a bug in Hasql. The reason text says which.
     --
-    -- __The connection is gone.__ 'Hasql.Connection.use' has finished it
-    -- before returning this, so the 'Hasql.Connection.Connection' the
-    -- session ran on is spent: further 'Hasql.Connection.use' on it fails
-    -- with this same error, and 'Hasql.Connection.release' is a no-op.
-    -- Pools must discard it rather than return it.
+    -- 'Hasql.Connection.use' has finished the connection before returning
+    -- this, so the 'Hasql.Connection.Connection' the session ran on is
+    -- spent: further 'Hasql.Connection.use' on it fails with this same
+    -- error, and 'Hasql.Connection.release' is a no-op. Pools must discard
+    -- it rather than return it.
     --
-    -- Read \"with a new connection\" strictly. This error is transient about
-    -- the operation, not about the handle that reported it - that handle is
-    -- finished, and reporting this again is all it will ever do. A retry
-    -- wrapper that loops on 'Hasql.Errors.isTransient' has to acquire a
-    -- connection between attempts; one that reuses the same
-    -- 'Hasql.Connection.Connection' spins forever on a permanently transient
-    -- error.
+    -- Whatever the cause, the driver cannot vouch for the protocol state of
+    -- a connection a request failed to leave, and repairing one costs more
+    -- than replacing it: the repair would have to push a Sync, which
+    -- flushes and commits the very commands the failed session never got to
+    -- complete. So this is reported uniformly rather than split by cause -
+    -- retry policy belongs to the caller, informed by the reason text and,
+    -- for server errors, 'Hasql.Errors.toSqlState'.
     ConnectionUseError
-      -- | Human-readable details about the connection error.
-      Text
-  | -- | An internal driver error occurred.
-    --
-    -- This indicates either:
-    --
-    -- * A bug in Hasql
-    -- * The PostgreSQL server misbehaving
-    -- * An unexpected response from the server
-    -- * A request @libpq@ refused to send - e.g. more than 65535 parameters
-    --   in one statement
-    --
-    -- Whatever the cause, the same request will fail the same way on a fresh
-    -- connection, so this is never transient. Unless the details point at a
-    -- limit you exceeded yourself, report it as a bug.
-    --
-    -- __The connection is gone.__ 'Hasql.Connection.use' has finished it
-    -- before returning this, so the 'Hasql.Connection.Connection' the
-    -- session ran on is spent: further 'Hasql.Connection.use' on it fails
-    -- with 'ConnectionUseError', and 'Hasql.Connection.release' is a
-    -- no-op. Pools must discard it rather than return it. The driver cannot
-    -- vouch for the protocol state of a connection a request failed to
-    -- leave, and repairing one costs more than replacing it: the repair
-    -- would have to push a Sync, which flushes and commits the very
-    -- commands the failed session never got to complete.
-    DriverUseError
       -- | Human-readable details about what went wrong.
       Text
   deriving stock (Show, Eq)
@@ -364,37 +339,32 @@ data CellError
 -- parsed. Callers that evict a cache entry on ordinary @Parse@ failures
 -- should keep it in this one case, since the statement is in fact on the
 -- server under the name they just tried to commit.
+--
+-- This is a fact about Hasql's own naming scheme, not something derivable
+-- from the PostgreSQL error-code appendix: nothing about @42P05@ in general
+-- says a collision is safe to treat as a cache hit, only Hasql's
+-- content-addressing does.
 isPrepareCollision :: Hasql.Comms.Roundtrip.Error tag -> Bool
 isPrepareCollision = \case
   Hasql.Comms.Roundtrip.ServerError (Hasql.Comms.Recv.ResultError _ _ (Hasql.Comms.ResultDecoder.ServerError code _ _ _ _)) ->
     code == "42P05"
   _ -> False
 
--- | Classify a failed @libpq@ send by whether the connection was lost with it.
+-- | Turn a failed @libpq@ send into a 'UseError'.
 --
--- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
--- socket is worth another connection, a refused request is not.
---
--- These are the two errors a failed send produces, and the driver has
--- nothing to say about the connection's protocol state once one of them
--- happens: either the socket is gone, or @libpq@ refused a request with
--- commands possibly queued behind it and no way to tell what the server has
--- seen. Neither is worth repairing - a repair would have to push a Sync,
--- which flushes and commits the very commands the failed session never got
--- to complete - so the connection is finished instead.
-fromSendError :: Bool -> Text -> UseError
-fromSendError connectionLost details =
-  construct details
-  where
-    construct =
-      if connectionLost
-        then ConnectionUseError
-        else DriverUseError
+-- A failed send always finishes the connection: either the socket is gone,
+-- or @libpq@ refused the request with commands possibly queued behind it and
+-- no way to tell what the server has seen. Neither is worth repairing - a
+-- repair would have to push a Sync, which flushes and commits the very
+-- commands the failed session never got to complete - so the connection is
+-- finished instead.
+fromSendError :: Text -> UseError
+fromSendError = ConnectionUseError
 
 fromRoundtripError :: Hasql.Comms.Roundtrip.Error tag -> UseError
 fromRoundtripError = \case
-  Hasql.Comms.Roundtrip.ClientError _tag connectionLost details ->
-    fromSendError connectionLost details
+  Hasql.Comms.Roundtrip.ClientError _tag details ->
+    fromSendError details
   Hasql.Comms.Roundtrip.ServerError recvError ->
     fromRecvError (Nothing <$ recvError)
 
@@ -403,7 +373,7 @@ fromRecvError = \case
   Hasql.Comms.Recv.ResultError tag _resultOffset resultError ->
     case tag of
       Nothing ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Unexpected error in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Error: ",
@@ -427,7 +397,7 @@ fromRecvError = \case
         ConnectionUseError (maybe "" decodeUtf8Lenient details)
       else case tag of
         Nothing ->
-          (DriverUseError . TextBuilder.toText . mconcat)
+          (ConnectionUseError . TextBuilder.toText . mconcat)
             [ "Unexpectedly got no results in an operation not associated with any statement. ",
               "This indicates a bug in Hasql or the server misbehaving. ",
               "Details: ",
@@ -445,7 +415,7 @@ fromRecvError = \case
   Hasql.Comms.Recv.TooManyResultsError tag actual ->
     case tag of
       Nothing ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Unexpectedly got too many results in an operation not associated with any statement. ",
             "This indicates a bug in Hasql or the server misbehaving. ",
             "Amount: ",
@@ -517,24 +487,24 @@ fromRecvErrorInScript scriptSql = \case
                 position
             )
       Hasql.Comms.ResultDecoder.UnexpectedResult msg ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Unexpected result in script: ",
             TextBuilder.text msg
           ]
       Hasql.Comms.ResultDecoder.UnexpectedRowCount actual ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of rows in script: ",
             TextBuilder.decimal actual
           ]
       Hasql.Comms.ResultDecoder.UnexpectedColumnCount expected actual ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Unexpected amount of columns in script: expected ",
             TextBuilder.decimal expected,
             ", got ",
             TextBuilder.decimal actual
           ]
       Hasql.Comms.ResultDecoder.DecoderTypeMismatch colIdx expectedOid actualOid ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Decoder type mismatch in script: expected OID ",
             TextBuilder.string (show expectedOid),
             " at column ",
@@ -543,7 +513,7 @@ fromRecvErrorInScript scriptSql = \case
             TextBuilder.string (show actualOid)
           ]
       Hasql.Comms.ResultDecoder.RowError rowIndex rowError ->
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Row error in script at row ",
             TextBuilder.decimal rowIndex,
             ": ",
@@ -553,7 +523,7 @@ fromRecvErrorInScript scriptSql = \case
     if connectionLost
       then ConnectionUseError (maybe "" decodeUtf8Lenient details)
       else
-        (DriverUseError . TextBuilder.toText . mconcat)
+        (ConnectionUseError . TextBuilder.toText . mconcat)
           [ "Got no results in script.",
             " This indicates a bug in Hasql or the server misbehaving.",
             details
@@ -561,7 +531,7 @@ fromRecvErrorInScript scriptSql = \case
               & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
           ]
   Hasql.Comms.Recv.TooManyResultsError _ actual ->
-    (DriverUseError . TextBuilder.toText . mconcat)
+    (ConnectionUseError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",
         "This indicates a bug in Hasql or the server misbehaving. ",
         "Amount: ",

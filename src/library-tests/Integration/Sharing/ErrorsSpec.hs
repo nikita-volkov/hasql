@@ -18,11 +18,11 @@ spec :: SpecWith Scripts.ScopeParams
 spec = do
   describe "Sends libpq refuses" do
     -- libpq rejects `sendQueryParams` outright when given more than 65535
-    -- parameters, without ever talking to the server. The connection stays
-    -- fine, so the failure must not be reported as the transient
-    -- `ConnectionUseError` - retrying it just resends the same rejected
-    -- request forever.
-    it "reports too many parameters as a non-transient driver error" \config -> do
+    -- parameters, without ever talking to the server. Nevertheless the
+    -- driver cannot vouch for the connection's protocol state after a
+    -- refused send, so `use` finishes it rather than leaving it open for a
+    -- retry wrapper to resend the identical rejected request against.
+    it "reports too many parameters as fatal and closes the connection" \config -> do
       Scripts.onPreparableConnection config \connection -> do
         let tooManyParams = 65536
             statement =
@@ -32,12 +32,18 @@ spec = do
                 Decoders.noResult
         result <- Connection.use connection (Session.statement () statement)
         case result of
-          Left err@(Errors.DriverUseError _) ->
-            Errors.isTransient err `shouldBe` False
+          Left (Errors.ConnectionUseError _) -> pure ()
           Left err ->
-            expectationFailure ("Expected DriverUseError, but got: " <> show err)
+            expectationFailure ("Expected ConnectionUseError, but got: " <> show err)
           Right () ->
             expectationFailure "Expected the statement to be rejected for having too many parameters"
+
+        -- The connection is gone: a further `use` reports the same thing
+        -- rather than succeeding.
+        anotherResult <- Connection.use connection (Session.script "select 1")
+        case anotherResult of
+          Left (Errors.ConnectionUseError _) -> pure ()
+          _ -> expectationFailure ("Unexpected result on the spent connection: " <> show anotherResult)
 
   describe "Syntax errors" do
     forM_ [False, True] \inPipeline -> do

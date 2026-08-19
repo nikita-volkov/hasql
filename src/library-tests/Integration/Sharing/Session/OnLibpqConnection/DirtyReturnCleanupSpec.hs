@@ -23,8 +23,8 @@ import Test.Hspec
 -- connection the escape hatch quietly broke from one it left clean, and the
 -- one repair it could attempt - pushing a Sync - would flush and commit
 -- whatever the caller had queued. So the contract is that the escape hatch
--- restores what it breaks, and reports 'Errors.ConnectionUseError' or
--- 'Errors.DriverUseError' when it cannot.
+-- restores what it breaks, and reports 'Errors.ConnectionUseError' when it
+-- cannot.
 --
 -- These drive the connection into exactly that state directly, entering
 -- pipeline mode on the raw handle without leaving it, and pin both halves:

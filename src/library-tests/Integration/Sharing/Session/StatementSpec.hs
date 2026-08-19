@@ -63,6 +63,27 @@ spec = do
           Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _))) -> pure ()
           _ -> expectationFailure $ "Unexpected result: " <> show result
 
+    it "reports a statement that genuinely returned no rows as a row-count mismatch, not a lost connection" \config -> do
+      -- The server answering with zero rows and the socket going away both
+      -- reach `use` through the same absence of a result, and only an
+      -- internal flag tells them apart (see `Hasql.Comms.Recv.NoResultsError`).
+      -- Getting this wrong either way is a real hazard: reporting a genuine
+      -- empty result as `ConnectionUseError` would have pools discard a
+      -- perfectly good connection, and reporting a dropped socket as this
+      -- recoverable mismatch would have callers keep using a connection that
+      -- no longer exists (see "Integration.Sharing.Connection.Use.InterruptionSpec"
+      -- and "Integration.Sharing.Pipeline.Statement.SendFailureSpec" for the
+      -- latter).
+      Scripts.onPreparableConnection config \connection -> do
+        result <- Connection.use connection (Session.statement () noRowsStatement)
+        case result of
+          Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedRowCountStatementError 1 1 0))) -> pure ()
+          _ -> expectationFailure ("Unexpected result: " <> show result)
+
+        -- The connection is still fine afterwards.
+        followUp <- Connection.use connection (Session.statement (1 :: Int64) echoStatement)
+        followUp `shouldBe` Right 1
+
 echoStatement :: Statement.Statement Int64 Int64
 echoStatement =
   Statement.preparable
@@ -76,4 +97,13 @@ divStatement =
   Statement.preparable
     "select 1 / $1"
     (Encoders.param (Encoders.nonNullable Encoders.int8))
+    (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
+
+-- | Never returns a row, so a `Decoders.singleRow` decoder always sees zero
+-- where it expects exactly one.
+noRowsStatement :: Statement.Statement () Int64
+noRowsStatement =
+  Statement.preparable
+    "select 1::int8 where false"
+    mempty
     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))

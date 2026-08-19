@@ -28,9 +28,8 @@ newtype Connection
       -- The state is 'Nothing' once the connection is gone. That happens when
       -- 'release' is called on it, when a session fails in a way that leaves
       -- the driver unable to vouch for the connection's protocol state (a
-      -- 'ConnectionUseError' or 'DriverUseError' out of 'use'), and when an
-      -- exception cuts a session short - in the latter two cases 'use'
-      -- finishes it. @libpq@
+      -- 'ConnectionUseError' out of 'use'), and when an exception cuts a
+      -- session short - in the latter two cases 'use' finishes it. @libpq@
       -- forbids touching a connection after @PQfinish@, so the handle has to
       -- remember that it did: without it a second 'release' finishes a freed
       -- connection and a later 'use' sends on one.
@@ -238,7 +237,6 @@ use (Connection var) session =
               Pq.finish (ConnectionState.connection newState)
         case result of
           Left (ConnectionUseError _) -> finish
-          Left (DriverUseError _) -> finish
           _ -> putMVar var (Just newState)
 
         pure result

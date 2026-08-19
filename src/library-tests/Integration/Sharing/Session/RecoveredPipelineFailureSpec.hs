@@ -27,8 +27,8 @@ failingPipeline = do
 
 -- | 'Session.Session'\'s 'Control.Monad.Except.MonadError' instance ranges
 -- over 'Errors.SessionError' only, so a pipeline send failure -
--- 'Errors.ConnectionUseError' or 'Errors.DriverUseError' - is not a value
--- 'Control.Monad.Except.catchError' can see. The handler here never runs:
+-- 'Errors.ConnectionUseError' - is not a value 'Control.Monad.Except.catchError'
+-- can see. The handler here never runs:
 -- '>>=' short-circuits on the fatal error before the handler is reached,
 -- exactly as it would for any other 'Left', so the rest of the session
 -- never runs against a connection still in pipeline mode, and
@@ -49,7 +49,7 @@ spec = do
             Execution.sessionByParams Statements.SelectOne
 
         case result of
-          Left (Errors.DriverUseError _) -> pure ()
+          Left (Errors.ConnectionUseError _) -> pure ()
           _ -> expectationFailure ("Unexpected result: " <> show result)
 
     it "Finishes the connection, not merely reports the error" \config -> do
@@ -59,7 +59,7 @@ spec = do
             catchError (Session.pipeline failingPipeline) (const (pure ()))
 
         case result of
-          Left (Errors.DriverUseError _) -> pure ()
+          Left (Errors.ConnectionUseError _) -> pure ()
           _ -> expectationFailure ("Unexpected result: " <> show result)
 
         followUp <-

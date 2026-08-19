@@ -30,7 +30,7 @@ import Pqi qualified as Pq
 -- The 'Control.Monad.Except.MonadError' instance ranges over
 -- 'Errors.SessionError' only - the failures that leave the connection
 -- usable. A failure that leaves the connection gone
--- ('Errors.ConnectionUseError', 'Errors.DriverUseError') is not a value
+-- ('Errors.ConnectionUseError') is not a value
 -- 'Control.Monad.Except.throwError' can construct or
 -- 'Control.Monad.Except.catchError' can see: it propagates through every
 -- later 'Control.Monad.>>=' untouched and reaches 'Hasql.Connection.use'
@@ -87,8 +87,8 @@ instance MonadIO Session where
 
 -- | Ranges over 'Errors.SessionError' only. 'throwError' can only construct
 -- 'Errors.SessionUseError', and 'catchError' only ever sees that
--- constructor - 'Errors.ConnectionUseError' and 'Errors.DriverUseError'
--- flow past both untouched. See the note on the 'Session' type.
+-- constructor - 'Errors.ConnectionUseError' flows past both untouched. See
+-- the note on the 'Session' type.
 instance MonadError Errors.SessionError Session where
   throwError err = Session \connectionState -> pure (Left (Errors.SessionUseError err), connectionState)
 
@@ -109,9 +109,9 @@ script sql =
     result <- Comms.Roundtrip.toSerialIO (Comms.Roundtrip.script (Just sql) sql) connection
     case result of
       Left err -> case err of
-        Comms.Roundtrip.ClientError _ connectionLost details -> do
+        Comms.Roundtrip.ClientError _ details -> do
           pure
-            ( Left (Errors.fromSendError connectionLost details),
+            ( Left (Errors.fromSendError details),
               connectionState
             )
         Comms.Roundtrip.ServerError recvError ->
@@ -170,8 +170,8 @@ statement stmt params =
             -- total statements 1, index 0.
             tag = Just (1, 0, sql, Statement.printer stmt params, prepared)
             mapError = \case
-              Comms.Roundtrip.ClientError _ connectionLost details ->
-                Errors.fromSendError connectionLost details
+              Comms.Roundtrip.ClientError _ details ->
+                Errors.fromSendError details
               Comms.Roundtrip.ServerError recvError ->
                 Errors.fromRecvError recvError
             withState (result, newStatementCache) =
@@ -269,8 +269,8 @@ pipeline pipeline = Session (Pipeline.run pipeline)
 -- afterwards. Nothing repairs it for you: the driver only ever finishes a
 -- connection it cannot vouch for, and it has no way of telling that this
 -- one is in that state. Returning a 'Left' of 'Errors.ConnectionUseError'
--- or 'Errors.DriverUseError' is how you say so - 'Hasql.Connection.use'
--- finishes the connection when it sees either.
+-- is how you say so - 'Hasql.Connection.use' finishes the connection when
+-- it sees it.
 onLibpqConnection ::
   (Pq.Connection -> IO (Either Errors.UseError a, Pq.Connection)) ->
   Session a
