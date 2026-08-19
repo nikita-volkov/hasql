@@ -21,8 +21,8 @@ spec = do
               )
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.NetworkingConnectionError _) -> pure ()
-        Left err -> expectationFailure ("Expected NetworkingConnectionError, got: " <> show err)
+        Left (Errors.NetworkingAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
@@ -38,8 +38,8 @@ spec = do
               )
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.CompatibilityConnectionError _) -> pure ()
-        Left err -> expectationFailure ("Expected CompatibilityConnectionError, got: " <> show err)
+        Left (Errors.CompatibilityAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected CompatibilityAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
@@ -80,8 +80,8 @@ spec = do
           adapter = fakeAdapter brokenConnection
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.OtherConnectionError _) -> pure ()
-        Left err -> expectationFailure ("Expected OtherConnectionError, got: " <> show err)
+        Left (Errors.OtherAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected OtherAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
@@ -96,8 +96,8 @@ spec = do
           adapter = fakeAdapter brokenConnection
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.OtherConnectionError msg) -> msg `shouldBe` "permission denied for SET"
-        Left err -> expectationFailure ("Expected OtherConnectionError, got: " <> show err)
+        Left (Errors.OtherAcquireError msg) -> msg `shouldBe` "permission denied for SET"
+        Left err -> expectationFailure ("Expected OtherAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 

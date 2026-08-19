@@ -7,14 +7,12 @@ import Data.IORef
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
-import Hasql.Pipeline qualified as Pipeline
+import Hasql.Errors qualified as Errors
 import Hasql.Session qualified as Session
 import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
-import Helpers.Statements.SelectOne qualified as Statements.SelectOne
 import Helpers.Statements.SelectProvidedInt8 qualified as Statements.SelectProvidedInt8
-import Helpers.Statements.Sleep qualified as Statements
 import Prelude
 import Test.Hspec
 
@@ -48,142 +46,32 @@ spec = do
 
         result `shouldBe` Right (3 :: Int64)
 
-  describe "Pipeline Mode" do
-    it "Leaves the connection usable after timeout in pipeline" \config -> do
+  describe "Release" do
+    it "Is idempotent on a connection that never failed" \config -> do
+      -- 'release' must not touch a connection it has already finished:
+      -- libpq forbids calling anything, including a second PQfinish, on a
+      -- handle after PQfinish. Every other idempotency example gets there
+      -- via a prior failure or exception; this is the plain path, with
+      -- nothing having gone wrong first.
       Scripts.onPreparableConnection config \connection -> do
-        let selectStatement =
-              Statement.preparable
-                "select $1::int"
-                (Encoders.param (Encoders.nonNullable Encoders.int4))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
+        _ <- Connection.use connection (Session.script "select 1")
+        Connection.release connection
+        Connection.release connection
 
-        -- Timeout during a pipeline operation
-        result <-
-          timeout 50_000 do
-            Connection.use connection
-              $ Session.pipeline
-              $ (,)
-              <$> Pipeline.statement 42 selectStatement
-              <*> Execution.pipelineByParams (Statements.Sleep 0.1)
+    it "Makes `use` report the connection as gone rather than reconnecting" \config -> do
+      -- Releasing is one of the three ways a handle goes spent (the others
+      -- being a session that finishes the connection, and an exception). No
+      -- other example reaches "spent by `release`" directly.
+      Scripts.onPreparableConnection config \connection -> do
+        Connection.release connection
 
-        result `shouldBe` Nothing
+        result <- Connection.use connection (Session.script "select 1")
+        case result of
+          Left (Errors.ConnectionUseError _) -> pure ()
+          _ -> expectationFailure ("Unexpected result: " <> show result)
 
-        -- Try to use pipeline again after timeout cleanup
-        -- This should work but fails with "connection not idle" without the fix
-        result2 <-
-          Connection.use connection
-            $ Session.pipeline
-            $ Pipeline.statement 99 selectStatement
-
-        result2 `shouldBe` Right 99
-
-  describe "Timing out" do
-    describe "On a statement" do
-      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
-        result <-
-          timeout 50_000 do
-            Connection.use connection do
-              Execution.sessionByParams (Statements.Sleep 0.1)
-
-        result `shouldBe` Nothing
-
-        result <-
-          Connection.use connection do
-            Execution.sessionByParams Statements.SelectOne.SelectOne
-
-        result `shouldBe` Right 1
-
-    describe "On a transaction" do
-      it "Leaves the connection usable" \config -> Scripts.onPreparableConnection config \connection -> do
-        -- Start a transaction and timeout during it
-        result <-
-          timeout 50_000 do
-            Connection.use connection do
-              Session.script "begin;"
-              Execution.sessionByParams (Statements.Sleep 0.1)
-              Session.script "commit;"
-
-        result `shouldBe` Nothing
-
-        -- Connection should still be usable after timeout in transaction
-        result <-
-          Connection.use connection do
-            Execution.sessionByParams Statements.SelectOne.SelectOne
-
-        result `shouldBe` Right 1
-
-      it "Lets us start another transaction" do
-        let checkTransactionStatus =
-              Statement.preparable
-                "select case when pg_advisory_lock(1) is null then 0 else 1 end"
-                mempty
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-         in \config -> Scripts.onPreparableConnection config \connection -> do
-              -- Timeout during a transaction
-              result <-
-                timeout 50_000 do
-                  Connection.use connection do
-                    Session.script "begin;"
-                    Execution.sessionByParams (Statements.Sleep 0.1)
-
-              result `shouldBe` Nothing
-
-              -- Verify we can start a new transaction without "already in progress" error
-              result <-
-                Connection.use connection do
-                  Session.script "begin;"
-                  s <- Session.statement () checkTransactionStatus
-                  Session.script "commit;"
-                  return s
-
-              result `shouldBe` Right 1
-
-      it "Does not corrupt the prepared statement registry" do
-        let returnIntStatement =
-              Statement.preparable
-                "select $1::int"
-                (Encoders.param (Encoders.nonNullable Encoders.int4))
-                (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int4)))
-         in \config -> Scripts.onPreparableConnection config \connection -> do
-              -- Use a prepared statement first
-              result <-
-                Connection.use connection do
-                  Session.statement 42 returnIntStatement
-
-              result `shouldBe` Right 42
-
-              -- Timeout during transaction (causes connection reset)
-              result <-
-                timeout 50_000 do
-                  Connection.use connection do
-                    Session.script "begin;"
-                    Execution.sessionByParams (Statements.Sleep 0.1)
-                    Session.script "commit;"
-
-              result `shouldBe` Nothing
-
-              -- The prepared statement should work again without "does not exist" error
-              result <-
-                Connection.use connection do
-                  Session.statement 99 returnIntStatement
-
-              result `shouldBe` Right 99
-
-  describe "Interruption by an exception" do
-    it "Re-throws the original exception rather than a driver wrapper around it" \config -> Scripts.onPreparableConnection config \connection -> do
-      -- The state a session got as far as reaches `use` on the back of an
-      -- exception, so `use` has to unwrap that carrier before re-throwing.
-      -- Caught here at the concrete type the session threw: were the carrier
-      -- to escape instead, `try` would not match it and it would fail the
-      -- example by propagating.
-      result <- try @IOException do
-        Connection.use connection do
-          Session.script "select 1"
-          liftIO (throwIO (userError "Original exception"))
-
-      case result of
-        Left err -> show err `shouldContain` "Original exception"
-        Right _ -> expectationFailure "Expected the exception to propagate out of `use`"
+        -- Releasing an already-spent connection remains a no-op.
+        Connection.release connection
 
   describe "Concurrency" do
     it "handles concurrent connections properly" \config -> do
@@ -212,77 +100,72 @@ spec = do
           result <- takeMVar finishVar
           result `shouldBe` True
 
-    it "Connection remains usable after exception in non-idle state with concurrent threads" \config -> Scripts.onPreparableConnection config \connection -> do
-      -- This test reproduces the bug fixed in commit 62ebef2.
-      -- The bug was that when an exception occurred during a session,
-      -- the connection state was put back into the MVar BEFORE resetting the connection.
-      -- This created a race condition where another thread could grab the corrupted connection.
+    it "Reports the connection as gone to every other thread rather than deadlocking" \config -> Scripts.onPreparableConnection config \connection -> do
+      -- The exception path of `use` empties the MVar before it touches the
+      -- connection and fills it back in with `Nothing`, so a thread waiting
+      -- on the MVar wakes up to a handle that says the connection is gone.
+      -- What it must never do is wake up to the connection itself while the
+      -- interrupted thread is still finishing it, or not wake up at all -
+      -- which is what happened before commit 62ebef2, where the state went
+      -- back into the MVar before the connection was dealt with.
+      --
+      -- So this pins the two halves that survive the connection no longer
+      -- being repaired: every result another thread sees is either the
+      -- statement's own or the verdict that the connection is gone, and no
+      -- thread hangs.
 
-      -- We'll create a scenario where:
-      -- 1. Thread A starts a session that will throw an exception
-      -- 2. Thread B repeatedly tries to use the connection
-      -- 3. The exception in Thread A should not corrupt the connection for Thread B
+      -- Results collected by the thread using the connection alongside the
+      -- one that interrupts it.
+      resultsRef <- newIORef []
 
-      -- Counter to track successful operations by Thread B
-      successCount <- newIORef (0 :: Int)
-      errorCount <- newIORef (0 :: Int)
-
-      -- Barrier to synchronize threads
       startBarrier <- newEmptyMVar
       doneBarrier <- newEmptyMVar
 
-      -- Thread A: Throws exceptions repeatedly
+      -- Thread A: interrupts a session that is in a transaction, so the
+      -- connection is left in a non-idle state.
       _ <- forkIO do
         takeMVar startBarrier
         replicateM_ 10 do
-          -- Use the connection and throw an exception during the session
           _ <- try @SomeException do
             Connection.use connection do
-              -- Start a transaction to put connection in non-idle state
               Session.script "BEGIN"
-              -- Throw an exception while in transaction (non-idle state)
               liftIO (throwIO (userError "Intentional exception"))
-          threadDelay 1000 -- Small delay to allow interleaving
+          threadDelay 1000
         putMVar doneBarrier ()
 
-      -- Thread B: Tries to use connection concurrently
+      -- Thread B: keeps using the connection throughout.
       _ <- forkIO do
         takeMVar startBarrier
         replicateM_ 20 do
           result <- Connection.use connection (Execution.sessionByParams (Statements.SelectProvidedInt8.SelectProvidedInt8 42))
-          case result of
-            Right 42 -> atomicModifyIORef' successCount (\n -> (n + 1, ()))
-            _ -> atomicModifyIORef' errorCount (\n -> (n + 1, ()))
+          atomicModifyIORef' resultsRef (\results -> (result : results, ()))
           threadDelay 500
         putMVar doneBarrier ()
 
-      -- Start both threads
       putMVar startBarrier ()
       putMVar startBarrier ()
 
-      -- Wait for both threads to complete with a timeout
-      -- If the bug exists, threads may hang waiting for a corrupted connection
-      result <- timeout (5 * 1000000) do
-        -- 5 seconds timeout
+      completion <- timeout (5 * 1000000) do
         takeMVar doneBarrier
         takeMVar doneBarrier
 
-      case result of
-        Nothing -> do
-          -- Test timed out - this indicates the bug is present
-          expectationFailure "Test timed out waiting for threads to complete. This indicates the connection became deadlocked due to the race condition bug."
+      case completion of
+        Nothing ->
+          expectationFailure "Timed out waiting for the threads to complete, which means the connection deadlocked."
         Just () -> do
-          -- Threads completed successfully
-          -- Check results
-          successes <- readIORef successCount
-          errors <- readIORef errorCount
+          results <- readIORef resultsRef
+          let unexpected =
+                filter
+                  ( \case
+                      Right 42 -> False
+                      Left (Errors.ConnectionUseError _) -> False
+                      _ -> True
+                  )
+                  results
+          unexpected `shouldBe` []
 
-          -- Thread B should have succeeded at least some times
-          -- If the bug exists, we'd expect Thread B to get errors due to corrupted connection state
-          successes `shouldSatisfy` (> 0)
-
-          errors `shouldBe` 0
-
-          -- Verify connection is still usable after all this
+          -- Once gone, gone: the handle does not come back to life.
           finalResult <- Connection.use connection (Execution.sessionByParams (Statements.SelectProvidedInt8.SelectProvidedInt8 99))
-          finalResult `shouldBe` Right 99
+          case finalResult of
+            Left (Errors.ConnectionUseError _) -> pure ()
+            _ -> expectationFailure ("Unexpected final result: " <> show finalResult)

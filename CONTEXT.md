@@ -103,6 +103,15 @@ what is prepared, which no snapshot can resolve — as after a send-side failure
 where it is unknown whether the batch reached the server at all. Resolved only
 by clearing both sides with a `DEALLOCATE ALL`.
 
+## Spent connection
+
+A connection the driver has given up on: one where a failure left nothing that
+can be assumed about its protocol state, as after a send that never left the
+client, or a socket lost mid-receive. Distinct from a connection that merely
+reported an error — a statement the server rejected leaves the connection
+perfectly usable. A spent connection is closed rather than repaired, and the
+handle reaching it is inert from then on.
+
 ## Tag
 
 A value attached to a protocol action when it is constructed, identifying the

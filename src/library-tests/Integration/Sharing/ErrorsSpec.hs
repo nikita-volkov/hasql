@@ -20,7 +20,7 @@ spec = do
     -- libpq rejects `sendQueryParams` outright when given more than 65535
     -- parameters, without ever talking to the server. The connection stays
     -- fine, so the failure must not be reported as the transient
-    -- `ConnectionSessionError` - retrying it just resends the same rejected
+    -- `ConnectionUseError` - retrying it just resends the same rejected
     -- request forever.
     it "reports too many parameters as a non-transient driver error" \config -> do
       Scripts.onPreparableConnection config \connection -> do
@@ -32,10 +32,10 @@ spec = do
                 Decoders.noResult
         result <- Connection.use connection (Session.statement () statement)
         case result of
-          Left err@(Errors.DriverSessionError _) ->
+          Left err@(Errors.DriverUseError _) ->
             Errors.isTransient err `shouldBe` False
           Left err ->
-            expectationFailure ("Expected DriverSessionError, but got: " <> show err)
+            expectationFailure ("Expected DriverUseError, but got: " <> show err)
           Right () ->
             expectationFailure "Expected the statement to be rejected for having too many parameters"
 
@@ -58,16 +58,17 @@ spec = do
                 shouldBe
                   result
                   ( Left
-                      ( (Errors.StatementSessionError 1 0 "-" [] preparable)
-                          ( Errors.ServerStatementError
-                              ( Errors.ServerError
-                                  "42601"
-                                  "syntax error at or near \"-\""
-                                  Nothing
-                                  Nothing
-                                  (Just 1)
-                              )
-                          )
+                      ( Errors.SessionUseError
+                          $ (Errors.StatementSessionError 1 0 "-" [] preparable)
+                            ( Errors.ServerStatementError
+                                ( Errors.ServerError
+                                    "42601"
+                                    "syntax error at or near \"-\""
+                                    Nothing
+                                    Nothing
+                                    (Just 1)
+                                )
+                            )
                       )
                   )
 
@@ -95,7 +96,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                     (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual)) -> do
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual))) -> do
                 shouldBe expected 1
                 shouldBe actual 2
               Left err ->
@@ -117,7 +118,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                     )
             result <- Connection.use connection (executor statement)
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual)) -> do
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnCountStatementError expected actual))) -> do
                 shouldBe expected 2
                 shouldBe actual 1
               Left err ->
@@ -141,7 +142,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                       )
               result <- Connection.use connection (executor statement)
               case result of
-                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+                Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
                   shouldBe column 1
                   shouldBe expected 20
                   shouldBe actual 25
@@ -165,7 +166,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                       )
               result <- Connection.use connection (executor statement)
               case result of
-                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+                Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
                   shouldBe column 1
                   (expected, actual) `shouldBe` (20, 25)
                 Left err ->
@@ -188,7 +189,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                       )
               result <- Connection.use connection (executor statement)
               case result of
-                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+                Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
                   shouldBe column 1
                   (expected, actual) `shouldBe` (20, 25)
                 Left err ->
@@ -210,7 +211,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                           )
                   result <- Connection.use connection (executor statement)
                   case result of
-                    Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+                    Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
                       shouldBe column 0
                       (expected, actual) `shouldBe` (1016, 20)
                     Left err ->
@@ -245,7 +246,7 @@ decoderMismatchByPreparedStatusAndExecutor preparable executorName executor = do
                           )
                   result <- Connection.use connection (executor statement)
                   case result of
-                    Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual)) -> do
+                    Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError column expected actual))) -> do
                       shouldBe column 0
                       (expected, actual) `shouldBe` (20, 1016)
                     Left err ->

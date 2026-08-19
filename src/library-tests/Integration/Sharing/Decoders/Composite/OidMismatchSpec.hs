@@ -42,7 +42,7 @@ spec = do
                 )
           -- The error should indicate a decoding failure due to type mismatch
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg)))) -> do
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg))))) -> do
               -- PostgreSQL binary decoder should detect the OID mismatch
               toList msg `shouldContain` "Unexpected OID"
             Left err ->
@@ -79,7 +79,7 @@ spec = do
                 )
           -- The error should indicate a decoding failure due to type mismatch
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg)))) -> do
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError msg))))) -> do
               -- PostgreSQL binary decoder should detect the OID mismatch
               toList msg `shouldContain` "Unexpected OID"
             Left err ->
@@ -116,7 +116,7 @@ spec = do
                 )
           -- The error should indicate a decoding failure due to type mismatch
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg)))) -> do
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg))))) -> do
               -- PostgreSQL binary decoder should detect the type mismatch
               pure ()
             Left err ->
@@ -157,7 +157,7 @@ spec = do
                 )
           -- The error should indicate a decoding failure
           case result of
-            Left (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg)))) -> do
+            Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.RowStatementError _ (Errors.CellRowError _ _ (Errors.DeserializationCellError _msg))))) -> do
               pure ()
             Left err ->
               expectationFailure ("Unexpected type of error: " <> show err)

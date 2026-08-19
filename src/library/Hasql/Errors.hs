@@ -3,8 +3,9 @@
 --
 -- This module provides access to all error types used throughout Hasql:
 --
--- * 'ConnectionError' - errors that occur when establishing a database connection
--- * 'SessionError' - errors that occur during session execution
+-- * 'AcquireError' - errors that occur when establishing a database connection
+-- * 'UseError' - errors returned when using a connection
+-- * 'SessionError' - recoverable errors that occur during session execution
 --
 -- The module follows Hasql's philosophy of explicit error handling,
 -- where all errors are represented as values rather than exceptions.
@@ -13,8 +14,11 @@ module Hasql.Errors
     IsError (..),
     toDetailedText,
 
-    -- * Connection errors
-    ConnectionError (..),
+    -- * Acquire errors
+    AcquireError (..),
+
+    -- * Use errors
+    UseError (..),
 
     -- * Session errors
     SessionError (..),
@@ -50,6 +54,17 @@ class IsError a where
   -- unit that's safe to retry is the caller's whole transaction (or
   -- pipeline), not necessarily the single statement that reported 'True'
   -- here.
+  --
+  -- Note what supplying a clean connection state takes for the errors that
+  -- say the connection is gone. 'ConnectionUseError' is transient, but
+  -- 'Hasql.Connection.use' has finished the connection before returning it,
+  -- and the 'Hasql.Connection.Connection' it fired on never carries a clean
+  -- state again: every later 'Hasql.Connection.use' on that same handle
+  -- reports the same transient error. Retrying there means acquiring a
+  -- connection or asking a pool for one, never calling
+  -- 'Hasql.Connection.use' again on the value that just failed. A loop that
+  -- retries in place on a 'True' from this method does not eventually
+  -- recover; it spins.
   isTransient :: a -> Bool
 
   -- | The SQLSTATE the server reported, if this error carries one at all.
@@ -94,32 +109,32 @@ toDetailedTextBuilder err =
 
 -- * Instances
 
-instance IsError ConnectionError where
+instance IsError AcquireError where
   toMessage = \case
-    NetworkingConnectionError {} ->
+    NetworkingAcquireError {} ->
       "Networking error while connecting to the database"
-    AuthenticationConnectionError {} ->
+    AuthenticationAcquireError {} ->
       "Authentication error while connecting to the database"
-    CompatibilityConnectionError {} ->
+    CompatibilityAcquireError {} ->
       "Compatibility error while connecting to the database"
-    OtherConnectionError {} ->
+    OtherAcquireError {} ->
       "Connection error while connecting to the database"
 
   toDetails = \case
-    NetworkingConnectionError reason ->
+    NetworkingAcquireError reason ->
       [("reason", reason)]
-    AuthenticationConnectionError reason ->
+    AuthenticationAcquireError reason ->
       [("reason", reason)]
-    CompatibilityConnectionError reason ->
+    CompatibilityAcquireError reason ->
       [("reason", reason)]
-    OtherConnectionError reason ->
+    OtherAcquireError reason ->
       [("reason", reason)]
 
   isTransient = \case
-    NetworkingConnectionError {} -> True
-    AuthenticationConnectionError {} -> False
-    CompatibilityConnectionError {} -> False
-    OtherConnectionError {} -> False
+    NetworkingAcquireError {} -> True
+    AuthenticationAcquireError {} -> False
+    CompatibilityAcquireError {} -> False
+    OtherAcquireError {} -> False
 
 instance IsError ServerError where
   toMessage _ =
@@ -254,10 +269,6 @@ instance IsError SessionError where
       toMessage statementError
     ScriptSessionError _ execErr ->
       toMessage execErr
-    ConnectionSessionError {} ->
-      "Connection error"
-    DriverSessionError {} ->
-      "Driver error"
     MissingTypesSessionError {} ->
       "Types not found in database"
 
@@ -272,10 +283,6 @@ instance IsError SessionError where
         <> toDetails statementError
     ScriptSessionError sql execErr ->
       ("sql", sql) : toDetails execErr
-    ConnectionSessionError reason ->
-      [("reason", reason)]
-    DriverSessionError reason ->
-      [("reason", reason)]
     MissingTypesSessionError missingTypes ->
       [ ( "missingTypes",
           (TextBuilder.toText . mconcat . intersperse ", " . fmap formatType . HashSet.toList) missingTypes
@@ -285,15 +292,46 @@ instance IsError SessionError where
         formatType (schema, name) = maybe "" ((<> ".") . TextBuilder.text) schema <> TextBuilder.text name
 
   isTransient = \case
-    ConnectionSessionError _ -> True
     StatementSessionError _ _ _ _ _ statementError -> isTransient statementError
     ScriptSessionError _ serverError -> isTransient serverError
-    DriverSessionError {} -> False
     MissingTypesSessionError {} -> False
 
   toSqlState = \case
     StatementSessionError _ _ _ _ _ statementError -> toSqlState statementError
     ScriptSessionError _ serverError -> toSqlState serverError
-    ConnectionSessionError {} -> Nothing
-    DriverSessionError {} -> Nothing
     MissingTypesSessionError {} -> Nothing
+
+instance IsError UseError where
+  toMessage = \case
+    SessionUseError err ->
+      toMessage err
+    ConnectionUseError {} ->
+      "Connection error"
+    DriverUseError {} ->
+      "Driver error"
+
+  toDetails = \case
+    SessionUseError err ->
+      toDetails err
+    ConnectionUseError reason ->
+      [("reason", reason)]
+    DriverUseError reason ->
+      [("reason", reason)]
+
+  -- 'ConnectionUseError' is transient, but 'Hasql.Connection.use' has
+  -- finished the connection before returning it, and the
+  -- 'Hasql.Connection.Connection' it fired on never carries a clean state
+  -- again: every later 'Hasql.Connection.use' on that same handle reports
+  -- the same transient error. Retrying there means acquiring a connection
+  -- or asking a pool for one, never calling 'Hasql.Connection.use' again on
+  -- the value that just failed. A loop that retries in place on a 'True'
+  -- from this method does not eventually recover; it spins.
+  isTransient = \case
+    SessionUseError err -> isTransient err
+    ConnectionUseError {} -> True
+    DriverUseError {} -> False
+
+  toSqlState = \case
+    SessionUseError err -> toSqlState err
+    ConnectionUseError {} -> Nothing
+    DriverUseError {} -> Nothing

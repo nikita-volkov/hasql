@@ -8,38 +8,38 @@ import Test.Hspec
 
 spec :: Spec
 spec = do
-  describe "ConnectionError" do
+  describe "AcquireError" do
     describe "toMessage" do
-      it "renders NetworkingConnectionError" do
-        (Errors.toMessage (Errors.NetworkingConnectionError "timeout"))
+      it "renders NetworkingAcquireError" do
+        (Errors.toMessage (Errors.NetworkingAcquireError "timeout"))
           `shouldBe` "Networking error while connecting to the database"
 
-      it "renders AuthenticationConnectionError" do
-        (Errors.toMessage (Errors.AuthenticationConnectionError "invalid password"))
+      it "renders AuthenticationAcquireError" do
+        (Errors.toMessage (Errors.AuthenticationAcquireError "invalid password"))
           `shouldBe` "Authentication error while connecting to the database"
 
     describe "toDetails" do
-      it "includes reason for NetworkingConnectionError" do
-        (Errors.toDetails (Errors.NetworkingConnectionError "connection timeout"))
+      it "includes reason for NetworkingAcquireError" do
+        (Errors.toDetails (Errors.NetworkingAcquireError "connection timeout"))
           `shouldBe` [("reason", "connection timeout")]
 
     describe "isTransient" do
-      it "NetworkingConnectionError is transient" do
-        (Errors.isTransient (Errors.NetworkingConnectionError "timeout"))
+      it "NetworkingAcquireError is transient" do
+        (Errors.isTransient (Errors.NetworkingAcquireError "timeout"))
           `shouldBe` True
 
-      it "AuthenticationConnectionError is not transient" do
-        (Errors.isTransient (Errors.AuthenticationConnectionError "invalid password"))
+      it "AuthenticationAcquireError is not transient" do
+        (Errors.isTransient (Errors.AuthenticationAcquireError "invalid password"))
           `shouldBe` False
 
     describe "toSqlState" do
       it "is Nothing, since connection errors carry no server code" do
-        (Errors.toSqlState (Errors.NetworkingConnectionError "timeout"))
+        (Errors.toSqlState (Errors.NetworkingAcquireError "timeout"))
           `shouldBe` Nothing
 
     describe "toDetailedText" do
-      it "renders NetworkingConnectionError with details" do
-        (Errors.toDetailedText (Errors.NetworkingConnectionError "connection refused"))
+      it "renders NetworkingAcquireError with details" do
+        (Errors.toDetailedText (Errors.NetworkingAcquireError "connection refused"))
           `shouldBe` "Networking error while connecting to the database\n\
                      \  reason: connection refused"
 
@@ -230,10 +230,6 @@ spec = do
         (Errors.toMessage (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` "Unexpected number of rows"
 
-      it "renders ConnectionSessionError" do
-        (Errors.toMessage (Errors.ConnectionSessionError "connection lost"))
-          `shouldBe` "Connection error"
-
       it "renders MissingTypesSessionError" do
         (Errors.toMessage (Errors.MissingTypesSessionError (HashSet.fromList [(Just "public", "custom_type"), (Nothing, "enum_type")])))
           `shouldBe` "Types not found in database"
@@ -263,10 +259,6 @@ spec = do
                      ]
 
     describe "isTransient" do
-      it "ConnectionSessionError is transient" do
-        (Errors.isTransient (Errors.ConnectionSessionError "connection lost"))
-          `shouldBe` True
-
       it "StatementSessionError is not transient for a non-transient statement error" do
         (Errors.isTransient (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` False
@@ -300,16 +292,8 @@ spec = do
         (Errors.toSqlState (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0)))
           `shouldBe` Nothing
 
-      it "is Nothing for ConnectionSessionError" do
-        (Errors.toSqlState (Errors.ConnectionSessionError "connection lost"))
-          `shouldBe` Nothing
-
       it "is Nothing for MissingTypesSessionError" do
         (Errors.toSqlState (Errors.MissingTypesSessionError (HashSet.fromList [(Just "public", "custom_type")])))
-          `shouldBe` Nothing
-
-      it "is Nothing for DriverSessionError" do
-        (Errors.toSqlState (Errors.DriverSessionError "unexpected response"))
           `shouldBe` Nothing
 
     describe "toDetailedText" do
@@ -324,6 +308,55 @@ spec = do
                      \  expectedMin: 1\n\
                      \  expectedMax: 1\n\
                      \  actual: 10"
+
+  describe "UseError" do
+    describe "toMessage" do
+      it "renders SessionUseError with the wrapped message" do
+        (Errors.toMessage (Errors.SessionUseError (Errors.StatementSessionError 1 0 "SELECT 1" [] True (Errors.UnexpectedRowCountStatementError 1 1 0))))
+          `shouldBe` "Unexpected number of rows"
+
+      it "renders ConnectionUseError" do
+        (Errors.toMessage (Errors.ConnectionUseError "connection lost"))
+          `shouldBe` "Connection error"
+
+      it "renders DriverUseError" do
+        (Errors.toMessage (Errors.DriverUseError "unexpected response"))
+          `shouldBe` "Driver error"
+
+    describe "toDetails" do
+      it "includes reason for ConnectionUseError" do
+        (Errors.toDetails (Errors.ConnectionUseError "connection lost"))
+          `shouldBe` [("reason", "connection lost")]
+
+      it "includes reason for DriverUseError" do
+        (Errors.toDetails (Errors.DriverUseError "unexpected response"))
+          `shouldBe` [("reason", "unexpected response")]
+
+    describe "isTransient" do
+      it "SessionUseError delegates to the wrapped SessionError" do
+        (Errors.isTransient (Errors.SessionUseError (Errors.ScriptSessionError "select 1" (Errors.ServerError "42P05" "prepared statement \"hasql_x\" already exists" Nothing Nothing Nothing))))
+          `shouldBe` True
+
+      it "ConnectionUseError is transient" do
+        (Errors.isTransient (Errors.ConnectionUseError "connection lost"))
+          `shouldBe` True
+
+      it "DriverUseError is not transient" do
+        (Errors.isTransient (Errors.DriverUseError "unexpected response"))
+          `shouldBe` False
+
+    describe "toSqlState" do
+      it "digs the code out of a wrapped SessionUseError" do
+        (Errors.toSqlState (Errors.SessionUseError (Errors.ScriptSessionError "DROP TABLE users" (Errors.ServerError "42P01" "relation does not exist" Nothing Nothing Nothing))))
+          `shouldBe` Just "42P01"
+
+      it "is Nothing for ConnectionUseError" do
+        (Errors.toSqlState (Errors.ConnectionUseError "connection lost"))
+          `shouldBe` Nothing
+
+      it "is Nothing for DriverUseError" do
+        (Errors.toSqlState (Errors.DriverUseError "unexpected response"))
+          `shouldBe` Nothing
 
   describe "toDetailedText with multiline values" do
     it "indents multiline detail values correctly" do

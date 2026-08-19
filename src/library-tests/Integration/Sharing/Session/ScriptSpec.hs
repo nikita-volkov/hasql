@@ -14,7 +14,7 @@ spec = do
     Scripts.onPreparableConnection config \connection -> do
       result <- Connection.use connection (Session.script "THIS IS INVALID SQL")
       case result of
-        Left (Errors.ScriptSessionError _ _) -> pure ()
+        Left (Errors.SessionUseError (Errors.ScriptSessionError _ _)) -> pure ()
         _ -> expectationFailure $ "Expected ScriptSessionError with ExecutionScriptError, got: " <> show result
 
   it "handles multi-statement DDL scripts with comments" \config -> do

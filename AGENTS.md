@@ -94,7 +94,7 @@ Defined once in the `common base` stanza of [hasql.cabal](hasql.cabal) and impor
 
 - **Qualified imports** for everything except the module's own topic - e.g. `qualified as Encoders`, `qualified as Decoders`.
 - Qualify by the module's topic, not by an arbitrary abbreviation. Self-qualified form (`import Pqi.Ffi qualified`) is preferred where the name is already short.
-- **Custom prelude** - every library module imports `Hasql.Platform.Prelude`, never the standard `Prelude`. Outside the library the convention follows the layer under test: `comms-tests` uses `Hasql.Platform.Prelude`; `library-tests`, `connection-state-tests`, `benchmarks` and `profiling` use plain `Prelude`.
+- **Custom prelude** - every library module imports `Hasql.Platform.Prelude`, never the standard `Prelude`. Outside the library the convention follows the layer under test: `library-tests`, `connection-state-tests`, `benchmarks` and `profiling` use plain `Prelude`.
 
 ### Naming
 
@@ -148,7 +148,7 @@ Prefer `do` notation with `ApplicativeDo` for clarity in applicative contexts.
 
 Within each category, modularize by the unit under test - see `src/library-tests/README.md` for the full policy on `[Module]Spec.hs` vs `[Module]/[Definition]Spec.hs` vs `[Module]/[Definition]/[Case]Spec.hs`. There is no `ByFeature/` or `ByBug/`; every test, including regression reproductions, is filed under the module/definition it exercises.
 
-Other components: `comms-tests` and `connection-state-tests` cover the internal layers directly; `benchmarks` and `profiling` are separate executables.
+Other components: `connection-state-tests` covers that layer directly; `benchmarks` and `profiling` are separate executables.
 
 ## Build System
 

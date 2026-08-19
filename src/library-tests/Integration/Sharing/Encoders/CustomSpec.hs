@@ -124,7 +124,7 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
 
         case result of
-          Left (Errors.MissingTypesSessionError missingTypes) ->
+          Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
             missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_custom_type")]
           _ ->
             expectationFailure ("Unexpected result: " <> show result)
@@ -158,7 +158,7 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
 
         case result of
-          Left (Errors.MissingTypesSessionError missingTypes) ->
+          Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
             missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_dependency")]
           _ ->
             expectationFailure ("Unexpected result: " <> show result)
@@ -335,7 +335,7 @@ spec = do
               (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.text)))
 
         case result of
-          Left (Errors.MissingTypesSessionError missingTypes) ->
+          Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
             missingTypes `shouldBe` HashSet.fromList [(Just "nonexistent_schema", "nonexistent_type")]
           _ ->
             expectationFailure ("Unexpected result: " <> show result)

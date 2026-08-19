@@ -44,18 +44,23 @@ singleResult tag handler = Recv \connection -> runExceptT do
     case result of
       Nothing -> do
         errorMessage <- Pq.errorMessage connection
-        pure (Left (NoResultsError tag errorMessage))
+        status <- Pq.status connection
+        pure (Left (NoResultsError tag (status == Pq.ConnectionBad) errorMessage))
       Just result -> pure (Right result)
   ExceptT do
     result <- Pq.getResult connection
     case result of
-      Nothing -> pure (Right result)
+      Nothing -> do
+        status <- Pq.status connection
+        if status == Pq.ConnectionBad
+          then do
+            errorMessage <- Pq.errorMessage connection
+            pure (Left (NoResultsError tag True errorMessage))
+          else pure (Right result)
       Just _ -> do
         -- Unreachable today: 'singleResult' backs 'queryParams' and
         -- 'queryPrepared', which go through the extended protocol where
-        -- Postgres rejects multi-statement SQL outright, and 'Roundtrip.query',
-        -- whose only caller is 'Hasql.Comms.Session.runCommand' with "ABORT"
-        -- and "DEALLOCATE ALL" - each a single statement. Draining anyway
+        -- Postgres rejects multi-statement SQL outright. Draining anyway
         -- keeps this branch correct on its own terms rather than relying on
         -- that non-local argument to hold forever.
         drainRemaining connection
@@ -81,7 +86,13 @@ allResults tag handler = Recv \connection -> do
   let loop resultIndex maybeError = do
         result <- Pq.getResult connection
         case result of
-          Nothing -> pure maybeError
+          Nothing -> do
+            status <- Pq.status connection
+            if status == Pq.ConnectionBad
+              then do
+                errorMessage <- Pq.errorMessage connection
+                pure (Just (NoResultsError tag True errorMessage))
+              else pure maybeError
           Just result -> do
             decodedResult <- ResultDecoder.toHandler handler result
             case decodedResult of
@@ -105,6 +116,18 @@ data Error tag
       ResultDecoder.Error
   | NoResultsError
       tag
+      -- | Whether @PQstatus@ reported the connection as bad when the results
+      -- failed to arrive.
+      --
+      -- 'True' means the socket is gone: the results are not late, they are
+      -- never coming, and the connection has to be replaced. 'False' means
+      -- the connection is intact and the server genuinely produced nothing
+      -- where a result was expected.
+      --
+      -- The send side reports the same distinction (see
+      -- 'Hasql.Comms.Roundtrip.ClientError'); without it here a dropped
+      -- socket is indistinguishable from a statement that returned no rows.
+      Bool
       -- | Details about the error. Possibly empty.
       (Maybe ByteString)
   | TooManyResultsError
@@ -117,11 +140,11 @@ instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
     ResultError tag _ _ -> tag
-    NoResultsError tag _ -> tag
+    NoResultsError tag _ _ -> tag
     TooManyResultsError tag _ -> tag
 
   {-# INLINE duplicate #-}
   duplicate e = case e of
     ResultError _ resultIndex resultError -> ResultError e resultIndex resultError
-    NoResultsError _ details -> NoResultsError e details
+    NoResultsError _ connectionLost details -> NoResultsError e connectionLost details
     TooManyResultsError _ expectedCount -> TooManyResultsError e expectedCount

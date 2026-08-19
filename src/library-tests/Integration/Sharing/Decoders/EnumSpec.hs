@@ -270,7 +270,7 @@ spec = do
             (Decoders.singleRow (Decoders.column (Decoders.nonNullable (Decoders.enum Nothing "nonexistent_enum_type" (Just . id)))))
 
       case result of
-        Left (Errors.MissingTypesSessionError missingTypes) ->
+        Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
           missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_enum_type")]
         _ ->
           expectationFailure ("Unexpected result: " <> show result)
@@ -296,7 +296,7 @@ spec = do
             )
 
       case result of
-        Left (Errors.MissingTypesSessionError missingTypes) ->
+        Left (Errors.SessionUseError (Errors.MissingTypesSessionError missingTypes)) ->
           missingTypes `shouldBe` HashSet.fromList [(Nothing, "nonexistent_array_enum")]
         _ ->
           expectationFailure ("Unexpected result: " <> show result)

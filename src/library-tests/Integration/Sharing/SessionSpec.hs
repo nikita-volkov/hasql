@@ -10,21 +10,9 @@ import Test.Hspec
 
 spec :: SpecWith Scripts.ScopeParams
 spec = do
-  it "Does not lose the server-side session state on timeout" \config -> do
-    Scripts.onPreparableConnection config \connection -> do
-      varname <- Execution.generateVarname
-      result <- timeout 50_000 do
-        Connection.use connection do
-          Execution.sessionByParams (Statements.SetConfig varname "1" False)
-          Execution.sessionByParams (Statements.Sleep 0.1)
-
-      result `shouldBe` Nothing
-
-      result <- Connection.use connection do
-        Execution.sessionByParams (Statements.CurrentSetting varname True)
-
-      result `shouldBe` Right (Just "1")
-
+  -- Note the guarantee this does not extend to: an interruption takes the
+  -- connection with it, and server-side session state goes with the
+  -- connection. See "Integration.Sharing.Connection.Use.InterruptionSpec".
   it "Does not lose the server-side session state between uses" \config -> do
     Scripts.onPreparableConnection config \connection -> do
       varname <- Execution.generateVarname

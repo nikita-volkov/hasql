@@ -62,7 +62,7 @@ spec = do
                 <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
                 <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _))) -> pure ()
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do
@@ -93,7 +93,7 @@ spec = do
                 <*> Execution.pipelineByParams Statements.WrongDecoder {start = 0, end = 2}
                 <*> Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
             case result of
-              Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {})) -> pure ()
+              Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {}))) -> pure ()
               _ -> expectationFailure $ "Unexpected result: " <> show result
 
         it "Leaves the connection usable" \config -> do
@@ -129,7 +129,7 @@ spec = do
                   <*> Execution.pipelineByParams Statements.BrokenSyntax {start = 0, end = 2}
                   <*> setVar "after"
               case result of
-                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _)) -> pure ()
+                Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.ServerStatementError _))) -> pure ()
                 _ -> expectationFailure $ "Unexpected result: " <> show result
               settingResult <-
                 Connection.use connection
@@ -150,7 +150,7 @@ spec = do
                   <*> Execution.pipelineByParams Statements.WrongDecoder {start = 0, end = 2}
                   <*> setVar "after"
               case result of
-                Left (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {})) -> pure ()
+                Left (Errors.SessionUseError (Errors.StatementSessionError _ _ _ _ _ (Errors.UnexpectedColumnTypeStatementError {}))) -> pure ()
                 _ -> expectationFailure $ "Unexpected result: " <> show result
               settingResult <-
                 Connection.use connection

@@ -32,7 +32,7 @@ spec = do
           let settings = Settings.hostAndPort "nonexistent.invalid.host" 5432
           result <- Connection.acquire adapter settings
           case result of
-            Left (Errors.OtherConnectionError _) -> putStrLn childResultMarkerOther
+            Left (Errors.OtherAcquireError _) -> putStrLn childResultMarkerOther
             Left err -> putStrLn (childResultMarkerUnexpected <> show err)
             Right conn -> Connection.release conn >> putStrLn childResultMarkerUnexpectedSuccess
         Nothing -> do
@@ -65,9 +65,9 @@ spec = do
               -- Classification is substring-matching on libpq's message text,
               -- which is translated according to the client's locale. Under
               -- English (the default test locale) this same failure is
-              -- NetworkingConnectionError (see the "AcquireSpec" tests). Under
+              -- NetworkingAcquireError (see the "AcquireSpec" tests). Under
               -- French, none of the (English) patterns match, so it falls
-              -- through to OtherConnectionError, and `isTransient` silently
+              -- through to OtherAcquireError, and `isTransient` silently
               -- flips from True to False for an identical underlying failure.
               --
               -- This is a known, documented limitation (see the Haddock on
@@ -75,10 +75,10 @@ spec = do
               -- libpq exposes no structured code for a failed `connectdb`, so
               -- there is no locale-independent signal to classify on.
               unless (childResultMarkerOther `List.isInfixOf` output) do
-                expectationFailure ("Expected the child process to report OtherConnectionError (the locale-mangled message defeating classification). Child output:\n" <> output)
+                expectationFailure ("Expected the child process to report OtherAcquireError (the locale-mangled message defeating classification). Child output:\n" <> output)
 
   describe "Missing retryable pattern" do
-    it "classifies \"sorry, too many clients already\" as NetworkingConnectionError, since it is pure backpressure" \adapter -> do
+    it "classifies \"sorry, too many clients already\" as NetworkingAcquireError, since it is pure backpressure" \adapter -> do
       runMaxConnectionsOneContainer \(host, port) -> do
         let settings =
               mconcat
@@ -100,9 +100,9 @@ spec = do
           Left ioException ->
             pendingWith ("pqi-native raised an uncaught IOException instead of a classified error (separate bug, unrelated to #329's classifier): " <> show ioException)
           Right result -> case result of
-            Left (Errors.NetworkingConnectionError msg) ->
+            Left (Errors.NetworkingAcquireError msg) ->
               Text.toLower msg `shouldSatisfy` Text.isInfixOf "too many clients"
-            Left err -> expectationFailure ("Expected NetworkingConnectionError, but got: " <> show err)
+            Left err -> expectationFailure ("Expected NetworkingAcquireError, but got: " <> show err)
             Right conn -> do
               Connection.release conn
               expectationFailure "Expected the second connection to fail with max_connections=1 already taken"
@@ -126,7 +126,7 @@ childModeEnvVar :: String
 childModeEnvVar = "HASQL_ISSUE_329_LOCALE_CHILD"
 
 childResultMarkerOther :: String
-childResultMarkerOther = "HASQL-ISSUE-329-RESULT: OtherConnectionError"
+childResultMarkerOther = "HASQL-ISSUE-329-RESULT: OtherAcquireError"
 
 childResultMarkerUnexpected :: String
 childResultMarkerUnexpected = "HASQL-ISSUE-329-RESULT: unexpected error: "
