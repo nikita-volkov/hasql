@@ -53,5 +53,5 @@ path takes one of three shapes:
 
 ## Other components
 
-`comms-tests` and `connection-state-tests` cover the internal layers directly;
-`benchmarks` and `profiling` are separate executables.
+`connection-state-tests` covers that layer directly; `benchmarks` and
+`profiling` are separate executables.
