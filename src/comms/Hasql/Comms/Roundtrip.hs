@@ -142,15 +142,21 @@ instance Comonad Error where
 -- would flush and commit the very commands the caller's pipeline never got
 -- to complete.
 --
--- Of the two errors an unhappy path can carry, the earlier one wins: the
--- exit failure is reported only when everything before it succeeded, since
--- otherwise the failure that got us here describes the connection better.
+-- Of the two errors an unhappy path can carry, the exit failure wins. It is
+-- both the rarer and the graver: a mode that cannot be left means the
+-- connection serves nothing serial from then on, whereas the failure that got
+-- us here is quite possibly an ordinary server error the caller is meant to
+-- catch and carry on from. Reporting the latter would describe the connection
+-- as healthy - the verdict is derived from the error alone, see
+-- 'Hasql.Engine.Errors.connectionIsSpent' - and hand it back still in pipeline
+-- mode, which is <https://github.com/nikita-volkov/hasql/issues/326> over
+-- again.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
 toPipelineIO (Roundtrip send recv) tag connection = runExceptT do
   ExceptT (runSend (Send.enterPipelineMode tag <> send <> Send.pipelineSync tag) connection)
   recvResult <- lift (first ServerError <$> Recv.toHandler (recv <* Recv.singleResult tag ResultDecoder.pipelineSync) connection)
   exitResult <- lift (runSend (Send.exitPipelineMode tag) connection)
-  ExceptT (pure (recvResult <* exitResult))
+  ExceptT (pure (exitResult *> recvResult))
 
 -- | Unlike 'toPipelineIO', this never enters pipeline mode, so there is no
 -- mode to leave: every call site sends a single operation and there is
