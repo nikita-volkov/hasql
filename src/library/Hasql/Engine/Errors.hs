@@ -115,6 +115,12 @@ data SessionError
     -- became unusable during the session. These errors are transient
     -- and the operation can be retried with a new connection.
     --
+    -- __The connection is gone.__ 'Hasql.Connection.use' has finished it
+    -- before returning this, so the 'Hasql.Connection.Connection' the
+    -- session ran on is spent: further 'Hasql.Connection.use' on it fails
+    -- with this same error, and 'Hasql.Connection.release' is a no-op.
+    -- Pools must discard it rather than return it.
+    --
     -- Note: As of version 1.10, connections recover from async exceptions
     -- without resetting, preserving connection-local state.
     ConnectionSessionError
@@ -142,12 +148,22 @@ data SessionError
     -- * A bug in Hasql
     -- * The PostgreSQL server misbehaving
     -- * An unexpected response from the server
-    -- * A request @libpq@ refused to send, the connection being intact -
-    --   e.g. more than 65535 parameters in one statement
+    -- * A request @libpq@ refused to send - e.g. more than 65535 parameters
+    --   in one statement
     --
     -- Whatever the cause, the same request will fail the same way on a fresh
     -- connection, so this is never transient. Unless the details point at a
     -- limit you exceeded yourself, report it as a bug.
+    --
+    -- __The connection is gone.__ 'Hasql.Connection.use' has finished it
+    -- before returning this, so the 'Hasql.Connection.Connection' the
+    -- session ran on is spent: further 'Hasql.Connection.use' on it fails
+    -- with 'ConnectionSessionError', and 'Hasql.Connection.release' is a
+    -- no-op. Pools must discard it rather than return it. The driver cannot
+    -- vouch for the protocol state of a connection a request failed to
+    -- leave, and repairing one costs more than replacing it: the repair
+    -- would have to push a Sync, which flushes and commits the very
+    -- commands the failed session never got to complete.
     DriverSessionError
       -- | Human-readable details about what went wrong.
       Text
@@ -329,6 +345,31 @@ isPrepareCollision = \case
     code == "42P05"
   _ -> False
 
+-- | Whether an error a session reported means the connection it ran on is
+-- no longer fit to be used again.
+--
+-- These are the two errors a failed send produces, and the driver has
+-- nothing to say about the connection's protocol state once one of them
+-- happens: either the socket is gone, or @libpq@ refused a request with
+-- commands possibly queued behind it and no way to tell what the server has
+-- seen. Neither is worth repairing - a repair would have to push a Sync,
+-- which flushes and commits the very commands the failed session never got
+-- to complete - so the connection is finished instead.
+--
+-- The classification errs towards finishing: a driver error raised while
+-- decoding results leaves a perfectly healthy connection, and costs one
+-- reconnect here. That is the same over-approximation @hasql-pool@ already
+-- makes when it discards on these two errors, and it buys an invariant
+-- worth more than the reconnect - these constructors mean the connection is
+-- gone because 'use' makes it so, rather than by convention.
+connectionIsSpent :: SessionError -> Bool
+connectionIsSpent = \case
+  ConnectionSessionError {} -> True
+  DriverSessionError {} -> True
+  StatementSessionError {} -> False
+  ScriptSessionError {} -> False
+  MissingTypesSessionError {} -> False
+
 -- | Classify a failed @libpq@ send by whether the connection was lost with it.
 --
 -- The distinction is the one 'Hasql.Errors.isTransient' rides on: a lost
@@ -368,23 +409,29 @@ fromRecvError = \case
           parameters
           prepared
           (fromStatementResultError resultError)
-  Hasql.Comms.Recv.NoResultsError tag details ->
-    case tag of
-      Nothing ->
-        (DriverSessionError . TextBuilder.toText . mconcat)
-          [ "Unexpectedly got no results in an operation not associated with any statement. ",
-            "This indicates a bug in Hasql or the server misbehaving. ",
-            "Details: ",
-            TextBuilder.string (show details)
-          ]
-      Just (totalStatements, statementIndex, sql, parameters, prepared) ->
-        StatementSessionError
-          totalStatements
-          statementIndex
-          (decodeUtf8Lenient sql)
-          parameters
-          prepared
-          (UnexpectedRowCountStatementError 1 1 0)
+  Hasql.Comms.Recv.NoResultsError tag connectionLost details ->
+    if connectionLost
+      then -- The results are not late, they are never coming: the socket is
+      -- gone. Reporting this as a row-count mismatch would describe a
+      -- dropped connection as a statement that returned nothing, and
+      -- leave pools reusing a connection that no longer exists.
+        ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+      else case tag of
+        Nothing ->
+          (DriverSessionError . TextBuilder.toText . mconcat)
+            [ "Unexpectedly got no results in an operation not associated with any statement. ",
+              "This indicates a bug in Hasql or the server misbehaving. ",
+              "Details: ",
+              TextBuilder.string (show details)
+            ]
+        Just (totalStatements, statementIndex, sql, parameters, prepared) ->
+          StatementSessionError
+            totalStatements
+            statementIndex
+            (decodeUtf8Lenient sql)
+            parameters
+            prepared
+            (UnexpectedRowCountStatementError 1 1 0)
   Hasql.Comms.Recv.TooManyResultsError tag actual ->
     case tag of
       Nothing ->
@@ -490,14 +537,17 @@ fromRecvErrorInScript scriptSql = \case
             ": ",
             TextBuilder.string (show rowError)
           ]
-  Hasql.Comms.Recv.NoResultsError _ details ->
-    (DriverSessionError . TextBuilder.toText . mconcat)
-      [ "Got no results in script.",
-        " This indicates a bug in Hasql or the server misbehaving.",
-        details
-          & filter (/= "")
-          & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
-      ]
+  Hasql.Comms.Recv.NoResultsError _ connectionLost details ->
+    if connectionLost
+      then ConnectionSessionError (maybe "" decodeUtf8Lenient details)
+      else
+        (DriverSessionError . TextBuilder.toText . mconcat)
+          [ "Got no results in script.",
+            " This indicates a bug in Hasql or the server misbehaving.",
+            details
+              & filter (/= "")
+              & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
+          ]
   Hasql.Comms.Recv.TooManyResultsError _ actual ->
     (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",

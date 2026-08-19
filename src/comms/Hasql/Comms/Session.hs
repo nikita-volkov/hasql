@@ -3,7 +3,6 @@ module Hasql.Comms.Session
 
     -- * Constructors
     cleanUpAfterInterruption,
-    cleanUpAfterFailure,
 
     -- * Executors
     toHandler,
@@ -41,19 +40,6 @@ cleanUpAfterInterruption = do
   -- Ensure we are in idle transaction state.
   bringTransactionStatusToIdle
   deallocateAllPreparedStatements
-
--- | Repair a connection that a session handed back dirty on an ordinary
--- 'Left' return, as opposed to an interruption.
---
--- A 'Left' return means the driver completed its receive sequence and chose
--- to report: nothing is in flight, so there is nothing to cancel; a
--- transaction left open is for whoever composed it (e.g. @hasql-transaction@)
--- to roll back, not this repair; and the prepared-statement cache is still
--- trustworthy, so it is left alone. The only thing a session can leave
--- behind on this path is an open pipeline (see 'leavePipeline'), so that is
--- the only thing this repairs.
-cleanUpAfterFailure :: Session ()
-cleanUpAfterFailure = leavePipeline
 
 bringTransactionStatusToIdle :: Session ()
 bringTransactionStatusToIdle = do

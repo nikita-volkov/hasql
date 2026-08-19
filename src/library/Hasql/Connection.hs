@@ -24,7 +24,16 @@ import Pqi qualified as Pq
 -- |
 -- A single connection to the database.
 newtype Connection
-  = Connection (MVar ConnectionState.ConnectionState)
+  = Connection
+      -- |
+      -- The state is 'Nothing' once the connection is gone - either because
+      -- 'release' was called on it, or because a session failed in a way that
+      -- left the driver unable to vouch for the connection's protocol state, in
+      -- which case 'use' finishes it (see 'Hasql.Engine.Errors.connectionIsSpent'). @libpq@ forbids
+      -- touching a connection after @PQfinish@, so the handle has to remember
+      -- that it did: without it a second 'release' finishes a freed connection
+      -- and a later 'use' sends on one.
+      (MVar (Maybe ConnectionState.ConnectionState))
 
 -- |
 -- Establish a connection according to the provided settings.
@@ -98,9 +107,10 @@ acquire adapter settings =
                     { ConnectionState.preparedStatements = not (Config.noPreparedStatements config),
                       ConnectionState.statementCache = StatementCache.empty,
                       ConnectionState.oidCache = mempty,
-                      ConnectionState.connection = pqConnection
+                      ConnectionState.connection = pqConnection,
+                      ConnectionState.dead = False
                     }
-            connectionRef <- lift (newMVar connectionState)
+            connectionRef <- lift (newMVar (Just connectionState))
             pure (Connection connectionRef)
 
           -- A classified failure (as opposed to a thrown exception, which
@@ -170,11 +180,15 @@ acquire adapter settings =
 
 -- |
 -- Release the connection.
+--
+-- Idempotent: releasing a connection that is already gone - released
+-- before, or finished by 'use' - does nothing.
 release :: Connection -> IO ()
-release (Connection connectionRef) =
+release (Connection var) =
   mask_ do
-    connectionState <- readMVar connectionRef
-    Pq.finish (ConnectionState.connection connectionState)
+    connectionState <- takeMVar var
+    traverse_ (Pq.finish . ConnectionState.connection) connectionState
+    putMVar var Nothing
 
 -- |
 -- Execute a sequence of operations with exclusive access to the connection.
@@ -183,74 +197,46 @@ release (Connection connectionRef) =
 use :: Connection -> Session.Session a -> IO (Either SessionError a)
 use (Connection var) session =
   mask \restore -> do
-    connectionState@ConnectionState.ConnectionState {..} <- takeMVar var
-    result <- try @SomeException (restore (Session.run session connectionState))
-    case result of
-      Left exception -> do
-        -- If an exception happened, we need to bring the connection back to idle
-        -- without resetting (to preserve session state).
-        result <- Comms.Session.toHandler Comms.Session.cleanUpAfterInterruption connection
+    takeMVar var >>= \case
+      Nothing -> do
+        putMVar var Nothing
+        pure (Left (ConnectionSessionError "The connection has been released"))
+      Just connectionState -> do
+        let connection = ConnectionState.connection connectionState
+        result <- try @SomeException (restore (Session.run session connectionState))
         case result of
-          Left err -> do
-            -- If cleanup failed, we have to close the connection.
-            -- There's not much else we can do.
-            Pq.finish connection
-            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
-            let message =
-                  mconcat
-                    [ "Failed to clean up after interruption.\n",
-                      err,
-                      "\n",
-                      "The following exception was raised during the operation:\n",
-                      Text.pack (displayException exception)
-                    ]
-            pure (Left (DriverSessionError message))
-          Right () -> do
-            putMVar var (ConnectionState.resetPreparedStatementsCache connectionState)
-            throwIO exception
-      Right (result, !newState) -> do
-        case result of
-          Left sessionError -> do
-            -- A plain 'Left' return means the session completed and chose
-            -- to report; the driver never lost control mid-command. The
-            -- only thing left to check is whether it returned with the
-            -- pipeline still open, which now only 'Session.onLibpqConnection'
-            -- can do: pipelining proper leaves the mode inside
-            -- 'Comms.Roundtrip.toPipelineIO', which owns the mode for the
-            -- span of one pipeline. It has to be repaired there rather than
-            -- here, because a session is a 'MonadError' and can catch a
-            -- pipeline failure and carry on - or catch it and succeed, in
-            -- which case this branch never runs.
-            --
-            -- So repair here is the light counterpart to
-            -- 'cleanUpAfterInterruption', not a copy of it: no cancel
-            -- (nothing is in flight), no ABORT (a transaction left open here
-            -- is for whoever composed it, e.g. hasql-transaction, to roll
-            -- back), no DEALLOCATE ALL (the statement cache is still
-            -- trustworthy). 'cleanUpAfterFailure' checks the pipeline status
-            -- itself, so this is unconditional and a no-op on the common,
-            -- already-clean path bar one local libpq call.
-            let newConnection = ConnectionState.connection newState
-            repairResult <- Comms.Session.toHandler Comms.Session.cleanUpAfterFailure newConnection
-            case repairResult of
-              Left repairErr -> do
-                -- Repair itself failed: the connection's protocol state is
-                -- indeterminate, so it must not be handed back to the pool
-                -- as reusable.
-                Pq.finish newConnection
-                putMVar var (ConnectionState.resetPreparedStatementsCache newState)
+          Left exception -> do
+            -- If an exception happened, we need to bring the connection back to idle
+            -- without resetting (to preserve session state).
+            result <- Comms.Session.toHandler Comms.Session.cleanUpAfterInterruption connection
+            case result of
+              Left err -> do
+                -- If cleanup failed, we have to close the connection.
+                -- There's not much else we can do.
+                Pq.finish connection
+                putMVar var Nothing
                 let message =
                       mconcat
-                        [ "Failed to restore the connection after a session failure.\n",
-                          repairErr,
+                        [ "Failed to clean up after interruption.\n",
+                          err,
                           "\n",
-                          "The following error was reported by the session:\n",
-                          Text.pack (show sessionError)
+                          "The following exception was raised during the operation:\n",
+                          Text.pack (displayException exception)
                         ]
                 pure (Left (DriverSessionError message))
               Right () -> do
-                putMVar var newState
+                putMVar var (Just (ConnectionState.resetPreparedStatementsCache connectionState))
+                throwIO exception
+          Right (result, !newState) ->
+            if ConnectionState.dead newState
+              then do
+                -- The driver gave up on the connection somewhere inside the
+                -- session. Whether the session went on to report that, to
+                -- catch it and fail differently, or to catch it and
+                -- succeed, the connection is not fit to be handed back.
+                Pq.finish (ConnectionState.connection newState)
+                putMVar var Nothing
                 pure result
-          Right _ -> do
-            putMVar var newState
-            pure result
+              else do
+                putMVar var (Just newState)
+                pure result

@@ -7,6 +7,7 @@ module Hasql.ConnectionState
     setPreparedStatements,
     setStatementCache,
     setConnection,
+    setDead,
     setOidCache,
     mapStatementCache,
     mapOidCache,
@@ -30,7 +31,22 @@ data ConnectionState = ConnectionState
     -- | The OID cache for type name to OID mapping.
     oidCache :: OidCache.OidCache,
     -- | The underlying database connection.
-    connection :: Pq.Connection
+    connection :: Pq.Connection,
+    -- | Whether the driver has given up on the connection.
+    --
+    -- Set when an operation fails in a way that leaves nothing to be assumed
+    -- about the connection's protocol state (see
+    -- 'Hasql.Engine.Errors.connectionIsSpent'). Sessions short-circuit on
+    -- it, and 'Hasql.Connection.use' finishes the connection when it comes
+    -- back set.
+    --
+    -- It is state rather than a property of the error a session returns
+    -- because a session is a 'Control.Monad.Except.MonadError' and can catch
+    -- the failure and carry on - or catch it and succeed, in which case the
+    -- error never reaches 'Hasql.Connection.use' at all, and without this
+    -- the connection would be handed back for reuse in a state libpq
+    -- refuses to serve.
+    dead :: Bool
   }
 
 toStatementCache :: ConnectionState -> StatementCache.StatementCache
@@ -42,7 +58,8 @@ fromConnection connection =
     { preparedStatements = False,
       statementCache = StatementCache.empty,
       oidCache = OidCache.empty,
-      connection = connection
+      connection = connection,
+      dead = False
     }
 
 setPreparedStatements :: Bool -> ConnectionState -> ConnectionState
@@ -52,6 +69,10 @@ setPreparedStatements preparedStatements connectionState =
 setStatementCache :: StatementCache.StatementCache -> ConnectionState -> ConnectionState
 setStatementCache statementCache connectionState =
   connectionState {statementCache = statementCache}
+
+setDead :: ConnectionState -> ConnectionState
+setDead connectionState =
+  connectionState {dead = True}
 
 setConnection :: Pq.Connection -> ConnectionState -> ConnectionState
 setConnection connection connectionState =

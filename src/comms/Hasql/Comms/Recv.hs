@@ -44,7 +44,8 @@ singleResult tag handler = Recv \connection -> runExceptT do
     case result of
       Nothing -> do
         errorMessage <- Pq.errorMessage connection
-        pure (Left (NoResultsError tag errorMessage))
+        status <- Pq.status connection
+        pure (Left (NoResultsError tag (status == Pq.ConnectionBad) errorMessage))
       Just result -> pure (Right result)
   ExceptT do
     result <- Pq.getResult connection
@@ -105,6 +106,18 @@ data Error tag
       ResultDecoder.Error
   | NoResultsError
       tag
+      -- | Whether @PQstatus@ reported the connection as bad when the results
+      -- failed to arrive.
+      --
+      -- 'True' means the socket is gone: the results are not late, they are
+      -- never coming, and the connection has to be replaced. 'False' means
+      -- the connection is intact and the server genuinely produced nothing
+      -- where a result was expected.
+      --
+      -- The send side reports the same distinction (see
+      -- 'Hasql.Comms.Roundtrip.ClientError'); without it here a dropped
+      -- socket is indistinguishable from a statement that returned no rows.
+      Bool
       -- | Details about the error. Possibly empty.
       (Maybe ByteString)
   | TooManyResultsError
@@ -117,11 +130,11 @@ instance Comonad Error where
   {-# INLINE extract #-}
   extract = \case
     ResultError tag _ _ -> tag
-    NoResultsError tag _ -> tag
+    NoResultsError tag _ _ -> tag
     TooManyResultsError tag _ -> tag
 
   {-# INLINE duplicate #-}
   duplicate e = case e of
     ResultError _ resultIndex resultError -> ResultError e resultIndex resultError
-    NoResultsError _ details -> NoResultsError e details
+    NoResultsError _ connectionLost details -> NoResultsError e connectionLost details
     TooManyResultsError _ expectedCount -> TooManyResultsError e expectedCount

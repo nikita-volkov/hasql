@@ -1,21 +1,33 @@
 module Integration.Sharing.Pipeline.Statement.SendFailureSpec (spec) where
 
 import Hasql.Connection qualified as Connection
+import Hasql.Decoders qualified as Decoders
 import Hasql.Errors qualified as Errors
 import Hasql.Pipeline qualified as Pipeline
 import Hasql.Session qualified as Session
+import Hasql.Statement qualified as Statement
 import Helpers.Dsls.Execution qualified as Execution
 import Helpers.Scripts qualified as Scripts
 import Helpers.Statements qualified as Statements
-import Pqi qualified as Pq
 import Prelude
 import Test.Hspec
 
 -- | A pipeline of five statements with 'Statements.TooManyParams' in the
--- middle: statements 1 and 2 get dispatched to the server, statement 3 fails
--- on send, statements 4 and 5 never reach it.
+-- middle: statements 1 and 2 are queued, statement 3 is refused on send, and
+-- statements 4 and 5 are never even queued.
 --
 -- This is the reproduction of <https://github.com/nikita-volkov/hasql/issues/326>.
+--
+-- Note what "queued" means here and what it does not. In pipeline mode
+-- @PQsendQueryParams@ only appends to libpq's output buffer; libpq flushes
+-- when the buffer passes a size threshold, and otherwise nothing reaches the
+-- server until a Sync. Two @generate_series@ calls are nowhere near that
+-- threshold, so at the moment statement 3 is refused, __nothing has left the
+-- client__. The driver does not push a Sync to find out - doing so would
+-- flush and commit statements 1 and 2, which is the opposite of what a
+-- pipeline that failed halfway should do. It finishes the connection
+-- instead, and the whole pipeline is discarded, exactly as it would be had
+-- the server rejected one of the statements.
 failingPipeline :: Pipeline.Pipeline ()
 failingPipeline = do
   _ <- goodStatement
@@ -28,7 +40,7 @@ failingPipeline = do
     goodStatement =
       Execution.pipelineByParams Statements.GenerateSeries {start = 0, end = 2}
 
--- | The same failure with nothing dispatched before it: the send of the very
+-- | The same failure with nothing queued before it: the send of the very
 -- first statement fails, so the pipeline mode is on and the command queue is
 -- empty.
 failingOnFirstStatementPipeline :: Pipeline.Pipeline ()
@@ -46,51 +58,52 @@ spec = do
     it "Reports it as non-transient" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
         -- libpq refused the request itself without touching the socket, so
-        -- the connection is fine and the same request will be refused the
-        -- same way on any other one. Reporting this as transient is what
-        -- made retry wrappers spin on it forever.
+        -- the same request will be refused the same way on any other
+        -- connection. Reporting this as transient is what made retry
+        -- wrappers spin on it forever.
         result <- Connection.use connection (Session.pipeline failingPipeline)
         case result of
           Left err -> Errors.isTransient err `shouldBe` False
           Right () -> expectationFailure "The pipeline unexpectedly succeeded"
 
-    it "Leaves the connection usable" \config -> do
+    it "Finishes the connection" \config -> do
+      -- The driver cannot vouch for the protocol state of a connection it
+      -- failed to send on: the mode is still on, commands are queued behind
+      -- the refusal, and only a Sync would reveal what the server has seen
+      -- - at the cost of committing them. So the connection is finished
+      -- rather than repaired, and the handle it was reached through is
+      -- spent.
       Scripts.onUnpreparableConnection config \connection -> do
-        -- A mid-pipeline send failure must not leave the connection in
-        -- pipeline mode. Issue #326 reports that when it does, libpq
-        -- rejects every subsequent command sent on it, so every later
-        -- session on the same connection fails too - even though the
-        -- connection itself is otherwise perfectly usable.
         runFailingPipeline connection
         followUpResult <-
           Connection.use connection
             $ Session.script "select 1"
-        shouldBe followUpResult (Right ())
+        case followUpResult of
+          Left (Errors.ConnectionSessionError _) -> pure ()
+          _ -> expectationFailure ("Unexpected follow-up result: " <> show followUpResult)
 
-    it "Leaves pipeline mode off" \config -> do
+    it "Keeps reporting the connection as gone however many times it is used" \config -> do
       Scripts.onUnpreparableConnection config \connection -> do
         runFailingPipeline connection
-        status <- Connection.use connection pipelineStatusSession
-        shouldBe status (Right Pq.PipelineOff)
+        replicateM_ 3 do
+          result <- Connection.use connection (Session.script "select 1")
+          case result of
+            Left (Errors.ConnectionSessionError _) -> pure ()
+            _ -> expectationFailure ("Unexpected follow-up result: " <> show result)
 
-    it "Recovers from it as many times as it happens" \config -> do
-      -- The repair is a step of every pipeline round trip, not a one-off
-      -- rescue, so a connection that has already been through it must go
-      -- through it again just as well.
+    it "Leaves the connection releasable" \config -> do
+      -- 'release' on a connection the driver already finished must not
+      -- finish it a second time - libpq forbids touching a connection after
+      -- PQfinish.
       Scripts.onUnpreparableConnection config \connection -> do
         runFailingPipeline connection
-        runFailingPipeline connection
-        runFailingPipeline connection
-        followUpResult <-
-          Connection.use connection
-            $ Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 2}
-        shouldBe followUpResult (Right [0, 1, 2])
+        Connection.release connection
+        Connection.release connection
 
     describe "When it happens on the first statement of the pipeline" do
-      it "Leaves the connection usable" \config -> do
-        -- Nothing was dispatched before the failure, so the repair has an
-        -- empty command queue to drain - the opposite end of the range from
-        -- the mid-pipeline case above.
+      it "Fails the same way" \config -> do
+        -- Nothing was queued before the failure - the opposite end of the
+        -- range from the mid-pipeline case above, and the same outcome.
         Scripts.onUnpreparableConnection config \connection -> do
           result <-
             Connection.use connection
@@ -101,72 +114,55 @@ spec = do
           followUpResult <-
             Connection.use connection
               $ Session.script "select 1"
-          shouldBe followUpResult (Right ())
-
-    describe "On a connection with prepared statements enabled" do
-      it "Leaves the statement cache agreeing with the server" \config -> do
-        -- The statements preceding the failure were dispatched as PARSE plus
-        -- EXECUTE and the repair syncs them, so the server does hold them
-        -- prepared. If the driver were to drop them from its cache it would
-        -- re-issue PARSE under the same content-addressed name and get 42P05;
-        -- if it were to keep names the server does not hold it would get
-        -- 26000. Re-running the same statements catches either.
-        Scripts.onPreparableConnection config \connection -> do
-          runFailingPipeline connection
-          followUpResult <-
-            Connection.use connection
-              $ Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 2}
-          shouldBe followUpResult (Right [0, 1, 2])
-          rerunResult <-
-            Connection.use connection
-              $ Execution.sessionByParams Statements.GenerateSeries {start = 0, end = 2}
-          shouldBe rerunResult (Right [0, 1, 2])
+          case followUpResult of
+            Left (Errors.ConnectionSessionError _) -> pure ()
+            _ -> expectationFailure ("Unexpected follow-up result: " <> show followUpResult)
 
     describe "Effects on the database state" do
-      it "Keeps the effects of the statements preceding the failure and skips the following ones" \config -> do
-        -- Unlike a query error, which reaches the server before the Sync
-        -- ending the pipeline's implicit transaction block and so rolls the
-        -- whole block back, a send failure is discovered on the client with
-        -- the preceding commands already on the wire. Recovering the
-        -- connection means sending that Sync, which commits them. The
-        -- statements after the failure were never sent at all.
-        Scripts.onPreparableConnection config \connection -> do
-          varname <- Execution.generateVarname
-          let setVar value =
-                Execution.pipelineByParams
-                  Statements.SetConfig {name = varname, value, local = False}
-          result <-
-            (Connection.use connection . Session.pipeline)
-              $ (,,)
-              <$> setVar "before"
-              <*> Execution.pipelineByParams Statements.TooManyParams
-              <*> setVar "after"
-          case result of
+      it "Discards the whole pipeline, including the statements preceding the failure" \config -> do
+        -- The statements before the failure were appended to libpq's output
+        -- buffer and never flushed, so the server never saw them. This
+        -- matches what a query error in a pipeline already does: the
+        -- implicit transaction block is rolled back whole.
+        --
+        -- Observing that takes a second connection, both because the one
+        -- the pipeline ran on is finished afterwards and because the effect
+        -- has to outlive it.
+        Scripts.onUnpreparableConnection config \observer -> do
+          tableName <- Scripts.generateSymname
+          createResult <-
+            Connection.use observer (Session.script ("create table " <> tableName <> " (id int4)"))
+          shouldBe createResult (Right ())
+
+          pipelineResult <-
+            Scripts.onUnpreparableConnection config \connection ->
+              (Connection.use connection . Session.pipeline)
+                $ (,)
+                <$> Pipeline.statement () (insertStatement tableName)
+                <*> Execution.pipelineByParams Statements.TooManyParams
+          case pipelineResult of
             Left (Errors.DriverSessionError _) -> pure ()
-            _ -> expectationFailure ("Unexpected result: " <> show result)
-          settingResult <-
-            Connection.use connection
-              $ Execution.sessionByParams Statements.CurrentSetting {name = varname, missingOk = True}
-          shouldBe settingResult (Right (Just "before"))
+            _ -> expectationFailure ("Unexpected pipeline result: " <> show pipelineResult)
 
-    describe "Inside an explicit transaction" do
-      it "Leaves the transaction open rather than aborting it" \config -> do
-        -- Recovery here is the light repair, not the one run after an
-        -- interruption: it takes the connection out of pipeline mode and
-        -- stops there. A transaction the caller opened is the caller's to
-        -- end, and a statement failing inside one is an ordinary thing to
-        -- catch and carry on from.
-        Scripts.onPreparableConnection config \connection -> do
-          beginResult <- Connection.use connection (Session.script "begin")
-          shouldBe beginResult (Right ())
+          countResult <- Connection.use observer (Session.statement () (countStatement tableName))
+          shouldBe countResult (Right 0)
 
-          runFailingPipeline connection
+          dropResult <- Connection.use observer (Session.script ("drop table " <> tableName))
+          shouldBe dropResult (Right ())
 
-          status <- Connection.use connection transactionStatusSession
-          shouldBe status (Right Pq.TransInTrans)
+insertStatement :: Text -> Statement.Statement () ()
+insertStatement tableName =
+  Statement.unpreparable
+    ("insert into " <> tableName <> " values (1)")
+    mempty
+    Decoders.noResult
 
-          rollbackResult <- Connection.use connection (Session.script "rollback")
-          shouldBe rollbackResult (Right ())
+countStatement :: Text -> Statement.Statement () Int64
+countStatement tableName =
+  Statement.unpreparable
+    ("select count(*) from " <> tableName)
+    mempty
+    (Decoders.singleRow (Decoders.column (Decoders.nonNullable Decoders.int8)))
 
 -- | Run 'failingPipeline' and assert it fails with the expected rejection.
 runFailingPipeline :: Connection.Connection -> IO ()
@@ -177,19 +173,3 @@ runFailingPipeline connection = do
   case result of
     Left (Errors.DriverSessionError _) -> pure ()
     _ -> expectationFailure ("Unexpected pipeline result: " <> show result)
-
--- | Read the pipeline status of the raw connection without sending anything
--- on it.
-pipelineStatusSession :: Session.Session Pq.PipelineStatus
-pipelineStatusSession =
-  Session.onLibpqConnection \pqConnection -> do
-    status <- Pq.pipelineStatus pqConnection
-    pure (Right status, pqConnection)
-
--- | Read the transaction status of the raw connection without sending
--- anything on it.
-transactionStatusSession :: Session.Session Pq.TransactionStatus
-transactionStatusSession =
-  Session.onLibpqConnection \pqConnection -> do
-    status <- Pq.transactionStatus pqConnection
-    pure (Right status, pqConnection)

@@ -132,80 +132,36 @@ instance Comonad Error where
 -- | Run a round trip in pipeline mode, entering the mode and leaving it
 -- again before returning.
 --
--- Pipeline mode is scoped to this call, so leaving it is this function's
--- obligation on every path, not just the successful one. Two of them are
--- easy to miss: a send failure can strand commands that preceding callers
--- in the same batch already dispatched, and the ordinary exit attempt can
--- itself fail. Both used to return with the mode still on, leaving the
--- caller a connection that libpq refuses serial commands on and that hands
--- the next pipeline the stale results of this one. Repairing it after the
--- session returned - as 'Hasql.Connection.use' did - is too late: a session
--- is a 'MonadError' and can catch a pipeline failure and carry on, or catch
--- it and succeed, in which case the repair never runs at all.
+-- The exit is attempted whether or not the receive succeeded, because a
+-- failing receive still leaves the mode on and the connection unusable for
+-- serial commands. It is viable on that path because 'Recv' does not
+-- short-circuit: its 'Applicative' runs every step, so the results of every
+-- dispatched command are consumed even when one of them decodes into an
+-- error, and the queue libpq requires empty before it permits the exit is
+-- empty by the time we ask.
 --
--- Hence the shape below: the happy path ends with the plain exit, which by
--- then has nothing left to do but turn the mode off, and every failing path
--- - whichever step it failed at - goes through 'leavePipeline' instead.
+-- A failed /send/ is the one case with no exit attempt, and deliberately so.
+-- It strands commands that earlier callers in the same batch queued but
+-- never flushed, and no amount of draining makes that connection's protocol
+-- state something we can vouch for. Such a connection is finished by
+-- 'Hasql.Connection.use' rather than repaired: both errors a send failure
+-- can produce say so (see 'ClientError'), and pushing a Sync to salvage it
+-- would flush and commit the very commands the caller's pipeline never got
+-- to complete.
+--
+-- Of the two errors an unhappy path can carry, the earlier one wins: the
+-- exit failure is reported only when everything before it succeeded, since
+-- otherwise the failure that got us here describes the connection better.
 toPipelineIO :: Roundtrip tag a -> tag -> Pq.Connection -> IO (Either (Error tag) a)
-toPipelineIO (Roundtrip send recv) tag connection = do
-  result <- runExceptT do
-    ExceptT (runSend (Send.enterPipelineMode tag <> send <> Send.pipelineSync tag) connection)
-    result <- ExceptT (first ServerError <$> Recv.toHandler (recv <* Recv.singleResult tag ResultDecoder.pipelineSync) connection)
-    ExceptT (runSend (Send.exitPipelineMode tag) connection)
-    pure result
-  case result of
-    Right result -> pure (Right result)
-    Left err -> Left err <$ leavePipeline
-  where
-    -- Get the connection out of pipeline mode after something in the
-    -- pipeline went wrong. This is more than turning a flag off: libpq
-    -- exits the mode only once the command queue is empty and every
-    -- dispatched command's results have been consumed, and the server
-    -- withholds those results until it sees a Sync.
-    --
-    -- So we send one - which also flushes whatever of ours is still sitting
-    -- in the send buffer - and consume results up to the PipelineSync it
-    -- produces. That result is where libpq resumes normal result
-    -- processing; everything the aborted pipeline skipped comes back as
-    -- PipelineAborted before it.
-    --
-    -- The rounds repeat because the batch's own Sync can still be queued
-    -- ahead of ours, when the receive above failed before consuming it, and
-    -- because a round also ends at a plain command boundary. They stop as
-    -- soon as the exit is accepted, and stop regardless once a round finds
-    -- nothing left to consume - no amount of further draining improves on
-    -- that.
-    --
-    -- The outcome is not reported: the failure that got us here describes
-    -- the connection better than the repair could.
-    leavePipeline = do
-      _ <- Pq.pipelineSync connection
-      exitAfterDraining
-      where
-        exitAfterDraining = do
-          consumedAnything <- drainToSyncPoint
-          exited <- Pq.exitPipelineMode connection
-          when (not exited && consumedAnything) exitAfterDraining
-          where
-            -- Consume results up to and including the next sync point, reporting
-            -- whether anything got consumed.
-            drainToSyncPoint =
-              let go consumedAnything =
-                    Pq.getResult connection >>= \case
-                      -- A command boundary, or an empty queue.
-                      Nothing -> pure consumedAnything
-                      Just result ->
-                        Pq.resultStatus result >>= \case
-                          -- Terminated by a Nothing like any other command's round
-                          -- of results.
-                          Pq.PipelineSync -> True <$ Pq.getResult connection
-                          _ -> go True
-               in go False
+toPipelineIO (Roundtrip send recv) tag connection = runExceptT do
+  ExceptT (runSend (Send.enterPipelineMode tag <> send <> Send.pipelineSync tag) connection)
+  recvResult <- lift (first ServerError <$> Recv.toHandler (recv <* Recv.singleResult tag ResultDecoder.pipelineSync) connection)
+  exitResult <- lift (runSend (Send.exitPipelineMode tag) connection)
+  ExceptT (pure (recvResult <* exitResult))
 
--- | Unlike 'toPipelineIO', this never enters pipeline mode, so a send
--- failure here never leaves dispatched-but-unacknowledged commands behind:
--- every call site sends a single operation and there is nothing queued
--- after it to strand. No restoration step is needed.
+-- | Unlike 'toPipelineIO', this never enters pipeline mode, so there is no
+-- mode to leave: every call site sends a single operation and there is
+-- nothing queued after it.
 toSerialIO :: Roundtrip tag a -> Pq.Connection -> IO (Either (Error tag) a)
 toSerialIO (Roundtrip send recv) connection = do
   sendResult <- runSend send connection

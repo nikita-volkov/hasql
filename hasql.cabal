@@ -292,7 +292,6 @@ test-suite comms-tests
   hs-source-dirs: src/comms-tests
   main-is: Main.hs
   other-modules:
-    Hasql.Comms.Session.CleanUpAfterFailureSpec
     Hasql.Comms.Session.CleanUpAfterInterruptionSpec
     Hasql.Comms.SpecHook
 
