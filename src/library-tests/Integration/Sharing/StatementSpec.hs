@@ -2,6 +2,8 @@ module Integration.Sharing.StatementSpec (spec) where
 
 import Data.Either
 import Data.Text qualified as Text
+import Data.Vector qualified as Vector
+import Data.Vector.Unboxed qualified as UnboxedVector
 import Hasql.Connection qualified as Connection
 import Hasql.Decoders qualified as Decoders
 import Hasql.Encoders qualified as Encoders
@@ -87,6 +89,29 @@ spec = do
                   (Decoders.rowList ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
           result <- Connection.use connection (Session.statement () statement)
           result `shouldBe` Right [(1 :: Int64, 2 :: Int64), (3, 4), (5, 6)]
+
+    describe "Vector decoding" do
+      it "decodes into a boxed vector correctly" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement :: Statement.Statement () (Vector.Vector (Int64, Int64))
+              statement =
+                Statement.preparable
+                  "values (1 :: int8, 2 :: int8), (3,4), (5,6)"
+                  mempty
+                  (Decoders.rowVector ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
+          result <- Connection.use connection (Session.statement () statement)
+          result `shouldBe` Right (Vector.fromList [(1, 2), (3, 4), (5, 6)])
+
+      it "decodes into an unboxed vector correctly" \config -> do
+        Scripts.onPreparableConnection config \connection -> do
+          let statement :: Statement.Statement () (UnboxedVector.Vector (Int64, Int64))
+              statement =
+                Statement.preparable
+                  "values (1 :: int8, 2 :: int8), (3,4), (5,6)"
+                  mempty
+                  (Decoders.rowVector ((,) <$> (Decoders.column (Decoders.nonNullable Decoders.int8)) <*> (Decoders.column (Decoders.nonNullable Decoders.int8))))
+          result <- Connection.use connection (Session.statement () statement)
+          result `shouldBe` Right (UnboxedVector.fromList [(1, 2), (3, 4), (5, 6)])
 
     describe "IN simulation" do
       it "works with arrays" \config -> do

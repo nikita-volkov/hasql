@@ -1,5 +1,6 @@
 module Hasql.Engine.Decoders.Result where
 
+import Data.Vector.Generic qualified as Vector
 import Hasql.CodecsVocab.QualifiedTypeName qualified as CodecsVocab.QualifiedTypeName
 import Hasql.CodecsVocab.TypeInfo qualified as CodecsVocab.TypeInfo
 import Hasql.Comms.ResultDecoder qualified as ResultDecoder
@@ -89,7 +90,7 @@ rowMaybe decoder =
 -- It's recommended to prefer this function to 'rowList',
 -- since it performs notably better.
 {-# INLINE rowVector #-}
-rowVector :: Row a -> Result (Vector a)
+rowVector :: (Vector.Vector vector a) => Row a -> Result (vector a)
 rowVector decoder =
   Result
     (fmap ResultDecoder.vector (Row.toDecoder decoder))

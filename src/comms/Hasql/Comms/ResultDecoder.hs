@@ -34,8 +34,8 @@ where
 
 import Data.Attoparsec.ByteString.Char8 qualified as Attoparsec
 import Data.ByteString qualified as ByteString
-import Data.Vector qualified as Vector
-import Data.Vector.Mutable qualified as MutableVector
+import Data.Vector.Generic qualified as GenericVector
+import Data.Vector.Generic.Mutable qualified as GenericMutableVector
 import Hasql.Comms.RowDecoder qualified as RowDecoder
 import Hasql.Platform.Prelude hiding (foldl, foldr, maybe)
 import Hasql.Platform.Prelude qualified as Prelude
@@ -215,7 +215,7 @@ single rowDec =
           _ -> return (Left (UnexpectedRowCount (fromIntegral maxRows)))
 
 {-# INLINE vector #-}
-vector :: RowDecoder.RowDecoder a -> ResultDecoder (Vector a)
+vector :: (GenericVector.Vector vector a) => RowDecoder.RowDecoder a -> ResultDecoder (vector a)
 vector rowDec =
   do
     checkExecStatus [Pq.TuplesOk]
@@ -223,15 +223,15 @@ vector rowDec =
     ResultDecoder
       $ \result -> do
         maxRows <- Pq.ntuples result
-        mvector <- MutableVector.unsafeNew (fromIntegral maxRows)
+        mvector <- GenericMutableVector.unsafeNew (fromIntegral maxRows)
         failureRef <- newIORef Nothing
         forMFromZero_ (fromIntegral maxRows) $ \rowIndex -> do
           rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
           case rowResult of
             Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-            Right !x -> MutableVector.unsafeWrite mvector rowIndex x
+            Right !x -> GenericMutableVector.unsafeWrite mvector rowIndex x
         readIORef failureRef >>= \case
-          Nothing -> Right <$> Vector.unsafeFreeze mvector
+          Nothing -> Right <$> GenericVector.unsafeFreeze mvector
           Just x -> pure (Left x)
 
 {-# INLINE foldl #-}

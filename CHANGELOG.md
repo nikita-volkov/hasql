@@ -2,6 +2,8 @@
 
 ## Breaking
 
+- `Hasql.Decoders.rowVector` now decodes into any `Data.Vector.Generic` vector (`Vector`, unboxed, storable, primitive) instead of only the boxed `Data.Vector.Vector`, picked by the type the result is consumed as. Call sites that left the vector type to be inferred with nothing pinning it down (no type signature, no boxed-`Vector`-specific downstream use) will now hit an ambiguous type error and need an explicit annotation. (#336)
+
 - `Hasql.Connection.use` now returns `UseError` instead of a single session-error type. `UseError` has three constructors:
 
   - `SessionUseError` wraps a `SessionError` - the session ran but reported a recoverable error (a server error, a decode failure). The connection is still live.
