@@ -20,9 +20,28 @@ import PostgreSQL.Binary.Decoding qualified as Binary
 -- @
 newtype Row a
   = Row (ToBeResolved.ToBeResolved CodecsVocab.QualifiedTypeName.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo (Hasql.Comms.RowDecoder.RowDecoder a))
-  deriving
-    (Functor, Applicative, Filterable)
-    via (Compose (ToBeResolved.ToBeResolved CodecsVocab.QualifiedTypeName.QualifiedTypeName CodecsVocab.TypeInfo.TypeInfo) Hasql.Comms.RowDecoder.RowDecoder)
+
+-- The instances below are what @deriving via Compose@ would give, written out
+-- so they can carry @INLINE@. base's 'Compose' instances have none, so a
+-- derived @<*>@ here bottoms out in @liftA2 (<*>)@ behind an unknown call and
+-- the row decoder never collapses into straight-line column reads.
+instance Functor Row where
+  {-# INLINE fmap #-}
+  fmap fn (Row toBeResolved) =
+    Row (fmap (fmap fn) toBeResolved)
+
+instance Applicative Row where
+  {-# INLINE pure #-}
+  pure a =
+    Row (pure (pure a))
+  {-# INLINE (<*>) #-}
+  Row lhs <*> Row rhs =
+    Row (liftA2 (<*>) lhs rhs)
+
+instance Filterable Row where
+  {-# INLINE mapMaybe #-}
+  mapMaybe fn (Row toBeResolved) =
+    Row (fmap (mapMaybe fn) toBeResolved)
 
 toDecoder ::
   Row a ->
