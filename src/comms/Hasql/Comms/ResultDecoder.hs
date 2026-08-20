@@ -225,11 +225,18 @@ vector rowDec =
         maxRows <- Pq.ntuples result
         mvector <- GenericMutableVector.unsafeNew (fromIntegral maxRows)
         failureRef <- newIORef Nothing
-        forMFromZero_ (fromIntegral maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
-          case rowResult of
-            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-            Right !x -> GenericMutableVector.unsafeWrite mvector rowIndex x
+        forMFromZero_ (fromIntegral maxRows) $ \rowIndex ->
+          -- 'withDecoded' rather than 'toDecoder': the row is written and
+          -- dropped, so materialising it in an 'Either' first is an allocation
+          -- per row for nothing. Passing the write in as the success
+          -- continuation also puts it in reach of the decoder, so for an
+          -- unboxed vector the row can go straight into the arrays.
+          RowDecoder.withDecoded
+            rowDec
+            result
+            (fromIntegral rowIndex)
+            (\err -> writeIORef failureRef (Just (RowError rowIndex err)))
+            (\ !x -> GenericMutableVector.unsafeWrite mvector rowIndex x)
         readIORef failureRef >>= \case
           Nothing -> Right <$> GenericVector.unsafeFreeze mvector
           Just x -> pure (Left x)
@@ -248,11 +255,13 @@ foldl step init rowDec =
           maxRows <- Pq.ntuples result
           accRef <- newIORef init
           failureRef <- newIORef Nothing
-          forMFromZero_ (fromIntegral maxRows) $ \rowIndex -> do
-            rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
-            case rowResult of
-              Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-              Right !x -> modifyIORef' accRef (\acc -> step acc x)
+          forMFromZero_ (fromIntegral maxRows) $ \rowIndex ->
+            RowDecoder.withDecoded
+              rowDec
+              result
+              (fromIntegral rowIndex)
+              (\err -> writeIORef failureRef (Just (RowError rowIndex err)))
+              (\ !x -> modifyIORef' accRef (\acc -> step acc x))
           readIORef failureRef >>= \case
             Nothing -> Right <$> readIORef accRef
             Just x -> pure (Left x)
@@ -269,11 +278,13 @@ foldr step init rowDec =
         maxRows <- Pq.ntuples result
         accRef <- newIORef init
         failureRef <- newIORef Nothing
-        forMToZero_ (fromIntegral maxRows) $ \rowIndex -> do
-          rowResult <- RowDecoder.toDecoder rowDec result (fromIntegral rowIndex)
-          case rowResult of
-            Left !err -> writeIORef failureRef (Just (RowError rowIndex err))
-            Right !x -> modifyIORef accRef (\acc -> step x acc)
+        forMToZero_ (fromIntegral maxRows) $ \rowIndex ->
+          RowDecoder.withDecoded
+            rowDec
+            result
+            (fromIntegral rowIndex)
+            (\err -> writeIORef failureRef (Just (RowError rowIndex err)))
+            (\ !x -> modifyIORef accRef (\acc -> step x acc))
         readIORef failureRef >>= \case
           Nothing -> Right <$> readIORef accRef
           Just x -> pure (Left x)

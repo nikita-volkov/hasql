@@ -11,6 +11,7 @@ module Hasql.Comms.RowDecoder
     -- ** Decoder
     Decoder,
     toDecoder,
+    withDecoded,
 
     -- * Errors
     Error,
@@ -30,11 +31,14 @@ data RowDecoder a
   deriving stock (Functor)
 
 instance Applicative RowDecoder where
+  {-# INLINE pure #-}
   pure a = RowDecoder [] (pure a)
+  {-# INLINE (<*>) #-}
   RowDecoder lOids lDec <*> RowDecoder rOids rDec =
     RowDecoder (lOids <> rOids) (lDec <*> rDec)
 
 instance Filterable RowDecoder where
+  {-# INLINE mapMaybe #-}
   mapMaybe fn (RowDecoder oids dec) =
     RowDecoder oids (mapMaybe fn dec)
 
@@ -73,6 +77,24 @@ type Decoder a = Pq.Result -> Int32 -> IO (Either Error a)
 toDecoder :: RowDecoder a -> Decoder a
 toDecoder (RowDecoder _ dec) result row =
   RowReader.toHandler dec result row
+
+-- |
+-- Decode one row and hand the result to one of two continuations.
+--
+-- 'toDecoder' collects the outcome into an @Either@ first, which costs an
+-- allocation per row for a value that is looked at once and dropped. Callers
+-- that only branch on it -- the vector and fold result decoders -- pass their
+-- two branches in here instead.
+{-# INLINE withDecoded #-}
+withDecoded ::
+  RowDecoder a ->
+  Pq.Result ->
+  Int32 ->
+  (Error -> IO r) ->
+  (a -> IO r) ->
+  IO r
+withDecoded (RowDecoder _ dec) result row onError onSuccess =
+  RowReader.withRow dec result row 0 onError (\_col a -> onSuccess a)
 
 -- * Errors
 
