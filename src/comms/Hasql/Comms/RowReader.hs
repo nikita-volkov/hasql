@@ -25,7 +25,6 @@ module Hasql.Comms.RowReader
 
     -- * Relations
     toHandler,
-    withRow,
   )
 where
 
@@ -57,13 +56,13 @@ newtype RowReader a
   = RowReader
       ( forall r.
         Pq.Result ->
-        -- \| Row index.
+        -- Row index.
         Int32 ->
-        -- \| Index of the next column to read.
+        -- Index of the next column to read.
         Int32 ->
-        -- \| Failure.
+        -- Failure.
         (Error -> IO r) ->
-        -- \| Success, given the next unread column and the value.
+        -- Success, given the next unread column and the value.
         (Int32 -> a -> IO r) ->
         IO r
       )
@@ -107,28 +106,8 @@ instance Filterable RowReader where
 -- between.
 {-# INLINE toHandler #-}
 toHandler :: RowReader a -> Pq.Result -> Int32 -> IO (Either Error a)
-toHandler reader result row =
-  withRow reader result row 0 (pure . Left) (\_col a -> pure (Right a))
-
--- |
--- Run the reader over one row, handing the outcome to one of two
--- continuations.
---
--- The representation stays abstract: this is the only way out of a
--- 'RowReader', so a caller cannot come to depend on it being a function of
--- these particular arguments.
-{-# INLINE withRow #-}
-withRow ::
-  RowReader a ->
-  Pq.Result ->
-  -- | Row index.
-  Int32 ->
-  -- | Index of the first column to read.
-  Int32 ->
-  (Error -> IO r) ->
-  (Int32 -> a -> IO r) ->
-  IO r
-withRow (RowReader run) = run
+toHandler (RowReader run) result row =
+  run result row 0 (pure . Left) (\_col a -> pure (Right a))
 
 -- |
 -- Next value, decoded using the provided value decoder.
