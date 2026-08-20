@@ -1,5 +1,9 @@
 # `AcquireError` is organized by stage, not by inferred cause
 
+**Status: contested by [ADR 0005](0005-acquireerror-is-a-flat-set-of-observed-failures.md), which
+accepts this document's argument about which facts may be published and rejects the shape derived
+from it. Both are live; exactly one will remain so.**
+
 `AcquireError`'s `NetworkingAcquireError`, `AuthenticationAcquireError` and `OtherAcquireError`
 constructors are deleted, along with the two substring lists and the `interpretConnectionError`
 function that fed them. What replaces them is a decomposition of `Hasql.Connection.acquire`'s own
