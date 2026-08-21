@@ -8,7 +8,7 @@ module Hasql.Connection
   )
 where
 
-import Data.Text qualified as Text
+import Data.Text.Read qualified as Text.Read
 import Hasql.Connection.Config qualified as Config
 import Hasql.Connection.ServerVersion qualified as ServerVersion
 import Hasql.Connection.Settings qualified as Settings
@@ -75,13 +75,20 @@ acquire adapter settings =
             case status of
               Pq.ConnectionOk -> pure ()
               _ -> do
+                needsPassword <- lift (Pq.connectionNeedsPassword pqConnection)
                 errorMessage <- lift (Pq.errorMessage pqConnection)
-                throwError (interpretConnectionError errorMessage)
+                let errorText = maybe "" decodeUtf8Lenient errorMessage
+                throwError
+                  if needsPassword
+                    then ConnectionPasswordRequiredAcquireError errorText
+                    else ConnectionAcquireError errorText
 
             -- Check version:
             version <- lift (ServerVersion.load pqConnection)
             when (version < ServerVersion.minimum) do
-              throwError (CompatibilityAcquireError ("Server version is lower than 9: " <> ServerVersion.toText version))
+              case version of
+                ServerVersion.ServerVersion major minor patch ->
+                  throwError (VersionTooOldAcquireError major minor patch)
 
             -- Initialize:
             do
@@ -93,14 +100,20 @@ acquire adapter settings =
               case execResult of
                 Nothing -> do
                   errorMessage <- lift (Pq.errorMessage pqConnection)
-                  throwError (OtherAcquireError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
+                  throwError (InitializationConnectionLossAcquireError (maybe "" decodeUtf8Lenient errorMessage))
                 Just result -> do
                   status <- lift (Pq.resultStatus result)
                   case status of
                     Pq.CommandOk -> pure ()
                     _ -> do
-                      errorMessage <- lift (Pq.resultErrorMessage result)
-                      throwError (OtherAcquireError (maybe "Failed to initialize the session" decodeUtf8Lenient errorMessage))
+                      sqlstate <- lift (Pq.resultErrorField result Pq.DiagSqlstate)
+                      case sqlstate of
+                        Just code | code /= "" -> do
+                          serverError <- lift (loadServerError result (decodeUtf8Lenient code))
+                          throwError (InitializationServerErrorAcquireError serverError)
+                        _ -> do
+                          errorMessage <- lift (Pq.resultErrorMessage result)
+                          throwError (InitializationConnectionLossAcquireError (maybe "" decodeUtf8Lenient errorMessage))
 
             let connectionState =
                   ConnectionState.ConnectionState
@@ -121,61 +134,28 @@ acquire adapter settings =
             Right _ -> pure ()
           pure result
   where
-    -- Best-effort classification by substring-matching libpq's error message.
-    --
-    -- libpq exposes no structured failure code for a failed @connectdb@ (no
-    -- 'Pqi.Result' is ever produced to read a SQLSTATE off), so this is the
-    -- only signal available. Two consequences follow from that:
-    --
-    -- - The match is against libpq's /translated/ message text, so it is
-    --   sensitive to the client's locale (@LC_ALL@\/@LANG@\/@LANGUAGE@):
-    --   under a non-English locale, none of the patterns below match, and
-    --   the failure falls through to 'OtherAcquireError' regardless of
-    --   its real nature.
-    -- - Precedence is networking, then authentication, then everything
-    --   else: a message matching both a networking and an authentication
-    --   pattern is reported as networking.
-    interpretConnectionError :: Maybe ByteString -> AcquireError
-    interpretConnectionError errorMessage =
-      case errorMessage of
-        Nothing -> OtherAcquireError "Unknown connection error"
-        Just msg ->
-          let msgText = decodeUtf8Lenient msg
-              msgLower = Text.toLower msgText
-           in if
-                | any (`Text.isInfixOf` msgLower) networkingErrors -> NetworkingAcquireError msgText
-                | any (`Text.isInfixOf` msgLower) authenticationErrors -> AuthenticationAcquireError msgText
-                | otherwise -> OtherAcquireError (decodeUtf8Lenient msg)
+    -- Read the structured error report off a result, once its SQLSTATE field
+    -- is known to be present.
+    loadServerError :: Pq.Result -> Text -> IO ServerError
+    loadServerError result code = do
+      message <- fold <$> Pq.resultErrorField result Pq.DiagMessagePrimary
+      detail <- Pq.resultErrorField result Pq.DiagMessageDetail
+      hint <- Pq.resultErrorField result Pq.DiagMessageHint
+      position <- Pq.resultErrorField result Pq.DiagStatementPosition
+      pure
+        $ ServerError
+          code
+          (decodeUtf8Lenient message)
+          (fmap decodeUtf8Lenient detail)
+          (fmap decodeUtf8Lenient hint)
+          (parsePosition position)
 
-    networkingErrors :: [Text]
-    networkingErrors =
-      [ "could not connect to server",
-        "connection refused",
-        "timeout expired",
-        "connection timed out",
-        "host not found",
-        "could not translate host name",
-        "network is unreachable",
-        "no route to host",
-        -- Server-side rejections that are transient by nature: the server
-        -- is there and reachable, it just isn't ready or able to serve this
-        -- connection right now.
-        "the database system is starting up",
-        "the database system is in recovery mode",
-        "sorry, too many clients already",
-        "server closed the connection unexpectedly",
-        "connection reset by peer",
-        "could not fork new process",
-        "terminating connection due to administrator command"
-      ]
-
-    authenticationErrors :: [Text]
-    authenticationErrors =
-      [ "authentication failed",
-        "password authentication failed",
-        "no password supplied",
-        "peer authentication failed"
-      ]
+    parsePosition :: Maybe ByteString -> Maybe Int
+    parsePosition = \case
+      Nothing -> Nothing
+      Just bytes -> case Text.Read.decimal (decodeUtf8Lenient bytes) of
+        Right (n, "") -> Just n
+        _ -> Nothing
 
 -- |
 -- Release the connection.

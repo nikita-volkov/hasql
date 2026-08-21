@@ -98,24 +98,34 @@ toDetailedTextBuilder err =
 
 instance IsError AcquireError where
   toMessage = \case
-    NetworkingAcquireError {} ->
-      "Networking error while connecting to the database"
-    AuthenticationAcquireError {} ->
-      "Authentication error while connecting to the database"
-    CompatibilityAcquireError {} ->
-      "Compatibility error while connecting to the database"
-    OtherAcquireError {} ->
-      "Connection error while connecting to the database"
+    ConnectionAcquireError {} ->
+      "Failed to establish a connection to the database"
+    ConnectionPasswordRequiredAcquireError {} ->
+      "The server demanded a password and none was available"
+    VersionTooOldAcquireError {} ->
+      "Server version is too old"
+    InitializationConnectionLossAcquireError {} ->
+      "Connection lost while initializing the session"
+    InitializationServerErrorAcquireError err ->
+      toMessage err
 
   toDetails = \case
-    NetworkingAcquireError reason ->
+    ConnectionAcquireError reason ->
       [("reason", reason)]
-    AuthenticationAcquireError reason ->
+    ConnectionPasswordRequiredAcquireError reason ->
       [("reason", reason)]
-    CompatibilityAcquireError reason ->
+    VersionTooOldAcquireError major minor patch ->
+      [ ("version", (TextBuilder.toText . mconcat) [TextBuilder.decimal major, ".", TextBuilder.decimal minor, ".", TextBuilder.decimal patch]),
+        ("minimumVersion", "9.0.0")
+      ]
+    InitializationConnectionLossAcquireError reason ->
       [("reason", reason)]
-    OtherAcquireError reason ->
-      [("reason", reason)]
+    InitializationServerErrorAcquireError err ->
+      toDetails err
+
+  toSqlState = \case
+    InitializationServerErrorAcquireError err -> toSqlState err
+    _ -> Nothing
 
 instance IsError ServerError where
   toMessage _ =

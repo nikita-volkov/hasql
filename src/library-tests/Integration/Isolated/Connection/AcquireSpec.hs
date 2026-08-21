@@ -22,11 +22,11 @@ spec = do
           case result of
             Right conn -> do
               Connection.release conn
-              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.NetworkingAcquireError _) ->
+              expectationFailure "Expected connection to fail with ConnectionAcquireError, but it succeeded"
+            Left (Errors.ConnectionAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected NetworkingAcquireError, but got: " <> show err)
+              expectationFailure ("Expected ConnectionAcquireError, but got: " <> show err)
 
   describe "postgres:9" do
     it "Succeeds" \adapter -> do
@@ -74,7 +74,7 @@ spec = do
             Left err -> do
               expectationFailure ("Expected connection to succeed, but it failed with error: " <> show err)
 
-    it "Fails with authentication error on incorrect password" \adapter -> do
+    it "Reports ConnectionPasswordRequiredAcquireError when no password is supplied" \adapter -> do
       PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
@@ -93,13 +93,13 @@ spec = do
           case result of
             Right conn -> do
               Connection.release conn
-              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.AuthenticationAcquireError _) ->
+              expectationFailure "Expected connection to fail with ConnectionPasswordRequiredAcquireError, but it succeeded"
+            Left (Errors.ConnectionPasswordRequiredAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationAcquireError, but got: " <> show err)
+              expectationFailure ("Expected ConnectionPasswordRequiredAcquireError, but got: " <> show err)
 
-    it "Fails with authentication error on incorrect user" \adapter -> do
+    it "Reports ConnectionAcquireError on a wrong password" \adapter -> do
       PostgresContainer.run
         TestcontainersPostgresql.Config
           { tagName = "postgres:18",
@@ -110,19 +110,19 @@ spec = do
           let settings =
                 mconcat
                   [ Settings.hostAndPort host port,
-                    Settings.user "postgres1",
-                    Settings.password "",
+                    Settings.user "postgres",
+                    Settings.password "wrongpassword",
                     Settings.dbname "postgres"
                   ]
           result <- Connection.acquire adapter settings
           case result of
             Right conn -> do
               Connection.release conn
-              expectationFailure "Expected connection to fail with authentication error, but it succeeded"
-            Left (Errors.AuthenticationAcquireError _) ->
+              expectationFailure "Expected connection to fail with ConnectionAcquireError, but it succeeded"
+            Left (Errors.ConnectionAcquireError _) ->
               pure ()
             Left err ->
-              expectationFailure ("Expected AuthenticationAcquireError, but got: " <> show err)
+              expectationFailure ("Expected ConnectionAcquireError, but got: " <> show err)
 
   describe "postgres:9" do
     byDistro "postgres:9"
@@ -166,7 +166,7 @@ byDistro tagName = do
         itConnects "new user" "password"
 
   describe "Connection errors" do
-    describe "NetworkingAcquireError" do
+    describe "ConnectionAcquireError" do
       it "is reported for invalid host" \adapter -> do
         result <-
           Hasql.Connection.acquire
@@ -178,8 +178,8 @@ byDistro tagName = do
                 ]
             )
         case result of
-          Left (Errors.NetworkingAcquireError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
+          Left (Errors.ConnectionAcquireError _) -> pure ()
+          Left err -> expectationFailure ("Expected ConnectionAcquireError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
       it "is reported for connection refused" \adapter -> do
@@ -193,12 +193,11 @@ byDistro tagName = do
                 ]
             )
         case result of
-          Left (Errors.NetworkingAcquireError _) -> pure ()
-          Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
+          Left (Errors.ConnectionAcquireError _) -> pure ()
+          Left err -> expectationFailure ("Expected ConnectionAcquireError, got: " <> show err)
           Right _conn -> expectationFailure "Expected connection to fail"
 
-    describe "AuthenticationAcquireError" do
-      it "is reported for invalid credentials" \adapter -> do
+      it "is reported for a wrong password" \adapter -> do
         PostgresContainer.run
           TestcontainersPostgresql.Config
             { tagName,
@@ -211,11 +210,34 @@ byDistro tagName = do
                 adapter
                 ( mconcat
                     [ Settings.hostAndPort host port,
-                      Settings.user "incorrectuser",
+                      Settings.user "password",
                       Settings.password "incorrectpassword"
                     ]
                 )
             case result of
-              Left (Errors.AuthenticationAcquireError _) -> pure ()
-              Left err -> expectationFailure ("Expected AuthenticationAcquireError, got: " <> show err)
-              Right _conn -> expectationFailure "Expected connection to fail with authentication error"
+              Left (Errors.ConnectionAcquireError _) -> pure ()
+              Left err -> expectationFailure ("Expected ConnectionAcquireError, got: " <> show err)
+              Right _conn -> expectationFailure "Expected connection to fail with ConnectionAcquireError"
+
+    describe "ConnectionPasswordRequiredAcquireError" do
+      it "is reported when no password is supplied against a password-demanding server" \adapter -> do
+        PostgresContainer.run
+          TestcontainersPostgresql.Config
+            { tagName,
+              auth = TestcontainersPostgresql.CredentialsAuth "password" "correctpassword",
+              forwardLogs = False
+            }
+          \(host, port) -> do
+            result <-
+              Hasql.Connection.acquire
+                adapter
+                ( mconcat
+                    [ Settings.hostAndPort host port,
+                      Settings.user "password",
+                      Settings.password ""
+                    ]
+                )
+            case result of
+              Left (Errors.ConnectionPasswordRequiredAcquireError _) -> pure ()
+              Left err -> expectationFailure ("Expected ConnectionPasswordRequiredAcquireError, got: " <> show err)
+              Right _conn -> expectationFailure "Expected connection to fail with ConnectionPasswordRequiredAcquireError"

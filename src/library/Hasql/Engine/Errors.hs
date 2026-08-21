@@ -12,57 +12,75 @@ import TextBuilder qualified
 -- |
 -- Error that occurs when attempting to establish a database connection.
 --
--- These errors can occur when calling 'Hasql.Connection.acquire'.
--- Connection errors are categorized into several types to help with
--- error handling and logging.
+-- These errors can occur when calling 'Hasql.Connection.acquire', which runs
+-- three stages in sequence: it establishes a connection, checks the server
+-- version, and initializes session settings. A constructor is named for its
+-- stage, then its case: a bare stage name means nothing further is known at
+-- that stage, and a stage with only one case needs no prefix. Reaching a
+-- stage is therefore a claim about everything before it - a failure at
+-- initialization means the connection was established and the server
+-- version was accepted.
+--
+-- Every constructor here publishes only what the driver actually observed.
+-- @libpq@ produces no structured signal for a failure while connecting - no
+-- 'ServerError' is available - so 'ConnectionAcquireError' and
+-- 'ConnectionPasswordRequiredAcquireError' carry prose. A failure during
+-- session initialization can go either way, hence the split between
+-- 'InitializationConnectionLossAcquireError' and
+-- 'InitializationServerErrorAcquireError'.
 data AcquireError
-  = -- | Network-level error while connecting to the database server.
+  = -- | The connection could not be established, and no structured signal
+    -- exists to say why.
     --
-    -- This typically indicates issues like:
-    --
-    -- * Server is not reachable (wrong host\/port or server is down)
-    -- * Network connectivity problems
-    -- * Firewall blocking the connection
-    -- * Connection timeout
-    --
-    -- These errors are transient and the operation can be retried.
-    NetworkingAcquireError
-      -- | Human readable details intended for logging.
+    -- This is the residual case at the connection stage: DNS failure,
+    -- connection refused, TLS negotiation failure, a rejected password, a
+    -- missing database, and any other rejection @libpq@ does not surface a
+    -- flag for, all land here alike.
+    ConnectionAcquireError
+      -- | Human readable details from @libpq@, intended for logging. May be
+      -- empty.
       Text
-  | -- | Authentication failed when connecting to the database.
+  | -- | The server demanded a password and none was available.
     --
-    -- This typically indicates issues like:
-    --
-    -- * Invalid username or password
-    -- * User does not have permission to access the database
-    -- * Authentication method mismatch (e.g., server requires SSL but client doesn't use it)
-    --
-    -- These errors are not transient and require fixing the credentials or permissions.
-    AuthenticationAcquireError
-      -- | Human readable details intended for logging.
+    -- Reported from @PQconnectionNeedsPassword@, a flag @libpq@ sets from
+    -- the authentication exchange rather than from message text. A wrong
+    -- password, by contrast, reports 'False' on this flag and is
+    -- indistinguishable from any other connection refusal, so it lands in
+    -- 'ConnectionAcquireError' instead.
+    ConnectionPasswordRequiredAcquireError
+      -- | Human readable details from @libpq@, intended for logging.
       Text
-  | -- | Compatibility issue between client and server.
+  | -- | The server's version is below the minimum this driver supports.
     --
-    -- This typically indicates issues like:
+    -- The three fields are the server's major, minor and patch version, in
+    -- that order. The minimum required version is not carried alongside
+    -- them: it is a constant of this library, currently @9.0.0@.
+    VersionTooOldAcquireError
+      -- | Major version.
+      Int
+      -- | Minor version.
+      Int
+      -- | Patch version.
+      Int
+  | -- | Session initialization failed and the connection died: there is
+    -- prose and nothing else.
     --
-    -- * Server version is too old or too new
-    -- * Required PostgreSQL features are not available
-    -- * Protocol version mismatch
-    --
-    -- These errors are not transient and require upgrading/downgrading
-    -- the server or client.
-    CompatibilityAcquireError
-      -- | Human readable details intended for logging.
+    -- This covers both @PQexec@ returning no result at all and @PQexec@
+    -- returning a result @libpq@ fabricated client-side with no diagnostic
+    -- fields on it - the same event either way, distinguished from
+    -- 'InitializationServerErrorAcquireError' by whether the result carries
+    -- a SQLSTATE, not by whether a result exists.
+    InitializationConnectionLossAcquireError
+      -- | Human readable details from @libpq@, intended for logging. May be
+      -- empty.
       Text
-  | -- | Uncategorized error coming from @libpq@.
+  | -- | Session initialization failed and the server said why.
     --
-    -- This is a catch-all for connection errors that don't fit into other categories.
-    -- The error message may be empty if @libpq@ doesn't provide details.
-    --
-    -- These errors are not transient by default.
-    OtherAcquireError
-      -- | Human readable details intended for logging. May be empty.
-      Text
+    -- The server rejected the initialization statement and returned a real
+    -- error report, readable through @PQresultErrorField@. This is the one
+    -- 'AcquireError' for which 'Hasql.Errors.toSqlState' can return 'Just'.
+    InitializationServerErrorAcquireError
+      ServerError
   deriving stock (Show, Eq)
 
 -- |

@@ -13,7 +13,13 @@
 
 - `Hasql.Errors.IsError` no longer has an `isTransient` method. Whether a failure is worth retrying depends on the caller's retry policy and, for server errors, the SQLSTATE reported through `toSqlState` - not on a verdict the driver hands out. No replacement is provided.
 
-- `Hasql.Connection.acquire` now returns `AcquireError` instead of a plain `Text` message. The constructors are `NetworkingAcquireError`, `AuthenticationAcquireError`, `CompatibilityAcquireError`, and `OtherAcquireError`, all carrying a `Text` reason.
+- `Hasql.Connection.acquire` now returns `AcquireError` instead of a plain `Text` message. The five constructors are organized by which stage of `acquire` failed - connecting, checking the server version, or initializing session settings - since that is what the driver actually observes, rather than by a best-effort classification of `libpq`'s (locale-dependent, adapter-dependent) error text:
+
+  - `ConnectionAcquireError` - the connection could not be established, and no structured signal exists to say why. This is the residual case at the connection stage: DNS failure, connection refused, TLS negotiation failure, a rejected password, a missing database, and any other rejection all land here alike.
+  - `ConnectionPasswordRequiredAcquireError` - the server demanded a password and none was available, reported from `libpq`'s own flag rather than inferred from message text.
+  - `VersionTooOldAcquireError` - the server's version is below the minimum this driver supports, carrying the server's major, minor and patch version as `Int`s rather than formatted prose.
+  - `InitializationConnectionLossAcquireError` - session initialization failed and the connection died, with prose and nothing else.
+  - `InitializationServerErrorAcquireError` - session initialization failed and the server said why, carrying a structured `ServerError` with a SQLSTATE.
 
 - A `ConnectionUseError` now closes the connection before returning. `Hasql.Connection.release` on a spent handle does nothing. Pools already discarded connections on fatal errors, so this makes the driver keep the contract its callers were already assuming.
 
