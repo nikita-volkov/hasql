@@ -9,24 +9,37 @@ import Test.Hspec
 spec :: Spec
 spec = do
   describe "acquire" do
-    it "finishes the pq connection when the status check fails" do
+    it "reports ConnectionAcquireError and finishes the connection when the status check fails without needing a password" do
       finishedRef <- newIORef False
       let adapter =
             fakeAdapter
-              ( fakeConnection
-                  finishedRef
-                  Pq.ConnectionBad
-                  (Just "could not connect to server: Connection refused")
-                  180000
+              ( (fakeConnection finishedRef Pq.ConnectionBad (Just "could not connect to server: Connection refused") 180000)
+                  { Pq.connectionNeedsPassword = pure False
+                  }
               )
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.NetworkingAcquireError _) -> pure ()
-        Left err -> expectationFailure ("Expected NetworkingAcquireError, got: " <> show err)
+        Left (Errors.ConnectionAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected ConnectionAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
-    it "finishes the pq connection when the server version check fails" do
+    it "reports ConnectionPasswordRequiredAcquireError and finishes the connection when the status check fails needing a password" do
+      finishedRef <- newIORef False
+      let adapter =
+            fakeAdapter
+              ( (fakeConnection finishedRef Pq.ConnectionBad (Just "no password supplied") 180000)
+                  { Pq.connectionNeedsPassword = pure True
+                  }
+              )
+      result <- Connection.acquire adapter mempty
+      case result of
+        Left (Errors.ConnectionPasswordRequiredAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected ConnectionPasswordRequiredAcquireError, got: " <> show err)
+        Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
+      readIORef finishedRef `shouldReturn` True
+
+    it "reports VersionTooOldAcquireError and finishes the connection when the server version check fails" do
       finishedRef <- newIORef False
       let adapter =
             fakeAdapter
@@ -38,8 +51,8 @@ spec = do
               )
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.CompatibilityAcquireError _) -> pure ()
-        Left err -> expectationFailure ("Expected CompatibilityAcquireError, got: " <> show err)
+        Left (Errors.VersionTooOldAcquireError 8 0 0) -> pure ()
+        Left err -> expectationFailure ("Expected VersionTooOldAcquireError 8 0 0, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
@@ -70,7 +83,7 @@ spec = do
         Right _ -> expectationFailure "Expected acquire to propagate the exception"
       readIORef finishedRef `shouldReturn` True
 
-    it "fails and finishes the pq connection when the session-init exec returns no result" do
+    it "reports InitializationConnectionLossAcquireError and finishes the connection when the session-init exec returns no result" do
       finishedRef <- newIORef False
       let brokenConnection =
             (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
@@ -80,12 +93,12 @@ spec = do
           adapter = fakeAdapter brokenConnection
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.OtherAcquireError _) -> pure ()
-        Left err -> expectationFailure ("Expected OtherAcquireError, got: " <> show err)
+        Left (Errors.InitializationConnectionLossAcquireError _) -> pure ()
+        Left err -> expectationFailure ("Expected InitializationConnectionLossAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
-    it "fails and finishes the pq connection when the session-init exec reports a non-CommandOk status" do
+    it "reports InitializationConnectionLossAcquireError and finishes the connection when the session-init exec reports a non-CommandOk status with no SQLSTATE" do
       finishedRef <- newIORef False
       let failedResult =
             fakeResult Pq.FatalError (Just "permission denied for SET")
@@ -96,8 +109,32 @@ spec = do
           adapter = fakeAdapter brokenConnection
       result <- Connection.acquire adapter mempty
       case result of
-        Left (Errors.OtherAcquireError msg) -> msg `shouldBe` "permission denied for SET"
-        Left err -> expectationFailure ("Expected OtherAcquireError, got: " <> show err)
+        Left (Errors.InitializationConnectionLossAcquireError msg) -> msg `shouldBe` "permission denied for SET"
+        Left err -> expectationFailure ("Expected InitializationConnectionLossAcquireError, got: " <> show err)
+        Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
+      readIORef finishedRef `shouldReturn` True
+
+    it "reports InitializationServerErrorAcquireError and finishes the connection when the session-init exec reports a non-CommandOk status with a SQLSTATE" do
+      finishedRef <- newIORef False
+      let failedResult =
+            (fakeResult Pq.FatalError (Just "permission denied for SET"))
+              { Pq.resultErrorField = \case
+                  Pq.DiagSqlstate -> pure (Just "42501")
+                  Pq.DiagMessagePrimary -> pure (Just "permission denied for SET")
+                  Pq.DiagMessageDetail -> pure Nothing
+                  Pq.DiagMessageHint -> pure Nothing
+                  Pq.DiagStatementPosition -> pure Nothing
+                  _ -> pure Nothing
+              }
+          brokenConnection =
+            (fakeConnection finishedRef Pq.ConnectionOk Nothing 180000)
+              { Pq.exec = \_ -> pure (Just failedResult)
+              }
+          adapter = fakeAdapter brokenConnection
+      result <- Connection.acquire adapter mempty
+      case result of
+        Left (Errors.InitializationServerErrorAcquireError (Errors.ServerError "42501" "permission denied for SET" Nothing Nothing Nothing)) -> pure ()
+        Left err -> expectationFailure ("Expected InitializationServerErrorAcquireError, got: " <> show err)
         Right _ -> expectationFailure "Expected connection to fail, but it succeeded"
       readIORef finishedRef `shouldReturn` True
 
@@ -151,7 +188,7 @@ fakeConnection finishedRef connStatus connErrorMessage connServerVersion =
       errorMessage = pure connErrorMessage,
       socket = unimplementedIO "socket",
       backendPID = unimplementedIO "backendPID",
-      connectionNeedsPassword = unimplementedIO "connectionNeedsPassword",
+      connectionNeedsPassword = pure False,
       connectionUsedPassword = unimplementedIO "connectionUsedPassword",
       exec = \_ -> pure Nothing,
       execParams = \_ _ _ -> unimplemented "execParams",
@@ -211,7 +248,7 @@ fakeResult status errorMessage =
   Pq.Result
     { resultStatus = pure status,
       resultErrorMessage = pure errorMessage,
-      resultErrorField = \_ -> unimplemented "resultErrorField",
+      resultErrorField = \_ -> pure Nothing,
       unsafeFreeResult = unimplementedIO "unsafeFreeResult",
       ntuples = unimplementedIO "ntuples",
       nfields = unimplementedIO "nfields",

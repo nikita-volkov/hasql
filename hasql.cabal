@@ -327,7 +327,6 @@ test-suite library-tests
     Helpers.Statements.Sleep
     Helpers.Statements.TooManyParams
     Helpers.Statements.WrongDecoder
-    Integration.Isolated.Connection.Acquire.ErrorClassificationSpec
     Integration.Isolated.Connection.AcquireSpec
     Integration.Sharing.Connection.Use.InterruptionSpec
     Integration.Sharing.Connection.UseSpec

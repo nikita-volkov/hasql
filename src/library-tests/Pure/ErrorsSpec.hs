@@ -9,28 +9,64 @@ spec :: Spec
 spec = do
   describe "AcquireError" do
     describe "toMessage" do
-      it "renders NetworkingAcquireError" do
-        (Errors.toMessage (Errors.NetworkingAcquireError "timeout"))
-          `shouldBe` "Networking error while connecting to the database"
+      it "renders ConnectionAcquireError" do
+        (Errors.toMessage (Errors.ConnectionAcquireError "timeout"))
+          `shouldBe` "Failed to establish a connection to the database"
 
-      it "renders AuthenticationAcquireError" do
-        (Errors.toMessage (Errors.AuthenticationAcquireError "invalid password"))
-          `shouldBe` "Authentication error while connecting to the database"
+      it "renders ConnectionPasswordRequiredAcquireError" do
+        (Errors.toMessage (Errors.ConnectionPasswordRequiredAcquireError "no password supplied"))
+          `shouldBe` "The server demanded a password and none was available"
+
+      it "renders VersionTooOldAcquireError" do
+        (Errors.toMessage (Errors.VersionTooOldAcquireError 8 0 0))
+          `shouldBe` "Server version is too old"
+
+      it "renders InitializationConnectionLossAcquireError" do
+        (Errors.toMessage (Errors.InitializationConnectionLossAcquireError "server closed the connection"))
+          `shouldBe` "Connection lost while initializing the session"
+
+      it "renders InitializationServerErrorAcquireError with the wrapped message" do
+        (Errors.toMessage (Errors.InitializationServerErrorAcquireError (Errors.ServerError "42501" "permission denied" Nothing Nothing Nothing)))
+          `shouldBe` "Server error"
 
     describe "toDetails" do
-      it "includes reason for NetworkingAcquireError" do
-        (Errors.toDetails (Errors.NetworkingAcquireError "connection timeout"))
+      it "includes reason for ConnectionAcquireError" do
+        (Errors.toDetails (Errors.ConnectionAcquireError "connection timeout"))
           `shouldBe` [("reason", "connection timeout")]
 
+      it "includes reason for ConnectionPasswordRequiredAcquireError" do
+        (Errors.toDetails (Errors.ConnectionPasswordRequiredAcquireError "no password supplied"))
+          `shouldBe` [("reason", "no password supplied")]
+
+      it "includes the version for VersionTooOldAcquireError" do
+        (Errors.toDetails (Errors.VersionTooOldAcquireError 8 1 5))
+          `shouldBe` [("version", "8.1.5"), ("minimumVersion", "9.0.0")]
+
+      it "includes reason for InitializationConnectionLossAcquireError" do
+        (Errors.toDetails (Errors.InitializationConnectionLossAcquireError "server closed the connection"))
+          `shouldBe` [("reason", "server closed the connection")]
+
+      it "includes the wrapped server error's details for InitializationServerErrorAcquireError" do
+        (Errors.toDetails (Errors.InitializationServerErrorAcquireError (Errors.ServerError "42501" "permission denied" Nothing Nothing Nothing)))
+          `shouldBe` [("code", "42501"), ("message", "permission denied")]
+
     describe "toSqlState" do
-      it "is Nothing, since connection errors carry no server code" do
-        (Errors.toSqlState (Errors.NetworkingAcquireError "timeout"))
+      it "is Nothing for ConnectionAcquireError" do
+        (Errors.toSqlState (Errors.ConnectionAcquireError "timeout"))
           `shouldBe` Nothing
 
+      it "is Nothing for InitializationConnectionLossAcquireError" do
+        (Errors.toSqlState (Errors.InitializationConnectionLossAcquireError "connection lost"))
+          `shouldBe` Nothing
+
+      it "digs the code out of InitializationServerErrorAcquireError" do
+        (Errors.toSqlState (Errors.InitializationServerErrorAcquireError (Errors.ServerError "42501" "permission denied" Nothing Nothing Nothing)))
+          `shouldBe` Just "42501"
+
     describe "toDetailedText" do
-      it "renders NetworkingAcquireError with details" do
-        (Errors.toDetailedText (Errors.NetworkingAcquireError "connection refused"))
-          `shouldBe` "Networking error while connecting to the database\n\
+      it "renders ConnectionAcquireError with details" do
+        (Errors.toDetailedText (Errors.ConnectionAcquireError "connection refused"))
+          `shouldBe` "Failed to establish a connection to the database\n\
                      \  reason: connection refused"
 
   describe "ServerError" do
