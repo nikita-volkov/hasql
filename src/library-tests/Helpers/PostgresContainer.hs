@@ -27,5 +27,7 @@ run config action =
             then go (retriesLeft - 1)
             else Exception.throwIO exception
 
-    isPortConflict Docker.DockerException {stderr} =
-      "address already in use" `Text.isInfixOf` stderr
+    isPortConflict = \case
+      Docker.DockerException {stderr} ->
+        "address already in use" `Text.isInfixOf` stderr
+      _ -> False
