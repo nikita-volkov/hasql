@@ -19,23 +19,27 @@ onUnpreparableConnection :: ScopeParams -> (Connection.Connection -> IO a) -> IO
 onUnpreparableConnection = onConnection True
 
 onConnection :: Bool -> ScopeParams -> (Connection.Connection -> IO a) -> IO a
-onConnection unpreparable (adapter, host, port) =
-  bracket
-    ( do
-        let settings =
-              mconcat
-                [ Settings.hostAndPort host (fromIntegral port),
-                  Settings.user "postgres",
-                  Settings.password "postgres",
-                  Settings.dbname "postgres",
-                  Settings.noPreparedStatements unpreparable
-                ]
-        res <- Connection.acquire adapter settings
-        case res of
-          Left err -> fail ("Connection failed: " <> show err)
-          Right conn -> pure conn
-    )
-    Connection.release
+onConnection unpreparable scope =
+  bracket (acquire unpreparable scope) Connection.release
+
+-- | Acquire a connection, failing the test if that is not possible.
+--
+-- The caller is responsible for releasing it. Prefer 'onConnection', which
+-- does so, unless the test needs to control the release itself.
+acquire :: Bool -> ScopeParams -> IO Connection.Connection
+acquire unpreparable (adapter, host, port) = do
+  let settings =
+        mconcat
+          [ Settings.hostAndPort host (fromIntegral port),
+            Settings.user "postgres",
+            Settings.password "postgres",
+            Settings.dbname "postgres",
+            Settings.noPreparedStatements unpreparable
+          ]
+  res <- Connection.acquire adapter settings
+  case res of
+    Left err -> fail ("Connection failed: " <> show err)
+    Right conn -> pure conn
 
 -- | Generate a unique name of the following pattern:
 --
