@@ -87,6 +87,12 @@ singleResult context handler = Recv \connection -> do
       (Just result, Nothing) -> do
         decoded <- ResultDecoder.toHandler handler result
         pure (first (ResultError context 0) decoded)
+  where
+    -- The first non-empty message among the results with its SQLSTATE,
+    -- or else the connection's own error message.
+    lostConnectionDetails connection results = do
+      details <- traverse resultErrorDetails results
+      lostConnectionDetailsFrom connection (find (not . ByteString.null) (catMaybes details))
 
 -- | Consume all results from a multi-statement query (e.g., scripts).
 -- Each result is decoded using the provided handler.
@@ -94,6 +100,11 @@ singleResult context handler = Recv \connection -> do
 -- where each statement produces a result that needs to be validated.
 -- All results are consumed even if an error occurs, to leave the connection
 -- in a clean state.
+--
+-- The first error is the one reported, as in the '<*>' of 'Recv': it is the
+-- cause, and whatever fails after it is a consequence. The server stops a
+-- script at its first error, so a later one can only come from libpq itself,
+-- e.g. the result it makes up when the connection is lost.
 allResults :: context -> ResultDecoder.ResultDecoder a -> Recv context ()
 allResults context handler = Recv \connection -> do
   let loop resultIndex maybeError = do
@@ -117,13 +128,6 @@ allResults context handler = Recv \connection -> do
       pure (Left (ConnectionLostError context details))
     _ ->
       pure (maybe (Right ()) (Left . fst) errorOrUnit)
-
--- | Details for a lost connection: the first non-empty message among the given results
--- with its SQLSTATE, or else the connection's own error message.
-lostConnectionDetails :: Pq.Connection -> [Pq.Result] -> IO (Maybe ByteString)
-lostConnectionDetails connection results = do
-  details <- traverse resultErrorDetails results
-  lostConnectionDetailsFrom connection (find (not . ByteString.null) (catMaybes details))
 
 lostConnectionDetailsFrom :: Pq.Connection -> Maybe ByteString -> IO (Maybe ByteString)
 lostConnectionDetailsFrom connection resultDetails =
