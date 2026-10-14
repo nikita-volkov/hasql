@@ -29,8 +29,28 @@ instance Applicative (Recv context) where
         -- whatever else failed, it failed because the connection died.
         -- It must not be hidden behind an earlier statement's ordinary error.
         (Left e@ConnectionLostError {}, _) -> Left e
+        -- In the pipeline mode the server's last words, e.g. a FATAL with
+        -- 57P01, can arrive as an earlier result while the connection still
+        -- looks fine, and only a later result finds it bad. Appended to the
+        -- details, so that they are not dropped along with the earlier error.
+        (Left (ResultError _ _ resultError), Left (ConnectionLostError context details)) ->
+          Left (ConnectionLostError context (details <> serverErrorDetails resultError))
         (_, Left e@ConnectionLostError {}) -> Left e
         _ -> ef <*> eg
+    where
+      -- Text of an error the server reported, in the shape of 'resultErrorDetails'.
+      -- 'Nothing' for errors that did not come from the server.
+      serverErrorDetails = \case
+        ResultDecoder.ServerError code message detail hint _ ->
+          Just
+            ( mconcat
+                [ message <> "\n",
+                  foldMap (\text -> "DETAIL:  " <> text <> "\n") detail,
+                  foldMap (\text -> "HINT:  " <> text <> "\n") hint,
+                  if ByteString.null code then "" else "SQLSTATE: " <> code <> "\n"
+                ]
+            )
+        _ -> Nothing
 
 instance Bifunctor Recv where
   {-# INLINE bimap #-}
@@ -85,8 +105,8 @@ allResults context handler = Recv \connection -> do
             case decodedResult of
               Left err -> do
                 -- Continue consuming results even after error to clean up connection
-                message <- Pq.resultErrorMessage result
-                loop (resultIndex + 1) (maybeError <|> Just (ResultError context resultIndex err, message))
+                details <- resultErrorDetails result
+                loop (resultIndex + 1) (maybeError <|> Just (ResultError context resultIndex err, details))
               Right _ ->
                 loop (resultIndex + 1) maybeError
   errorOrUnit <- loop 0 Nothing
@@ -98,18 +118,37 @@ allResults context handler = Recv \connection -> do
     _ ->
       pure (maybe (Right ()) (Left . fst) errorOrUnit)
 
--- | Details for a lost connection: the first non-empty message among the given results,
--- or else the connection's own error message.
+-- | Details for a lost connection: the first non-empty message among the given results
+-- with its SQLSTATE, or else the connection's own error message.
 lostConnectionDetails :: Pq.Connection -> [Pq.Result] -> IO (Maybe ByteString)
 lostConnectionDetails connection results = do
-  messages <- traverse Pq.resultErrorMessage results
-  lostConnectionDetailsFrom connection (listToMaybe (catMaybes messages))
+  details <- traverse resultErrorDetails results
+  lostConnectionDetailsFrom connection (find (not . ByteString.null) (catMaybes details))
 
 lostConnectionDetailsFrom :: Pq.Connection -> Maybe ByteString -> IO (Maybe ByteString)
-lostConnectionDetailsFrom connection resultMessage =
-  case resultMessage of
-    Just message | not (ByteString.null message) -> pure (Just message)
+lostConnectionDetailsFrom connection resultDetails =
+  case resultDetails of
+    Just details | not (ByteString.null details) -> pure (Just details)
     _ -> Pq.errorMessage connection
+
+-- | The error message of a result, followed by its SQLSTATE if it has one.
+--
+-- At the default verbosity neither libpq nor pqi-native puts the SQLSTATE in
+-- the message. A lost connection is reported by its text alone, so without
+-- this a code the server announced its termination with (@57P01@, @57P02@)
+-- would be dropped.
+resultErrorDetails :: Pq.Result -> IO (Maybe ByteString)
+resultErrorDetails result = do
+  maybeMessage <- Pq.resultErrorMessage result
+  maybeSqlState <- Pq.resultErrorField result Pq.DiagSqlstate
+  pure case (maybeMessage, maybeSqlState) of
+    (Just message, Just sqlState)
+      | not (ByteString.null message) ->
+          Just (terminateLine message <> "SQLSTATE: " <> sqlState <> "\n")
+    _ -> maybeMessage
+  where
+    terminateLine line =
+      if ByteString.isSuffixOf "\n" line then line else line <> "\n"
 
 -- * Errors
 
@@ -144,7 +183,7 @@ data Error context
     ConnectionLostError
       context
       -- | Details about the error.
-      -- The error message of the failing result if there is one,
+      -- The error message of the failing result followed by its SQLSTATE if there is one,
       -- otherwise the error message of the connection.
       (Maybe ByteString)
   deriving stock (Show, Eq, Functor)

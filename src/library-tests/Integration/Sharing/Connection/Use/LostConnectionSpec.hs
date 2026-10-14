@@ -39,7 +39,7 @@ import Test.Hspec
 
 spec :: SpecWith Scripts.ScopeParams
 spec = do
-  for_ ways \Way {name, withKillableConnection} ->
+  for_ ways \Way {name, withKillableConnection, announcedSqlState} ->
     describe name do
       for_ operations \Operation {name, warmUp, session} ->
         it name \config ->
@@ -48,14 +48,16 @@ spec = do
             warmUpResult `shouldBe` Right ()
             kill
             outcome <- useWithinBounds connection session
-            shouldBeConnectionLost outcome
+            shouldBeConnectionLost announcedSqlState outcome
 
+      -- The first use has received whatever the server announced, so the
+      -- further one has no SQLSTATE to report.
       it "Reports a further use of the same handle as a lost connection too" \config ->
         withKillableConnection config \connection kill -> do
           kill
           _ <- useWithinBounds connection (void (Session.statement () selectOne))
           outcome <- useWithinBounds connection (void (Session.statement () selectOne))
-          shouldBeConnectionLost outcome
+          shouldBeConnectionLost Nothing outcome
 
 -- * Expectation
 
@@ -83,14 +85,21 @@ useWithinBounds connection session =
 
 -- | Fails with the full actual outcome, so that a red run records the
 -- misclassification it observed.
-shouldBeConnectionLost :: Outcome -> Expectation
-shouldBeConnectionLost = \case
+--
+-- When given the SQLSTATE the server announced the termination with, also
+-- requires the details to mention it, as that is the only place it survives.
+shouldBeConnectionLost :: Maybe Text -> Outcome -> Expectation
+shouldBeConnectionLost announcedSqlState = \case
   ReturnedOutcome (Left (Errors.ConnectionSessionError details))
-    | not (Text.null details) -> pure ()
+    | not (Text.null details),
+      all (`Text.isInfixOf` details) announcedSqlState ->
+        pure ()
   actual ->
     expectationFailure
       ( mconcat
-          [ "Expected: ReturnedOutcome (Left (ConnectionSessionError <non-empty details>))\n",
+          [ "Expected: ReturnedOutcome (Left (ConnectionSessionError <non-empty details",
+            foldMap ((" mentioning " <>) . Text.unpack) announcedSqlState,
+            ">))\n",
             "     Got: ",
             show actual
           ]
@@ -181,7 +190,10 @@ data Way = Way
     withKillableConnection ::
       Scripts.ScopeParams ->
       (Connection.Connection -> IO () -> IO ()) ->
-      IO ()
+      IO (),
+    -- | The SQLSTATE the server announces the termination with, if it says
+    -- anything at all.
+    announcedSqlState :: Maybe Text
   }
 
 ways :: [Way]
@@ -191,7 +203,8 @@ ways =
         withKillableConnection = \(adapter, host, port) action ->
           withSeveringProxy host port \proxyPort sever ->
             withVictimConnection (adapter, "127.0.0.1", proxyPort) \connection ->
-              action connection sever
+              action connection sever,
+        announcedSqlState = Nothing
       },
     Way
       { name = "Server-announced termination",
@@ -206,7 +219,9 @@ ways =
           withSeveringProxy host port \proxyPort _ ->
             withVictimConnection (adapter, "127.0.0.1", proxyPort) \victim -> do
               pid <- run victim (Session.statement () selectBackendPid)
-              action victim (terminateBackend config pid)
+              action victim (terminateBackend config pid),
+        -- admin_shutdown, which pg_terminate_backend makes the backend send.
+        announcedSqlState = Just "57P01"
       }
   ]
 
