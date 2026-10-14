@@ -300,11 +300,18 @@ withSeveringProxy upstreamHost upstreamPort action = do
       address : _ -> pure address
       [] -> fail ("Cannot resolve " <> Text.unpack upstreamHost)
   opened <- newIORef []
+  forwarders <- newIORef []
   severance <- newEmptyMVar
   let open socketAction = do
         socket <- socketAction
         atomicModifyIORef' opened \sockets -> (socket : sockets, ())
         pure socket
+      -- Registers the thread before an exception can interrupt the forking
+      -- one, so that the teardown never misses a forwarder.
+      fork io = mask_ do
+        thread <- forkIOWithUnmask \unmask -> unmask io
+        atomicModifyIORef' forwarders \threads -> (thread : threads, ())
+        pure thread
   listener <- open (Socket.socket Socket.AF_INET Socket.Stream Socket.defaultProtocol)
   Socket.bind listener (Socket.SockAddrInet 0 (Socket.tupleToHostAddress (127, 0, 0, 1)))
   Socket.listen listener 1
@@ -321,15 +328,19 @@ withSeveringProxy upstreamHost upstreamPort action = do
         )
     Socket.connect upstream (Socket.addrAddress upstreamAddress)
     downstreamStopped <- newEmptyMVar
-    clientToUpstream <- forkIO (forward client upstream)
-    _ <- forkIO (forward upstream client `finally` putMVar downstreamStopped ())
+    clientToUpstream <- fork (forward client upstream)
+    _ <- fork (forward upstream client `finally` putMVar downstreamStopped ())
     putMVar severance do
       Socket.shutdown upstream Socket.ShutdownBoth
       takeMVar downstreamStopped
       killThread clientToUpstream
   let sever = join (readMVar severance)
+      -- Stops every thread before closing any socket. A closed descriptor is
+      -- reused by the next socket any concurrent test opens, and a forwarder
+      -- still holding it would read from or shut down that socket instead.
       teardown = do
         killThread acceptor
+        traverse_ killThread =<< readIORef forwarders
         sockets <- readIORef opened
         for_ sockets \socket -> Socket.close socket `catch` \(_ :: IOException) -> pure ()
   action (fromIntegral proxyPort) sever `finally` teardown
