@@ -19,8 +19,12 @@
 -- different, already correctly handled path, so the silent-close fixture
 -- closes gracefully (FIN).
 --
+-- Isolated, because the crash-shutdown fixture makes the server terminate
+-- every connection it has, so the spec needs a server of its own and runs its
+-- cells one at a time.
+--
 -- Reproduces <https://github.com/nikita-volkov/hasql/issues/341>.
-module Integration.Sharing.Connection.Use.LostConnectionSpec (spec) where
+module Integration.Isolated.Connection.Use.LostConnectionSpec (spec) where
 
 import Data.ByteString qualified as ByteString
 import Data.Text qualified as Text
@@ -34,30 +38,51 @@ import Hasql.Statement qualified as Statement
 import Helpers.Scripts qualified as Scripts
 import Network.Socket qualified as Socket
 import Network.Socket.ByteString qualified as Socket.ByteString
+import Pqi qualified
 import Prelude
 import Test.Hspec
+import TestcontainersPostgresql qualified
 
-spec :: SpecWith Scripts.ScopeParams
+spec :: SpecWith Pqi.Adapter
 spec = do
-  for_ ways \Way {name, withKillableConnection, announcedSqlState} ->
-    describe name do
-      for_ operations \Operation {name, warmUp, session} ->
-        it name \config ->
-          withKillableConnection config \connection kill -> do
-            warmUpResult <- Connection.use connection warmUp
-            warmUpResult `shouldBe` Right ()
-            kill
-            outcome <- useWithinBounds connection session
-            shouldBeConnectionLost announcedSqlState outcome
+  byDistro "postgres:9"
+  byDistro "postgres:18"
+  where
+    byDistro tagName =
+      describe
+        (toList tagName)
+        ( aroundAllWith
+            ( \action adapter ->
+                TestcontainersPostgresql.run
+                  TestcontainersPostgresql.Config
+                    { tagName,
+                      auth = TestcontainersPostgresql.CredentialsAuth "postgres" "postgres",
+                      forwardLogs = False
+                    }
+                  (\(host, port) -> action (adapter, host, port))
+            )
+            byWay
+        )
+    byWay =
+      for_ ways \Way {name, withKillableConnection, announcedSqlState} ->
+        describe name do
+          for_ operations \Operation {name, warmUp, session} ->
+            it name \config ->
+              withKillableConnection config \connection kill -> do
+                warmUpResult <- Connection.use connection warmUp
+                warmUpResult `shouldBe` Right ()
+                kill
+                outcome <- useWithinBounds connection session
+                shouldBeConnectionLost announcedSqlState outcome
 
-      -- The first use has received whatever the server announced, so the
-      -- further one has no SQLSTATE to report.
-      it "Reports a further use of the same handle as a lost connection too" \config ->
-        withKillableConnection config \connection kill -> do
-          kill
-          _ <- useWithinBounds connection (void (Session.statement () selectOne))
-          outcome <- useWithinBounds connection (void (Session.statement () selectOne))
-          shouldBeConnectionLost Nothing outcome
+          -- The first use has received whatever the server announced, so the
+          -- further one has no SQLSTATE to report.
+          it "Reports a further use of the same handle as a lost connection too" \config ->
+            withKillableConnection config \connection kill -> do
+              kill
+              _ <- useWithinBounds connection (void (Session.statement () selectOne))
+              outcome <- useWithinBounds connection (void (Session.statement () selectOne))
+              shouldBeConnectionLost Nothing outcome
 
 -- * Expectation
 
@@ -191,8 +216,8 @@ data Way = Way
       Scripts.ScopeParams ->
       (Connection.Connection -> IO () -> IO ()) ->
       IO (),
-    -- | The SQLSTATE the server announces the termination with, if it says
-    -- anything at all.
+    -- | The SQLSTATE the server announces the termination with in an error
+    -- result, if it does.
     announcedSqlState :: Maybe Text
   }
 
@@ -201,7 +226,7 @@ ways =
   [ Way
       { name = "Silent close",
         withKillableConnection = \(adapter, host, port) action ->
-          withSeveringProxy host port \proxyPort sever ->
+          withSeveringProxy host port \proxyPort sever _ ->
             withVictimConnection (adapter, "127.0.0.1", proxyPort) \connection ->
               action connection sever,
         announcedSqlState = Nothing
@@ -216,12 +241,32 @@ ways =
           -- the send of a multi-write operation. The proxy keeps its client
           -- side open, so the victim deterministically gets the FATAL message
           -- followed by a plain FIN.
-          withSeveringProxy host port \proxyPort _ ->
+          withSeveringProxy host port \proxyPort _ _ ->
             withVictimConnection (adapter, "127.0.0.1", proxyPort) \victim -> do
               pid <- run victim (Session.statement () selectBackendPid)
               action victim (terminateBackend config pid),
         -- admin_shutdown, which pg_terminate_backend makes the backend send.
         announcedSqlState = Just "57P01"
+      },
+    Way
+      { name = "Crash shutdown",
+        -- The shape the issue was reported with, from an AWS Aurora failover:
+        -- the server sends a warning with crash_shutdown (57P02) and closes.
+        -- Stock Postgres does exactly that to every backend when another one
+        -- crashes. A warning is a notice, not a result, so it never reaches
+        -- the receive, and the client is left with a plain EOF.
+        --
+        -- Goes through the proxy for the same reason as the termination.
+        withKillableConnection = \config@(adapter, host, port) action ->
+          finally
+            ( withSeveringProxy host port \proxyPort _ awaitUpstreamClosed ->
+                withVictimConnection (adapter, "127.0.0.1", proxyPort) \victim ->
+                  action victim do
+                    crashAnotherBackend config
+                    awaitUpstreamClosed
+            )
+            (awaitRecovery config),
+        announcedSqlState = Nothing
       }
   ]
 
@@ -284,6 +329,35 @@ terminateBackend config pid =
               threadDelay 25_000
               waitUntilGone killer (attemptsLeft - 1)
 
+-- | Makes the server go through a crash restart, by killing a backend of a
+-- second connection with SIGKILL.
+--
+-- The postmaster then terminates every other backend with SIGQUIT, and each of
+-- them sends its client a warning with crash_shutdown (57P02) before it exits.
+-- The killed backend is the one running the @COPY@, which is the parent of
+-- the shell the program runs in.
+crashAnotherBackend :: Scripts.ScopeParams -> IO ()
+crashAnotherBackend config =
+  bracket (Scripts.acquire False config) Connection.release \crasher ->
+    -- Fails, as the backend running it dies.
+    void (Connection.use crasher (Session.script "copy (select 1) to program 'kill -KILL $PPID'"))
+
+-- | Waits until the server accepts connections again after a crash restart,
+-- so that the next test finds it usable.
+awaitRecovery :: Scripts.ScopeParams -> IO ()
+awaitRecovery config =
+  loop (300 :: Int)
+  where
+    loop attemptsLeft =
+      try @IOException (Scripts.acquire False config) >>= \case
+        Right connection -> Connection.release connection
+        Left err ->
+          if attemptsLeft <= 0
+            then throwIO err
+            else do
+              threadDelay 100_000
+              loop (attemptsLeft - 1)
+
 -- | A TCP proxy that sits between the connection under test and the database.
 --
 -- It accepts exactly one client and forwards bytes in both directions.
@@ -296,13 +370,18 @@ terminateBackend config pid =
 -- The provided @sever@ action closes the database side without the database
 -- saying anything: the forwarder passes the EOF on to the client as a FIN, and
 -- @sever@ returns once the forwarders have stopped.
+--
+-- The provided @awaitUpstreamClosed@ action returns once the database has
+-- closed its side and everything it sent before that has been passed on to
+-- the client.
 withSeveringProxy ::
   -- | Database host.
   Text ->
   -- | Database port.
   Word16 ->
-  -- | Receives the proxy's port and the @sever@ action.
-  (Word16 -> IO () -> IO a) ->
+  -- | Receives the proxy's port, the @sever@ action and the
+  -- @awaitUpstreamClosed@ action.
+  (Word16 -> IO () -> IO () -> IO a) ->
   IO a
 withSeveringProxy upstreamHost upstreamPort action = do
   upstreamAddress <- do
@@ -317,6 +396,7 @@ withSeveringProxy upstreamHost upstreamPort action = do
   opened <- newIORef []
   forwarders <- newIORef []
   severance <- newEmptyMVar
+  downstreamStopped <- newEmptyMVar
   let open socketAction = do
         socket <- socketAction
         atomicModifyIORef' opened \sockets -> (socket : sockets, ())
@@ -342,14 +422,14 @@ withSeveringProxy upstreamHost upstreamPort action = do
             Socket.defaultProtocol
         )
     Socket.connect upstream (Socket.addrAddress upstreamAddress)
-    downstreamStopped <- newEmptyMVar
     clientToUpstream <- fork (forward client upstream)
     _ <- fork (forward upstream client `finally` putMVar downstreamStopped ())
     putMVar severance do
       Socket.shutdown upstream Socket.ShutdownBoth
-      takeMVar downstreamStopped
+      readMVar downstreamStopped
       killThread clientToUpstream
   let sever = join (readMVar severance)
+      awaitUpstreamClosed = readMVar downstreamStopped
       -- Stops every thread before closing any socket. A closed descriptor is
       -- reused by the next socket any concurrent test opens, and a forwarder
       -- still holding it would read from or shut down that socket instead.
@@ -358,7 +438,7 @@ withSeveringProxy upstreamHost upstreamPort action = do
         traverse_ killThread =<< readIORef forwarders
         sockets <- readIORef opened
         for_ sockets \socket -> Socket.close socket `catch` \(_ :: IOException) -> pure ()
-  action (fromIntegral proxyPort) sever `finally` teardown
+  action (fromIntegral proxyPort) sever awaitUpstreamClosed `finally` teardown
   where
     -- Copies bytes until the source reaches EOF or fails, then passes that on
     -- as a FIN, so that the peer never waits for bytes that cannot come.
