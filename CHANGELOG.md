@@ -2,7 +2,7 @@
 
 ## Fixes
 
-- A connection lost before or during a receive is now reported as `ConnectionSessionError`. It used to be reported as `StatementSessionError` (sometimes carrying a SQLSTATE such as `57P01`), `ScriptSessionError` or `DriverSessionError`, which made connection pools keep the dead connection and made `isTransient` report the failure as non-retryable. Any SQLSTATE the server sent before closing now appears only in the message text. Fixes [#341](https://github.com/nikita-volkov/hasql/issues/341).
+- A connection lost before or during a receive is now reported as `ConnectionSessionError`. It used to be reported as `StatementSessionError` (sometimes carrying a SQLSTATE such as `57P01`), `ScriptSessionError` or `DriverSessionError`, which made connection pools keep the dead connection and made `isTransient` report the failure as non-retryable. A SQLSTATE the server reported in an error before closing, such as `57P01`, now appears only in the message text, so `toSqlState` no longer returns it. A SQLSTATE the server sent in a warning, such as the `57P02` of a crash shutdown, is not reported at all. Fixes [#341](https://github.com/nikita-volkov/hasql/issues/341).
 
 # v2.0.1.0
 
