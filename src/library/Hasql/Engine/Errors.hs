@@ -351,6 +351,11 @@ fromRecvError = \case
           parameters
           prepared
           (UnexpectedRowCountStatementError 1 1 0)
+  -- Connection pools drop a connection only on 'ConnectionSessionError',
+  -- and 'isTransient' reports it as retryable.
+  -- Reporting a dead connection as anything else keeps it in the pool.
+  Hasql.Comms.Recv.ConnectionLostError _ details ->
+    ConnectionSessionError (maybe "" decodeUtf8Lenient details)
   Hasql.Comms.Recv.TooManyResultsError location actual ->
     case location of
       Nothing ->
@@ -464,6 +469,11 @@ fromRecvErrorInScript scriptSql = \case
           & filter (/= "")
           & foldMap (mappend " Details: " . TextBuilder.text . decodeUtf8Lenient)
       ]
+  -- Connection pools drop a connection only on 'ConnectionSessionError',
+  -- and 'isTransient' reports it as retryable.
+  -- Reporting a dead connection as anything else keeps it in the pool.
+  Hasql.Comms.Recv.ConnectionLostError _ details ->
+    ConnectionSessionError (maybe "" decodeUtf8Lenient details)
   Hasql.Comms.Recv.TooManyResultsError _ actual ->
     (DriverSessionError . TextBuilder.toText . mconcat)
       [ "Got too many results in script. ",

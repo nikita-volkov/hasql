@@ -126,8 +126,12 @@ serverError =
   ResultDecoder \result -> do
     code <-
       fold <$> Pq.resultErrorField result Pq.DiagSqlstate
+    -- libpq makes up results of its own, e.g. when a connection fails.
+    -- They carry no diagnostic fields, only the message.
     message <-
-      fold <$> Pq.resultErrorField result Pq.DiagMessagePrimary
+      Pq.resultErrorField result Pq.DiagMessagePrimary >>= \case
+        Just primary -> pure primary
+        Nothing -> fold <$> Pq.resultErrorMessage result
     detail <-
       Pq.resultErrorField result Pq.DiagMessageDetail
     hint <-

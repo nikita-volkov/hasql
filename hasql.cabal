@@ -262,7 +262,7 @@ benchmark benchmarks
     criterion >=1.6 && <2,
     hasql,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native ^>=1.0.1.14,
     rerebase <2,
 
 test-suite profiling
@@ -342,6 +342,7 @@ test-suite library-tests
     Helpers.Statements.Sleep
     Helpers.Statements.WrongDecoder
     Integration.Isolated.Connection.AcquireSpec
+    Integration.Isolated.Connection.Use.LostConnectionSpec
     Integration.Sharing.Connection.Use.PipelineAbortedInterruptionCleanupSpec
     Integration.Sharing.Connection.UseSpec
     Integration.Sharing.Decoders.CitextSpec
@@ -389,9 +390,10 @@ test-suite library-tests
     hasql,
     hspec ^>=2.11.12,
     iproute,
+    network >=3.2 && <3.3,
     pqi >=1.0 && <1.2,
     pqi-ffi ^>=1.0,
-    pqi-native ^>=1.0,
+    pqi-native ^>=1.0.1.14,
     QuickCheck,
     quickcheck-instances >=0.3.11 && <0.4,
     random >=1.3 && <1.4,
