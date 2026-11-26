@@ -1,4 +1,4 @@
-# v2.1.0.0-rc
+# v2.1.0.0
 
 ## Breaking
 
@@ -32,6 +32,8 @@
   The driver used to bring such a connection back to a clean state instead - draining results, aborting the transaction, deallocating prepared statements. That repair is blocking network IO performed under a mask, so on a connection whose peer has gone away it never returns and the very interruption being handled never lands. It could also report its own failure as a returned error without rethrowing, which made `timeout` yield `Just (Left _)` instead of `Nothing`. Neither is worth the connection it saves.
 
 ## Non-breaking
+
+- Support `iproute-1.8`.
 
 - Prepared statement names are now content-addressed (`hasql_` plus a SHA-256 digest of the SQL and parameter OIDs) rather than per-connection counters. The Haskell API is unchanged. (#324)
 

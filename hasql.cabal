@@ -161,7 +161,7 @@ library
     hasql:connection-state,
     hasql:platform,
     hasql:to-be-resolved,
-    iproute >=1.7 && <1.8,
+    iproute >=1.7 && <1.9,
     postgresql-binary ^>=0.15,
     postgresql-connection-string ^>=0.1,
     pqi >=1.0 && <1.2,
